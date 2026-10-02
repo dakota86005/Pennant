@@ -188,17 +188,19 @@ struct ViewHead: View {
     }
 }
 
-/// What a view says while it waits or when the server refused it: the server's sentence, never "Loading" for ever.
+/// What a view says while it waits or when the server refused it: the server's sentence, never "Loading" for ever. A
+/// failed read shows its problem even when an earlier payload is held: the old one is never drawn as if current (the N8
+/// review, M1).
 struct ViewState<Payload, Content: View>: View {
     let payload: Payload?
     let problem: RequestProblem?
     @ViewBuilder let content: (Payload) -> Content
 
     var body: some View {
-        if let payload {
-            content(payload)
-        } else if let problem {
+        if let problem {
             ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let payload {
+            content(payload)
         } else {
             ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }

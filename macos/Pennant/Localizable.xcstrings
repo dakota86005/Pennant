@@ -192,6 +192,9 @@
     "Go": {
       "extractionState": "manual"
     },
+    "Group": {
+      "extractionState": "manual"
+    },
     "Hide Inspector": {
       "extractionState": "manual"
     },
@@ -441,6 +444,12 @@
       "extractionState": "manual"
     },
     "Set Up Pennant…": {
+      "extractionState": "manual"
+    },
+    "Show Candidates": {
+      "extractionState": "manual"
+    },
+    "Show Decision": {
       "extractionState": "manual"
     },
     "Show Inspector": {

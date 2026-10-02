@@ -172,12 +172,14 @@ nonisolated public enum PreviewFixtures {
     @MainActor
     public static var majorLeague: MajorLeagueStore {
         let decision = decode(Components.Schemas.MlbDecisionView.self, "getMajorLeagueDecision")
+        // A what-if's decision, which has candidates (real rows for the candidates' tables)
+        let whatIf = decode(Components.Schemas.MlbDecisionView.self, "getMajorLeagueDecision-what-if")
         return .preview(
             overview: decode(Components.Schemas.MlbOverviewView.self, "getMajorLeagueOverview"),
             positionPlayers: decode(Components.Schemas.MlbPositionPlayersView.self, "getMajorLeaguePositionPlayers"),
             pitchingStaff: decode(Components.Schemas.MlbPitchingStaffView.self, "getMajorLeaguePitchingStaff"),
             bench: decode(Components.Schemas.MlbBenchView.self, "getMajorLeagueBench"),
-            decisions: decision.map { [MajorLeagueStore.DecisionQuery(need: $0.needId): $0] } ?? [:]
+            decisions: [decision, whatIf].compactMap { $0 }.reduce(into: [:]) { $0[MajorLeagueStore.DecisionQuery(need: $1.needId)] = $1 }
         )
     }
 

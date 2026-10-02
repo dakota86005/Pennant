@@ -44,8 +44,8 @@ nonisolated struct ServedSort: SortComparator, Hashable, Sendable {
 /// A served table as a native `Table` (SWIFTUI_REBUILD.md section 3.6): the served columns (each can be hidden, moved
 /// and resized, and the window remembers how), sorting by the served keys with unknowns last, keyboard navigation, a
 /// player's row that drags as the player, and a context menu (and double-click or Return) that opens his club, follows
-/// him, copies his name, or opens the decisions the row offers. The selected row's served detail is drawn beneath.
-/// Sized to its rows so the page scrolls as one.
+/// him, copies his name, or opens the decisions the row offers. It fills the space it is given and scrolls by itself:
+/// it is only ever placed in a `TablePane`, never inside a page's scroll view (the N8 crash; see `TablePane`).
 struct ServedTable: View {
     let table: Components.Schemas.MlbTable
     /// Where the window keeps this table's columns (a structural id, never shown).
@@ -56,9 +56,11 @@ struct ServedTable: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.routeOpener) private var opener
 
-    /// The height of one row and of the header, as the inset table style draws them at the default text size.
-    static let rowHeight: CGFloat = 26
-    static let headerHeight: CGFloat = 30
+    /// A column's narrowest: a name stays readable, a number keeps three digits, words a short label.
+    static func minimumWidth(_ column: Components.Schemas.MlbColumn) -> CGFloat {
+        if ["player", "pitcher"].contains(column.id) { return 110 }
+        return column.numeric ? 44 : 72
+    }
 
     /// A column's starting width (the GM can resize it): a name wide, a number narrow, words between.
     static func idealWidth(_ column: Components.Schemas.MlbColumn) -> CGFloat {
@@ -81,18 +83,18 @@ struct ServedTable: View {
 
     var body: some View {
         if table.rows.isEmpty {
-            if let empty = table.empty {
-                Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
+            Group {
+                if let empty = table.empty {
+                    Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
+                }
             }
+            .padding(.horizontal, 28).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
-            let height = Self.headerHeight + Self.rowHeight * CGFloat(table.rows.count) + 6
-            // The table takes the width it is given and reports none of its own: an AppKit table's size wants fed back
-            // into the split view's minimum looped its layout on a narrow window with the inspector open
-            GeometryReader { proxy in
-                nativeTable.frame(width: proxy.size.width, height: height)
-            }
-            .frame(height: height)
-            .accessibilityIdentifier("table.\(id)")
+            // A container named for the table, so its id does not replace the table's own (VoiceOver, the UI tests)
+            VStack(spacing: 0) { nativeTable }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("table.\(id)")
         }
     }
 
@@ -106,9 +108,9 @@ struct ServedTable: View {
                             .lineLimit(1)
                     }
                 }
-                // A small minimum: the table never asks the window for more room than it has (column minimums summed past the
-                // content's width made the split view's layout loop on a narrow window); it scrolls sideways instead
-                .width(min: 28, ideal: Self.idealWidth(column))
+                // A readable minimum: past it the table scrolls sideways. The window's content column reports no minimum
+                // of its own (`NoContentMinimum`), so the columns' sum never reaches the split view (the N8 crash)
+                .width(min: Self.minimumWidth(column), ideal: Self.idealWidth(column))
                 .customizationID(column.id)
             }
         } rows: {
@@ -149,21 +151,45 @@ struct ServedTable: View {
     }
 }
 
-/// A table with the selected row's served detail beneath it: what a scout would say if asked, and what it offers to
-/// open. With nothing selected, a line saying how to see it.
-struct TableWithDetail: View {
+/// A served table in a `TablePane`: the view's head above it, and beneath it the selected row's served detail (what a
+/// scout would say if asked, and what it offers to open), then the view's own notes. With nothing selected, a line
+/// saying how to see a row's read, and the notes.
+struct ServedTablePane<Head: View, Notes: View>: View {
     let table: Components.Schemas.MlbTable
     let id: String
+    let detailShare: CGFloat
+    let head: Head
+    let notes: Notes
     @State private var selection: ServedRow.ID?
 
+    init(
+        _ table: Components.Schemas.MlbTable,
+        id: String,
+        detailShare: CGFloat = 0.42,
+        @ViewBuilder head: () -> Head,
+        @ViewBuilder notes: () -> Notes
+    ) {
+        self.table = table
+        self.id = id
+        self.detailShare = detailShare
+        self.head = head()
+        self.notes = notes()
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        TablePane(detailShare: detailShare) {
+            head
+        } table: {
             ServedTable(table, id: id, selection: $selection)
-            if let row = table.rows.first(where: { $0.id == selection }) {
-                RowDetail(row: row)
-            } else if !table.rows.isEmpty {
-                Text("Select a row to see the staff's read.")
-                    .font(.callout).foregroundStyle(.readableSecondary)
+        } detail: {
+            VStack(alignment: .leading, spacing: 16) {
+                if let row = table.rows.first(where: { $0.id == selection }) {
+                    RowDetail(row: row)
+                } else if !table.rows.isEmpty {
+                    Text("Select a row to see the staff's read.")
+                        .font(.callout).foregroundStyle(.readableSecondary)
+                }
+                notes
             }
         }
     }

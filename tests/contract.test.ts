@@ -405,6 +405,24 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     }
   }, SLOW);
 
+  it('serves a what-if decision with its candidates in the contract\'s shape, plain (captured for the previews: real candidate rows)', async () => {
+    const validate = validator('MlbDecisionView');
+    const overview = await (await fetch(`${base}/api/v2/views/automatic/majorLeague/overview`)).json() as { whatIf: { players: Array<{ open: { key?: string } }> } };
+    let captured = false;
+    for (const choice of overview.whatIf.players) {
+      const res = await fetch(`${base}/api/v2/views/automatic/majorLeague/decision?need=${encodeURIComponent(choice.open.key ?? '')}`);
+      expect(res.status).toBe(200);
+      const body = await res.json() as { candidates: { groups: unknown[] } | null };
+      if (!body.candidates?.groups.length) continue;
+      expect(validate(body) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(body, 'getMajorLeagueDecision')).toEqual([]);
+      fixture('responses/getMajorLeagueDecision-what-if.json', json(body));
+      captured = true;
+      break;
+    }
+    expect(captured).toBe(true);
+  }, SLOW);
+
   it('uses every scoped jargon exception in force, so a stale one is found', () => {
     expect(JARGON_EXCEPTIONS.filter((e) => !exceptionsInUse.has(e))).toEqual([]);
   });

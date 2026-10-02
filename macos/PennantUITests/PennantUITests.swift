@@ -236,6 +236,22 @@ final class PennantUITests: XCTestCase {
         XCTAssertEqual(issues, [], "the accessibility audit found issues")
     }
 
+    /// Scrolls a container (an element, never the screen) until the target is there and can be clicked: a report draws
+    /// its lower sections lazily, so the target may exist only once scrolled to. Down first (as `testMajorLeagueViews`
+    /// reaches the glances), then up.
+    /// The scroll is aimed at the container's leading side: on a window too narrow for the sidebar, the content and the
+    /// inspector, the system lays the inspector over the content's trailing side, and a scroll at the container's middle
+    /// would land on the inspector.
+    @MainActor
+    private func reveal(_ target: XCUIElement, in container: XCUIElement) {
+        let leading = container.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.6))
+        for delta in [-2000.0, -2000, -2000, -2000, 5000, 3000, 3000] {
+            if target.exists && target.isHittable { return }
+            leading.scroll(byDeltaX: 0, deltaY: delta)
+            _ = target.waitForExistence(timeout: 1)
+        }
+    }
+
     /// The sidebar at its top, as a window opens: its departments stay unfolded (the audit reads every row there is).
     @MainActor
     private func sidebarAtTop(_ app: XCUIApplication) {
@@ -753,7 +769,8 @@ final class PennantUITests: XCTestCase {
     /// actions; the report's need opens its decision, whose served choice asks again; Back returns. Audited on each view.
     @MainActor
     func testMajorLeagueViews() throws {
-        let app = launch()
+        // A 1280-point window: the captures at the size the GM most often uses (the narrow one has its own test)
+        let app = launch(arguments: ["-PennantDebugWindowSize", "1280x820"])
         waitForShell(app)
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
@@ -791,19 +808,129 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(open.waitForExistence(timeout: 20), "the report's need offers no decision")
         open.click()
         XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision did not load")
-        let choices = element(app, "choices.assignment")
-        if choices.waitForExistence(timeout: 5) {
-            let segment = choices.radioButtons.element(boundBy: 1)
-            if segment.exists {
-                segment.click()
-                XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision for the served choice did not load")
-            }
-        }
         keep(app.windows.firstMatch.screenshot(), named: "n8-decision")
         sidebarAtTop(app)
         try audit(app, named: "accessibility-audit-n8-decision")
         app.typeKey("[", modifierFlags: .command)
         XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "Back did not return from the decision")
+        // A what-if always serves its durations: choosing one loads that decision, which then says it is the one chosen
+        // (the served `selected`), never skipped
+        let whatIf = element(app, "whatIf")
+        XCTAssertTrue(whatIf.waitForExistence(timeout: 20), "the report offers no what-if")
+        whatIf.click()
+        let player = app.menuItems.allElementsBoundByIndex.first { $0.frame.width > 0 && $0.isEnabled }
+        XCTAssertNotNil(player, "the what-if lists no player")
+        player?.click()
+        let duration = element(app, "choices.duration")
+        XCTAssertTrue(duration.waitForExistence(timeout: 30), "the what-if's decision serves no durations")
+        duration.click()
+        let fortnight = contextMenuItem(app, "Two weeks")
+        XCTAssertTrue(fortnight.exists, "the served durations have no \"Two weeks\"")
+        fortnight.click()
+        let chosen = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in (duration.value as? String) == "Two weeks" }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [chosen], timeout: 30), .completed, "the decision for the chosen duration did not load")
+        XCTAssertTrue(element(app, "decision.header").exists)
+        keep(app.windows.firstMatch.screenshot(), named: "n8-decision-what-if-two-weeks")
+        quitCleanly(app)
+    }
+
+    /// The narrow window (the N8 review, H2): 900 × 700 with the inspector open, where a table nested in a page's scroll
+    /// view made AppKit abort ("more Update Constraints in Window passes than there are views in the window"). Every
+    /// Major League Ops view in turn and back to the report, three rounds, a row selected in each table and a decision's
+    /// candidates opened: the app stays up throughout and quits cleanly.
+    @MainActor
+    func testMajorLeagueNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in XCTAssertEqual(app.state, .runningForeground, "the app stopped at \(step)") }
+        // Clicks aimed at an element's leading side: on a window this narrow the system lays the inspector over the
+        // content's trailing side, and a click at a wide element's middle would land on the inspector
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        let views: [(view: String, table: String)] = [
+            ("positionPlayers", "table.lineup"), ("pitchingStaff", "table.pitching.0"), ("benchBackups", "table.bench"),
+        ]
+        keep(window.screenshot(), named: "n8-narrow-900-report")
+        for round in 1...3 {
+            for view in views {
+                let item = element(app, "sidebar.majorLeague.\(view.view)")
+                XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                item.click()
+                let table = element(app, view.table)
+                if !table.waitForExistence(timeout: 20) { keep(window.screenshot(), named: "n8-narrow-900-missing-\(view.table)") }
+                XCTAssertTrue(table.exists, "round \(round): \(view.view)'s table did not load")
+                let row = table.tables.firstMatch.tableRows.firstMatch
+                if row.waitForExistence(timeout: 5) {
+                    leading(row)
+                    XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s row detail did not draw")
+                }
+                if view.view == "pitchingStaff" {
+                    let pen = element(app, "pitching.sections").radioButtons.element(boundBy: 1)
+                    if pen.exists {
+                        pen.click()
+                        XCTAssertTrue(element(app, "table.pitching.1").waitForExistence(timeout: 10), "round \(round): the pen's table did not draw")
+                    }
+                }
+                if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-\(view.view)") }
+                up("\(view.view), round \(round)")
+                app.typeKey("[", modifierFlags: .command)
+                XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "round \(round): Back did not return to the report")
+                up("the report, round \(round)")
+            }
+            // Decision: the open needs, one opened and back; a what-if (a scenario with candidates), its candidates in
+            // their table, and back
+            let inbox = element(app, "sidebar.majorLeague.decision")
+            XCTAssertTrue(inbox.waitForExistence(timeout: 10), "round \(round): the sidebar has no Decision")
+            inbox.click()
+            let needs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'need.'"))
+            let need = needs.firstMatch
+            if !need.waitForExistence(timeout: 20) { keep(window.screenshot(), named: "n8-narrow-900-missing-need") }
+            XCTAssertTrue(need.exists, "round \(round): the decision list has no open need")
+            leading(need)
+            XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "round \(round): the decision did not load")
+            if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-decision") }
+            up("the decision, round \(round)")
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(needs.firstMatch.waitForExistence(timeout: 10), "round \(round): Back did not return to the decision list")
+            let whatIf = element(app, "whatIf")
+            reveal(whatIf, in: element(app, "detail.majorLeague.decision"))
+            XCTAssertTrue(whatIf.waitForExistence(timeout: 10), "round \(round): the decision list offers no what-if")
+            leading(whatIf)
+            // A reliever's what-if: the synthetic league's relievers have candidates behind them (the others' do not)
+            let shown = app.menuItems.allElementsBoundByIndex.filter { $0.frame.width > 0 && $0.isEnabled }
+            let player = shown.first { $0.title.contains("relief") } ?? shown.first
+            XCTAssertNotNil(player, "round \(round): the what-if lists no player")
+            player?.click()
+            XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "round \(round): the what-if's decision did not load")
+            let show = element(app, "decision.showCandidates")
+            reveal(show, in: element(app, "detail.majorLeague.decision"))
+            XCTAssertTrue(show.waitForExistence(timeout: 10), "round \(round): the what-if's decision has no candidates to show")
+            show.click()
+            let candidateTable = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.candidates.'")).firstMatch
+            if !candidateTable.waitForExistence(timeout: 10) { keep(window.screenshot(), named: "n8-narrow-900-missing-candidates") }
+            XCTAssertTrue(candidateTable.exists, "round \(round): the candidates' tables did not draw")
+            let row = app.tables.firstMatch.tableRows.firstMatch
+            if row.waitForExistence(timeout: 5) {
+                leading(row)
+                XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): a candidate's detail did not draw")
+            }
+            if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-candidates") }
+            element(app, "candidates.showDecision").click()
+            XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 10), "round \(round): the decision did not come back")
+            up("the what-if, round \(round)")
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(needs.firstMatch.waitForExistence(timeout: 10), "round \(round): Back did not return to the decision list")
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "round \(round): Back did not return to the report")
+            up("the report after the decisions, round \(round)")
+        }
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-narrow")
         quitCleanly(app)
     }
 

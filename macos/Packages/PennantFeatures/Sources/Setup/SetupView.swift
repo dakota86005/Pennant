@@ -13,7 +13,6 @@ import UniformTypeIdentifiers
 public struct SetupView: View {
     @Bindable var model: SetupModel
     let status: Components.Schemas.ServerStatus?
-    @Environment(\.dismissWindow) private var dismissWindow
     /// The model's count of ended runs when this window's view appeared: only a run ending after it closes the window.
     @State private var completionsAtOpen: Int?
 
@@ -23,6 +22,12 @@ public struct SetupView: View {
     public init(model: SetupModel, status: Components.Schemas.ServerStatus?) {
         self.model = model
         self.status = status
+    }
+
+    /// A run ended after this window's view appeared.
+    private var shouldClose: Bool {
+        guard let opened = completionsAtOpen else { return false }
+        return model.completions > opened
     }
 
     public var body: some View {
@@ -56,16 +61,9 @@ public struct SetupView: View {
         // Closes when a run ends while the window is open (the club saved or taken from the save), counted by the
         // model rather than read from the step's change, which a run ending within a frame of the window opening could
         // pass by; the model outlives the window, so a window opened on a finished model is not closed at once (the
-        // scene starts it again at the saves). A close asked while the window was still opening can be dropped, so it
-        // is asked again while the window is up.
-        .task(id: model.completions) {
-            guard let opened = completionsAtOpen, model.completions > opened else { return }
-            for _ in 0..<12 {
-                dismissWindow(id: SceneID.setup)
-                try? await Task.sleep(for: .milliseconds(250))
-                if Task.isCancelled { return }
-            }
-        }
+        // scene starts it again at the saves). The close is this window's own, applied once it is on screen
+        // (`WindowCloser`): a scene-wide dismiss asked while the window was still opening could be dropped (M7).
+        .background(WindowCloser(close: shouldClose))
         .onAppear { if completionsAtOpen == nil { completionsAtOpen = model.completions } }
         // A container, so the window's id does not replace its controls' own (the Save Club button's, in the inset)
         .accessibilityElement(children: .contain)

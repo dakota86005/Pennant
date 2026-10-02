@@ -94,6 +94,9 @@ struct OpenDecision: View {
     let need: String
     @Environment(AppModel.self) private var model
     @State private var query: MajorLeagueStore.DecisionQuery
+    /// The decision this view last showed (for any of this need's choices), kept while a new choice is read and said to
+    /// be refreshing; tracked here rather than guessed from the store's first entry (the N8 review).
+    @State private var lastShown: Components.Schemas.MlbDecisionView?
 
     init(need: String) {
         self.need = need
@@ -102,20 +105,28 @@ struct OpenDecision: View {
 
     var body: some View {
         let store = model.majorLeague
-        // The last decision shown stays while a new choice is asked (said to be refreshing)
-        let shown = store.decisions[query] ?? lastShown
+        let current = store.decisions[query]
+        let shown = current ?? lastShownForThisClub
         ViewState(payload: shown, problem: store.decisionProblems[query]) { decision in
-            DecisionContent(decision: decision, refreshing: store.loadingDecisions.contains(query)) { choice in
+            DecisionContent(
+                decision: decision,
+                refreshing: store.loadingDecisions.contains(query) || current == nil || model.storeKey.map { !store.isCurrent(decision, for: $0) } ?? false
+            ) { choice in
                 query = MajorLeagueStore.DecisionQuery(choice.query)
             }
+        }
+        .onChange(of: current, initial: true) { _, served in
+            if let served { lastShown = served }
         }
         .task(id: TaskKey(key: model.storeKey, query: query)) { await model.loadDecision(query) }
         .accessibilityIdentifier("majorLeague.decision")
     }
 
-    /// The decision shown for an earlier choice of this need, while the new one is read.
-    private var lastShown: Components.Schemas.MlbDecisionView? {
-        model.majorLeague.decisions.first { $0.key.need == need }?.value
+    /// The last decision shown, only while it is the current club's (another club's is never drawn, M1).
+    private var lastShownForThisClub: Components.Schemas.MlbDecisionView? {
+        guard let lastShown, let key = model.storeKey else { return nil }
+        if let club = key.club, club.id != lastShown.orgId { return nil }
+        return lastShown
     }
 
     private struct TaskKey: Hashable {
@@ -128,8 +139,33 @@ struct DecisionContent: View {
     let decision: Components.Schemas.MlbDecisionView
     let refreshing: Bool
     let choose: (Components.Schemas.MlbChoice) -> Void
+    /// The decision as a document, or its candidates in their tables (which never sit inside the document's scroll view:
+    /// the N8 crash, see `TablePane`): Show Candidates in the document and Show Decision above the tables move between
+    /// them.
+    @State private var part: Part = .decision
+
+    enum Part: Hashable { case decision, candidates }
+
+    private var tables: Components.Schemas.MlbCandidates? {
+        guard let candidates = decision.candidates, !candidates.groups.isEmpty else { return nil }
+        return candidates
+    }
 
     var body: some View {
+        Group {
+            switch part {
+            case .candidates where tables != nil:
+                CandidatesPane(candidates: tables!) { part = .decision }
+            default:
+                document
+            }
+        }
+        .background(Color.readablePage)
+        // A container, so the decision's identifier does not replace its parts' own
+        .accessibilityElement(children: .contain)
+    }
+
+    private var document: some View {
         Page {
             header
             if let duration = decision.duration { ChoicesView(choices: duration, choose: choose, id: "duration") }
@@ -141,7 +177,7 @@ struct DecisionContent: View {
             if let assignment = decision.assignment { ChoicesView(choices: assignment, choose: choose, id: "assignment") }
             if let responses = decision.responses { ResponsesView(responses: responses) }
             if let role = decision.roleChoice { ChoicesView(choices: role, choose: choose, id: "role") }
-            if let candidates = decision.candidates { CandidatesView(candidates: candidates) }
+            if let candidates = decision.candidates { CandidatesSummary(candidates: candidates) { part = .candidates } }
             if let mechanics = decision.mechanics { MechanicsView(mechanics: mechanics) }
             Text(verbatim: decision.footnote.display).font(.callout).foregroundStyle(.readableSecondary)
         }
@@ -378,44 +414,82 @@ struct ResponsesView: View {
     }
 }
 
-/// Every candidate, in the groups Major League Ops gave them: each group its own table (closed at first where served).
-struct CandidatesView: View {
+/// Every candidate, as the document says it: the groups Major League Ops gave them, each with how many, and the way to
+/// their tables.
+struct CandidatesSummary: View {
     let candidates: Components.Schemas.MlbCandidates
+    let show: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             MagazineSection(title: Text(verbatim: candidates.title.display), trailing: String(candidates.count))
             if let empty = candidates.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary) }
-            ForEach(Array(candidates.groups.enumerated()), id: \.offset) { index, group in
-                CandidateGroupView(group: group, id: "candidates.\(index)")
+            ForEach(Array(candidates.groups.enumerated()), id: \.offset) { _, group in
+                HStack(spacing: 6) {
+                    Text(verbatim: group.title.display).font(.headline)
+                    Text(verbatim: String(group.table.rows.count)).font(.callout).foregroundStyle(.readableSecondary).monospacedDigit()
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if !candidates.groups.isEmpty {
+                Button("Show Candidates", systemImage: "tablecells", action: show)
+                    .accessibilityIdentifier("decision.showCandidates")
             }
             ForEach(Array(candidates.notConsidered.enumerated()), id: \.offset) { _, line in
                 Text(verbatim: line.display).font(.callout).foregroundStyle(.readableSecondary)
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("decision.candidates")
     }
 }
 
-struct CandidateGroupView: View {
-    let group: Components.Schemas.MlbCandidateGroup
-    let id: String
-    @State private var expanded: Bool
+/// Every candidate in his table, one group at a time (the groups Major League Ops gave them, in its order, the first one
+/// served open chosen first): the table fills the column and the selected candidate's detail is beneath (`TablePane`).
+struct CandidatesPane: View {
+    let candidates: Components.Schemas.MlbCandidates
+    /// Back to the decision's document (nil where the pane stands alone, in a preview).
+    var showDecision: (() -> Void)?
+    @State private var group: Int
 
-    init(group: Components.Schemas.MlbCandidateGroup, id: String) {
-        self.group = group
-        self.id = id
-        _expanded = State(initialValue: !group.collapsed)
+    init(candidates: Components.Schemas.MlbCandidates, showDecision: (() -> Void)? = nil) {
+        self.candidates = candidates
+        self.showDecision = showDecision
+        _group = State(initialValue: candidates.groups.firstIndex { !$0.collapsed } ?? 0)
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            TableWithDetail(table: group.table, id: id).padding(.top, 6)
-        } label: {
-            HStack(spacing: 6) {
-                Text(verbatim: group.title.display).font(.headline)
-                Text(verbatim: String(group.table.rows.count)).font(.callout).foregroundStyle(.readableSecondary).monospacedDigit()
+        let index = min(group, max(candidates.groups.count - 1, 0))
+        if candidates.groups.indices.contains(index) {
+            ServedTablePane(candidates.groups[index].table, id: "candidates.\(index)") {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let showDecision {
+                        Button("Show Decision", systemImage: "chevron.backward", action: showDecision)
+                            .accessibilityIdentifier("candidates.showDecision")
+                    }
+                    MagazineSection(title: Text(verbatim: candidates.title.display), trailing: String(candidates.count))
+                    if candidates.groups.count > 1 {
+                        Picker(selection: $group) {
+                            ForEach(Array(candidates.groups.enumerated()), id: \.offset) { index, group in
+                                Text(verbatim: group.title.display).tag(index)
+                            }
+                        } label: {
+                            Text("Group")
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                        .accessibilityIdentifier("candidates.group")
+                    } else if let only = candidates.groups.first {
+                        Text(verbatim: only.title.display).font(.headline)
+                    }
+                }
+            } notes: {
+                ForEach(Array(candidates.notConsidered.enumerated()), id: \.offset) { _, line in
+                    Text(verbatim: line.display).font(.callout).foregroundStyle(.readableSecondary)
+                }
             }
+            .id(index)
+            .accessibilityIdentifier("decision.candidateTables")
         }
     }
 }

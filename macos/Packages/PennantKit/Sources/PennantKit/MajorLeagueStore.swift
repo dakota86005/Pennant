@@ -56,10 +56,48 @@ public final class MajorLeagueStore {
         self.log = log
     }
 
-    /// Whether the view shown was read for this key (the same import, club and build).
+    /// The last key the store was asked for: a save or club other than its own clears everything it holds.
+    private var followedKey: AppModel.StoreKey?
+
+    /// Whether the view shown was built from what the key names (`FrontOfficeStore.isCurrent`: the same import, club
+    /// and build, by the payload's own stamps) for the key's save. A payload that is not is drawn as updating, never as
+    /// current (the N8 review, M1).
     public func isCurrent(_ view: View, for key: AppModel.StoreKey?) -> Bool {
-        guard let key else { return false }
-        return loadedKeys[view] == key
+        guard let key, let loaded = loadedKeys[view], loaded.saveId == key.saveId, let stamps = stamps(view) else { return false }
+        return FrontOfficeStore.isCurrent(importStamp: stamps.importStamp, reportStamp: stamps.reportStamp, orgId: stamps.orgId, for: key)
+    }
+
+    /// Whether a decision was built from what the key names (its own stamps, for the store's save).
+    public func isCurrent(_ decision: Components.Schemas.MlbDecisionView, for key: AppModel.StoreKey?) -> Bool {
+        guard let key, decisionsKey?.saveId == key.saveId else { return false }
+        return FrontOfficeStore.isCurrent(importStamp: decision.importStamp, reportStamp: decision.reportStamp, orgId: decision.orgId, for: key)
+    }
+
+    private func stamps(_ view: View) -> (importStamp: String?, reportStamp: String?, orgId: Int?)? {
+        switch view {
+        case .overview: overview.map { ($0.importStamp, $0.reportStamp, $0.orgId) }
+        case .positionPlayers: positionPlayers.map { ($0.importStamp, $0.reportStamp, $0.orgId) }
+        case .pitchingStaff: pitchingStaff.map { ($0.importStamp, $0.reportStamp, $0.orgId) }
+        case .benchBackups: bench.map { ($0.importStamp, $0.reportStamp, $0.orgId) }
+        }
+    }
+
+    /// Follows the app's key: on another save or club, everything held is dropped at once, so another club's view or
+    /// decision is never drawn, not even as updating ("never another club's"). A new import or build of the same club
+    /// keeps what is shown, drawn as updating until the new one lands.
+    public func follow(_ key: AppModel.StoreKey?) {
+        guard let key else { return }
+        defer { followedKey = key }
+        guard let last = followedKey, last.saveId != key.saveId || last.club != key.club else { return }
+        overview = nil
+        positionPlayers = nil
+        pitchingStaff = nil
+        bench = nil
+        problems = [:]
+        loadedKeys = [:]
+        decisions = [:]
+        decisionProblems = [:]
+        decisionsKey = nil
     }
 
     // MARK: The standing views
@@ -67,6 +105,7 @@ public final class MajorLeagueStore {
     /// Reads a view for the key, once per key; the last good one stays while it is read again.
     public func load(_ view: View, client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key else { return }
+        follow(key)
         if loadedKeys[view] == key, has(view) { return }
         askedKeys[view] = key
         loading.insert(view)
@@ -136,6 +175,7 @@ public final class MajorLeagueStore {
     /// Reads one decision for the key, once per key and question (the server builds it on its first open: a moment).
     public func loadDecision(_ query: DecisionQuery, client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key else { return }
+        follow(key)
         if decisionsKey != key {
             decisions = [:]
             decisionProblems = [:]
@@ -201,6 +241,14 @@ public final class MajorLeagueStore {
         store.decisionsKey = key
         if let key { for view in View.allCases { store.loadedKeys[view] = key } }
         return store
+    }
+
+    /// Takes a preview model's key as the one its payloads were read for (the model's key is known only once it is made).
+    public func previewAdopt(_ key: AppModel.StoreKey?) {
+        guard let key else { return }
+        for view in View.allCases where has(view) { loadedKeys[view] = key }
+        decisionsKey = key
+        followedKey = key
     }
     #endif
 }

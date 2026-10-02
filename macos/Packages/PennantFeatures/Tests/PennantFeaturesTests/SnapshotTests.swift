@@ -242,12 +242,23 @@ struct SnapshotTests {
     @Test("Major League Ops' decision at full length, and a row's detail", arguments: [false, true])
     func majorLeagueDecisionFull(dark: Bool) throws {
         let model = PreviewFixtures.ready()
-        let decision = try #require(model.majorLeague.decisions.values.first)
+        let decision = try #require(model.majorLeague.decisions.values.first { $0.needId.hasPrefix("mlb:role_below_standard") })
         try draw(DecisionContent(decision: decision, refreshing: false, choose: { _ in }).environment(model).environment(\.theme, model.theme),
                  size: CGSize(width: 1000, height: 2400), dark: dark, name: "n8-decision-full")
         let row = try #require(model.majorLeague.bench?.bench.rows.first)
         try draw(RowDetail(row: row).padding(20).environment(model).environment(\.theme, model.theme),
                  size: CGSize(width: 900, height: 260), dark: dark, name: "n8-row-detail")
+        // A settled lineup's real row (the synthetic league's lineups): his read, as a scout would say it
+        let regular = try #require(model.majorLeague.positionPlayers?.lineup.rows.first { $0.player != nil })
+        try draw(RowDetail(row: regular).padding(20).environment(model).environment(\.theme, model.theme),
+                 size: CGSize(width: 900, height: 420), dark: dark, name: "n8-lineup-row-detail")
+        // A what-if's candidates in their table, a row selected by nobody yet (the served order kept)
+        let whatIf = try #require(model.majorLeague.decisions.values.first { $0.candidates?.groups.isEmpty == false })
+        let candidates = try #require(whatIf.candidates)
+        try draw(CandidatesPane(candidates: candidates).environment(model).environment(\.theme, model.theme),
+                 size: CGSize(width: 1000, height: 640), dark: dark, name: "n8-decision-candidates")
+        try draw(DecisionContent(decision: whatIf, refreshing: false, choose: { _ in }).environment(model).environment(\.theme, model.theme),
+                 size: CGSize(width: 1000, height: 1600), dark: dark, name: "n8-decision-what-if")
     }
 
     @Test("Major League Ops in a narrow window", arguments: [false, true])
@@ -256,6 +267,16 @@ struct SnapshotTests {
         let window = MainWindowModel(registry: registry, inspectorPresented: true, expanded: ["majorLeague"])
         window.go(to: AppRoute(department: "majorLeague", view: "benchBackups"))
         try drawMainWindow(model: model, window: window, look: dark ? .dark : .light, name: "n8-narrow-bench", size: CGSize(width: 1000, height: 760))
+        // The narrowest the review asked for: 900 × 700, the inspector open, the lineup's table in its pane
+        window.go(to: AppRoute(department: "majorLeague", view: "positionPlayers"))
+        try drawMainWindow(model: model, window: window, look: dark ? .dark : .light, name: "n8-narrow-900-position-players", size: CGSize(width: 900, height: 700))
+    }
+
+    @Test("the lineup's fixture has a settled lineup, so real rows are drawn (the N8 review)")
+    func settledLineup() throws {
+        let model = PreviewFixtures.ready()
+        let rows = try #require(model.majorLeague.positionPlayers?.lineup.rows)
+        #expect(rows.filter { $0.player != nil }.count >= 5)
     }
 
     @Test("the Morning Report's shell: masthead, glass and the floating control, in each theme and appearance",

@@ -1007,7 +1007,8 @@ responses). The Front Office's own report is its Report view.
   the selected row's served detail beneath; Decision lists the open needs without a key and draws the decision with one
   (`AppRoute.key`, so Back and Forward step through decisions; the sidebar selects Decision itself). A served choice is a
   segmented control (a menu past four) and asks again as served; the last decision shown stays, said to be refreshing.
-  The desk's items have Open Decision (button, context menu, VoiceOver action).
+  The desk's items have Open Decision (button, context menu, VoiceOver action). Since the review the tables sit in a
+  `TablePane` (below), never in a page's scroll view.
 - **Measured** (in process over HTTP, M4): the views add 3 to 6 ms to the club's build (the synthetic save; 4.9 ms on the
   owner's export, a read-only scratch copy); warm GETs p50 0.6 to 1.1 ms, p95 0.9 to 2.0 ms on both; a decision 0.3 s cold
   on the synthetic save and 1.1 to 1.6 s on the owner's export (in the worker; built ahead after a warm-up), warm p95
@@ -1019,8 +1020,51 @@ responses). The Front Office's own report is its Report view.
   the sidebar on a programmatic resize and was taken out; the tables take the width they are given (no column minimums
   summed past the content) and scroll sideways. Mail and Notes were not compared side by side (no UI automation of other
   apps); left for the owner's eye.
-- **Setup's zero-question flake:** the window now closes when the model's count of ended runs moves while it is open,
-  asking again while it is still opening, rather than on a step change its view could miss (`SetupModel.completions`).
+- **Setup's zero-question flake:** the window closes when the model's count of ended runs moves while it is open, rather
+  than on a step change its view could miss (`SetupModel.completions`). Since the review (M7) the close is the window's
+  own: `WindowCloser` closes the `NSWindow` its view is in the moment that window is on screen (asked before, it waits
+  for the window's occlusion or key change), with no scene-wide dismiss and no timed retry (`SetupWindowCloseTests`).
+- **The crash at narrow widths, and its fix (the N8 review, H2).** At about 900 pt with the inspector open, N8's build (and
+  the farm branch's) aborted at random in AppKit with "more Update Constraints in Window passes than there are views in
+  the window" (`NSWindowGetDisplayCycleObserverForUpdateConstraints`, reports of 2026-10-01). The crash's last-exception
+  backtrace (a report of 2026-10-02, reproduced by the new narrow-window test) names the loop: `NSHostingView
+  ._willUpdateConstraintsForSubtree` → `SizeConstraints.update` → `SplitViewChildController.hostingView(_:didUpdateMinSize:
+  maxSize:)` → layout invalidated → constraints updated again. The split view's content column takes its minimum size from
+  its SwiftUI content, and a content whose minimum width moves with the width it is given (a table whose column minimums
+  are summed, a menu or segmented control sized to its title, a page that cannot wrap) on a window too narrow for the
+  sidebar, the content and the inspector never settles. A table inside a page's scroll view was the first way in, not the
+  only one: with the tables moved out, the Decision list (no table) still crashed until the column itself was fixed.
+  The fix, in two parts, both in PennantDesign for every department (the farm adopts them):
+  - `NoContentMinimum` (`.noContentMinimum()`): the window's content column (`DetailView`) and the inspector take the size
+    they are offered and report no minimum of their content's own, laid out from the top leading corner, so nothing a
+    view draws can reach the split view's constraints. What cannot be narrower than the column runs past its trailing
+    edge, under the inspector, as the system lays it there on a narrow window; never under the sidebar.
+  - `TablePane`: the native shape for a view that is mostly a table, as Mail and Finder lay out a list: the head at its
+    natural height, the `Table` filling the rest and scrolling by itself, and the selected row's detail (then the view's
+    own notes: the pen's findings, the bench's jobs, the lineup's basis) beneath in a pane that scrolls on its own, its
+    height a fixed share of the pane's. A table never goes inside a page's scroll view. The columns keep readable
+    minimums again (a name 110 pt, a number 44, words 72) and the table scrolls sideways past them.
+  A decision is a document, so its candidates moved out of it: the document says how many there are and offers Show
+  Candidates, which shows them one served group at a time in a `TablePane`, with Show Decision to go back. Identifiers on
+  a pane name the pane (`accessibilityElement(children: .contain)`), never every element inside it.
+  `testMajorLeagueNarrowWindow` opens every Major League Ops view, the Decision list, a decision and a what-if's
+  candidates at 900 × 700 with the inspector open, three rounds, a row selected in each table, and audits the window.
+  At 900 pt the system still lays the inspector over the content's trailing side (the report's masthead runs under it);
+  closing the sidebar or the inspector gives the room back, as in any Mac app.
+- **Never another club's (M1).** A view is drawn as current only when its own stamps (import, build, club) match the
+  key (`FrontOfficeStore.isCurrent`), else as updating; another save or club drops everything the store holds at once
+  (`MajorLeagueStore.follow`); a failed read shows its problem, never the old payload. The last decision shown is tracked
+  by the view, and only for the current club.
+- **Conventions for the farm (M8).** `route(_:)` passes a view target's served key through (the farm's affiliates open
+  with a team key); an open action is named by its target's kind (`openLabel`: Open Decision, or Open), the same on the
+  button, the context menu and the VoiceOver action.
+- **Words after the review.** The staff's call reads "Staff's view: act / worth pursuing / keep watching / hold" and its
+  headline is the staff's view, never an order; the lean is in the basis only; a working estimate is "N on the 0–100
+  scale" (a bare number under a column that names it); a rate with a blank part is "not known"; coded columns sort by
+  served ordinals, an unknown last; the stakes tier is "Development-sensitive"; the bench's chips are Backed up and Has
+  someone; the glance's count is spoken with what it counts (`MlbGlance.countLabel`). The inspector's "Nothing pinned"
+  is drawn in the label colour on the fixed page colour, a checked pair. The contract's synthetic save now has settled
+  lineups (`buildSave({ lineups: true })`), so the fixtures and snapshots draw real lineup rows.
 - *Left for later:* the per-view sidebar counts (the counts are on the glances); the clubhouse tools are N9's.
 
 ### 3.6 Signature interactions

@@ -58,6 +58,35 @@ struct MajorLeagueStoreTests {
         #expect(store.problems[.benchBackups] == .served("Major League Ops couldn't be read this time."))
     }
 
+    @Test("never another club's: a view is current only by its own stamps, and another save or club clears everything (M1)")
+    func neverAnotherClubs() async throws {
+        let transport = RoutedTransport(views.merging(["/api/v2/views/1/majorLeague/decision": try RoutedTransport.json("getMajorLeagueDecision")]) { a, _ in a })
+        let store = MajorLeagueStore()
+        let query = MajorLeagueStore.DecisionQuery(need: "mlb:role_below_standard:catcher")
+        for view in MajorLeagueStore.View.allCases { await store.load(view, client: client(transport), key: key()) }
+        await store.loadDecision(query, client: client(transport), key: key())
+        let decision = try #require(store.decisions[query])
+        #expect(store.isCurrent(.overview, for: key()))
+        #expect(store.isCurrent(decision, for: key()))
+        // A new build of the same club: what is shown stays, drawn as updating (its stamps are the old build's)
+        store.follow(key("rebuilt"))
+        #expect(store.positionPlayers != nil)
+        #expect(!store.isCurrent(.positionPlayers, for: key("rebuilt")))
+        #expect(!store.isCurrent(decision, for: key("rebuilt")))
+        // The payload names club 1: under a key for club 2 it is never current, even before the key moves
+        let other = AppModel.StoreKey(importStamp: "", club: ClubRef(id: 2), restores: 0, reportStamp: "rstamp")
+        #expect(!store.isCurrent(.overview, for: other))
+        // Another club: everything is dropped at once
+        store.follow(other)
+        #expect(store.overview == nil && store.positionPlayers == nil && store.pitchingStaff == nil && store.bench == nil)
+        #expect(store.decisions.isEmpty)
+        // Another save, same club: dropped too
+        for view in MajorLeagueStore.View.allCases { await store.load(view, client: client(transport), key: key()) }
+        #expect(store.bench != nil)
+        store.follow(AppModel.StoreKey(importStamp: "", club: ClubRef(id: 1), restores: 0, reportStamp: "rstamp", saveId: "another"))
+        #expect(store.bench == nil)
+    }
+
     @Test("asks a decision with exactly the served choice, once per question and key")
     func decisionAsServed() async throws {
         let decision = try RoutedTransport.json("getMajorLeagueDecision")

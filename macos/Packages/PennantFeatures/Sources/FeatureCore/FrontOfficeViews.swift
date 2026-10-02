@@ -31,14 +31,21 @@ extension EnvironmentValues {
 }
 
 /// A served target as a route in this build, when it names a department's view, or a decision (N8: the department's
-/// Decision view with the served key open).
+/// Decision view with the served key open). A view's served key goes with it (the farm's affiliates open with a team
+/// key, the N8 review's M8).
 public func route(_ target: Components.Schemas.Target?) -> AppRoute? {
     guard let target, let department = target.department else { return nil }
     if target.kind.value1 == .decision, let key = target.key {
         return AppRoute(department: DeptID(rawValue: department.rawValue), view: "decision", key: key)
     }
     guard let view = target.view else { return nil }
-    return AppRoute(department: DeptID(rawValue: department.rawValue), view: view)
+    return AppRoute(department: DeptID(rawValue: department.rawValue), view: view, key: target.key)
+}
+
+/// The words for opening a served target, by its kind: "Open Decision" for a decision, "Open" for anything else (a
+/// department's view, an affiliate). The button, the context menu and the VoiceOver action say the same (M8).
+public func openLabel(_ target: Components.Schemas.Target?) -> LocalizedStringKey {
+    target?.kind.value1 == .decision ? "Open Decision" : "Open"
 }
 
 /// A served claim as one line: its tone's symbol, its text, its help tag, and its basis one click away.
@@ -101,18 +108,18 @@ public struct DeskItemRow: View {
                     TrailButton(evidence: evidence, compact: compact)
                 }
                 if !compact, let decision = route(item.open), opener?.canOpen(decision) == true {
-                    Button("Open Decision") { opener?.open(decision) }
+                    Button(openLabel(item.open)) { opener?.open(decision) }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .help(Text("Open Decision"))
-                        .accessibilityIdentifier("item.decision")
+                        .help(Text(openLabel(item.open)))
+                        .accessibilityIdentifier(item.open?.kind.value1 == .decision ? "item.decision" : "item.open")
                 }
             }
         }
         .contentShape(.rect)
         .contextMenu {
             if let decision = route(item.open), opener?.canOpen(decision) == true {
-                Button("Open Decision", systemImage: "checkmark.seal") { opener?.open(decision) }
+                Button(openLabel(item.open), systemImage: item.open?.kind.value1 == .decision ? "checkmark.seal" : "arrow.forward.circle") { opener?.open(decision) }
                 Divider()
             }
             DeskItemMenu(status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true })
@@ -126,7 +133,7 @@ public struct DeskItemRow: View {
         ))
         .accessibilityActions {
             if let decision = route(item.open), opener?.canOpen(decision) == true {
-                Button("Open Decision") { opener?.open(decision) }
+                Button(openLabel(item.open)) { opener?.open(decision) }
             }
         }
         .accessibilityAction(named: Text("Mark Reviewed")) { perform(.reviewed) }

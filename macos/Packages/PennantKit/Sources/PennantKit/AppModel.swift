@@ -165,7 +165,10 @@ public final class AppModel {
         model.savePlayedElsewhere = savePlayedElsewhere ?? model.status?.savePlayedElsewhere
         if let following { model.following = following }
         if let league { model.league = league }
-        if let majorLeague { model.majorLeague = majorLeague }
+        if let majorLeague {
+            model.majorLeague = majorLeague
+            majorLeague.previewAdopt(model.storeKey)
+        }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }
@@ -732,6 +735,7 @@ public final class AppModel {
         clubOwed = next.clubOwed
         savePlayedElsewhere = next.savePlayedElsewhere
         if let served = next.reportStamp, served != reportStamp { reportStamp = served }
+        majorLeague.follow(storeKey)
         let stamp = next.lastImport?.finishedAt ?? ""
         guard stamp != importStamp else { return }
         importStamp = stamp
@@ -791,6 +795,8 @@ public final class AppModel {
         // Answered, whether or not they succeeded: the club card of the report kept last stays only for the key's own
         // save and club (N6 polish review: a failed answer left it drawn for a club never confirmed)
         frontOffice.settleWaitingKept(for: storeKey)
+        // Another save or club: Major League Ops drops what it holds at once (never another club's view)
+        majorLeague.follow(storeKey)
         if storeKey != nil, !loggedKey {
             loggedKey = true
             controller.log.write("store key known \(launchClock)", source: "app")

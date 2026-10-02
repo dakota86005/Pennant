@@ -46,6 +46,19 @@ struct MajorLeagueFeatureTests {
         }
     }
 
+    @Test("a view's served key goes with its route, and an open action is named by its target's kind (M8)")
+    func viewKeyAndOpenLabel() throws {
+        let decode = { (json: String) in try JSONDecoder().decode(Components.Schemas.Target.self, from: Data(json.utf8)) }
+        let affiliate = try decode(#"{"kind":"view","department":"farm","view":"affiliates","key":"team:12"}"#)
+        #expect(route(affiliate) == AppRoute(department: "farm", view: "affiliates", key: "team:12"))
+        let plain = try decode(#"{"kind":"view","department":"majorLeague","view":"benchBackups"}"#)
+        #expect(route(plain) == AppRoute(department: "majorLeague", view: "benchBackups"))
+        let decision = try decode(#"{"kind":"decision","department":"majorLeague","key":"mlb:what_if:3"}"#)
+        #expect(openLabel(decision) == "Open Decision")
+        #expect(openLabel(affiliate) == "Open")
+        #expect(openLabel(plain) == "Open")
+    }
+
     @Test("a decision target opens Decision with the need open, and the sidebar selects Decision itself")
     func decisionRoute() throws {
         let need = try #require(store.overview?.inbox.first?.needs.first)
