@@ -2597,6 +2597,9 @@ The rule:
   and the draft board read their grades through the same rows (`scoutedRatingRow`, `ratingFrom`), so every page shows
   what the evidence uses.
 
+The import indexes the file by `(scouting_team_id, player_id)` so our scouts' row is read directly; a league imported by
+an earlier build that holds the file gains the index through D-061's one-time upgrade at the next start.
+
 Not changed: OOTP's star figures in the file (`overall`, `talent`, `overall_rating`, `talent_rating`) are not read, as
 the main tables' Overall and Potential are not (D-017); the display scale is still read off the main tables (the same
 export, the same scale).
