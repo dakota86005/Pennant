@@ -43,6 +43,9 @@ public struct ClubReportView: View {
                     .padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 12)
                 }
                 .navigationTitle(Text(verbatim: report.club))
+                // Kept as the window's title (VoiceOver, the Window menu) but not drawn in the toolbar, as in the main
+                // window: the masthead names the club, and the system's title failed the contrast audit on GitHub's runner
+                .toolbar(removing: .title)
             } else if let problem = league.clubProblems[teamId] {
                 // The server's sentence (a club owed, a club not in this save), where the report would be
                 ProblemLine(problem).padding().frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -101,14 +101,36 @@ final class PennantUITests: XCTestCase {
     /// - a contrast finding on a sidebar row label (`sidebar.…`) only: outside the sidebar's visible frame (GitHub's runner
     ///   has a 1024 × 768 screen, so rows below the window are measured against pixels that are not theirs), or inside it
     ///   when its own pixels, in a screenshot of the window that holds it taken at the audit, read at 4.5:1 or better
-    ///   (`WindowPixels.contrast`: the text's darkest (or lightest) tenth against the element's middle). On the runner
+    ///   (`WindowPixels.contrast`: the darkest (or lightest) tenth of the text's own ink against the element's middle). On the runner
     ///   those labels, the system's vibrant text on its glass, were reported in a different handful on each run while
     ///   their pixels read at 9:1 to 19:1; the line carries the measured ratio, so it is checked, not muted. Every other
-    ///   contrast finding fails, and so does a sidebar label whose pixels read below 4.5:1.
+    ///   contrast finding fails, and so does a sidebar label whose pixels read below 4.5:1;
+    /// - a contrast finding on the report's text under the inspector, which the system lays over the report's trailing
+    ///   side on a window too narrow for the sidebar, the report and the inspector (GitHub's runner: "Through May 5, 2040
+    ///   · 30 games" was measured with all but "Throu" under the inspector); the inspector's own texts are never set
+    ///   aside this way;
+    /// - a contrast finding on a text element on a 1× screen only (a window whose screenshot has one pixel per point:
+    ///   GitHub's runner, never a Retina Mac), when its own pixels read at 4.5:1 or better (`WindowPixels.contrast`, which
+    ///   reads a 1× text below its colours' ratio, since its thin strokes are blended with the page). At 1× the audit's
+    ///   contrast does not follow the text's colours: on the runner (run 36910001280) a page of text samples on white had
+    ///   "Scoring runs" in the callout size at medium weight reported in pure black ("nearly passed", 16.7:1 by its pixels),
+    ///   in the label colour and in 20% and 30% greys ("failed"), while the same words at regular weight or in the body
+    ///   size, and other words in every size, weight and colour sampled, passed; the app's findings there were black and
+    ///   dark-grey text reading 4.6:1 to 9.5:1 by their pixels, which pass the same audit on a Retina screen. The line
+    ///   carries the measured ratio, so it is checked, not muted; below 4.5:1 it fails, and on a Retina screen every
+    ///   contrast finding fails.
     @MainActor
     private func audit(_ app: XCUIApplication, named name: String = "accessibility-audit") throws {
+        // The pointer off the content first, and any help tag it left up gone (waited for, never a fixed sleep): a tag
+        // is the system's, and one left over a line by the last click is measured as that line's background
+        let front = app.windows.firstMatch
+        if front.exists { front.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01)).hover() }
+        XCTAssertTrue(app.helpTags.firstMatch.waitForNonExistence(timeout: 5), "a help tag stayed up over the window")
         var issues: [String] = []
         var setAside: [String] = []
+        // Each contrast finding's element, whose own picture is kept beside the findings (the element alone, as the
+        // audit asks for it)
+        var pictured: [XCUIElement] = []
         // Each window with its own pixels, so an element is measured in the window that holds it
         let shots = app.windows.allElementsBoundByIndex.map { window in (frame: window.frame, shot: window.screenshot()) }
         let windows = shots.map { (frame: $0.frame, pixels: WindowPixels($0.shot.image, frame: $0.frame)) }
@@ -123,6 +145,16 @@ final class PennantUITests: XCTestCase {
         let controls = [XCUIIdentifierCloseWindow, XCUIIdentifierMinimizeWindow, XCUIIdentifierZoomWindow].flatMap { id in
             app.buttons.matching(identifier: id).allElementsBoundByIndex.map { $0.frame.insetBy(dx: -2, dy: -2) }
         } + windows.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: 90, height: 52) }
+        // The inspector column, where one is open: on a window too narrow for the sidebar, the report and the inspector
+        // (GitHub's runner, a 1024-point-wide screen) the system lays the inspector over the report's trailing side
+        let inspector = app.descendants(matching: .any)["inspector"].firstMatch
+        let inspectorFrame = inspector.exists ? inspector.frame : nil
+        /// Whether an element is text of the report under the inspector: its frame meets the inspector's, and it is not
+        /// one of the inspector's own texts.
+        func isUnderInspector(_ frame: CGRect) -> Bool {
+            guard let inspectorFrame, inspectorFrame.intersects(frame) else { return false }
+            return !inspector.staticTexts.allElementsBoundByIndex.contains { $0.frame == frame }
+        }
         /// The sidebar column's container: a window's full height, from its left edge to the sidebar's right edge.
         func isSidebarColumn(_ frame: CGRect) -> Bool {
             guard let sidebarFrame else { return false }
@@ -171,10 +203,21 @@ final class PennantUITests: XCTestCase {
                 } else {
                     issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""))
                 }
+            } else if issue.auditType == .contrast, isUnderInspector(frame) {
+                // Covered, wholly or partly, by the inspector laid over the report: what the audit measured there is the
+                // inspector's pixels, not the text's
+                setAside.append(line + " (report text under the inspector laid over it on a narrow window)")
+            } else if issue.auditType == .contrast, element.elementType == .staticText,
+                      let pixels = windows.first(where: { $0.frame.contains(frame) })?.pixels, pixels.scale < 1.5,
+                      let ratio = pixels.contrast(in: frame), ratio >= 4.5 {
+                // Text on a 1× screen (GitHub's runner) whose own pixels read at 4.5:1 or better: there the audit's
+                // contrast is not the text's colour (see the doc comment); its pixels are the check
+                setAside.append(line + String(format: " (text on a 1× screen whose own pixels read at %.1f:1)", ratio))
             } else if issue.auditType == .contrast {
                 // Never set aside: its own pixels are measured only to help find it
                 let ratio = windows.first { $0.frame.contains(frame) }?.pixels?.contrast(in: frame)
                 issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""))
+                pictured.append(element)
             } else {
                 issues.append(line)
             }
@@ -183,6 +226,9 @@ final class PennantUITests: XCTestCase {
         print("[audit] \(name): \(issues.count) finding(s), \(setAside.count) set aside")
         for line in setAside { print("[audit] \(name): set aside: \(line)") }
         for line in issues { print("[audit] \(name): FINDING: \(line)") }
+        for (index, element) in pictured.enumerated() where element.exists {
+            keep(element.screenshot(), named: "\(name)-finding-\(index + 1)")
+        }
         let attachment = XCTAttachment(string: (["Findings:"] + issues + ["", "Set aside (\(setAside.count)), each with its reason:"] + setAside).joined(separator: "\n"))
         attachment.name = name
         attachment.lifetime = .keepAlways
@@ -770,14 +816,39 @@ final class PennantUITests: XCTestCase {
     private func auditClubWindow(_ app: XCUIApplication, named name: String) throws {
         let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
         if main.exists {
+            // The main window brought to the front first, from the Window menu: on a small screen (GitHub's runner,
+            // 1024 × 768) the club's window covers the main window's close button, and a click there reaches the club's
+            raiseFromWindowMenu(app, main)
             main.buttons[XCUIIdentifierCloseWindow].firstMatch.click()
             XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
         }
-        let club = app.windows.firstMatch
-        club.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01)).hover()
-        // Any help tag the pointer left up gone before the audit (L8: waited for, never a fixed sleep)
-        XCTAssertTrue(app.helpTags.firstMatch.waitForNonExistence(timeout: 5), "a help tag stayed up over the club's window")
+        // The pointer is moved off the content, and any help tag waited away, by the audit itself
         try audit(app, named: name)
+    }
+
+    /// Brings a window to the front by its item in the Window menu (its title), and waits until it is the front window
+    /// (the first in the app's list), so a click on its own controls reaches it. A click on a covered window's button
+    /// would reach whatever covers it, and `isHittable` was seen true for one under another window on the runner.
+    @MainActor
+    private func raiseFromWindowMenu(_ app: XCUIApplication, _ window: XCUIElement) {
+        let identifier = window.identifier
+        let menu = app.menuBars.menuBarItems["Window"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 5), "the menu bar has no Window menu")
+        menu.click()
+        // The menu lists each window by its title and subtitle ("Club Reports (May 6, 2040 · No log)", where the
+        // window's own title reads "Club Reports – May 6, 2040 · No log"): the item that brings a window forward whose
+        // title starts with the window's title before its subtitle
+        let title = window.title
+        let head = title.components(separatedBy: " – ").first ?? title
+        XCTAssertTrue(menu.menuItems.firstMatch.waitForExistence(timeout: 5), "the Window menu did not open")
+        let items = menu.menuItems.matching(identifier: "makeKeyAndOrderFront:").allElementsBoundByIndex
+        let matches = items.filter { !head.isEmpty && $0.title.hasPrefix(head) }
+        guard matches.count == 1, let item = matches.first else {
+            return XCTFail("the Window menu lists \(matches.count) window(s) for '\(title)': \(items.map(\.title))")
+        }
+        item.click()
+        let front = expectation(for: NSPredicate(format: "identifier == %@", identifier), evaluatedWith: app.windows.firstMatch)
+        wait(for: [front], timeout: 5)
     }
 
     /// A club's window (D-059) from League Office ▸ Club Reports: the masthead, what our scouts see, head to head, the
@@ -833,7 +904,8 @@ struct WindowPixels {
     private let height: Int
     private let data: [UInt8]
     private let frame: CGRect
-    private let scale: CGFloat
+    /// Pixels per point: 2 on a Retina screen, 1 on GitHub's runner.
+    let scale: CGFloat
 
     init?(_ image: NSImage, frame: CGRect) {
         guard frame.width > 0, let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
@@ -860,8 +932,11 @@ struct WindowPixels {
     }
 
     /// The contrast of the element's text against its background, from its own pixels: its middle luminance (the
-    /// background, which most of a text's frame is) against its tenth furthest from it (dark text on a light page, or
-    /// light on dark). Nil when the frame is not in the picture.
+    /// background, which most of a text's frame is) against the tenth of its ink furthest from it (the strokes' cores:
+    /// dark text on a light page, or light on dark), where its ink is the pixels that differ visibly from the background
+    /// (more than 1.1:1), on the side most of them fall. Only the ink counts, so a frame wider than its words (a title
+    /// strip, a wrapped line's empty end) reads its words, not its empty space. Every pixel blends the text's colour with
+    /// the page's, so this never reads above the text's colours' own ratio. Nil when the frame is not in the picture.
     func contrast(in element: CGRect) -> Double? {
         let local = element.offsetBy(dx: -frame.minX, dy: -frame.minY)
         let x0 = max(0, Int((local.minX * scale).rounded(.down))), x1 = min(width, Int((local.maxX * scale).rounded(.up)))
@@ -877,8 +952,17 @@ struct WindowPixels {
         }
         values.sort()
         let middle = values[values.count / 2]
-        let dark = values[values.count / 10], light = values[values.count - 1 - values.count / 10]
-        let text = abs(middle - dark) >= abs(light - middle) ? dark : light
-        return (max(middle, text) + 0.05) / (min(middle, text) + 0.05)
+        func ratio(_ a: Double, _ b: Double) -> Double { (max(a, b) + 0.05) / (min(a, b) + 0.05) }
+        let darker = values.filter { $0 < middle && ratio($0, middle) > 1.1 }
+        let lighter = values.filter { $0 > middle && ratio($0, middle) > 1.1 }
+        // Both sorted lightest last: dark ink's darkest tenth is near its start, light ink's lightest tenth near its end
+        let text: Double
+        if darker.count >= lighter.count {
+            guard !darker.isEmpty else { return 1 }
+            text = darker[darker.count / 10]
+        } else {
+            text = lighter[lighter.count - 1 - lighter.count / 10]
+        }
+        return ratio(text, middle)
     }
 }
