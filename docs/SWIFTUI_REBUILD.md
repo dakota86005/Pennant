@@ -1321,6 +1321,11 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
   The ratings line says whose ratings the evidence reads (D-067): "Your scouts' view" with the help tag "Your scouts'
   full reports, from the export's scouted ratings file" when the export carries our scouts' complete ratings, otherwise
   the main tables' kind (D-061); `DataStatus.import.ourScouts` carries our club's id and how many players they rate.
+  A player our scouts haven't rated is read from OSA's view and says so (D-067, the owner's decision): the player card,
+  roster, pitching staff and draft rows carry `ratingsFill` (`{ mark: "OSA", hint: "OSA's view: our scouts haven't
+  rated him." }`, null otherwise) for a quiet mark with its hint, and an MLB need's evidence trail carries the sentence
+  in his basis ("His ratings"). A league comparison's basis shows both readings where they differ ("Our scouts: 65 ·
+  OSA: 70", D-068). Drawing the mark is the client's.
 - The N3 gaps, served additively on reused routes: `ImportProgress.words` (the phase, the table named for a person, the
   progress line); `ServerStatus.importNote` and the import-finished event's `note` (why an import failed, as a sentence
   to act on with the raw message as its detail, was interrupted, or has no export folder); `POST /api/config` answers
