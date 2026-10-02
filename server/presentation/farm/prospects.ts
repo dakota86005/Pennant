@@ -8,7 +8,7 @@
  * The developmental stakes are not on this view (React never showed them here either).
  */
 import type { ScoutedDevelopmentPlayer } from '../../scoutedDevelopment.js';
-import { cell, claim, row, servedValue } from '../claim.js';
+import { cell, claim, row, servedValue, unknownValue } from '../claim.js';
 import { decisionTarget, factBasis, factRow, headOf, judgmentBasis, policyCalled, sentenceCells } from './common.js';
 import type { FarmContext, ProspectEvaluationInput, ProspectInput } from './input.js';
 import type { FarmEvaluationRow, FarmFilter, FarmNextAssignment, FarmProspectCard, FarmProspectRow, FarmProspectsView } from './types.js';
@@ -175,7 +175,13 @@ export function prospectsView(
     if (p && MEETING_CALLS.has(p.decision.recommendation)) meetings.push(card(ctx, player, p, rating));
   }
 
-  const filter = (id: string, name: string): FarmFilter => ({ id, name, count: counts[id], label: `${name} · ${counts[id]}` });
+  // Behind his peers needs a pace: the basis says how many on the board have none yet, and with none at all the count is
+  // "Not yet", never zero (D-018)
+  const noPace = players.filter((p) => p.evidence.peerDevelopment.pace === 'insufficient').length;
+  const anyPace = noPace < players.length;
+  const filter = (id: string, name: string): FarmFilter => ({
+    id, name, count: counts[id], label: id === 'behind' && !anyPace ? `${name} · not yet` : `${name} · ${counts[id]}`,
+  });
   const filters: FarmFilter[] = [
     filter('attention', 'Meetings'), filter('eligible', 'A move supported'), filter('watch', 'Watching'), filter('behind', 'Behind his peers'), filter('all', 'All'),
   ];
@@ -186,6 +192,17 @@ export function prospectsView(
     hint,
     value: servedValue(n, 'count', String(n)),
     basis: factBasis(ctx, PLAYER_DEVELOPMENT, [{ label: because, value: String(n) }, { label: 'Minor leaguers on the board', value: String(players.length) }]),
+  });
+  const behindFigure = claim({
+    text: 'Behind their peers',
+    tone: anyPace ? 'neutral' : 'unknown',
+    hint: 'Our scouts\' read is moving slower than similar players\'',
+    value: anyPace ? servedValue(counts.behind, 'count', String(counts.behind)) : unknownValue('count', 'Not yet'),
+    basis: factBasis(ctx, PLAYER_DEVELOPMENT, [
+      { label: 'Behind comparable minor leaguers', value: anyPace ? String(counts.behind) : 'Not yet' },
+      { label: 'Minor leaguers on the board', value: String(players.length) },
+      { label: 'No pace yet', value: String(noPace) },
+    ], noPace ? [`${plural(noPace, 'player has', 'players have')} too little scouting history for a pace yet, so they can't be counted ahead or behind.`] : []),
   });
   return {
     ...headOf(ctx),
@@ -200,7 +217,7 @@ export function prospectsView(
     figures: [
       figure('Development meetings', counts.attention, 'A promotion, a lower level or a major-league discussion', 'Raised for a meeting'),
       figure('Players with a move supported', counts.eligible, 'A level up or down supported by the evidence now', 'With a defensible move'),
-      figure('Behind their peers', counts.behind, 'Our scouts\' read is moving slower than similar players\'', 'Behind comparable minor leaguers'),
+      behindFigure,
     ],
     guide: [
       factRow('guide:call', 'Player Development\'s call', 'What assignment his evidence supports now.'),

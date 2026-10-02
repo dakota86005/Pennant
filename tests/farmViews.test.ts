@@ -216,6 +216,18 @@ describe('no hidden score orders the prospects (D-044)', () => {
     for (const m of view.meetings) expect(m.scores).toHaveLength(4);
     expect(view.filters.find((f) => f.id === 'watch')!.count).toBe(1);
   });
+
+  it('says in "Behind their peers" how many players have no pace yet, and "Not yet" when nobody has one (D-018)', () => {
+    const some = prospectsView(ctx, [scoutedPlayer(1, 2, { pace: 'behind' }), scoutedPlayer(2, 3, { pace: 'insufficient', percentile: null })], [], RATING);
+    const behind = some.figures.find((f) => f.text === 'Behind their peers')!;
+    expect(behind.value?.n).toBe(1);
+    expect(JSON.stringify(behind.basis)).toMatch(/No pace yet.*"1"/);
+    const none = prospectsView(ctx, [scoutedPlayer(1, 2, { pace: 'insufficient', percentile: null })], [], RATING);
+    const unknown = none.figures.find((f) => f.text === 'Behind their peers')!;
+    expect(unknown.value?.n).toBeNull();
+    expect(unknown.value?.display).toBe('Not yet');
+    expect(none.filters.find((f) => f.id === 'behind')!.label).toBe('Behind his peers · not yet');
+  });
 });
 
 describe('development tracking compares only this save\'s own history (D-064, D-061)', () => {
@@ -234,6 +246,13 @@ describe('development tracking compares only this save\'s own history (D-064, D-
     expect(details[0].change.value?.n).toBeNull();
     expect(details[0].change.value?.display).not.toBe('0');
     expect(view.rows[0].cells.change.display).toBe('Not enough history yet');
+    // Nobody is ahead or behind his peers before there is a pace: "Not yet", never a count of zero (D-018)
+    for (const text of ['Ahead of their peers', 'Behind their peers']) {
+      const figure = view.figures.find((f) => f.text === text)!;
+      expect(figure.value?.n).toBeNull();
+      expect(figure.value?.display).toBe('Not yet');
+    }
+    expect(view.tabs.find((t) => t.id === 'ahead')!.label).toBe('Ahead · not yet');
   });
 
   it('lists the biggest changes either way, by the stated rule, over the whole organization', () => {

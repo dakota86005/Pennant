@@ -110,15 +110,19 @@
     },
     {
       "text": "Behind their peers",
-      "tone": "neutral",
+      "tone": "unknown",
       "basis": {
         "because": [
           {
             "label": "Behind comparable minor leaguers",
-            "value": "0"
+            "value": "Not yet"
           },
           {
             "label": "Minor leaguers on the board",
+            "value": "6"
+          },
+          {
+            "label": "No pace yet",
             "value": "6"
           }
         ],
@@ -128,7 +132,9 @@
           "asOf": null,
           "gameDate": "2040-05-05"
         },
-        "unknown": [],
+        "unknown": [
+          "6 players have too little scouting history for a pace yet, so they can't be counted ahead or behind."
+        ],
         "wouldChange": [],
         "lean": null,
         "certainty": "fact",
@@ -137,9 +143,9 @@
       "links": [],
       "hint": "Our scouts' read is moving slower than similar players'",
       "value": {
-        "n": 0,
+        "n": null,
         "unit": "count",
-        "display": "0"
+        "display": "Not yet"
       }
     }
   ],
@@ -242,7 +248,7 @@
       "id": "behind",
       "name": "Behind his peers",
       "count": 0,
-      "label": "Behind his peers · 0"
+      "label": "Behind his peers · not yet"
     },
     {
       "id": "all",

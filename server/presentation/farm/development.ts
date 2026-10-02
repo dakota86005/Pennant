@@ -164,7 +164,10 @@ export function developmentViews(
       return dir * (pb - pa) || a.i - b.i;
     }).map(({ t }) => t);
   const id = (t: Tracked) => `development:${t.player.playerId}`;
-  const labelled = (tabsIn: Array<Omit<FarmDevelopmentTab, 'label'>>): FarmDevelopmentTab[] => tabsIn.map((t) => ({ ...t, label: `${t.name} · ${t.count}` }));
+  // While the history is building nobody has a pace or a change yet: the pace tabs say so, never a count of zero (D-018)
+  const paceTab = new Set(['ahead', 'behind', 'changes']);
+  const labelled = (tabsIn: Array<Omit<FarmDevelopmentTab, 'label'>>): FarmDevelopmentTab[] =>
+    tabsIn.map((t) => ({ ...t, label: !ready && paceTab.has(t.id) ? `${t.name} · not yet` : `${t.name} · ${t.count}` }));
   const tabs: FarmDevelopmentTab[] = labelled([
     { id: 'ahead', name: 'Ahead', count: ahead.length, title: cell('Ahead of his peers'), order: byPlace(ahead, 1).map(id), rule: cell('Furthest ahead first') },
     { id: 'behind', name: 'Behind', count: behind.length, title: cell('Behind his peers'), order: byPlace(behind, -1).map(id), rule: cell('Furthest behind first') },
@@ -220,6 +223,20 @@ export function developmentViews(
   const dates = history.dates;
   const span = dates.length ? `${gameDateDisplay(dates[0]) ?? dates[0]} to ${gameDateDisplay(dates[dates.length - 1]) ?? dates[dates.length - 1]}` : 'None yet';
   const basisOf = (because: Array<{ label: string; value: string }>) => factBasis(ctx, PLAYER_DEVELOPMENT, because);
+  // A count of players ahead or behind says nothing until there is a pace to compare: "Not yet" while the history is
+  // building, never zero (D-018); the basis names how many tracked players have no pace yet
+  const noPace = tracked.filter((t) => t.player.evidence.peerDevelopment.pace === 'insufficient').length;
+  const paceFigure = (text: string, hint: string, label: string, n: number) => claim({
+    text,
+    tone: ready ? 'neutral' : 'unknown',
+    hint,
+    value: ready ? servedValue(n, 'count', String(n)) : unknownValue('count', 'Not yet'),
+    basis: basisOf([
+      { label, value: ready ? String(n) : 'Not yet' },
+      { label: 'Tracked', value: String(tracked.length) },
+      { label: 'No pace yet', value: String(ready ? noPace : tracked.length) },
+    ]),
+  });
   const figures = [
     claim({
       text: 'Scouting snapshots',
@@ -235,20 +252,8 @@ export function developmentViews(
       value: history.observationDays === null ? unknownValue('days', 'Not yet') : servedValue(history.observationDays, 'days', String(history.observationDays)),
       basis: basisOf([{ label: 'From', value: span }]),
     }),
-    claim({
-      text: 'Ahead of their peers',
-      tone: 'neutral',
-      hint: 'Moving as fast as or faster than four in five comparable players',
-      value: servedValue(ahead.length, 'count', String(ahead.length)),
-      basis: basisOf([{ label: 'Ahead', value: String(ahead.length) }, { label: 'Tracked', value: String(tracked.length) }]),
-    }),
-    claim({
-      text: 'Behind their peers',
-      tone: 'neutral',
-      hint: 'Moving as slowly as or slower than four in five comparable players',
-      value: servedValue(behind.length, 'count', String(behind.length)),
-      basis: basisOf([{ label: 'Behind', value: String(behind.length) }, { label: 'Tracked', value: String(tracked.length) }]),
-    }),
+    paceFigure('Ahead of their peers', 'Moving as fast as or faster than four in five comparable players', 'Ahead', ahead.length),
+    paceFigure('Behind their peers', 'Moving as slowly as or slower than four in five comparable players', 'Behind', behind.length),
   ];
 
   const view: FarmDevelopmentView = {

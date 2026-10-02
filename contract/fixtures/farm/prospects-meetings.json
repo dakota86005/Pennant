@@ -120,6 +120,10 @@
           {
             "label": "Minor leaguers on the board",
             "value": "3"
+          },
+          {
+            "label": "No pace yet",
+            "value": "0"
           }
         ],
         "source": {

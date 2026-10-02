@@ -88,6 +88,10 @@
           {
             "label": "Tracked",
             "value": "3"
+          },
+          {
+            "label": "No pace yet",
+            "value": "0"
           }
         ],
         "source": {
@@ -122,6 +126,10 @@
           {
             "label": "Tracked",
             "value": "3"
+          },
+          {
+            "label": "No pace yet",
+            "value": "0"
           }
         ],
         "source": {
