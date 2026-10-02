@@ -532,7 +532,7 @@ export const tierWord = (tier: DevelopmentProtectionTier): string => TIER_WORDS[
 const TIER_WORDS: Record<DevelopmentProtectionTier, string> = {
   core_prospect: 'core prospect',
   protected_prospect: 'protected prospect',
-  development_priority: 'development priority',
+  development_priority: 'development-sensitive',
   /* The identifier is `normal`; the word a reader sees, here and in the UI, is "ordinary". */
   normal: 'ordinary',
   organizational_depth: 'organizational depth',

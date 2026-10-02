@@ -9,7 +9,7 @@
  */
 import type { ScoutedDevelopmentPlayer } from '../../scoutedDevelopment.js';
 import { cell, claim, row, servedValue, unknownValue } from '../claim.js';
-import { decisionTarget, factBasis, factRow, headOf, judgmentBasis, policyCalled, sentenceCells } from './common.js';
+import { decisionTarget, factBasis, factRow, headOf, judgmentBasis, lastNameKey, policyCalled, sentenceCells } from './common.js';
 import type { FarmContext, ProspectEvaluationInput, ProspectInput } from './input.js';
 import type { FarmEvaluationRow, FarmFilter, FarmNextAssignment, FarmProspectCard, FarmProspectRow, FarmProspectsView } from './types.js';
 import {
@@ -157,7 +157,7 @@ export function prospectsView(
             : cell('Not enough at this level yet', { tone: 'neutral', hint: 'Too few plate appearances or innings at his level for a call' }),
         },
         {
-          player: player.name,
+          player: lastNameKey(player.name),
           age: player.age,
           club: `${String(player.level).padStart(2, '0')} ${player.team}`,
           role: roleWords(player.kind, player.role),
@@ -170,6 +170,7 @@ export function prospectsView(
       teamId: player.teamId,
       levelId: String(player.level),
       filters,
+      listLine: cell(`${player.age} · ${roleWords(player.kind, player.role)} · ${player.levelName} · ${player.team}`),
       open: decisionTarget(player.playerId),
     });
     if (p && MEETING_CALLS.has(p.decision.recommendation)) meetings.push(card(ctx, player, p, rating));

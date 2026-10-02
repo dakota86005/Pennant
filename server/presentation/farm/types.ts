@@ -20,6 +20,8 @@ export interface FarmViewHead {
   asOf: Cell;
   /** "Prepared by the minor league staff". */
   preparedBy: Cell;
+  /** The two as one line, for a pane with no masthead: "Prepared by the minor league staff · Through May 5, 2040". */
+  byline: Cell;
 }
 
 /** A level of the organization, for a view's level filter (its id is the level's number as a string). */
@@ -122,6 +124,8 @@ export interface FarmClubStep {
   level: Cell;
   /** The league it plays in; null when the export does not name it. */
   league: Cell | null;
+  /** The level and the league as one line: "Triple-A · International League". */
+  levelLine: Cell;
   /** Can it field a team: "Able", "Thin", "Short", toned; null for the major-league club (Major League Ops reads it). */
   operational: Cell | null;
   /** Are its players developing: "No issue found", "Worth a look", "Costing development"; null for the major-league club. */
@@ -182,7 +186,16 @@ export interface FarmAssignmentRow extends Row<'player' | 'age' | 'club' | 'leve
   levelId: string;
   /** Whether his assignment is in question (needs attention or worth a look), as the farm says. */
   inQuestion: boolean;
+  /** His developmental stakes with every reason for them in the basis (the stakes cell opens it). */
+  stakes: Claim;
   open: Target;
+}
+
+/** "12 of 40 players": how many rows a choice of the view's filters shows, said. */
+export interface FarmShownCount {
+  levelId: string | null;
+  inQuestionOnly: boolean;
+  label: Cell;
 }
 
 export interface FarmAssignmentsView extends FarmViewHead {
@@ -191,6 +204,8 @@ export interface FarmAssignmentsView extends FarmViewHead {
   order: Cell;
   levels: FarmLevelChoice[];
   rows: FarmAssignmentRow[];
+  /** How many rows show, for each choice of the level filter (null: every level) and of "in question only". */
+  shown: FarmShownCount[];
   /** When no assignment is in question (the default filter) and when there are no players at all. */
   emptyInQuestion: Cell;
   emptyAll: Cell;
@@ -315,6 +330,8 @@ export interface FarmProspectRow extends Row<'player' | 'age' | 'club' | 'role' 
   levelId: string;
   /** The board's filters this row belongs to (`attention`, `eligible`, `watch`, `behind`; every row is in `all`). */
   filters: string[];
+  /** His age, role and club as one line: "21 · SS · Double-A · Club". */
+  listLine: Cell;
   open: Target;
 }
 

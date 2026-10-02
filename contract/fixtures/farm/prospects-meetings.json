@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "summary": {
     "text": "Player Development asks what level each player's evidence supports. Whether to move him now is Minor League Operations' question, on his Decision.",
     "tone": "neutral",
@@ -747,7 +751,7 @@
         }
       },
       "sort": {
-        "player": "Player 9101",
+        "player": "9101, Player",
         "age": 21,
         "club": "02 Club 2",
         "role": "SS",
@@ -762,6 +766,9 @@
         "attention",
         "eligible"
       ],
+      "listLine": {
+        "display": "21 · SS · Level 2 · Club 2"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",
@@ -796,7 +803,7 @@
         }
       },
       "sort": {
-        "player": "Player 9102",
+        "player": "9102, Player",
         "age": 21,
         "club": "03 Club 3",
         "role": "SS",
@@ -812,6 +819,9 @@
         "eligible",
         "behind"
       ],
+      "listLine": {
+        "display": "21 · SS · Level 3 · Club 3"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",
@@ -847,7 +857,7 @@
         }
       },
       "sort": {
-        "player": "Player 9103",
+        "player": "9103, Player",
         "age": 21,
         "club": "03 Club 3",
         "role": "SS",
@@ -859,6 +869,9 @@
       "teamId": 103,
       "levelId": "3",
       "filters": [],
+      "listLine": {
+        "display": "21 · SS · Level 3 · Club 3"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",

@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "ready": true,
   "building": null,
   "figures": [
@@ -314,7 +318,7 @@
         }
       },
       "sort": {
-        "player": "P 1104",
+        "player": "1104, P",
         "age": 22,
         "club": "02 Farm 1 F",
         "role": "2B",

@@ -3,21 +3,23 @@
  * player's line and where it opens. Pure: it words what it is handed.
  */
 import type { BasisLine, Cell, Certainty, Target } from '../../contract/presentation.js';
-import type { FarmFinding } from '../../farmAffiliate.js';
+import type { FarmFinding } from '../../farmOperations.js';
 import { asOfCell } from '../frontOffice/desk.js';
 import { basis, cell, row, target } from '../claim.js';
 import type { FarmContext } from './input.js';
 import type { FarmEvidenceRow, FarmFactRow, FarmFindingView, FarmPlayerLine, FarmViewHead } from './types.js';
 import { claim } from '../claim.js';
-import { ownerWord, plain, plainAll, severityWord } from './words.js';
+import { ownerWord, PLAYER_DEVELOPMENT, plain, plainAll, severityWord, tierWord } from './words.js';
 
 export function headOf(ctx: FarmContext): FarmViewHead {
+  const asOf = asOfCell({ orgId: ctx.orgId, club: null, importStamp: ctx.importStamp, reportStamp: ctx.reportStamp, gameDate: ctx.gameDate });
   return {
     orgId: ctx.orgId,
     importStamp: ctx.importStamp,
     reportStamp: ctx.reportStamp,
-    asOf: asOfCell({ orgId: ctx.orgId, club: null, importStamp: ctx.importStamp, reportStamp: ctx.reportStamp, gameDate: ctx.gameDate }),
+    asOf,
     preparedBy: ctx.preparedBy,
+    byline: cell(`${ctx.preparedBy.display} · ${asOf.display}`, asOf.hint ? { hint: asOf.hint } : {}),
   };
 }
 
@@ -72,6 +74,37 @@ export function playerLine(playerId: number, name: string, line: string, open: T
 }
 
 /** A sentence cell, plain; null when there is nothing to say. */
+/**
+ * A man's developmental stakes, with every reason Player Development gives for them in its basis (D-050: how careful to
+ * be with his development, never where he plays and never a rank). Assignments' stakes column and his Decision both
+ * show it.
+ */
+export function stakesClaim(
+  ctx: FarmContext,
+  protection: { tier: string | null; reasons: readonly string[]; missingEvidence: ReadonlyArray<{ detail: string }> },
+) {
+  return claim({
+    text: protection.tier ? `Developmental stakes: ${tierWord(protection.tier)}` : 'Developmental stakes not known',
+    tone: protection.tier ? 'neutral' : 'unknown',
+    hint: 'How careful to be with his development; never where he plays',
+    basis: judgmentBasis(ctx, PLAYER_DEVELOPMENT, {
+      because: plainAll(protection.reasons).map((r, i) => ({ label: i === 0 ? 'Why' : 'And', value: r })),
+      unknown: protection.missingEvidence.map((m) => m.detail),
+      called: policyCalled('Player Development\'s stakes (D-050): a ceiling, lowered by how much development is left'),
+    }),
+  });
+}
+
+/** A player's sort key on a board: his last name, then the rest ("Smith Jr., John" sorts as "Smith Jr., John" under S). */
+export function lastNameKey(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2) return name.trim();
+  // A suffix stays with the surname it follows: "John Smith Jr." sorts under Smith
+  const suffix = /^(?:jr\.?|sr\.?|ii|iii|iv|v)$/i.test(parts[parts.length - 1]) && parts.length > 2 ? 2 : 1;
+  const last = parts.slice(-suffix).join(' ');
+  return `${last}, ${parts.slice(0, -suffix).join(' ')}`;
+}
+
 export function sentenceCell(text: string | null | undefined, extra: { tone?: Cell['tone']; hint?: string } = {}): Cell | null {
   const t = text ? plain(text) : '';
   return t ? cell(t, extra) : null;

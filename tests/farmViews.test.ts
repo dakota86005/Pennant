@@ -19,7 +19,7 @@ import { decisionView } from '../server/presentation/farm/decision.js';
 import { developmentViews, MOVERS_SHOWN } from '../server/presentation/farm/development.js';
 import type { DevelopmentHistoryInput, FarmContext, HistoryRowInput } from '../server/presentation/farm/input.js';
 import { prospectsView } from '../server/presentation/farm/prospects.js';
-import { CALL_ORDER, MEETING_CALLS, PLAIN, plain } from '../server/presentation/farm/words.js';
+import { CALL_ORDER, MEETING_CALLS, PLAIN, callWord, plain, tierWord } from '../server/presentation/farm/words.js';
 import type { ScoutedDevelopmentPlayer } from '../server/scoutedDevelopment.js';
 import { BANNED_JARGON, BANNED_VERDICTS, bannedInPayload } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
@@ -367,6 +367,24 @@ describe('the farm\'s words are plain (AGENTS.md "Writing for the GM")', () => {
     expect(plain('3 priority prospects at AA')).toBe('3 high-stakes prospects at AA');
     expect(plain('his 85.4th percentile line')).toBe('his 85th of 100 line');
     expect(plain('A development decision about whether he should be starting.')).toBe('A development decision about whether he starts.');
+    // A sentence keeps its capital letter where a phrase is replaced at its start
+    expect(plain('Indeterminate until he plays.')).toBe('Not settled until he plays.');
+    expect(plain('Coverage is thin.')).toBe('Cover is thin.');
+    // Plural calls, and "potential" in any case
+    expect(plain('Two recommendations stand.')).toBe('Two calls stand.');
+    expect(plain('Recommendation: hold.')).toBe('Call: hold.');
+    expect(plain('Potential 60; a potential of 55')).toBe('Ceiling 60; a ceiling of 55');
+    // Unknown stakes are "not known", however the specialist put it
+    expect(plain('Developmental stakes are indeterminate for at least one step.')).toBe('Developmental stakes are not known for at least one step.');
+    expect(plain('He is ready but his stakes are unknown.')).toBe('He is ready but his stakes are not known.');
+    expect(plain('stakes indeterminate')).toBe('stakes not known');
+    // The tier's name (the owner's, 2026-10-02)
+    expect(plain('Developmental stakes: development priority.')).toBe('Developmental stakes: development-sensitive.');
+    expect(plain('a development-priority outfielder')).toBe('a development-sensitive outfielder');
+    expect(tierWord('development_priority')).toBe('Development-sensitive');
+    // A call with no words is not known, never another call (D-018)
+    expect(callWord('a_new_call').text).toBe('Call not known');
+    expect(callWord('a_new_call').tone).toBe('unknown');
     for (const [, words] of PLAIN) {
       if (words === '#place#') continue;
       for (const pattern of [...BANNED_JARGON, ...BANNED_VERDICTS]) expect(pattern.test(words), `${words} against ${pattern}`).toBe(false);
@@ -487,18 +505,6 @@ describe('fixtures for the Mac app\'s farm previews (N10)', () => {
     expect(bannedInPayload({ view, details })).toEqual([]);
     fixture('development-tracked.json', view);
     fixture('development-detail.json', details[0]);
-  });
-});
-
-describe('the farm\'s views read the specialists only through their public modules', () => {
-  it('farmViewsBuild.ts loads only the public modules it words, and nothing of odds, posture or AI (D-001, D-060)', () => {
-    const source = fs.readFileSync(path.join(process.cwd(), 'server/farmViewsBuild.ts'), 'utf8');
-    const byValue = [...source.matchAll(/^import (?!type )[^;]*from '\.\/([^']+)\.js'/gm)].map((m) => m[1]).filter((m) => !m.startsWith('presentation/'));
-    const PUBLIC = new Set(['org', 'dataStatus', 'farmConsequence', 'farmOperations', 'history', 'scoutedDevelopment', 'settings', 'valuation']);
-    expect(byValue.filter((m) => !PUBLIC.has(m))).toEqual([]);
-    expect(source).not.toMatch(/posture|playoffs|from '\.\/(ai|chat|providers|storylines)/);
-    // Developmental stakes reach the views only inside the farm's own answer (D-050): never read here
-    expect(source).not.toMatch(/developmentalContext|openDevelopmentalContext/);
   });
 });
 

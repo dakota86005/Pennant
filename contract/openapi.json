@@ -3602,6 +3602,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
           },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
           "clubs": {
             "type": "array",
             "items": {
@@ -3625,6 +3629,7 @@
         "required": [
           "affiliates",
           "asOf",
+          "byline",
           "clubs",
           "importStamp",
           "order",
@@ -3924,6 +3929,10 @@
             "type": "boolean",
             "description": "Whether his assignment is in question (needs attention or worth a look), as the farm says."
           },
+          "stakes": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "His developmental stakes with every reason for them in the basis (the stakes cell opens it)."
+          },
           "open": {
             "$ref": "#/components/schemas/Target"
           }
@@ -3936,6 +3945,7 @@
           "open",
           "playerId",
           "sort",
+          "stakes",
           "teamId"
         ],
         "description": "Every minor leaguer's assignment and what the organization makes of it. The stakes column has no sort key (D-050)."
@@ -3963,6 +3973,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
           },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
           "note": {
             "$ref": "#/components/schemas/Cell"
           },
@@ -3982,6 +3996,13 @@
               "$ref": "#/components/schemas/FarmAssignmentRow"
             }
           },
+          "shown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmShownCount"
+            },
+            "description": "How many rows show, for each choice of the level filter (null: every level) and of \"in question only\"."
+          },
           "emptyInQuestion": {
             "$ref": "#/components/schemas/Cell",
             "description": "When no assignment is in question (the default filter) and when there are no players at all."
@@ -3992,6 +4013,7 @@
         },
         "required": [
           "asOf",
+          "byline",
           "emptyAll",
           "emptyInQuestion",
           "importStamp",
@@ -4001,7 +4023,8 @@
           "orgId",
           "preparedBy",
           "reportStamp",
-          "rows"
+          "rows",
+          "shown"
         ]
       },
       "FarmBar": {
@@ -4147,6 +4170,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "The league it plays in; null when the export does not name it."
           },
+          "levelLine": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The level and the league as one line: \"Triple-A · International League\"."
+          },
           "operational": {
             "$ref": "#/components/schemas/Cell",
             "description": "Can it field a team: \"Able\", \"Thin\", \"Short\", toned; null for the major-league club (Major League Ops reads it)."
@@ -4171,6 +4198,7 @@
           "teamId",
           "name",
           "level",
+          "levelLine",
           "majorLeague"
         ],
         "description": "One club of the organization, top to bottom: the major-league club first, then each affiliate by level."
@@ -4472,6 +4500,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
           },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
           "playerId": {
             "$ref": "#/components/schemas/Integer"
           },
@@ -4607,6 +4639,7 @@
           "alternatives",
           "alternativesNote",
           "asOf",
+          "byline",
           "conclusion",
           "consequenceNote",
           "importStamp",
@@ -4710,6 +4743,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
           },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
           "playerId": {
             "$ref": "#/components/schemas/Integer"
           },
@@ -4771,6 +4808,7 @@
         },
         "required": [
           "asOf",
+          "byline",
           "ceilingChange",
           "change",
           "first",
@@ -5053,6 +5091,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
           },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
           "ready": {
             "type": "boolean",
             "description": "Whether there are two snapshots or more to compare."
@@ -5113,6 +5155,7 @@
         },
         "required": [
           "asOf",
+          "byline",
           "empty",
           "figures",
           "guide",
@@ -5764,6 +5807,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
           },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
           "scope": {
             "$ref": "#/components/schemas/Claim",
             "description": "\"247 players across 7 affiliates. Player Development can read 180 of them; …\"."
@@ -5819,6 +5866,7 @@
         },
         "required": [
           "asOf",
+          "byline",
           "depth",
           "depthNote",
           "findings",
@@ -6254,6 +6302,10 @@
             },
             "description": "The board's filters this row belongs to (`attention`, `eligible`, `watch`, `behind`; every row is in `all`)."
           },
+          "listLine": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "His age, role and club as one line: \"21 · SS · Double-A · Club\"."
+          },
           "open": {
             "$ref": "#/components/schemas/Target"
           }
@@ -6263,6 +6315,7 @@
           "filters",
           "id",
           "levelId",
+          "listLine",
           "open",
           "playerId",
           "sort",
@@ -6292,6 +6345,10 @@
           "preparedBy": {
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
           },
           "summary": {
             "$ref": "#/components/schemas/Claim"
@@ -6360,6 +6417,7 @@
         "required": [
           "asOf",
           "boardNote",
+          "byline",
           "empty",
           "figures",
           "filters",
@@ -6432,6 +6490,29 @@
           "rows",
           "guardrails"
         ]
+      },
+      "FarmShownCount": {
+        "type": "object",
+        "properties": {
+          "levelId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inQuestionOnly": {
+            "type": "boolean"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "levelId",
+          "inQuestionOnly",
+          "label"
+        ],
+        "description": "\"12 of 40 players\": how many rows a choice of the view's filters shows, said."
       },
       "FarmSnapshotRow": {
         "type": "object",
@@ -6660,6 +6741,10 @@
           "preparedBy": {
             "$ref": "#/components/schemas/Cell",
             "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
           }
         },
         "required": [
@@ -6667,7 +6752,8 @@
           "importStamp",
           "reportStamp",
           "asOf",
-          "preparedBy"
+          "preparedBy",
+          "byline"
         ],
         "description": "What every farm view carries: the club, the import and build it was read from, and its date."
       },

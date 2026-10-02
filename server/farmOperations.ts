@@ -111,6 +111,14 @@ import { reviewRetention, type RetentionReview } from './farmRetention.js';
 import * as calibration from './farmCalibration.js';
 import { ROTATION_SPOTS } from './farmCalibration.js';
 
+/*
+ * The farm's answer's own parts, named through its public module (N10): the views word a finding, a work share, a
+ * conflict's timing, a gone holder and a tenure as the farm hands them, and reach no farm module but this one.
+ */
+export type { FarmFinding } from './farmAffiliate.js';
+export type { ConflictTiming, GoneHolder, WorkShare } from './playingTime.js';
+export type { Tenure } from './farmRecentUsage.js';
+
 
 /* ── reading the organization ────────────────────────────────────────────────────────────────── */
 

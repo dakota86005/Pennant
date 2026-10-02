@@ -4,9 +4,6 @@
     "%lld of %lld": {
       "extractionState": "manual"
     },
-    "%lld of %lld players": {
-      "extractionState": "manual"
-    },
     "%lld to decide": {
       "extractionState": "manual"
     },

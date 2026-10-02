@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "playerId": 1104,
   "teamId": 101,
   "name": "P 1104",

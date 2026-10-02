@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "playerId": 1104,
   "teamId": 101,
   "name": "P 1104",
@@ -58,7 +62,7 @@
       "because": [
         {
           "label": "Why",
-          "value": "Visible ceiling of an impact major leaguer: a potential of 80 is among the best tenth of major-league hitters (56, Pennant's starting line)."
+          "value": "Visible ceiling of an impact major leaguer: a ceiling of 80 is among the best tenth of major-league hitters (56, Pennant's starting line)."
         },
         {
           "label": "And",
@@ -70,7 +74,7 @@
         },
         {
           "label": "And",
-          "value": "His visible projection is nearly all realized (current 80 against a potential of 80), so what the scouts see ahead of him has largely happened."
+          "value": "His visible projection is nearly all realized (current 80 against a ceiling of 80), so what the scouts see ahead of him has largely happened."
         },
         {
           "label": "And",
@@ -95,7 +99,7 @@
   },
   "stakesReasons": [
     {
-      "display": "Visible ceiling of an impact major leaguer: a potential of 80 is among the best tenth of major-league hitters (56, Pennant's starting line)."
+      "display": "Visible ceiling of an impact major leaguer: a ceiling of 80 is among the best tenth of major-league hitters (56, Pennant's starting line)."
     },
     {
       "display": "At 22 most of his development is still ahead of him."
@@ -104,7 +108,7 @@
       "display": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
     },
     {
-      "display": "His visible projection is nearly all realized (current 80 against a potential of 80), so what the scouts see ahead of him has largely happened."
+      "display": "His visible projection is nearly all realized (current 80 against a ceiling of 80), so what the scouts see ahead of him has largely happened."
     },
     {
       "display": "Developmental stakes: protected prospect. That ceiling alone would set core prospect; it is lowered one step for the development that has run out."

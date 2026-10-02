@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "summary": {
     "text": "Player Development asks what level each player's evidence supports. Whether to move him now is Minor League Operations' question, on his Decision.",
     "tone": "neutral",
@@ -293,7 +297,7 @@
         }
       },
       "sort": {
-        "player": "P 1104",
+        "player": "1104, P",
         "age": 22,
         "club": "02 Farm 1 F",
         "role": "2B",
@@ -305,6 +309,9 @@
       "teamId": 101,
       "levelId": "2",
       "filters": [],
+      "listLine": {
+        "display": "22 · 2B · AAA · Farm 1 F"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",
@@ -340,7 +347,7 @@
         }
       },
       "sort": {
-        "player": "P 1105",
+        "player": "1105, P",
         "age": 23,
         "club": "02 Farm 1 F",
         "role": "Developing as a reliever",
@@ -352,6 +359,9 @@
       "teamId": 101,
       "levelId": "2",
       "filters": [],
+      "listLine": {
+        "display": "23 · Developing as a reliever · AAA · Farm 1 F"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",
@@ -387,7 +397,7 @@
         }
       },
       "sort": {
-        "player": "P 1106",
+        "player": "1106, P",
         "age": 21,
         "club": "02 Farm 1 F",
         "role": "SS",
@@ -399,6 +409,9 @@
       "teamId": 101,
       "levelId": "2",
       "filters": [],
+      "listLine": {
+        "display": "21 · SS · AAA · Farm 1 F"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",
@@ -434,7 +447,7 @@
         }
       },
       "sort": {
-        "player": "P 1107",
+        "player": "1107, P",
         "age": 20,
         "club": "02 Farm 1 F",
         "role": "Developing as a reliever",
@@ -446,6 +459,9 @@
       "teamId": 101,
       "levelId": "2",
       "filters": [],
+      "listLine": {
+        "display": "20 · Developing as a reliever · AAA · Farm 1 F"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",
@@ -481,7 +497,7 @@
         }
       },
       "sort": {
-        "player": "P 1108",
+        "player": "1108, P",
         "age": 22,
         "club": "02 Farm 1 F",
         "role": "CF",
@@ -493,6 +509,9 @@
       "teamId": 101,
       "levelId": "2",
       "filters": [],
+      "listLine": {
+        "display": "22 · CF · AAA · Farm 1 F"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",
@@ -528,7 +547,7 @@
         }
       },
       "sort": {
-        "player": "P 1109",
+        "player": "1109, P",
         "age": 23,
         "club": "02 Farm 1 F",
         "role": "Developing as a reliever",
@@ -540,6 +559,9 @@
       "teamId": 101,
       "levelId": "2",
       "filters": [],
+      "listLine": {
+        "display": "23 · Developing as a reliever · AAA · Farm 1 F"
+      },
       "open": {
         "kind": "decision",
         "department": "farm",

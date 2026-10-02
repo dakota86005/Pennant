@@ -101,13 +101,14 @@ export const OPPORTUNITY: Record<string, Toned> = {
 export const opportunityWord = (code: string): Toned => toned(OPPORTUNITY, code, { text: 'Not yet readable', tone: 'unknown' });
 
 /**
- * Developmental stakes in the GM's words (D-050). `development_priority` reads "Development focus": the word "priority"
- * is a verdict word the plain-language rule keeps off every v2 screen, and the tier is a stake, never an instruction.
+ * Developmental stakes in the GM's words (D-050). `development_priority` reads "Development-sensitive" (the owner's
+ * name, 2026-10-02): the word "priority" is a verdict word the plain-language rule keeps off every screen, and the tier
+ * is a stake, never an instruction.
  */
 export const TIER: Record<string, string> = {
   core_prospect: 'Core prospect',
   protected_prospect: 'Protected prospect',
-  development_priority: 'Development focus',
+  development_priority: 'Development-sensitive',
   normal: 'Ordinary',
   organizational_depth: 'Organizational depth',
 };
@@ -214,7 +215,9 @@ export const CALL: Record<string, Toned & { means: string }> = {
   },
   hold: { text: 'Current level right', tone: 'neutral', means: 'The current level is still a sound place to develop him.' },
 };
-export const callWord = (code: string): Toned & { means: string } => CALL[code] ?? { ...CALL.hold, text: plain(code.replace(/_/g, ' ')) };
+/** A call Pennant has no words for is said as not known, never as another call (D-018). */
+export const callWord = (code: string): Toned & { means: string } =>
+  CALL[code] ?? { text: 'Call not known', tone: 'unknown', means: 'Player Development made a call Pennant has no words for yet.' };
 /** The calls the development meetings raise (React's "needs attention" set): a move to discuss, either way. */
 export const MEETING_CALLS: ReadonlySet<string> = new Set(['strong_promotion_case', 'consider_promotion', 'consider_demotion', 'mlb_ready_discussion']);
 /** The board's call column sorts like with like, in this stated order: a move to discuss first, then watch, then hold. */
@@ -308,8 +311,10 @@ export function paceWords(pace: string, place: number | null): Toned {
  * and what the GM reads instead. Phrase for phrase: the sentence's meaning is the specialist's.
  */
 export const PLAIN: ReadonlyArray<readonly [RegExp, string, string]> = [
-  [/\bdevelopmental stakes indeterminate\b/g, 'developmental stakes not known', 'an unknown tier is said as unknown'],
-  [/\bdevelopment priorit(y|ies)\b/gi, 'development focus', 'the tier\'s name on the Mac; "priority" is a verdict word'],
+  [/\b(developmental )?stakes (?:are|is) (?:indeterminate|unknown)\b/gi, '$1stakes are not known', 'an unknown tier is said as not known'],
+  [/\b(developmental )?stakes indeterminate\b/gi, '$1stakes not known', 'as above'],
+  [/\bdevelopment[ -]priorities\b/gi, 'development-sensitive players', 'the tier\'s name (the owner\'s, 2026-10-02); "priority" is a verdict word'],
+  [/\bdevelopment[ -]priority\b/gi, 'development-sensitive', 'as above'],
   [/\bpriority prospects\b/gi, 'high-stakes prospects', '"priority" is a verdict word; the count is of the higher tiers'],
   [/\bpriority prospect\b/gi, 'high-stakes prospect', '"priority" is a verdict word'],
   [/\b(\d+(?:\.\d+)?)(?:st|nd|rd|th) percentile\b/g, '#place#', 'a place out of a hundred, without the method word (rounded)'],
@@ -318,7 +323,7 @@ export const PLAIN: ReadonlyArray<readonly [RegExp, string, string]> = [
   [/\bare indeterminate\b/gi, 'can\'t be judged', 'as above'],
   [/\bindeterminate\b/gi, 'not settled', 'the GM\'s words for an answer the evidence cannot give'],
   [/\bcoverage\b/gi, 'cover', '"coverage" is kept for interval coverage'],
-  [/\bPotential\b/g, 'Ceiling', 'OOTP\'s rating name; the scouts\' ceiling'],
+  [/\bpotential\b/gi, 'ceiling', 'OOTP\'s rating name; the scouts\' ceiling'],
   [/\bretention\b/gi, 'keeping a roster spot', 'the farm\'s question in plain words'],
   [/\bprovisional\b/gi, 'starting', 'a line not yet fitted to the save is a starting value'],
   [/\s*\((?:see )?[DQRA]-\d+[^)]*\)/g, '', 'a decision\'s number belongs in the docs, not on the screen'],
@@ -332,14 +337,23 @@ export const PLAIN: ReadonlyArray<readonly [RegExp, string, string]> = [
   [/\bmust have\b/g, 'needs to have', 'a line\'s condition, said without a verdict word'],
   [/\bmust be\b/g, 'needs to be', 'as above'],
   [/\bmust appear\b/g, 'needs to appear', 'as above'],
-  [/\b[Rr]ecommendations?\b/g, 'call', 'Player Development\'s call, without the verdict word'],
+  [/\brecommendations\b/gi, 'calls', 'Player Development\'s calls, without the verdict word'],
+  [/\brecommendation\b/gi, 'call', 'Player Development\'s call, without the verdict word'],
 ];
+
+/** The words put in for a phrase, starting with a capital where the phrase did (a sentence keeps its capital letter). */
+function inPlaceOf(match: string, pattern: RegExp, words: string): string {
+  const put = match.replace(new RegExp(pattern.source, pattern.flags.replace('g', '')), words);
+  return /^[A-Z]/.test(match) && /^[a-z]/.test(put) ? `${put.charAt(0).toUpperCase()}${put.slice(1)}` : put;
+}
 
 /** A specialist's sentence in the GM's words (see `PLAIN`). */
 export function plain(text: string): string {
   let out = text;
   for (const [pattern, words] of PLAIN) {
-    out = words === '#place#' ? out.replace(pattern, (_m, n: string) => `${ordinal(Number(n))} of 100`) : out.replace(pattern, words);
+    out = words === '#place#'
+      ? out.replace(pattern, (_m, n: string) => `${ordinal(Number(n))} of 100`)
+      : out.replace(pattern, (m: string) => inPlaceOf(m, pattern, words));
   }
   return out.replace(/\s+/g, ' ').trim();
 }

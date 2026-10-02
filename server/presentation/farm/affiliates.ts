@@ -7,7 +7,7 @@
 import type { Cell } from '../../contract/presentation.js';
 import type { FarmSystemView } from '../../farmOperations.js';
 import { cell, claim, row, target } from '../claim.js';
-import { affiliateTarget, decisionTarget, findingView, headOf, judgmentBasis, linesCalled, playerLine } from './common.js';
+import { affiliateTarget, decisionTarget, findingView, headOf, judgmentBasis, lastNameKey, linesCalled, playerLine } from './common.js';
 import type { FarmContext, MajorLeagueClub } from './input.js';
 import type { FarmAffiliateDetail, FarmAffiliatesView, FarmClubStep, FarmConcernRow, FarmCoverRow } from './types.js';
 import { MINOR_LEAGUE_OPS, PLAYER_DEVELOPMENT, plain, plainAll, plural, statusWord, verdictWord, type Toned } from './words.js';
@@ -57,7 +57,7 @@ function affiliateDetail(ctx: FarmContext, a: Affiliate, called: ReturnType<type
           question: c.question === 'none' ? cell('No one\'s yet', { tone: 'neutral' }) : cell(c.question === 'developmental' ? 'Player Development\'s' : 'The organization\'s'),
           summary: cell(plain(c.summary) || verdict.text),
         },
-        { player: c.name, age: c.age, verdict: c.verdict, question: c.question, summary: plain(c.summary) },
+        { player: lastNameKey(c.name), age: c.age, verdict: c.verdict, question: c.question, summary: plain(c.summary) },
       ),
       playerId: c.playerId,
       open: decisionTarget(c.playerId),
@@ -144,6 +144,7 @@ export function affiliatesView(ctx: FarmContext, system: FarmSystemView, majorLe
       name: majorLeague.name,
       level: cell('Major leagues'),
       league: majorLeague.league ? cell(majorLeague.league) : null,
+      levelLine: cell(majorLeague.league ? `Major leagues · ${majorLeague.league}` : 'Major leagues'),
       operational: null,
       developmental: null,
       players: majorLeague.activePlayers === null ? null : cell(`${majorLeague.activePlayers} on the active roster`),
@@ -159,6 +160,7 @@ export function affiliatesView(ctx: FarmContext, system: FarmSystemView, majorLe
       name: a.label,
       level: cell(a.levelName),
       league: a.leagueName ? cell(a.leagueName) : null,
+      levelLine: cell(a.leagueName ? `${a.levelName} · ${a.leagueName}` : a.levelName),
       operational: cell(status.text, { tone: status.tone, hint: 'Can the club field a team and cover a schedule?' }),
       developmental: cell(dev.text, { tone: dev.tone, hint: 'Are the players here developing?' }),
       players: cell(`${a.operational.roster.total} on the active list`),

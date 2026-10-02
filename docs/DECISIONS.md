@@ -2551,7 +2551,8 @@ development}`, `/views/:org/farm/decision/:playerId` and `/views/:org/farm/devel
   same extracted function (`developmentHistoryFor`), so the two never read different histories.
 - **Kept with the club's other answers, never longer (D-047).** The views are built in the Front Office's worker, on the
   Front Office's own key (the club, the import, the settings and configuration files, the live log, the calibration
-  revision), after each kept build of the club's Front Office. One `FarmSession` serves the build and the decisions read
+  revision) and a count of this save's rating-snapshot writes (the import's snapshot is written by a post-import hook
+  after the swap, so a build made before it is never served past it), after each kept build of the club's Front Office. One `FarmSession` serves the build and the decisions read
   ahead with it (the desk's players and every assignment in question, a few milliseconds each); any other decision is
   read on the request in the worker and kept with that build. D-047's promise holds: nothing is served across an export,
   a philosophy setting or the live log, since each moves the key.
@@ -2565,8 +2566,8 @@ development}`, `/views/:org/farm/decision/:playerId` and `/views/:org/farm/devel
   target keyed by his id), one about an affiliate to Affiliates opened on it (a view target with a `key`), one about the
   organization to Organization. The Mac app's `AppRoute` carries the subject a view opens on.
 
-The builder's calls, for the owner: the tier `development_priority` reads "Development focus" on every v2 screen ("priority"
-is a verdict word no exception may allow); Player Development's calls are "Player Development's call" (never
+The owner's call (2026-10-02): the tier `development_priority` reads "Development-sensitive" everywhere, the Electron
+app included ("priority" is a verdict word no exception may allow). The builder's calls, for the owner: Player Development's calls are "Player Development's call" (never
 "recommendation"), "Review for a major-league chance", "Hold and keep watching", "Current level right" and "Consider a
 lower level"; philosophy's neutral preference reads "Fine by the club"; React's Prospects inbox and board are one view
 (choosing a row opens his meeting).

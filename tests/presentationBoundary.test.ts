@@ -231,6 +231,37 @@ describe('the presentation boundary', () => {
     }
   });
 
+  /**
+   * Farm & Development's views' reader (N10) words what the farm, Player Development and the save's rating history
+   * already decided: it loads only their public modules, reads no rating and no philosophy of its own (philosophy is
+   * inside the farm's answer, after Player Development's, D-019), no developmental stakes outside the farm's answer
+   * (D-050), and no odds, posture or AI (D-001, D-060). Its one setting is how the GM shows a rating.
+   */
+  it('farmViewsBuild.ts reads the specialists only through their public modules', () => {
+    const allowed = new Set(['org', 'dataStatus', 'farmConsequence', 'farmOperations', 'history', 'scoutedDevelopment', 'settings', 'valuation']);
+    const outside = valueImports('farmViewsBuild.ts').filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
+      .filter((m) => !allowed.has(m));
+    expect(outside).toEqual([]);
+    const source = code('farmViewsBuild.ts');
+    for (const pattern of [
+      ...RATINGS,
+      /developmentalContext|openDevelopmentalContext|evaluateDevelopmentProtection/,
+      /philosophy|Philosophy|assignmentPreference|resolvePhilosophy/,
+      /posture|playoffs|oddsModel/,
+    ]) {
+      expect(source, `farmViewsBuild.ts matches ${pattern}`).not.toMatch(pattern);
+    }
+    // Its one setting is the rating display (rounded to fives or not)
+    expect([...source.matchAll(/loadSettings\(\)\.(\w+)/g)].map((m) => m[1])).toEqual(['roundRatingsToFive']);
+    expect(valueImports('farmViewsBuild.ts').filter((s) => ['providers', 'ai', 'chat', 'storylines'].includes(moduleName(s)))).toEqual([]);
+  });
+
+  /** The farm's views name the farm's parts through its public module only (N10): no farm module reached past it. */
+  it.each(filesUnder('presentation/farm'))('%s names the farm\'s parts only through farmOperations', (file) => {
+    const farmModules = [...code(file).matchAll(/from\s+'\.\.\/\.\.\/(farm\w*|playingTime)\.js'/g)].map((m) => m[1]);
+    expect(farmModules.filter((m) => m !== 'farmOperations' && m !== 'farmConsequence')).toEqual([]);
+  });
+
   it('keeps the Front Office service to the routes, the start and the import: no specialist calls it', () => {
     const importers = (name: string) => filesUnder('')
       .filter((f) => new RegExp(`from\\s+'\\./${name}\\.js'`).test(code(f)));

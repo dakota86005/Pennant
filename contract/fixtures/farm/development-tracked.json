@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "ready": true,
   "building": null,
   "figures": [
@@ -326,7 +330,7 @@
         }
       },
       "sort": {
-        "player": "Player 9201",
+        "player": "9201, Player",
         "age": 21,
         "club": "02 Club 2",
         "role": "SS",
@@ -378,7 +382,7 @@
         }
       },
       "sort": {
-        "player": "Player 9202",
+        "player": "9202, Player",
         "age": 21,
         "club": "03 Club 3",
         "role": "SS",
@@ -430,7 +434,7 @@
         }
       },
       "sort": {
-        "player": "Player 9203",
+        "player": "9203, Player",
         "age": 21,
         "club": "03 Club 3",
         "role": "SS",

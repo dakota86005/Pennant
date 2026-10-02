@@ -6,16 +6,14 @@
  * transaction, and an unresolved hole is information, never a refusal (D-045).
  */
 import type { FarmConsequenceV2 } from '../../farmConsequence.js';
-import type { FarmSystemView } from '../../farmOperations.js';
-import type { ConflictTiming, GoneHolder, WorkShare } from '../../playingTime.js';
-import type { Tenure } from '../../farmRecentUsage.js';
+import type { ConflictTiming, FarmSystemView, GoneHolder, Tenure, WorkShare } from '../../farmOperations.js';
 import { cell, claim, row } from '../claim.js';
-import { decisionTarget, evidenceRow, factRow, headOf, judgmentBasis, linesCalled, playerLine, policyCalled, sentenceCell, sentenceCells } from './common.js';
+import { decisionTarget, evidenceRow, factRow, headOf, judgmentBasis, linesCalled, playerLine, policyCalled, sentenceCell, sentenceCells, stakesClaim } from './common.js';
 import type { FarmContext } from './input.js';
 import type { FarmAlternativeRow, FarmCascadeStepView, FarmCascadeView, FarmConsequenceView, FarmDecisionView, FarmRetentionView, FarmWorkRow } from './types.js';
 import {
   LEAN, MINOR_LEAGUE_OPS, OUTLOOK, PLAYER_DEVELOPMENT, PRESSURE, RETENTION_CONCLUSION, TIER, TIMING, conclusionWord, jobWords, judgmentWord,
-  moveWord, ordinal, plain, plainAll, plural, preferenceWord, standingWord, statusWord, stopWord, tierWord, verdictWord, windowWord, workWord,
+  moveWord, ordinal, plain, plainAll, plural, preferenceWord, standingWord, statusWord, stopWord, verdictWord, windowWord, workWord,
 } from './words.js';
 
 type Review = FarmSystemView['assignments'][number];
@@ -214,7 +212,6 @@ export function decisionView(
   const retention = system.retention.find((r) => r.playerId === review.playerId);
   const conclusion = conclusionWord(review.conclusion);
   const verdict = verdictWord(review.current.verdict);
-  const tier = tierWord(review.protection.tier);
   const p = review.production;
   const op = review.opportunity;
 
@@ -285,16 +282,7 @@ export function decisionView(
       }),
       links: [decisionTarget(review.playerId)],
     }),
-    stakes: claim({
-      text: review.protection.tier ? `Developmental stakes: ${tier}` : 'Developmental stakes not known',
-      tone: review.protection.tier ? 'neutral' : 'unknown',
-      hint: 'How careful to be with his development; never where he plays',
-      basis: judgmentBasis(ctx, PLAYER_DEVELOPMENT, {
-        because: plainAll(review.protection.reasons).map((r, i) => ({ label: i === 0 ? 'Why' : 'And', value: r })),
-        unknown: review.protection.missingEvidence.map((m) => m.detail),
-        called: policyCalled('Player Development\'s stakes (D-050): a ceiling, lowered by how much development is left'),
-      }),
-    }),
+    stakes: stakesClaim(ctx, review.protection),
     stakesReasons: sentenceCells(review.protection.reasons),
     why: sentenceCells(review.reasons),
     verdict: claim({

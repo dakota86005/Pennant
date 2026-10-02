@@ -835,6 +835,27 @@ describe('the committed fixtures of finding the save (N3.5 B2, which the Mac sta
     expect(validate(body) ? [] : validate.errors).toEqual([]);
   }, SLOW);
 
+  // The farm's preview fixtures (N10), written by farmViews.test.ts from the views' own functions: each one the Mac app
+  // decodes is held to the strict form too, and every one in the folder is listed here
+  const FARM_FIXTURES: Array<[string, string]> = [
+    ['decision-cascade.json', 'FarmDecisionView'],
+    ['development-detail.json', 'FarmDevelopmentDetail'],
+    ['development-tracked.json', 'FarmDevelopmentView'],
+    ['prospects-meetings.json', 'FarmProspectsView'],
+  ];
+
+  it('lists every farm preview fixture in the folder', () => {
+    expect(fs.readdirSync(path.join(FIXTURES, 'farm')).filter((f) => f.endsWith('.json')).sort()).toEqual(FARM_FIXTURES.map(([f]) => f).sort());
+  });
+
+  it.each(FARM_FIXTURES)('farm/%s is there and holds a %s in the strict form (N10)', (file, type) => {
+    const at = path.join(FIXTURES, 'farm', file);
+    expect(fs.existsSync(at), `${file} is missing: run npm run contract:fixtures`).toBe(true);
+    const validate = validator(type);
+    const body = JSON.parse(fs.readFileSync(at, 'utf8'));
+    expect(validate(body) ? [] : validate.errors).toEqual([]);
+  }, SLOW);
+
   it('events-save-played-elsewhere.sse is there and holds a ServerEvent in the strict form (N6, Stage B1)', () => {
     const at = path.join(FIXTURES, 'events-save-played-elsewhere.sse');
     expect(fs.existsSync(at), 'events-save-played-elsewhere.sse is missing: run npm run contract:fixtures').toBe(true);

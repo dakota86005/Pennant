@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "playerId": 1156,
   "teamId": 101,
   "name": "P 1156",
@@ -57,7 +61,7 @@
       "because": [
         {
           "label": "Why",
-          "value": "Visible ceiling of a major-league regular: a potential of 51 is at the median of major-league hitters (50, Pennant's starting line) or above it."
+          "value": "Visible ceiling of a major-league regular: a ceiling of 51 is at the median of major-league hitters (50, Pennant's starting line) or above it."
         },
         {
           "label": "And",
@@ -86,7 +90,7 @@
   },
   "stakesReasons": [
     {
-      "display": "Visible ceiling of a major-league regular: a potential of 51 is at the median of major-league hitters (50, Pennant's starting line) or above it."
+      "display": "Visible ceiling of a major-league regular: a ceiling of 51 is at the median of major-league hitters (50, Pennant's starting line) or above it."
     },
     {
       "display": "At 22 most of his development is still ahead of him."

@@ -250,7 +250,7 @@ struct ProspectRowDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(verbatim: row.cells.player.display).font(.title2.weight(.bold)).farmPlayer(id: row.playerId, name: row.cells.player.display, open: row.open)
-            Text(verbatim: [row.cells.age.display, row.cells.role.display, row.cells.club.display].joined(separator: " · ")).foregroundStyle(.readableSecondary)
+            Text(verbatim: row.listLine.display).foregroundStyle(.readableSecondary)
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
                 GridRow { Text("Player Development's Call").foregroundStyle(.readableSecondary); CellText(row.cells.call) }
                 GridRow { Text("Now → Ceiling").foregroundStyle(.readableSecondary); CellText(row.cells.ratings) }

@@ -72,9 +72,9 @@ struct AffiliatesSplit: View {
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 6) {
-                                    Text(verbatim: [view.preparedBy.display, view.asOf.display].joined(separator: " · "))
+                                    Text(verbatim: view.byline.display)
                                         .font(.caption.weight(.semibold)).textCase(.uppercase).foregroundStyle(.readableSecondary)
-                                        .help(detail: view.asOf.hint)
+                                        .help(detail: view.byline.hint)
                                     if updating { ProgressView().controlSize(.small).accessibilityLabel(Text("Updating")) }
                                 }
                                 Text(verbatim: affiliate.name).font(.largeTitle.weight(.bold)).accessibilityAddTraits(.isHeader)
@@ -123,7 +123,7 @@ struct ClubNode: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: club.name).font(.body.weight(.semibold))
-                Text(verbatim: [club.level.display, club.league?.display].compactMap { $0 }.joined(separator: " · "))
+                Text(verbatim: club.levelLine.display)
                     .font(.callout).foregroundStyle(.readableSecondary)
                 if club.operational != nil || club.developmental != nil {
                     HStack(spacing: 6) {

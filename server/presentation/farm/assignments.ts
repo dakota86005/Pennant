@@ -6,10 +6,10 @@
  */
 import type { FarmSystemView } from '../../farmOperations.js';
 import { cell, row } from '../claim.js';
-import { decisionTarget, headOf } from './common.js';
+import { decisionTarget, headOf, lastNameKey, stakesClaim } from './common.js';
 import type { FarmContext } from './input.js';
-import type { FarmAssignmentRow, FarmAssignmentsView } from './types.js';
-import { ATTENTION_ORDER, conclusionWord, opportunityWord, ordinal, plain, standingWord, tierWord, windowWord } from './words.js';
+import type { FarmAssignmentRow, FarmAssignmentsView, FarmShownCount } from './types.js';
+import { ATTENTION_ORDER, conclusionWord, opportunityWord, ordinal, plain, plural, standingWord, tierWord, windowWord } from './words.js';
 
 type Review = FarmSystemView['assignments'][number];
 
@@ -23,13 +23,12 @@ const CONCLUSION_ORDER = [
 const STANDING_ORDER: Record<string, number> = { mastered: 0, holding: 1, overmatched: 2 };
 const WORK_ORDER: Record<string, number> = { regular_work: 0, shared_work: 1, bat_only: 2, insufficient_work: 3, not_playing: 4 };
 
-export function assignmentRow(a: Review): FarmAssignmentRow {
+export function assignmentRow(ctx: FarmContext, a: Review): FarmAssignmentRow {
   const conclusion = conclusionWord(a.conclusion);
   const work = opportunityWord(a.opportunity.verdict);
   const results = a.production.percentile !== null
     ? cell(`${ordinal(a.production.percentile)} in the ${a.production.leagueName}`, { hint: 'His results against the league, park-adjusted: 50th is the middle' })
     : cell(plain(a.production.unassessableDetail ?? '') || 'Not established', { tone: 'unknown' });
-  const stakesHint = a.protection.reasons.length ? plain(a.protection.reasons[0]) : undefined;
   return {
     ...row(
       `assignment:${a.playerId}`,
@@ -40,14 +39,11 @@ export function assignmentRow(a: Review): FarmAssignmentRow {
         level: cell(`${standingWord(a.current.standing)} · ${windowWord(a.current.window)}`),
         results,
         work: cell(work.text, { tone: work.tone }),
-        stakes: cell(tierWord(a.protection.tier), {
-          tone: a.protection.tier === null ? 'unknown' : 'neutral',
-          hint: stakesHint && stakesHint.length <= 75 ? stakesHint : 'How careful to be with his development; not where he plays',
-        }),
+        stakes: cell(tierWord(a.protection.tier), { tone: a.protection.tier === null ? 'unknown' : 'neutral' }),
         conclusion: cell(conclusion.text, { tone: conclusion.tone }),
       },
       {
-        player: a.name,
+        player: lastNameKey(a.name),
         age: a.age,
         club: `${String(a.level).padStart(2, '0')} ${a.team}`,
         level: STANDING_ORDER[a.current.standing] ?? null,
@@ -62,21 +58,33 @@ export function assignmentRow(a: Review): FarmAssignmentRow {
     teamId: a.teamId,
     levelId: String(a.level),
     inQuestion: a.attention !== 'routine',
+    // Every reason Player Development gives for his stakes, in the basis the stakes cell opens
+    stakes: stakesClaim(ctx, a.protection),
     open: decisionTarget(a.playerId),
   };
 }
 
+/** "12 of 40 players" for every choice of the filters (each level or all, in question only or not). */
+function shownCounts(reviews: readonly Review[], levelIds: readonly string[]): FarmShownCount[] {
+  const total = reviews.length;
+  return [null, ...levelIds].flatMap((levelId) => [true, false].map((inQuestionOnly) => {
+    const n = reviews.filter((a) => (!inQuestionOnly || a.attention !== 'routine') && (levelId === null || String(a.level) === levelId)).length;
+    return { levelId, inQuestionOnly, label: cell(`${n} of ${plural(total, 'player')}`) };
+  }));
+}
+
 export function assignmentsView(ctx: FarmContext, system: FarmSystemView): FarmAssignmentsView {
   const ordered = [...system.assignments].sort(
-    (x, y) => (ATTENTION_ORDER[x.attention] ?? 3) - (ATTENTION_ORDER[y.attention] ?? 3) || x.name.localeCompare(y.name),
+    (x, y) => (ATTENTION_ORDER[x.attention] ?? 3) - (ATTENTION_ORDER[y.attention] ?? 3) || lastNameKey(x.name).localeCompare(lastNameKey(y.name)),
   );
   const levels = [...new Map(ordered.map((a) => [a.level, a.levelName])).entries()].sort((x, y) => x[0] - y[0]).map(([id, name]) => ({ id: String(id), name }));
   return {
     ...headOf(ctx),
     note: cell('Player Development says whether the level is developing him; Minor League Operations says whether he can get the work there. Both are shown, with who said what.'),
-    order: cell('Whether you need to look, then by name', { hint: 'Needs attention, then worth a look, then routine' }),
+    order: cell('Whether you need to look, then by last name', { hint: 'Needs attention, then worth a look, then routine' }),
     levels,
-    rows: ordered.map(assignmentRow),
+    rows: ordered.map((a) => assignmentRow(ctx, a)),
+    shown: shownCounts(ordered, levels.map((l) => l.id)),
     emptyInQuestion: cell('No assignment is in question here. Every one Player Development could read is defensible, and nobody is short of work.'),
     emptyAll: cell('No players.'),
   };

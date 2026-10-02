@@ -9,6 +9,10 @@
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
   "clubs": [
     {
       "teamId": 1,
@@ -17,6 +21,9 @@
         "display": "Major leagues"
       },
       "league": null,
+      "levelLine": {
+        "display": "Major leagues"
+      },
       "operational": null,
       "developmental": null,
       "players": null,
@@ -35,6 +42,9 @@
       },
       "league": {
         "display": "Fictional Triple-A"
+      },
+      "levelLine": {
+        "display": "AAA · Fictional Triple-A"
       },
       "operational": {
         "display": "Short",

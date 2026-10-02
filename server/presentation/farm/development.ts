@@ -10,7 +10,7 @@
  */
 import type { ScoutedDevelopmentPlayer } from '../../scoutedDevelopment.js';
 import { cell, claim, row, servedValue, unknownValue } from '../claim.js';
-import { decisionTarget, factBasis, factRow, headOf, sentenceCells } from './common.js';
+import { decisionTarget, factBasis, factRow, headOf, lastNameKey, sentenceCells } from './common.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import type { DevelopmentHistoryInput, FarmContext, HistoryRowInput } from './input.js';
 import type { FarmDevelopmentDetail, FarmDevelopmentRow, FarmDevelopmentTab, FarmDevelopmentView, FarmMovementRow, FarmSnapshotRow } from './types.js';
@@ -202,7 +202,7 @@ export function developmentViews(
           history: cell(plural(t.snaps.length, 'snapshot')),
         },
         {
-          player: p.name,
+          player: lastNameKey(p.name),
           age: p.age,
           club: `${String(p.level).padStart(2, '0')} ${p.team}`,
           role: roleWords(p.kind, p.role),

@@ -6,7 +6,7 @@
  */
 import type { FarmSystemView } from '../../farmOperations.js';
 import { cell, claim, row } from '../claim.js';
-import { factBasis, findingView, findingsWorstFirst, headOf, linesCalled, decisionTarget } from './common.js';
+import { decisionTarget, factBasis, findingsWorstFirst, findingView, headOf, lastNameKey, linesCalled } from './common.js';
 import type { FarmContext } from './input.js';
 import type { FarmDepthRow, FarmLineRow, FarmOrganizationView, FarmPlayerRow, FarmStartersRow } from './types.js';
 import { MINOR_LEAGUE_OPS, plain, plural } from './words.js';
@@ -68,7 +68,7 @@ export function organizationView(ctx: FarmContext, system: FarmSystemView): Farm
       position: cell(d.position),
       atLevels: at.map((b) => (b === null || b.players === 0
         ? cell('0', { tone: 'neutral' })
-        : cell(b.priority > 0 ? `${b.players} (${b.priority} with high stakes)` : String(b.players), b.priority > 0 ? { hint: 'High stakes: a core or protected prospect, or a development focus' } : {}))),
+        : cell(b.priority > 0 ? `${b.players} (${b.priority} with high stakes)` : String(b.players), b.priority > 0 ? { hint: 'High stakes: a core or protected prospect, or development-sensitive' } : {}))),
       upperMinors: cell(String(d.upperMinors), {
         tone,
         hint: floor === null ? undefined : d.upperMinors < floor ? `Below the farm's line of ${floor} in the upper minors` : d.upperMinors === floor ? `At the farm's line of ${floor} in the upper minors` : undefined,
@@ -100,7 +100,7 @@ export function organizationView(ctx: FarmContext, system: FarmSystemView): Farm
     ...row(
       `past:${a.playerId}`,
       { player: cell(a.name), age: cell(String(a.age)), level: cell(a.levelName), club: cell(a.team) },
-      { player: a.name, age: a.age, level: a.level, club: a.team },
+      { player: lastNameKey(a.name), age: a.age, level: a.level, club: a.team },
     ),
     playerId: a.playerId,
     open: decisionTarget(a.playerId),
