@@ -111,15 +111,18 @@
         "display": "Position players"
       },
       "count": 0,
+      "countLabel": {
+        "display": "0 regulars flagged"
+      },
       "lines": [
         {
-          "display": "0 regulars reviewed · 0 flagged"
+          "display": "7 regulars reviewed · 0 flagged"
         },
         {
           "display": "No platoon problems"
         },
         {
-          "display": "Unsettled: C, 1B, 2B, 3B, SS, LF, CF, RF, DH"
+          "display": "Unsettled: C, DH"
         }
       ],
       "open": {
@@ -133,6 +136,9 @@
         "display": "Pitching staff"
       },
       "count": 0,
+      "countLabel": {
+        "display": "0 arms flagged and notes on the pen"
+      },
       "lines": [
         {
           "display": "5 starters · 0 flagged"
@@ -154,16 +160,19 @@
       "title": {
         "display": "Bench & Backups"
       },
-      "count": 0,
+      "count": 1,
+      "countLabel": {
+        "display": "1 position without a backup"
+      },
       "lines": [
         {
-          "display": "13 players on the bench"
+          "display": "6 players on the bench"
         },
         {
-          "display": "Catcher, middle infield and center field have a backup"
+          "display": "No backup: middle infielder (second base or shortstop)"
         },
         {
-          "display": "No runner, positional flexibility"
+          "display": "No glove to put in late, runner, positional flexibility"
         }
       ],
       "open": {
@@ -240,6 +249,36 @@
             "kind": "decision",
             "department": "majorLeague",
             "key": "mlb:role_below_standard:catcher"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "display": "Also worth a look (1)",
+        "hint": "Moderate cases, platoon flags and bench backups"
+      },
+      "collapsed": true,
+      "needs": [
+        {
+          "needId": "mlb:bench_coverage:middle_infield",
+          "badge": {
+            "display": "Bench backup",
+            "tone": "neutral"
+          },
+          "kind": {
+            "display": "Bench backups · second baseman"
+          },
+          "title": {
+            "display": "No bench player can cover second base or shortstop"
+          },
+          "summary": {
+            "display": "No bench player has a visible grade that supports playing second base or shortstop: if a regular there is hurt or rests, the position is covered by somebody out of place."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "majorLeague",
+            "key": "mlb:bench_coverage:middle_infield"
           }
         }
       ]

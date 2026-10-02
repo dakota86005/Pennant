@@ -33,7 +33,7 @@ const ids = (rows: readonly MlbRow[]) => rows.map((r) => r.player?.playerId ?? n
 describe('Major League Ops\' views on the synthetic save, from the per-import cache', () => {
   let save: BuiltSave;
   beforeAll(() => {
-    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, minors: true, teamSeason: true });
+    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, minors: true, teamSeason: true, lineups: true });
     resetFrontOfficeCache();
   }, 60_000);
 

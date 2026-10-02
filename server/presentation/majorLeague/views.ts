@@ -86,6 +86,7 @@ function glances(v: OverviewContext): MlbGlance[] {
   out.push({
     title: cell('Position players'),
     count: lineup ? flagged(lineup.holders) : null,
+    countLabel: lineup ? cell(plural(flagged(lineup.holders), 'regular flagged', 'regulars flagged')) : null,
     lines: lineup
       ? [
         cell(`${plural(lineup.holders.length, 'regular')} reviewed · ${flagged(lineup.holders)} flagged`),
@@ -98,6 +99,9 @@ function glances(v: OverviewContext): MlbGlance[] {
   out.push({
     title: cell('Pitching staff'),
     count: rotation || pen ? flagged(rotation?.holders) + flagged(pen?.holders) + notes : null,
+    countLabel: rotation || pen
+      ? cell(plural(flagged(rotation?.holders) + flagged(pen?.holders) + notes, 'arm flagged or note on the pen', 'arms flagged and notes on the pen'))
+      : null,
     lines: [
       cell(`${plural(rotation?.holders.length ?? 0, 'starter')} · ${flagged(rotation?.holders)} flagged`),
       cell(`${plural(pen?.holders.length ?? 0, 'reliever')} · ${flagged(pen?.holders)} flagged`),
@@ -109,6 +113,7 @@ function glances(v: OverviewContext): MlbGlance[] {
   out.push({
     title: cell('Bench & Backups'),
     count: bench ? bench.gaps.length : null,
+    countLabel: bench ? cell(plural(bench.gaps.length, 'position without a backup', 'positions without a backup')) : null,
     lines: bench
       ? [
         cell(`${plural(bench.rows.length, 'player')} on the bench`),

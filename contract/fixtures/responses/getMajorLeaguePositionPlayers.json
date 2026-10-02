@@ -184,7 +184,7 @@
           "player": {
             "display": "Unsettled",
             "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "hint": "Played by P 1012 (12%)"
           },
           "bats": {
             "display": "—",
@@ -250,11 +250,21 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "Nobody is the regular here: P 1012 (12%)."
                 },
                 "quiet": false,
                 "chips": [],
-                "players": []
+                "players": [
+                  {
+                    "playerId": 1012,
+                    "name": "P 1012",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1012,
+                      "teamId": 1
+                    }
+                  }
+                ]
               }
             ],
             "collapsed": false
@@ -269,67 +279,106 @@
             "display": "first base"
           },
           "player": {
-            "display": "Unsettled",
-            "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "display": "P 1006"
           },
           "bats": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "R"
           },
           "plays": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92%",
+            "hint": "His share of the innings at the position"
           },
           "estimate": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "33",
+            "hint": "Typical for the role: 77 on the 0–100 scale"
           },
           "bat": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "34",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "glove": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "19",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "run": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "60",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "platoon": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "Not enough",
+            "tone": "unknown"
           },
           "read": {
-            "display": "Unsettled",
-            "tone": "unknown"
+            "display": "Too early to read",
+            "tone": "unknown",
+            "hint": "tools 34 on the 0–100 scale; no qualifying results."
           }
         },
         "sort": {
           "spot": 1,
-          "player": null,
-          "bats": null,
-          "plays": null,
-          "estimate": null,
-          "bat": null,
-          "glove": null,
-          "run": null,
+          "player": "P 1006",
+          "bats": "R",
+          "plays": 0.9185185185185185,
+          "estimate": 33.23362715248315,
+          "bat": 33.7,
+          "glove": 18.8,
+          "run": 60.13254304966309,
           "platoon": null,
           "read": null
         },
-        "player": null,
+        "claim": {
+          "text": "Too early to read",
+          "tone": "unknown",
+          "basis": {
+            "because": [
+              {
+                "label": "Why",
+                "value": "tools 34 on the 0–100 scale; no qualifying results."
+              },
+              {
+                "label": "Why",
+                "value": "bat 34 on the 0–100 scale; glove 19 on the 0–100 scale at his position, 12% of the estimate; running 60 on the 0–100 scale, 5%."
+              },
+              {
+                "label": "Why",
+                "value": "For regular first basemen a typical working estimate is about 77 (Pennant's starting yardstick); below 57 is unusually weak and below 51 well below what the job takes. He is at 33 on the 0–100 scale, 24 under the first line."
+              },
+              {
+                "label": "Why",
+                "value": "Working estimate 33 on the 0–100 scale against MLB lineup regulars (tools only: no results to weigh); the weakest of 7 in the group."
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [
+              "A larger sample of major-league results would firm up the read."
+            ],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+          },
+          "links": [],
+          "hint": "tools 34 on the 0–100 scale; no qualifying results."
+        },
+        "player": {
+          "playerId": 1006,
+          "name": "P 1006",
+          "open": {
+            "kind": "player",
+            "playerId": 1006,
+            "teamId": 1
+          }
+        },
         "detail": [
           {
             "title": {
-              "display": "Unsettled"
+              "display": "The bat"
             },
             "player": null,
             "chips": [],
@@ -337,9 +386,134 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "No tool stands out either way."
                 },
                 "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His tools, and what each adds"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "contact 46 −6",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "gap 34 −5",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "power 41 −11",
+                    "tone": "bad"
+                  },
+                  {
+                    "display": "eye 44 −5",
+                    "tone": "neutral"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Tools 34 on the 0–100 scale · results no sample",
+                  "hint": "On a 0–100 scale against major league peers; 50 is typical"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His visible tools imply −21 points of wOBA against the league average."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "regular first basemen: typical 77, unusually weak under 57, well under 51."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Glove and running"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Glove 19 on the 0–100 scale at first base, 12% of his estimate."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Visible grade 43 (better than 19% of those listed there)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Running 60 on the 0–100 scale, 5% of his estimate; +2 baserunning runs per 600 PA."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Started 28 games at first baseman this season (248 innings, 0 errors)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Platoon"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Can't judge a platoon split: the usual split for his hand isn't known in this league. Read from nothing yet."
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "Not enough",
+                    "tone": "unknown"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Not enough to read a platoon split: 95 plate appearances against left-handers, 244 against right-handers (60 needed against the less-faced hand), and no visible platoon ratings."
+                },
+                "quiet": true,
                 "chips": [],
                 "players": []
               }
@@ -356,67 +530,114 @@
             "display": "second base"
           },
           "player": {
-            "display": "Unsettled",
-            "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "display": "P 1001"
           },
           "bats": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "L"
           },
           "plays": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92%",
+            "hint": "His share of the innings at the position"
           },
           "estimate": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "53",
+            "hint": "Typical for the role: 51 on the 0–100 scale"
           },
           "bat": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "74",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "glove": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "17",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "run": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "36",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "platoon": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "Not enough",
+            "tone": "unknown"
           },
           "read": {
-            "display": "Unsettled",
-            "tone": "unknown"
+            "display": "No concern",
+            "tone": "good",
+            "hint": "tools 74 on the 0–100 scale; no qualifying results."
           }
         },
         "sort": {
           "spot": 2,
-          "player": null,
-          "bats": null,
-          "plays": null,
-          "estimate": null,
-          "bat": null,
-          "glove": null,
-          "run": null,
+          "player": "P 1001",
+          "bats": "L",
+          "plays": 0.9185185185185185,
+          "estimate": 52.618381621893036,
+          "bat": 74,
+          "glove": 16.7,
+          "run": 36.007632437860906,
           "platoon": null,
-          "read": null
+          "read": 4
         },
-        "player": null,
+        "claim": {
+          "text": "No concern",
+          "tone": "good",
+          "basis": {
+            "because": [
+              {
+                "label": "Why",
+                "value": "tools 74 on the 0–100 scale; no qualifying results."
+              },
+              {
+                "label": "Why",
+                "value": "bat 74 on the 0–100 scale; glove 17 on the 0–100 scale at his position, 34% of the estimate; running 36 on the 0–100 scale, 5%."
+              },
+              {
+                "label": "Why",
+                "value": "For regular second basemen a typical working estimate is about 51 (Pennant's starting yardstick); below 31 is unusually weak and below 25 well below what the job takes. He is at 53 on the 0–100 scale, 22 above it."
+              },
+              {
+                "label": "Why",
+                "value": "Working estimate 53 on the 0–100 scale against MLB lineup regulars (tools only: no results to weigh); number 6 of 7 in the group."
+              },
+              {
+                "label": "What could explain it",
+                "value": "This season is 99 PA old: too early to read the year on its own, so the read leans on earlier seasons."
+              },
+              {
+                "label": "What could explain it",
+                "value": "His bat (74 on the 0–100 scale) is well ahead of his glove (17 on the 0–100 scale at second base): a defensive risk that the bat has to carry."
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [
+              "A larger sample of major-league results would firm up the read."
+            ],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+          },
+          "links": [],
+          "hint": "tools 74 on the 0–100 scale; no qualifying results."
+        },
+        "player": {
+          "playerId": 1001,
+          "name": "P 1001",
+          "open": {
+            "kind": "player",
+            "playerId": 1001,
+            "teamId": 1
+          }
+        },
         "detail": [
           {
             "title": {
-              "display": "Unsettled"
+              "display": "The bat"
             },
             "player": null,
             "chips": [],
@@ -424,9 +645,134 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "No tool stands out either way."
                 },
                 "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His tools, and what each adds"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "contact 51 +2",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "gap 50 +0",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "power 57 +9",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "eye 56 +5",
+                    "tone": "neutral"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Tools 74 on the 0–100 scale · results no sample",
+                  "hint": "On a 0–100 scale against major league peers; 50 is typical"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His visible tools imply +22 points of wOBA against the league average."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "regular second basemen: typical 51, unusually weak under 31, well under 25."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Glove and running"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Glove 17 on the 0–100 scale at second base, 34% of his estimate."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Visible grade 45 (better than 17% of those listed there)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Running 36 on the 0–100 scale, 5% of his estimate; −3 baserunning runs per 600 PA."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Started 28 games at second baseman this season (248 innings, 0 errors)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Platoon"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Can't judge a platoon split: the usual split for his hand isn't known in this league. Read from nothing yet."
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "Not enough",
+                    "tone": "unknown"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Not enough to read a platoon split: 97 plate appearances against left-handers, 248 against right-handers (60 needed against the less-faced hand), and no visible platoon ratings."
+                },
+                "quiet": true,
                 "chips": [],
                 "players": []
               }
@@ -443,67 +789,111 @@
             "display": "third base"
           },
           "player": {
-            "display": "Unsettled",
-            "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "display": "P 1000",
+            "hint": "Shares the spot with P 1004"
           },
           "bats": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "L"
           },
           "plays": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92%",
+            "hint": "His share of the innings at the position"
           },
           "estimate": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "54",
+            "hint": "Typical for the role: 49 on the 0–100 scale"
           },
           "bat": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "66",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "glove": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "21",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "run": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "63",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "platoon": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "Not enough",
+            "tone": "unknown"
           },
           "read": {
-            "display": "Unsettled",
-            "tone": "unknown"
+            "display": "No concern",
+            "tone": "good",
+            "hint": "tools 66 on the 0–100 scale; no qualifying results."
           }
         },
         "sort": {
           "spot": 3,
-          "player": null,
-          "bats": null,
-          "plays": null,
-          "estimate": null,
-          "bat": null,
-          "glove": null,
-          "run": null,
+          "player": "P 1000",
+          "bats": "L",
+          "plays": 0.9185185185185185,
+          "estimate": 53.58265363681345,
+          "bat": 66.3,
+          "glove": 21.4,
+          "run": 63.393072736269175,
           "platoon": null,
-          "read": null
+          "read": 4
         },
-        "player": null,
+        "claim": {
+          "text": "No concern",
+          "tone": "good",
+          "basis": {
+            "because": [
+              {
+                "label": "Why",
+                "value": "tools 66 on the 0–100 scale; no qualifying results."
+              },
+              {
+                "label": "Why",
+                "value": "bat 66 on the 0–100 scale; glove 21 on the 0–100 scale at his position, 28% of the estimate; running 63 on the 0–100 scale, 5%."
+              },
+              {
+                "label": "Why",
+                "value": "For regular third basemen a typical working estimate is about 49 (Pennant's starting yardstick); below 29 is unusually weak and below 23 well below what the job takes. He is at 54 on the 0–100 scale, 25 above it."
+              },
+              {
+                "label": "Why",
+                "value": "Working estimate 54 on the 0–100 scale against MLB lineup regulars (tools only: no results to weigh); number 5 of 7 in the group."
+              },
+              {
+                "label": "What could explain it",
+                "value": "His bat (66 on the 0–100 scale) is well ahead of his glove (21 on the 0–100 scale at third base): a defensive risk that the bat has to carry."
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [
+              "A larger sample of major-league results would firm up the read."
+            ],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+          },
+          "links": [],
+          "hint": "tools 66 on the 0–100 scale; no qualifying results."
+        },
+        "player": {
+          "playerId": 1000,
+          "name": "P 1000",
+          "open": {
+            "kind": "player",
+            "playerId": 1000,
+            "teamId": 1
+          }
+        },
         "detail": [
           {
             "title": {
-              "display": "Unsettled"
+              "display": "The bat"
             },
             "player": null,
             "chips": [],
@@ -511,11 +901,154 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "No tool stands out either way."
                 },
                 "quiet": false,
                 "chips": [],
                 "players": []
+              },
+              {
+                "text": {
+                  "display": "His tools, and what each adds"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "contact 51 +2",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "gap 58 +3",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "power 53 +4",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "eye 49 −1",
+                    "tone": "neutral"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Tools 66 on the 0–100 scale · results no sample",
+                  "hint": "On a 0–100 scale against major league peers; 50 is typical"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His visible tools imply +14 points of wOBA against the league average."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "regular third basemen: typical 49, unusually weak under 29, well under 23."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Glove and running"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Glove 21 on the 0–100 scale at third base, 28% of his estimate."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Visible grade 58 (better than 21% of those listed there)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Running 63 on the 0–100 scale, 5% of his estimate; +3 baserunning runs per 600 PA."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Started 28 games at third baseman this season (248 innings, 0 errors)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Platoon"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Can't judge a platoon split: the usual split for his hand isn't known in this league. Read from nothing yet."
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "Not enough",
+                    "tone": "unknown"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Not enough to read a platoon split: 98 plate appearances against left-handers, 250 against right-handers (60 needed against the less-faced hand), and no visible platoon ratings."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Shares the spot with P 1004 (92% of the innings)."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": [
+                  {
+                    "playerId": 1004,
+                    "name": "P 1004",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1004,
+                      "teamId": 1
+                    }
+                  }
+                ]
               }
             ],
             "collapsed": false
@@ -530,67 +1063,106 @@
             "display": "shortstop"
           },
           "player": {
-            "display": "Unsettled",
-            "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "display": "P 1003"
           },
           "bats": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "L"
           },
           "plays": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92%",
+            "hint": "His share of the innings at the position"
           },
           "estimate": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "75",
+            "hint": "Typical for the role: 57 on the 0–100 scale"
           },
           "bat": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "78",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "glove": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "75",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "run": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "48",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "platoon": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "Not enough",
+            "tone": "unknown"
           },
           "read": {
-            "display": "Unsettled",
-            "tone": "unknown"
+            "display": "No concern",
+            "tone": "good",
+            "hint": "tools 78 on the 0–100 scale; no qualifying results."
           }
         },
         "sort": {
           "spot": 4,
-          "player": null,
-          "bats": null,
-          "plays": null,
-          "estimate": null,
-          "bat": null,
-          "glove": null,
-          "run": null,
+          "player": "P 1003",
+          "bats": "L",
+          "plays": 0.9185185185185185,
+          "estimate": 75.26794904458598,
+          "bat": 77.9,
+          "glove": 75,
+          "run": 47.87898089171975,
           "platoon": null,
-          "read": null
+          "read": 4
         },
-        "player": null,
+        "claim": {
+          "text": "No concern",
+          "tone": "good",
+          "basis": {
+            "because": [
+              {
+                "label": "Why",
+                "value": "tools 78 on the 0–100 scale; no qualifying results."
+              },
+              {
+                "label": "Why",
+                "value": "bat 78 on the 0–100 scale; glove 75 on the 0–100 scale at his position, 39% of the estimate; running 48 on the 0–100 scale, 5%."
+              },
+              {
+                "label": "Why",
+                "value": "For regular shortstops a typical working estimate is about 57 (Pennant's starting yardstick); below 37 is unusually weak and below 31 well below what the job takes. He is at 75 on the 0–100 scale, 38 above it."
+              },
+              {
+                "label": "Why",
+                "value": "Working estimate 75 on the 0–100 scale against MLB lineup regulars (tools only: no results to weigh); number 2 of 7 in the group."
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [
+              "A larger sample of major-league results would firm up the read."
+            ],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+          },
+          "links": [],
+          "hint": "tools 78 on the 0–100 scale; no qualifying results."
+        },
+        "player": {
+          "playerId": 1003,
+          "name": "P 1003",
+          "open": {
+            "kind": "player",
+            "playerId": 1003,
+            "teamId": 1
+          }
+        },
         "detail": [
           {
             "title": {
-              "display": "Unsettled"
+              "display": "The bat"
             },
             "player": null,
             "chips": [],
@@ -598,9 +1170,134 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "No tool stands out either way."
                 },
                 "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His tools, and what each adds"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "contact 54 +6",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "gap 62 +4",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "power 54 +5",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "eye 53 +3",
+                    "tone": "neutral"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Tools 78 on the 0–100 scale · results no sample",
+                  "hint": "On a 0–100 scale against major league peers; 50 is typical"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His visible tools imply +25 points of wOBA against the league average."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "regular shortstops: typical 57, unusually weak under 37, well under 31."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Glove and running"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Glove 75 on the 0–100 scale at shortstop, 39% of his estimate."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Visible grade 61 (better than 75% of those listed there)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Running 48 on the 0–100 scale, 5% of his estimate; −1 baserunning runs per 600 PA."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Started 28 games at shortstop this season (248 innings, 0 errors)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Platoon"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Can't judge a platoon split: the usual split for his hand isn't known in this league. Read from nothing yet."
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "Not enough",
+                    "tone": "unknown"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Not enough to read a platoon split: 102 plate appearances against left-handers, 262 against right-handers (60 needed against the less-faced hand), and no visible platoon ratings."
+                },
+                "quiet": true,
                 "chips": [],
                 "players": []
               }
@@ -617,67 +1314,106 @@
             "display": "left field"
           },
           "player": {
-            "display": "Unsettled",
-            "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "display": "P 1007"
           },
           "bats": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "R"
           },
           "plays": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92%",
+            "hint": "His share of the innings at the position"
           },
           "estimate": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "75",
+            "hint": "Typical for the role: 68 on the 0–100 scale"
           },
           "bat": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "72",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "glove": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "85",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "run": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "62",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "platoon": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "Not enough",
+            "tone": "unknown"
           },
           "read": {
-            "display": "Unsettled",
-            "tone": "unknown"
+            "display": "No concern",
+            "tone": "good",
+            "hint": "tools 72 on the 0–100 scale; no qualifying results."
           }
         },
         "sort": {
           "spot": 5,
-          "player": null,
-          "bats": null,
-          "plays": null,
-          "estimate": null,
-          "bat": null,
-          "glove": null,
-          "run": null,
+          "player": "P 1007",
+          "bats": "R",
+          "plays": 0.9185185185185185,
+          "estimate": 74.67457944837686,
+          "bat": 72.1,
+          "glove": 85,
+          "run": 61.67158896753722,
           "platoon": null,
-          "read": null
+          "read": 4
         },
-        "player": null,
+        "claim": {
+          "text": "No concern",
+          "tone": "good",
+          "basis": {
+            "because": [
+              {
+                "label": "Why",
+                "value": "tools 72 on the 0–100 scale; no qualifying results."
+              },
+              {
+                "label": "Why",
+                "value": "bat 72 on the 0–100 scale; glove 85 on the 0–100 scale at his position, 24% of the estimate; running 62 on the 0–100 scale, 5%."
+              },
+              {
+                "label": "Why",
+                "value": "For regular left fielders a typical working estimate is about 68 (Pennant's starting yardstick); below 48 is unusually weak and below 42 well below what the job takes. He is at 75 on the 0–100 scale, 27 above it."
+              },
+              {
+                "label": "Why",
+                "value": "Working estimate 75 on the 0–100 scale against MLB lineup regulars (tools only: no results to weigh); number 3 of 7 in the group."
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [
+              "A larger sample of major-league results would firm up the read."
+            ],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+          },
+          "links": [],
+          "hint": "tools 72 on the 0–100 scale; no qualifying results."
+        },
+        "player": {
+          "playerId": 1007,
+          "name": "P 1007",
+          "open": {
+            "kind": "player",
+            "playerId": 1007,
+            "teamId": 1
+          }
+        },
         "detail": [
           {
             "title": {
-              "display": "Unsettled"
+              "display": "The bat"
             },
             "player": null,
             "chips": [],
@@ -685,9 +1421,134 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "No tool stands out either way."
                 },
                 "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His tools, and what each adds"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "contact 58 +12",
+                    "tone": "good"
+                  },
+                  {
+                    "display": "gap 62 +4",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "power 43 −8",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "eye 57 +6",
+                    "tone": "neutral"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Tools 72 on the 0–100 scale · results no sample",
+                  "hint": "On a 0–100 scale against major league peers; 50 is typical"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His visible tools imply +21 points of wOBA against the league average."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "regular left fielders: typical 68, unusually weak under 48, well under 42."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Glove and running"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Glove 85 on the 0–100 scale at left field, 24% of his estimate."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Visible grade 70 (better than 85% of those listed there)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Running 62 on the 0–100 scale, 5% of his estimate; +3 baserunning runs per 600 PA."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Started 28 games at left fielder this season (248 innings, 0 errors)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Platoon"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Can't judge a platoon split: the usual split for his hand isn't known in this league. Read from nothing yet."
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "Not enough",
+                    "tone": "unknown"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Not enough to read a platoon split: 105 plate appearances against left-handers, 268 against right-handers (60 needed against the less-faced hand), and no visible platoon ratings."
+                },
+                "quiet": true,
                 "chips": [],
                 "players": []
               }
@@ -704,67 +1565,107 @@
             "display": "center field"
           },
           "player": {
-            "display": "Unsettled",
-            "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "display": "P 1002",
+            "hint": "Shares the spot with P 1005"
           },
           "bats": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "R"
           },
           "plays": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92%",
+            "hint": "His share of the innings at the position"
           },
           "estimate": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "85",
+            "hint": "Typical for the role: 50 on the 0–100 scale"
           },
           "bat": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "84",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "glove": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "run": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "42",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "platoon": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "Not enough",
+            "tone": "unknown"
           },
           "read": {
-            "display": "Unsettled",
-            "tone": "unknown"
+            "display": "No concern",
+            "tone": "good",
+            "hint": "tools 84 on the 0–100 scale; no qualifying results."
           }
         },
         "sort": {
           "spot": 6,
-          "player": null,
-          "bats": null,
-          "plays": null,
-          "estimate": null,
-          "bat": null,
-          "glove": null,
-          "run": null,
+          "player": "P 1002",
+          "bats": "R",
+          "plays": 0.9185185185185185,
+          "estimate": 84.89543674698797,
+          "bat": 83.7,
+          "glove": 91.7,
+          "run": 42.00873493975904,
           "platoon": null,
-          "read": null
+          "read": 4
         },
-        "player": null,
+        "claim": {
+          "text": "No concern",
+          "tone": "good",
+          "basis": {
+            "because": [
+              {
+                "label": "Why",
+                "value": "tools 84 on the 0–100 scale; no qualifying results."
+              },
+              {
+                "label": "Why",
+                "value": "bat 84 on the 0–100 scale; glove 92 on the 0–100 scale at his position, 41% of the estimate; running 42 on the 0–100 scale, 5%."
+              },
+              {
+                "label": "Why",
+                "value": "For regular center fielders a typical working estimate is about 50 (Pennant's starting yardstick); below 30 is unusually weak and below 24 well below what the job takes. He is at 85 on the 0–100 scale, 55 above it."
+              },
+              {
+                "label": "Why",
+                "value": "Working estimate 85 on the 0–100 scale against MLB lineup regulars (tools only: no results to weigh); number 1 of 7 in the group."
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [
+              "A larger sample of major-league results would firm up the read."
+            ],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+          },
+          "links": [],
+          "hint": "tools 84 on the 0–100 scale; no qualifying results."
+        },
+        "player": {
+          "playerId": 1002,
+          "name": "P 1002",
+          "open": {
+            "kind": "player",
+            "playerId": 1002,
+            "teamId": 1
+          }
+        },
         "detail": [
           {
             "title": {
-              "display": "Unsettled"
+              "display": "The bat"
             },
             "player": null,
             "chips": [],
@@ -772,11 +1673,154 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "Built on contact."
                 },
                 "quiet": false,
                 "chips": [],
                 "players": []
+              },
+              {
+                "text": {
+                  "display": "His tools, and what each adds"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "contact 65 +23",
+                    "tone": "good"
+                  },
+                  {
+                    "display": "gap 68 +6",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "power 56 +7",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "eye 52 +2",
+                    "tone": "neutral"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Tools 84 on the 0–100 scale · results no sample",
+                  "hint": "On a 0–100 scale against major league peers; 50 is typical"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His visible tools imply +45 points of wOBA against the league average."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "regular center fielders: typical 50, unusually weak under 30, well under 24."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Glove and running"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Glove 92 on the 0–100 scale at center field, 41% of his estimate."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Visible grade 69 (better than 92% of those listed there)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Running 42 on the 0–100 scale, 5% of his estimate; −2 baserunning runs per 600 PA."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Started 28 games at center fielder this season (248 innings, 0 errors)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Platoon"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Can't judge a platoon split: the usual split for his hand isn't known in this league. Read from nothing yet."
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "Not enough",
+                    "tone": "unknown"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Not enough to read a platoon split: 94 plate appearances against left-handers, 242 against right-handers (60 needed against the less-faced hand), and no visible platoon ratings."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Shares the spot with P 1005 (92% of the innings)."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": [
+                  {
+                    "playerId": 1005,
+                    "name": "P 1005",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1005,
+                      "teamId": 1
+                    }
+                  }
+                ]
               }
             ],
             "collapsed": false
@@ -791,67 +1835,110 @@
             "display": "right field"
           },
           "player": {
-            "display": "Unsettled",
-            "tone": "unknown",
-            "hint": "Played by nobody has played it"
+            "display": "P 1008"
           },
           "bats": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "R"
           },
           "plays": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "92%",
+            "hint": "His share of the innings at the position"
           },
           "estimate": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "65",
+            "hint": "Typical for the role: 62 on the 0–100 scale"
           },
           "bat": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "51",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "glove": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "100",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "run": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "38",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "platoon": {
-            "display": "—",
-            "tone": "unknown",
-            "hint": "No regular here to read"
+            "display": "Not enough",
+            "tone": "unknown"
           },
           "read": {
-            "display": "Unsettled",
-            "tone": "unknown"
+            "display": "No concern",
+            "tone": "good",
+            "hint": "tools 51 on the 0–100 scale; no qualifying results."
           }
         },
         "sort": {
           "spot": 7,
-          "player": null,
-          "bats": null,
-          "plays": null,
-          "estimate": null,
-          "bat": null,
-          "glove": null,
-          "run": null,
+          "player": "P 1008",
+          "bats": "R",
+          "plays": 0.9185185185185185,
+          "estimate": 65.03639309659796,
+          "bat": 51,
+          "glove": 100,
+          "run": 37.727861931959275,
           "platoon": null,
-          "read": null
+          "read": 4
         },
-        "player": null,
+        "claim": {
+          "text": "No concern",
+          "tone": "good",
+          "basis": {
+            "because": [
+              {
+                "label": "Why",
+                "value": "tools 51 on the 0–100 scale; no qualifying results."
+              },
+              {
+                "label": "Why",
+                "value": "bat 51 on the 0–100 scale; glove 100 on the 0–100 scale at his position, 30% of the estimate; running 38 on the 0–100 scale, 5%."
+              },
+              {
+                "label": "Why",
+                "value": "For regular right fielders a typical working estimate is about 62 (Pennant's starting yardstick); below 42 is unusually weak and below 36 well below what the job takes. He is at 65 on the 0–100 scale, 23 above it."
+              },
+              {
+                "label": "Why",
+                "value": "Working estimate 65 on the 0–100 scale against MLB lineup regulars (tools only: no results to weigh); number 4 of 7 in the group."
+              },
+              {
+                "label": "What could explain it",
+                "value": "His glove (100 on the 0–100 scale at right field) is well ahead of his bat (51 on the 0–100 scale): the position, not the bat, is what he is worth."
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [
+              "A larger sample of major-league results would firm up the read."
+            ],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+          },
+          "links": [],
+          "hint": "tools 51 on the 0–100 scale; no qualifying results."
+        },
+        "player": {
+          "playerId": 1008,
+          "name": "P 1008",
+          "open": {
+            "kind": "player",
+            "playerId": 1008,
+            "teamId": 1
+          }
+        },
         "detail": [
           {
             "title": {
-              "display": "Unsettled"
+              "display": "The bat"
             },
             "player": null,
             "chips": [],
@@ -859,9 +1946,134 @@
             "lines": [
               {
                 "text": {
-                  "display": "Nobody is the regular here: nobody has played it."
+                  "display": "No tool stands out either way."
                 },
                 "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His tools, and what each adds"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "contact 56 +9",
+                    "tone": "good"
+                  },
+                  {
+                    "display": "gap 41 −3",
+                    "tone": "neutral"
+                  },
+                  {
+                    "display": "power 39 −13",
+                    "tone": "bad"
+                  },
+                  {
+                    "display": "eye 57 +6",
+                    "tone": "neutral"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Tools 51 on the 0–100 scale · results no sample",
+                  "hint": "On a 0–100 scale against major league peers; 50 is typical"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "His visible tools imply +6 points of wOBA against the league average."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "regular right fielders: typical 62, unusually weak under 42, well under 36."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Glove and running"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Glove 100 on the 0–100 scale at right field, 30% of his estimate."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Visible grade 74 (better than 100% of those listed there)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Running 38 on the 0–100 scale, 5% of his estimate; −3 baserunning runs per 600 PA."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Started 28 games at right fielder this season (248 innings, 0 errors)."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Platoon"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Can't judge a platoon split: the usual split for his hand isn't known in this league. Read from nothing yet."
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "Not enough",
+                    "tone": "unknown"
+                  }
+                ],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Not enough to read a platoon split: 98 plate appearances against left-handers, 251 against right-handers (60 needed against the less-faced hand), and no visible platoon ratings."
+                },
+                "quiet": true,
                 "chips": [],
                 "players": []
               }

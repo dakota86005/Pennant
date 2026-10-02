@@ -89,6 +89,8 @@ export interface MlbGlance {
   title: Cell;
   /** How many things it flags (the sidebar's and the card's count); null when the view could not be read. */
   count: Integer | null;
+  /** What the count counts, in words, for VoiceOver ("2 regulars flagged"); null with no count. */
+  countLabel: Cell | null;
   lines: Cell[];
   open: Target;
 }

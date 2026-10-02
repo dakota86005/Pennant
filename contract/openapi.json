@@ -5422,6 +5422,10 @@
             "$ref": "#/components/schemas/Integer",
             "description": "How many things it flags (the sidebar's and the card's count); null when the view could not be read."
           },
+          "countLabel": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the count counts, in words, for VoiceOver (\"2 regulars flagged\"); null with no count."
+          },
           "lines": {
             "type": "array",
             "items": {

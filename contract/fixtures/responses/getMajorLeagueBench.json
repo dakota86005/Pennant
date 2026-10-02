@@ -147,61 +147,23 @@
         "display": "Backs up second base or shortstop"
       },
       "strength": {
-        "display": "Backed up",
-        "tone": "good"
+        "display": "Nobody",
+        "tone": "bad"
       },
       "text": {
-        "display": "P 1003 is regular quality at shortstop."
+        "display": "No bench player has a visible grade that supports playing second base or shortstop: if a regular there is hurt or rests, the position is covered by somebody out of place."
       },
-      "by": [
-        {
-          "text": {
-            "display": "P 1003 · shortstop: grade 61, better than 75% of those listed there"
-          },
-          "quiet": false,
-          "chips": [
-            {
-              "display": "regular quality",
-              "tone": "good"
-            }
-          ],
-          "players": [
-            {
-              "playerId": 1003,
-              "name": "P 1003",
-              "open": {
-                "kind": "player",
-                "playerId": 1003,
-                "teamId": 1
-              }
-            }
-          ]
+      "by": [],
+      "action": {
+        "text": {
+          "display": "Who could back it up?"
         },
-        {
-          "text": {
-            "display": "P 1001 · second base: grade 45, better than 17% of those listed there"
-          },
-          "quiet": false,
-          "chips": [
-            {
-              "display": "credible backup",
-              "tone": "good"
-            }
-          ],
-          "players": [
-            {
-              "playerId": 1001,
-              "name": "P 1001",
-              "open": {
-                "kind": "player",
-                "playerId": 1001,
-                "teamId": 1
-              }
-            }
-          ]
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:bench_coverage:middle_infield"
         }
-      ],
-      "action": null
+      }
     },
     {
       "key": "center_field",
@@ -213,32 +175,9 @@
         "tone": "good"
       },
       "text": {
-        "display": "P 1002 is regular quality at center field."
+        "display": "P 1005 is regular quality at center field."
       },
       "by": [
-        {
-          "text": {
-            "display": "P 1002 · center field: grade 69, better than 92% of those listed there"
-          },
-          "quiet": false,
-          "chips": [
-            {
-              "display": "regular quality",
-              "tone": "good"
-            }
-          ],
-          "players": [
-            {
-              "playerId": 1002,
-              "name": "P 1002",
-              "open": {
-                "kind": "player",
-                "playerId": 1002,
-                "teamId": 1
-              }
-            }
-          ]
-        },
         {
           "text": {
             "display": "P 1005 · center field: grade 51, better than 50% of those listed there"
@@ -275,22 +214,22 @@
         "tone": "good"
       },
       "text": {
-        "display": "P 1000, P 1003, P 1007, P 1002, P 1005, P 1001, P 1004 are a bat worth sending up."
+        "display": "P 1005, P 1004 are a bat worth sending up."
       },
       "by": [
         {
           "text": {
-            "display": "P 1000 · pinch-hit bat"
+            "display": "P 1005 · pinch-hit bat"
           },
           "quiet": false,
           "chips": [],
           "players": [
             {
-              "playerId": 1000,
-              "name": "P 1000",
+              "playerId": 1005,
+              "name": "P 1005",
               "open": {
                 "kind": "player",
-                "playerId": 1000,
+                "playerId": 1005,
                 "teamId": 1
               }
             }
@@ -298,53 +237,17 @@
         },
         {
           "text": {
-            "display": "P 1003 · pinch-hit bat"
+            "display": "P 1004 · pinch-hit bat"
           },
           "quiet": false,
           "chips": [],
           "players": [
             {
-              "playerId": 1003,
-              "name": "P 1003",
+              "playerId": 1004,
+              "name": "P 1004",
               "open": {
                 "kind": "player",
-                "playerId": 1003,
-                "teamId": 1
-              }
-            }
-          ]
-        },
-        {
-          "text": {
-            "display": "P 1007 · pinch-hit bat"
-          },
-          "quiet": false,
-          "chips": [],
-          "players": [
-            {
-              "playerId": 1007,
-              "name": "P 1007",
-              "open": {
-                "kind": "player",
-                "playerId": 1007,
-                "teamId": 1
-              }
-            }
-          ]
-        },
-        {
-          "text": {
-            "display": "P 1002 · pinch-hit bat"
-          },
-          "quiet": false,
-          "chips": [],
-          "players": [
-            {
-              "playerId": 1002,
-              "name": "P 1002",
-              "open": {
-                "kind": "player",
-                "playerId": 1002,
+                "playerId": 1004,
                 "teamId": 1
               }
             }
@@ -359,86 +262,13 @@
         "display": "A glove to put in late"
       },
       "strength": {
-        "display": "Has someone",
-        "tone": "good"
+        "display": "Nobody",
+        "tone": "bad"
       },
       "text": {
-        "display": "P 1003, P 1008, P 1007, P 1002 are a defensive upgrade at a position."
+        "display": "Nobody on the bench is a clear defensive upgrade at a position."
       },
-      "by": [
-        {
-          "text": {
-            "display": "P 1003 · defensive replacement"
-          },
-          "quiet": false,
-          "chips": [],
-          "players": [
-            {
-              "playerId": 1003,
-              "name": "P 1003",
-              "open": {
-                "kind": "player",
-                "playerId": 1003,
-                "teamId": 1
-              }
-            }
-          ]
-        },
-        {
-          "text": {
-            "display": "P 1008 · defensive replacement"
-          },
-          "quiet": false,
-          "chips": [],
-          "players": [
-            {
-              "playerId": 1008,
-              "name": "P 1008",
-              "open": {
-                "kind": "player",
-                "playerId": 1008,
-                "teamId": 1
-              }
-            }
-          ]
-        },
-        {
-          "text": {
-            "display": "P 1007 · defensive replacement"
-          },
-          "quiet": false,
-          "chips": [],
-          "players": [
-            {
-              "playerId": 1007,
-              "name": "P 1007",
-              "open": {
-                "kind": "player",
-                "playerId": 1007,
-                "teamId": 1
-              }
-            }
-          ]
-        },
-        {
-          "text": {
-            "display": "P 1002 · defensive replacement"
-          },
-          "quiet": false,
-          "chips": [],
-          "players": [
-            {
-              "playerId": 1002,
-              "name": "P 1002",
-              "open": {
-                "kind": "player",
-                "playerId": 1002,
-                "teamId": 1
-              }
-            }
-          ]
-        }
-      ],
+      "by": [],
       "action": null
     },
     {
@@ -526,438 +356,6 @@
     ],
     "rows": [
       {
-        "id": "bench-1000",
-        "cells": {
-          "player": {
-            "display": "P 1000"
-          },
-          "bats": {
-            "display": "L"
-          },
-          "for": {
-            "display": "utility infielder"
-          },
-          "canPlay": {
-            "display": "3B"
-          },
-          "also": {
-            "display": "pinch-hit bat"
-          },
-          "bat": {
-            "display": "66",
-            "hint": "On a 0–100 scale against major league peers; 50 is typical"
-          },
-          "pa": {
-            "display": "124"
-          }
-        },
-        "sort": {
-          "player": "P 1000",
-          "bats": "L",
-          "for": "utility infielder",
-          "canPlay": "3B",
-          "also": "pinch-hit bat",
-          "bat": 66.3,
-          "pa": 124
-        },
-        "player": {
-          "playerId": 1000,
-          "name": "P 1000",
-          "open": {
-            "kind": "player",
-            "playerId": 1000,
-            "teamId": 1
-          }
-        },
-        "detail": [
-          {
-            "title": {
-              "display": "Where he can play"
-            },
-            "player": null,
-            "chips": [],
-            "claims": [],
-            "lines": [
-              {
-                "text": {
-                  "display": "3B: credible backup, better than 21% of those listed there"
-                },
-                "quiet": false,
-                "chips": [
-                  {
-                    "display": "3B",
-                    "tone": "good"
-                  }
-                ],
-                "players": []
-              }
-            ],
-            "collapsed": false
-          }
-        ],
-        "actions": []
-      },
-      {
-        "id": "bench-1003",
-        "cells": {
-          "player": {
-            "display": "P 1003"
-          },
-          "bats": {
-            "display": "L"
-          },
-          "for": {
-            "display": "utility infielder"
-          },
-          "canPlay": {
-            "display": "SS"
-          },
-          "also": {
-            "display": "pinch-hit bat, defensive replacement"
-          },
-          "bat": {
-            "display": "78",
-            "hint": "On a 0–100 scale against major league peers; 50 is typical"
-          },
-          "pa": {
-            "display": "120"
-          }
-        },
-        "sort": {
-          "player": "P 1003",
-          "bats": "L",
-          "for": "utility infielder",
-          "canPlay": "SS",
-          "also": "pinch-hit bat, defensive replacement",
-          "bat": 77.9,
-          "pa": 120
-        },
-        "player": {
-          "playerId": 1003,
-          "name": "P 1003",
-          "open": {
-            "kind": "player",
-            "playerId": 1003,
-            "teamId": 1
-          }
-        },
-        "detail": [
-          {
-            "title": {
-              "display": "Where he can play"
-            },
-            "player": null,
-            "chips": [],
-            "claims": [],
-            "lines": [
-              {
-                "text": {
-                  "display": "SS: regular quality, better than 75% of those listed there"
-                },
-                "quiet": false,
-                "chips": [
-                  {
-                    "display": "SS",
-                    "tone": "good"
-                  }
-                ],
-                "players": []
-              }
-            ],
-            "collapsed": false
-          }
-        ],
-        "actions": []
-      },
-      {
-        "id": "bench-1006",
-        "cells": {
-          "player": {
-            "display": "P 1006"
-          },
-          "bats": {
-            "display": "R"
-          },
-          "for": {
-            "display": "corner bat"
-          },
-          "canPlay": {
-            "display": "1B"
-          },
-          "also": {
-            "display": "Nothing else"
-          },
-          "bat": {
-            "display": "34",
-            "hint": "On a 0–100 scale against major league peers; 50 is typical"
-          },
-          "pa": {
-            "display": "120"
-          }
-        },
-        "sort": {
-          "player": "P 1006",
-          "bats": "R",
-          "for": "corner bat",
-          "canPlay": "1B",
-          "also": null,
-          "bat": 33.7,
-          "pa": 120
-        },
-        "player": {
-          "playerId": 1006,
-          "name": "P 1006",
-          "open": {
-            "kind": "player",
-            "playerId": 1006,
-            "teamId": 1
-          }
-        },
-        "detail": [
-          {
-            "title": {
-              "display": "Where he can play"
-            },
-            "player": null,
-            "chips": [],
-            "claims": [],
-            "lines": [
-              {
-                "text": {
-                  "display": "1B: credible backup, better than 19% of those listed there"
-                },
-                "quiet": false,
-                "chips": [
-                  {
-                    "display": "1B",
-                    "tone": "good"
-                  }
-                ],
-                "players": []
-              }
-            ],
-            "collapsed": false
-          }
-        ],
-        "actions": []
-      },
-      {
-        "id": "bench-1008",
-        "cells": {
-          "player": {
-            "display": "P 1008"
-          },
-          "bats": {
-            "display": "R"
-          },
-          "for": {
-            "display": "outfielder"
-          },
-          "canPlay": {
-            "display": "RF"
-          },
-          "also": {
-            "display": "defensive replacement"
-          },
-          "bat": {
-            "display": "51",
-            "hint": "On a 0–100 scale against major league peers; 50 is typical"
-          },
-          "pa": {
-            "display": "115"
-          }
-        },
-        "sort": {
-          "player": "P 1008",
-          "bats": "R",
-          "for": "outfielder",
-          "canPlay": "RF",
-          "also": "defensive replacement",
-          "bat": 51,
-          "pa": 115
-        },
-        "player": {
-          "playerId": 1008,
-          "name": "P 1008",
-          "open": {
-            "kind": "player",
-            "playerId": 1008,
-            "teamId": 1
-          }
-        },
-        "detail": [
-          {
-            "title": {
-              "display": "Where he can play"
-            },
-            "player": null,
-            "chips": [],
-            "claims": [],
-            "lines": [
-              {
-                "text": {
-                  "display": "RF: regular quality, better than 100% of those listed there"
-                },
-                "quiet": false,
-                "chips": [
-                  {
-                    "display": "RF",
-                    "tone": "good"
-                  }
-                ],
-                "players": []
-              }
-            ],
-            "collapsed": false
-          }
-        ],
-        "actions": []
-      },
-      {
-        "id": "bench-1007",
-        "cells": {
-          "player": {
-            "display": "P 1007"
-          },
-          "bats": {
-            "display": "R"
-          },
-          "for": {
-            "display": "outfielder"
-          },
-          "canPlay": {
-            "display": "LF"
-          },
-          "also": {
-            "display": "pinch-hit bat, defensive replacement"
-          },
-          "bat": {
-            "display": "72",
-            "hint": "On a 0–100 scale against major league peers; 50 is typical"
-          },
-          "pa": {
-            "display": "114"
-          }
-        },
-        "sort": {
-          "player": "P 1007",
-          "bats": "R",
-          "for": "outfielder",
-          "canPlay": "LF",
-          "also": "pinch-hit bat, defensive replacement",
-          "bat": 72.1,
-          "pa": 114
-        },
-        "player": {
-          "playerId": 1007,
-          "name": "P 1007",
-          "open": {
-            "kind": "player",
-            "playerId": 1007,
-            "teamId": 1
-          }
-        },
-        "detail": [
-          {
-            "title": {
-              "display": "Where he can play"
-            },
-            "player": null,
-            "chips": [],
-            "claims": [],
-            "lines": [
-              {
-                "text": {
-                  "display": "LF: regular quality, better than 85% of those listed there"
-                },
-                "quiet": false,
-                "chips": [
-                  {
-                    "display": "LF",
-                    "tone": "good"
-                  }
-                ],
-                "players": []
-              }
-            ],
-            "collapsed": false
-          }
-        ],
-        "actions": []
-      },
-      {
-        "id": "bench-1002",
-        "cells": {
-          "player": {
-            "display": "P 1002"
-          },
-          "bats": {
-            "display": "R"
-          },
-          "for": {
-            "display": "outfielder"
-          },
-          "canPlay": {
-            "display": "CF"
-          },
-          "also": {
-            "display": "pinch-hit bat, defensive replacement"
-          },
-          "bat": {
-            "display": "84",
-            "hint": "On a 0–100 scale against major league peers; 50 is typical"
-          },
-          "pa": {
-            "display": "113"
-          }
-        },
-        "sort": {
-          "player": "P 1002",
-          "bats": "R",
-          "for": "outfielder",
-          "canPlay": "CF",
-          "also": "pinch-hit bat, defensive replacement",
-          "bat": 83.7,
-          "pa": 113
-        },
-        "player": {
-          "playerId": 1002,
-          "name": "P 1002",
-          "open": {
-            "kind": "player",
-            "playerId": 1002,
-            "teamId": 1
-          }
-        },
-        "detail": [
-          {
-            "title": {
-              "display": "Where he can play"
-            },
-            "player": null,
-            "chips": [],
-            "claims": [],
-            "lines": [
-              {
-                "text": {
-                  "display": "CF: regular quality, better than 92% of those listed there"
-                },
-                "quiet": false,
-                "chips": [
-                  {
-                    "display": "CF",
-                    "tone": "good"
-                  }
-                ],
-                "players": []
-              }
-            ],
-            "collapsed": false
-          }
-        ],
-        "actions": []
-      },
-      {
         "id": "bench-1005",
         "cells": {
           "player": {
@@ -967,7 +365,7 @@
             "display": "S"
           },
           "for": {
-            "display": "outfielder"
+            "display": "outfielder · shares CF"
           },
           "canPlay": {
             "display": "CF"
@@ -1030,78 +428,6 @@
         "actions": []
       },
       {
-        "id": "bench-1001",
-        "cells": {
-          "player": {
-            "display": "P 1001"
-          },
-          "bats": {
-            "display": "L"
-          },
-          "for": {
-            "display": "utility infielder"
-          },
-          "canPlay": {
-            "display": "2B"
-          },
-          "also": {
-            "display": "pinch-hit bat"
-          },
-          "bat": {
-            "display": "74",
-            "hint": "On a 0–100 scale against major league peers; 50 is typical"
-          },
-          "pa": {
-            "display": "99"
-          }
-        },
-        "sort": {
-          "player": "P 1001",
-          "bats": "L",
-          "for": "utility infielder",
-          "canPlay": "2B",
-          "also": "pinch-hit bat",
-          "bat": 74,
-          "pa": 99
-        },
-        "player": {
-          "playerId": 1001,
-          "name": "P 1001",
-          "open": {
-            "kind": "player",
-            "playerId": 1001,
-            "teamId": 1
-          }
-        },
-        "detail": [
-          {
-            "title": {
-              "display": "Where he can play"
-            },
-            "player": null,
-            "chips": [],
-            "claims": [],
-            "lines": [
-              {
-                "text": {
-                  "display": "2B: credible backup, better than 17% of those listed there"
-                },
-                "quiet": false,
-                "chips": [
-                  {
-                    "display": "2B",
-                    "tone": "good"
-                  }
-                ],
-                "players": []
-              }
-            ],
-            "collapsed": false
-          }
-        ],
-        "actions": []
-      },
-      {
         "id": "bench-1004",
         "cells": {
           "player": {
@@ -1111,7 +437,7 @@
             "display": "L"
           },
           "for": {
-            "display": "utility infielder"
+            "display": "utility infielder · shares 3B"
           },
           "canPlay": {
             "display": "3B (emergency)"
@@ -1466,7 +792,7 @@
   },
   "findings": [],
   "hands": {
-    "display": "Bench hands: 5 left, 7 right, 1 switch."
+    "display": "Bench hands: 2 left, 3 right, 1 switch."
   },
   "empty": null
 }

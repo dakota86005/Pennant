@@ -298,6 +298,14 @@
           },
           {
             "text": {
+              "display": "Started 4 games at catcher this season (32 innings, 0 errors)."
+            },
+            "quiet": true,
+            "chips": [],
+            "players": []
+          },
+          {
+            "text": {
               "display": "His visible tools imply -29 points of wOBA against the league average."
             },
             "quiet": true,
@@ -390,7 +398,10 @@
     "groups": [],
     "notConsidered": [
       {
-        "display": "Not considered (12): Active players whose visible evidence does not support the role"
+        "display": "Not considered (7): Regulars at other positions (moving one opens a new hole)"
+      },
+      {
+        "display": "Not considered (5): Active players whose visible evidence does not support the role"
       }
     ],
     "empty": {
