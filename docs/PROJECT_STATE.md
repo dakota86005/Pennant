@@ -80,11 +80,23 @@ material implementation state changes.
   source. Not established, so not used: what the file holds under "real", "none"
   or the scouts'-view mode.
 - Builds every league-wide yardstick and every per-save fit that reads ratings on
-  OSA's view when the export carries it (D-068, the owner's direction), keeps
-  OSA's history in its own snapshots, records each fit's ratings source and
-  refits on a change of source. Known gaps: a carried-over rating history
-  (D-064) brings no OSA snapshots; a forced refit on a new source that fails its
-  gate leaves the earlier source's adopted fit in force (named by its record).
+  OSA's view when the export carries it (D-068, the owner's direction), on our
+  scouts' reports when it carries only those (the owner's decision, 2026-10-02),
+  and on the main tables only with no usable file; keeps OSA's history in its own
+  snapshots (carried over and undone with the rest, D-064), records each fit's
+  ratings source and refits on a change of source. A fit is served only on
+  today's ratings source: a refit on a new source that fails its gate serves the
+  labelled provisional prior (the owner's decision) and is not rerun until the
+  export or the source changes. **The first launch after this upgrade refits every
+  component that reads ratings once** (the MLB tools fit and standards, the stakes
+  lines, Player Value's ratings fit), because fits made before D-068 have no
+  recorded source; until that refit passes, a fit without a recorded source is set
+  aside and its prior serves, labelled.
+- With no row of our scouts' readable, true ratings in the main tables and OSA's
+  rows in the file, judgments read OSA's view, said so (D-067, review L6).
+- The major league's served views (N8) carry the per-player OSA mark in their
+  hints and details. Open for the farm (N10): its Development tracking must show
+  `ratingSourceSwitches`, and its lines basis the stakes lines' `setAside`.
 - After an import, the snapshots run in a worker and both refits at the same
   time (a post-import hook list later milestones register into); the
   destination-fit league populations are cached once per import.

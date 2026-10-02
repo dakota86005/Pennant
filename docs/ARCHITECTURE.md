@@ -320,11 +320,13 @@ Player Value, and the pure ratings modules take its types only.
   organisation) from this export, with rows for the club the save marks as ours,
   those rows are the evidence: every rating below is read from them
   (`ourScoutsRatings`, `ratingFrom`), whatever the main ratings tables carry
-  (OSA's view, true ratings or the scouts' view), and OSA's and other clubs' rows
-  are never read. A player our scouts haven't rated is read from his OSA row
+  (OSA's view, true ratings or the scouts' view); other clubs' rows are never
+  read. A player our scouts haven't rated is read from his OSA row
   in the same file and said so (`UNRATED_BY_OUR_SCOUTS = 'osa'`, the owner's
   decision), never from the main tables; each snapshot row keeps its source
-  (`src`), and a change of source is a switch, never development. Otherwise the main
+  (`src`), and a change of source is a switch, never development. With no row of
+  ours, true ratings in the main tables and OSA's rows in the file, OSA's view is the
+  evidence, said so for the whole export and stamped `osa` (review L6). Otherwise the main
   tables are the evidence, labelled with their kind (D-061). The rating snapshot
   reads the same rows and is stamped `scouted-complete`, a kind of its own; the
   player card, roster grid, pitching staff and draft board read the same grades
@@ -333,12 +335,19 @@ Player Value, and the pure ratings modules take its types only.
 - **League yardsticks and fits (D-068):** every league-wide population and every
   per-save fit that reads ratings is built inside `inPopulationView` and reads OSA's
   view (`LEAGUE_POPULATION_SOURCE = 'osa'`: the file's `scouting_team_id` 0 rows),
-  or the main tables when the export carries none; OSA's history is kept in
-  `save_population_snapshots`. A judgment of a player stays on the evidence above
-  (our scouts', OSA filling in per player, said so); a league comparison's basis
-  shows both readings where they differ. Each fit's record names its
+  else our scouts' reports when the file carries them (the owner's decision), and
+  the main tables only with no usable file; OSA's history is kept in
+  `save_population_snapshots` (carried with a carry-over, D-064). A judgment of a
+  player stays on the evidence above (our scouts', OSA filling in per player, said
+  so); a league comparison's basis shows both readings where they differ, only when
+  the yardstick is OSA's file rows (`bothReadingsApply`). Each fit's record names its
   `ratingSource`, and a change of source refits it and hides fits of the other
-  source from its predecessor lookups (`withRatingSource`).
+  source from its predecessor lookups (`withRatingSource`). A fit is served only on
+  today's source (`adoptedCalibrationOnSource`; OSA in the main tables and in the
+  file are one): after a failed refit on a new source the labelled prior serves,
+  and the attempt is recorded so it isn't rerun until the export or source changes.
+  The adapter keeps its prepared statements, the file's columns and the rating
+  sources per served import, and names the columns it reads (never `SELECT *`).
 - **Approved:** the exported tool ratings (`*_ratings_overall_*` current,
   `*_ratings_talent_*` potential), stamina and pitch grades, and revealed
   fielding-position grades (`gloves.ts`: a current grade above zero is the only
