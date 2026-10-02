@@ -116,7 +116,7 @@ public struct DeskItemRow: View {
                     .buttonStyle(compact ? AnyButtonStyle(.plain) : AnyButtonStyle(.bordered))
                     .controlSize(.small)
                     .help(Text("Open"))
-                    .accessibilityIdentifier("item.open")
+                    .accessibilityIdentifier("itemOpen")
                 }
             }
         }

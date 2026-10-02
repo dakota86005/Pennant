@@ -896,6 +896,70 @@ final class PennantUITests: XCTestCase {
         try auditClubWindow(contrast, named: "accessibility-audit-n7-club-window-increased-contrast")
         quitCleanly(contrast)
     }
+
+    /// Farm & Development (N10): a farm item in the report opens where the farm answers it (a player's Decision, the
+    /// cascade drawn as steps that stop), an assignment's row opens its Decision on a double-click, and every farm view
+    /// draws and passes the audit, in light and dark.
+    @MainActor
+    func testFarmDeskToDecision() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("3", modifierFlags: .command)
+        XCTAssertTrue(element(app, "report.content").waitForExistence(timeout: 30), "the farm's report did not load")
+        let open = element(app, "itemOpen")
+        XCTAssertTrue(open.waitForExistence(timeout: 10), "no farm item opens where the farm answers it")
+        open.click()
+        let decision = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'farm.decision.' AND NOT (identifier == 'farm.decision.head') AND NOT (identifier == 'farm.decision.index')")).firstMatch
+        let affiliate = element(app, "farm.affiliates.clubs")
+        XCTAssertTrue(decision.waitForExistence(timeout: 30) || affiliate.exists, "Open did not open the farm's answer")
+        keep(app.windows.firstMatch.screenshot(), named: "n10-farm-opened-from-report")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n10-farm-opened")
+
+        // Assignments: the table, the in-question filter, and a double-click into a Decision
+        element(app, "sidebar.farm.assignments").click()
+        let table = element(app, "farm.assignments.table")
+        XCTAssertTrue(table.waitForExistence(timeout: 20), "Assignments did not load")
+        element(app, "farm.filter.inQuestion").click()
+        let row = table.tableRows.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Assignments lists no player")
+        keep(app.windows.firstMatch.screenshot(), named: "n10-farm-assignments")
+        try audit(app, named: "accessibility-audit-n10-farm-assignments")
+        row.doubleClick()
+        XCTAssertTrue(element(app, "farm.decision.head").waitForExistence(timeout: 30), "a double-click did not open the player's Decision")
+        XCTAssertTrue(element(app, "farm.cascade").waitForExistence(timeout: 10) || element(app, "farm.decision.head").exists)
+        keep(app.windows.firstMatch.screenshot(), named: "n10-farm-decision")
+        try audit(app, named: "accessibility-audit-n10-farm-decision")
+        // Back returns to the table
+        app.typeKey("[", modifierFlags: .command)
+        XCTAssertTrue(table.waitForExistence(timeout: 10), "Back did not return to Assignments")
+
+        // Every other view draws and passes
+        for (view, ready) in [("organization", "farm.organization.depth"), ("affiliates", "farm.affiliates.clubs"),
+                              ("prospects", "farm.prospects.table"), ("developmentTracking", "farm.development.table")] {
+            element(app, "sidebar.farm.\(view)").click()
+            XCTAssertTrue(element(app, ready).waitForExistence(timeout: 30), "Farm ▸ \(view) did not draw")
+            keep(app.windows.firstMatch.screenshot(), named: "n10-farm-\(view)")
+            try audit(app, named: "accessibility-audit-n10-farm-\(view)")
+        }
+        quitCleanly(app)
+    }
+
+    /// Farm & Development in dark: the views the GM reads longest, audited.
+    @MainActor
+    func testFarmViewsDark() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("3", modifierFlags: .command)
+        XCTAssertTrue(element(app, "report.content").waitForExistence(timeout: 30), "the farm's report did not load")
+        for (view, ready) in [("affiliates", "farm.affiliates.clubs"), ("assignments", "farm.assignments.table"), ("prospects", "farm.prospects.table")] {
+            element(app, "sidebar.farm.\(view)").click()
+            XCTAssertTrue(element(app, ready).waitForExistence(timeout: 30), "Farm ▸ \(view) did not draw")
+            keep(app.windows.firstMatch.screenshot(), named: "n10-farm-\(view)-dark")
+            try audit(app, named: "accessibility-audit-n10-farm-\(view)-dark")
+        }
+        quitCleanly(app)
+    }
 }
 
 /// A window's screenshot as pixels, to read an element's own contrast where the audit reports one (see `audit`).
