@@ -7,7 +7,7 @@ import { freshnessCue, getDataStatus } from './dataStatus.js';
 import { playerValue, type PlayerValuation } from './playerValue.js';
 import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
-import { loadScoutedAbilities, scoutedRatingRow } from './scoutedEvidence.js';
+import { loadScoutedAbilities, ratingFillOf, scoutedRatingRow } from './scoutedEvidence.js';
 import { twoWayBatters, twoWayPitchers } from './twoway.js';
 
 export const playerRoutes = Router();
@@ -434,6 +434,8 @@ playerRoutes.get('/player/:id', (req, res) => {
       missing: { now: [...ability.missing.current], ceiling: [...ability.missing.potential] },
     },
     isPitcher,
+    // OSA's view filling in for our scouts (D-067): every grade below is OSA's, and the card says so; null otherwise
+    ratingsFill: ratingFillOf(id),
     battingRatings: batting
       ? {
           contact: [batting.batting_ratings_overall_contact, batting.batting_ratings_talent_contact],

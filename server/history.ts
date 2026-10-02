@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { isModeSwitch, ourScoutsRecord, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
-import { evidenceRatingMode, ratingFrom } from './scoutedEvidence.js';
+import { evidenceRatingMode, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
@@ -80,6 +80,8 @@ export const SNAPSHOT_RUNNING_COLUMNS = ['brn', 'stl'] as const;
   for (const column of [...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS]) {
     if (!present.has(column)) historyDb.exec(`ALTER TABLE rating_snapshots ADD COLUMN ${column} REAL`);
   }
+  // Where each player's ratings came from (D-067): our scouts' full reports or OSA's view filling in; null before it was kept
+  if (!present.has('src')) historyDb.exec(`ALTER TABLE rating_snapshots ADD COLUMN src TEXT`);
 }
 
 /*
@@ -122,7 +124,7 @@ export const SNAPSHOT_DATA_COLUMNS = [
   'game_date', 'player_id', 'name', 'team_id', 'org_id', 'level', 'position', 'age',
   'con', 'gap', 'pow', 'eye', 'avk', 'spd', 'conP', 'gapP', 'powP', 'eyeP', 'avkP',
   'stu', 'mov', 'ctl', 'stuP', 'movP', 'ctlP', 'cur', 'pot',
-  ...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS,
+  ...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS, 'src',
 ] as const;
 historyDb.exec(`
   CREATE TABLE IF NOT EXISTS save_rating_snapshots (
@@ -141,6 +143,7 @@ historyDb.exec(`
     stuP REAL, movP REAL, ctlP REAL,
     cur REAL, pot REAL,
     ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => `${c} REAL`).join(', ')},
+    src TEXT,
     PRIMARY KEY (save_key, game_date, player_id)
   );
   CREATE INDEX IF NOT EXISTS idx_save_snap_player ON save_rating_snapshots (save_key, player_id, game_date);
@@ -235,6 +238,11 @@ historyDb.exec(`
   // A data folder that ran an earlier build of this branch has history_saves without the later columns: added, nullable
   const present = new Set((historyDb.prepare(`PRAGMA table_info(history_saves)`).all() as Array<{ name: string }>).map((c) => c.name));
   for (const column of ['replaces', 'refused_at']) if (!present.has(column)) historyDb.exec(`ALTER TABLE history_saves ADD COLUMN ${column} TEXT`);
+}
+{
+  // A save's snapshots kept before D-067 have no per-player source: added, null (never evidence of a source switch)
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(save_rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
+  if (!present.has('src')) historyDb.exec(`ALTER TABLE save_rating_snapshots ADD COLUMN src TEXT`);
 }
 
 /**
@@ -347,6 +355,30 @@ export function modeSwitches(modes: Map<string, RatingMode> = snapshotModes()): 
   return out;
 }
 
+/** A player's ratings source in the GM's words (D-067). */
+const SOURCE_NAMES: Record<string, string> = { our_scouts: 'our scouts\' full reports', osa: 'OSA\'s view' };
+
+/** A recorded per-player source (D-067), or null when the row kept none (never evidence of a switch). */
+const recordedSource = (src: unknown): 'our_scouts' | 'osa' | null => (src === 'our_scouts' || src === 'osa' ? src : null);
+
+/** One player's change of ratings source between two of his snapshots, in a sentence: a switch, never development. */
+export function sourceSwitchText(from: 'our_scouts' | 'osa', to: 'our_scouts' | 'osa'): string {
+  return `His ratings changed source, from ${SOURCE_NAMES[from]} to ${SOURCE_NAMES[to]}: the change is a switch, not development.`;
+}
+
+/**
+ * Whether a snapshot row's recorded source differs from this player's source now (D-067): then the row is another
+ * source's view of him, left out of his trend and observed history as a snapshot in another kind is (D-061). Only while
+ * our scouts' full reports are the evidence (otherwise those snapshots are another kind altogether); a row with no
+ * recorded source is never evidence of a switch.
+ */
+export function otherSource(playerId: number, src: unknown): 'our_scouts' | 'osa' | null {
+  const recorded = recordedSource(src);
+  if (!recorded || evidenceRatingMode() !== 'scouted-complete') return null;
+  const now = ratingsFromOf(playerId);
+  return now !== 'export' && now !== recorded ? recorded : null;
+}
+
 /**
  * The configured save's name. Rating history is no longer filed under it (D-064: `currentHistoryKey()`); the watchlist and
  * player notes still are, and the name-keyed rating history written before D-064 is looked up by it.
@@ -420,8 +452,8 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
      (${keyColumn}, game_date, player_id, name, team_id, org_id, level, position, age,
       con, gap, pow, eye, avk, spd, conP, gapP, powP, eyeP, avkP,
       stu, mov, ctl, stuP, movP, ctlP, cur, pot,
-      ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].join(', ')})
-     VALUES (${new Array(28 + SNAPSHOT_SPLIT_COLUMNS.length + SNAPSHOT_RUNNING_COLUMNS.length).fill('?').join(', ')})`
+      ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].join(', ')}, src)
+     VALUES (${new Array(29 + SNAPSHOT_SPLIT_COLUMNS.length + SNAPSHOT_RUNNING_COLUMNS.length).fill('?').join(', ')})`
   );
   const insert = insertInto('save_rating_snapshots', 'save_key');
   // The same snapshot under the save's name, exactly as the earlier (Electron) build writes it, so a rolled-back build
@@ -454,6 +486,8 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
         r.con, r.gap, r.pow, r.eye, r.avk, r.spd, r.conP, r.gapP, r.powP, r.eyeP, r.avkP,
         r.stu, r.mov, r.ctl, r.stuP, r.movP, r.ctlP, cur, pot,
         ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null),
+        // Where his ratings came from (D-067): kept per player, so a change of source is never read as development
+        ourScouts ? ratingsFromOf(Number(r.player_id)) : null,
       ];
       insert.run(saveKey, ...values);
       if (saveName !== null) insertByName.run(saveName, ...values);
@@ -587,6 +621,8 @@ export interface PlayerDevelopmentTrend {
 interface DevelopmentTrendRow {
   player_id: number;
   game_date: string;
+  /** Where his ratings came from in this snapshot (D-067); null before it was kept. */
+  src?: string | null;
 
   cur:
     number | null;
@@ -640,6 +676,7 @@ function developmentTrendByPlayerForScope(
               `SELECT
                  player_id,
                  game_date,
+                 src,
                  cur,
                  pot
                FROM save_rating_snapshots
@@ -653,6 +690,7 @@ function developmentTrendByPlayerForScope(
               `SELECT
                  player_id,
                  game_date,
+                 src,
                  cur,
                  pot
                FROM save_rating_snapshots
@@ -677,8 +715,15 @@ function developmentTrendByPlayerForScope(
       DevelopmentTrendRow[]
     >();
 
+  // A row of his from another source than today's is a switch, never development (D-067): left out, and said
+  const switchedFrom = new Map<number, 'our_scouts' | 'osa'>();
   for (const row of rows) {
     if (otherMode.has(row.game_date)) continue;
+    const other = otherSource(row.player_id, row.src);
+    if (other) {
+      switchedFrom.set(row.player_id, other);
+      continue;
+    }
     const existing =
       byPlayer.get(
         row.player_id
@@ -838,6 +883,8 @@ function developmentTrendByPlayerForScope(
       if (unknownReason) reasons.push(unknownReason);
     }
     if (historyLeftOut) reasons.push(historyLeftOut);
+    const switched = switchedFrom.get(playerId);
+    if (switched) reasons.push(`${sourceSwitchText(switched, switched === 'osa' ? 'our_scouts' : 'osa')} Snapshots from ${SOURCE_NAMES[switched]} are not compared.`);
 
     out.set(
       playerId,
@@ -932,6 +979,7 @@ export interface PeerDevelopmentTrend {
 interface PeerSnapshotRow {
   player_id: number;
   game_date: string;
+  src?: string | null;
   age: number | null;
   level: number | null;
   position: number | null;
@@ -1069,6 +1117,7 @@ function peerDevelopmentTrendByPlayerForScope(
               `SELECT
                  player_id,
                  game_date,
+                 src,
                  age,
                  level,
                  position,
@@ -1084,6 +1133,7 @@ function peerDevelopmentTrendByPlayerForScope(
               `SELECT
                  player_id,
                  game_date,
+                 src,
                  age,
                  level,
                  position,
@@ -1108,7 +1158,7 @@ function peerDevelopmentTrendByPlayerForScope(
     >();
 
   for (const row of rows) {
-    if (otherMode.has(row.game_date)) continue;
+    if (otherMode.has(row.game_date) || otherSource(row.player_id, row.src)) continue;
     const group =
       byPlayer.get(
         row.player_id
@@ -1559,7 +1609,8 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
            spd,
            stu,
            mov,
-           ctl
+           ctl,
+           src
          FROM save_rating_snapshots
          WHERE save_key = ?
            AND org_id = ?`
@@ -1592,7 +1643,14 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
   // Snapshots in another known kind of ratings than today's export are a switch, never movement (D-061): left out here
   // as in every trend, so the Development page's changes never read a switch; the switches themselves are served below
   const { excluded: otherMode } = modeFilter();
-  const rows = allRows.filter((row) => !otherMode.has(row.game_date));
+  // And a player's rows from another source than his today's (D-067): a switch, never movement, served below
+  const sourceSwitches = new Map<number, string>();
+  const rows = allRows.filter((row) => {
+    if (otherMode.has(row.game_date)) return false;
+    const other = otherSource(row.player_id, (row as { src?: unknown }).src);
+    if (other) sourceSwitches.set(row.player_id, sourceSwitchText(other, other === 'osa' ? 'our_scouts' : 'osa'));
+    return !other;
+  });
 
   rows.sort(
     (a, b) =>
@@ -1663,6 +1721,9 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
 
     ratingModeSwitches: modeSwitches(),
 
+    // Players whose ratings changed source (our scouts' full reports, OSA's view): their other rows are left out (D-067)
+    ratingSourceSwitches: [...sourceSwitches].map(([playerId, text]) => ({ playerId, text })),
+
     // Whether any of this save's rating history is not used or started fresh, in a sentence, with its basis (D-064)
     history: historyNote(),
   });
@@ -1700,7 +1761,7 @@ historyRoutes.get('/development/:orgId', (req, res) => {
               a.pow AS pow_a, b.pow AS pow_b, a.eye AS eye_a, b.eye AS eye_b,
               a.avk AS avk_a, b.avk AS avk_b, a.spd AS spd_a, b.spd AS spd_b,
               a.stu AS stu_a, b.stu AS stu_b, a.mov AS mov_a, b.mov AS mov_b,
-              a.ctl AS ctl_a, b.ctl AS ctl_b
+              a.ctl AS ctl_a, b.ctl AS ctl_b, a.src AS src_a, b.src AS src_b
        FROM save_rating_snapshots a
        JOIN save_rating_snapshots b
          ON b.save_key = a.save_key AND b.player_id = a.player_id AND b.game_date = ?
@@ -1708,7 +1769,18 @@ historyRoutes.get('/development/:orgId', (req, res) => {
     )
     .all(to, saveKey, from, orgId) as Array<Record<string, number | string | null>>;
 
+  // A player whose ratings came from another source at each end is a source switch, stated, never a change (D-067)
+  const sourceSwitches: Array<{ playerId: number; name: unknown; text: string }> = [];
   const changes = rows
+    .filter((r) => {
+      const a = recordedSource(r.src_a);
+      const b = recordedSource(r.src_b);
+      if (a && b && a !== b) {
+        sourceSwitches.push({ playerId: Number(r.player_id), name: r.name, text: sourceSwitchText(a, b) });
+        return false;
+      }
+      return true;
+    })
     .map((r) => {
       const details: Array<{ rating: string; from: number; to: number }> = [];
       const pairs: Array<[string, string, string]> = [
@@ -1739,7 +1811,7 @@ historyRoutes.get('/development/:orgId', (req, res) => {
     .filter((c) => c.details.length > 0)
     .sort((a, b) => Math.abs(b.curDelta) + Math.abs(b.potDelta) - (Math.abs(a.curDelta) + Math.abs(a.potDelta)));
 
-  res.json({ snapshots: dates.length, dates, from, to, changes, history });
+  res.json({ snapshots: dates.length, dates, from, to, changes, ratingSourceSwitches: sourceSwitches, history });
 });
 
 // ── Watchlist ───────────────────────────────────────────────────────────

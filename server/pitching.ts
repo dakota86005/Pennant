@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { ratingFrom } from './scoutedEvidence.js';
+import { ratingFillOf, ratingFrom } from './scoutedEvidence.js';
 import { countsAsPitcherSql } from './twoway.js';
 import { healthOf, type Health } from './health.js';
 import { computePitching, leagueBaseline } from './stats.js';
@@ -228,6 +228,8 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
       control: p.control,
       movement: p.movement,
       velocity: p.velocity,
+      // OSA's view filling in for our scouts (D-067): a quiet mark and its sentence for the grades; null otherwise
+      ratingsFill: ratingFillOf(p.player_id),
       lastOuting: last ? { date: last.date, pitches: last.pitches, outs: last.outs } : null,
       daysRest: last && todayKey !== null ? daysBetween(todayKey, last.dateKey) : null,
       stats,

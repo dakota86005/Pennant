@@ -8,6 +8,7 @@
  * status or no season, which no later read would change. Any other failure is "couldn't be read this time", with the
  * raw error in the log. Neither is ever read as all clear.
  */
+import { ratingFillOf } from './scoutedEvidence.js';
 import { readClubReport } from './clubReport.js';
 import { computeContracts } from './contracts.js';
 import type { DeptId } from './contract/presentation.js';
@@ -189,7 +190,8 @@ export function buildTrail(request: TrailRequest): ClaimTrail | null {
   if (!packet) return null;
   const { build, departments } = contextFor(request.orgId, request.importStamp, request.reportStamp);
   const ctx: DepartmentContext = { build, department: departments.find((d) => d.id === 'majorLeague')!, office: departmentOffice('majorLeague') };
-  return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null);
+  // A player whose grades are OSA's view filling in for our scouts says so in his basis (D-067)
+  return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null, (id) => ratingFillOf(id)?.hint ?? null);
 }
 
 /** What one club report is asked for (N7, D-059). */

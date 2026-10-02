@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
-import { historyDb, modeFilter, snapshotModes, stampSnapshotMode } from '../server/history.js';
+import { developmentTrendByPlayer, historyDb, modeFilter, snapshotModes, stampSnapshotMode } from '../server/history.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { takeImportSnapshots } from '../server/importSnapshots.js';
 import { indexesFor } from '../server/importWorker.js';
@@ -15,7 +15,10 @@ import {
   ourScoutsRatings,
   ratingSource,
   scoutedGloves,
+  loadScoutedObservations,
+  ratingFillOf,
   scoutedRatingRow,
+  summarizeEvidence,
   UNRATED_BY_OUR_SCOUTS,
 } from '../server/scoutedEvidence.js';
 import { IDS } from './fixture';
@@ -33,8 +36,10 @@ const OSA = 0;
 const THEIRS = IDS.otherMlbTeam;
 /** A hitter every source rates. */
 const RATED = IDS.optioned;
-/** A hitter OSA and another club rate, and our scouts don't. */
+/** A hitter OSA and another club rate, and our scouts don't: read from OSA's view, said so. */
 const UNRATED = IDS.starter;
+/** A hitter only another club rates: neither our scouts nor OSA, so unknown, whatever the main tables hold. */
+const NOBODY = IDS.injured;
 const OUR_GRADE = 75;
 const OSA_GRADE = 25;
 const THEIR_GRADE = 65;
@@ -102,6 +107,7 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
     scoutRow(RATED, THEIRS, THEIR_GRADE);
     scoutRow(UNRATED, OSA, OSA_GRADE);
     scoutRow(UNRATED, THEIRS, THEIR_GRADE);
+    scoutRow(NOBODY, THEIRS, THEIR_GRADE);
     clearFieldingPopulationCache();
   });
   afterEach(() => setImport('osa'));
@@ -126,19 +132,35 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
       expect(ratingSource()).toMatchObject({ mode: 'scouted-complete', short: 'Your scouts\' view' });
     });
 
-  it('leaves a player our scouts haven\'t rated unknown: never OSA\'s view, another club\'s or the main table\'s', () => {
-    expect(UNRATED_BY_OUR_SCOUTS).toBe('unknown');
-    const mainHas = db.prepare('SELECT batting_ratings_overall_contact AS c FROM players_batting WHERE player_id = ?').get(UNRATED) as { c: number };
-    expect(mainHas.c).toBeGreaterThan(0);
-    for (const mode of ['osa', 'real'] as const) {
+  it('reads a player our scouts haven\'t rated from OSA\'s row in the file, and says so for him (the owner\'s decision)', () => {
+    expect(UNRATED_BY_OUR_SCOUTS).toBe('osa');
+    for (const mode of ['osa', 'real', 'scouted'] as const) {
       setImport(mode);
       const ability = loadScoutedAbilities([UNRATED]).for(UNRATED);
+      expect(ability.currentTools.contact).toBe(OSA_GRADE);
+      expect(ability.ratingsFrom).toBe('osa');
+      expect(summarizeEvidence(ability)).toMatchObject({ ratingsFrom: 'osa', ratingsFromText: 'OSA\'s view: our scouts haven\'t rated him.' });
+      expect(loadScoutedHitterProfiles([UNRATED]).get(UNRATED)?.tools.contact).toBe(OSA_GRADE);
+      expect(loadScoutedGlovesAtPosition([UNRATED]).get(UNRATED)?.current).toBe(OSA_GRADE);
+      expect(ratingFillOf(UNRATED)).toEqual({ mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' });
+      // Our own scouts' man is ours, and says nothing more
+      expect(loadScoutedAbilities([RATED]).for(RATED).ratingsFrom).toBe('our_scouts');
+      expect(ratingFillOf(RATED)).toBeNull();
+    }
+  });
+
+  it('never fills from true ratings or another club: with no OSA row he is unknown, even in a "real ratings" export', () => {
+    const mainHas = db.prepare('SELECT batting_ratings_overall_contact AS c FROM players_batting WHERE player_id = ?').get(NOBODY) as { c: number };
+    expect(mainHas.c).toBeGreaterThan(0);
+    for (const mode of ['real', 'osa'] as const) {
+      setImport(mode);
+      const ability = loadScoutedAbilities([NOBODY]).for(NOBODY);
       expect(ability.status).toBe('unknown');
-      expect(ability.current).toBeNull();
       expect(ability.currentTools.contact ?? null).toBeNull();
-      expect(loadScoutedHitterProfiles([UNRATED]).has(UNRATED)).toBe(false);
-      expect(loadScoutedGlovesAtPosition([UNRATED]).has(UNRATED)).toBe(false);
-      expect(scoutedGloves(UNRATED)).toBeNull();
+      expect(loadScoutedHitterProfiles([NOBODY]).has(NOBODY)).toBe(false);
+      expect(loadScoutedGlovesAtPosition([NOBODY]).has(NOBODY)).toBe(false);
+      expect(scoutedGloves(NOBODY)).toBeNull();
+      expect(scoutedRatingRow('batting', NOBODY)!.batting_ratings_overall_contact).toBeNull();
     }
   });
 
@@ -183,19 +205,26 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
     const row = scoutedRatingRow('batting', RATED)!;
     expect(row.batting_ratings_overall_contact).toBe(OUR_GRADE);
     expect(row.player_id).toBe(RATED);
-    // A player our scouts haven't rated: his grades are unknown on the card too, never the main table's
-    expect(scoutedRatingRow('batting', UNRATED)!.batting_ratings_overall_contact).toBeNull();
+    // A player our scouts haven't rated: OSA's grades on the card, and the card says so
+    expect(scoutedRatingRow('batting', UNRATED)!.batting_ratings_overall_contact).toBe(OSA_GRADE);
     const card = await request(`/api/player/${RATED}`);
     expect(card.battingRatings.contact[0]).toBe(OUR_GRADE);
-    // And the roster's grades column, for both men
+    expect(card.ratingsFill).toBeNull();
+    const filledCard = await request(`/api/player/${UNRATED}`);
+    expect(filledCard.battingRatings.contact[0]).toBe(OSA_GRADE);
+    expect(filledCard.ratingsFill).toEqual({ mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' });
+    // And the roster's grades column, with the quiet mark on the filled man
     const teamOf = (id: number) => (db.prepare('SELECT team_id FROM players WHERE player_id = ?').get(id) as { team_id: number }).team_id;
-    for (const [id, expected] of [[RATED, OUR_GRADE], [UNRATED, null]] as const) {
+    let seen = 0;
+    for (const [id, expected, mark] of [[RATED, OUR_GRADE, null], [UNRATED, OSA_GRADE, 'OSA'], [NOBODY, null, null]] as const) {
       const roster = await request(`/api/roster/${teamOf(id)}`);
       const man = roster.players.find((p: { player_id: number }) => p.player_id === id);
-      // He may not be on a served roster list (the fixture's optioned man is); one who is shows our scouts' grade or none
-      if (id === RATED) expect(man).toBeDefined();
-      if (man) expect(man.ratings.contact ?? null).toBe(expected);
+      if (!man) continue;
+      seen += 1;
+      expect(man.ratings.contact ?? null).toBe(expected);
+      expect(man.ratingsFill?.mark ?? null).toBe(mark);
     }
+    expect(seen).toBeGreaterThanOrEqual(2);
   });
 
   it('stamps a snapshot read from our scouts\' reports as their own kind, and never compares it with another kind', async () => {
@@ -210,9 +239,12 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
       const kept = historyDb.prepare('SELECT con FROM save_rating_snapshots WHERE save_key = ? AND game_date = ? AND player_id = ?')
         .get(currentHistoryKey(), date, RATED) as { con: number | null };
       expect(kept.con).toBe(OUR_GRADE);
-      const unrated = historyDb.prepare('SELECT con FROM save_rating_snapshots WHERE save_key = ? AND game_date = ? AND player_id = ?')
-        .get(currentHistoryKey(), date, UNRATED) as { con: number | null } | undefined;
-      expect(unrated?.con ?? null).toBeNull();
+      const unrated = historyDb.prepare('SELECT con, src FROM save_rating_snapshots WHERE save_key = ? AND game_date = ? AND player_id = ?')
+        .get(currentHistoryKey(), date, UNRATED) as { con: number | null; src: string | null } | undefined;
+      // Kept with where it came from, per player
+      expect(unrated).toMatchObject({ con: OSA_GRADE, src: 'osa' });
+      expect((historyDb.prepare('SELECT src FROM save_rating_snapshots WHERE save_key = ? AND game_date = ? AND player_id = ?')
+        .get(currentHistoryKey(), date, RATED) as { src: string }).src).toBe('our_scouts');
       // The earlier build's copy, where it is written, carries a kind that build never compares
       const legacy = historyDb.prepare('SELECT mode FROM rating_snapshot_modes WHERE game_date = ?').all(date) as Array<{ mode: string }>;
       for (const r of legacy) expect(r.mode).toBe('unknown');
@@ -233,6 +265,37 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
     } finally {
       historyDb.prepare('DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date IN (?, ?)').run(currentHistoryKey(), date, '2029-3-1');
       historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE game_date = ?').run(date);
+    }
+  });
+
+  it('reads a change of source for one player as a switch, stated, never a change in his ratings', async () => {
+    const save = currentHistoryKey();
+    const SWITCHER = 930_777;
+    const dates = ['2029-2-1', '2029-2-15'];
+    const insert = historyDb.prepare(
+      `INSERT OR REPLACE INTO save_rating_snapshots (save_key, game_date, player_id, name, team_id, org_id, level, position, age, cur, pot, con, gap, pow, eye, avk, src)
+       VALUES (?, ?, ?, 'Source Switch', ?, ?, 1, 6, 25, ?, 60, ?, ?, ?, ?, ?, ?)`
+    );
+    try {
+      // OSA's view first (40), then our scouts' (60): the same man, read by two sources, not twenty points of growth
+      insert.run(save, dates[0], SWITCHER, OURS, OURS, 40, 40, 40, 40, 40, 40, 'osa');
+      insert.run(save, dates[1], SWITCHER, OURS, OURS, 60, 60, 60, 60, 60, 60, 'our_scouts');
+      insert.run(save, dates[0], RATED, OURS, OURS, 50, 50, 50, 50, 50, 50, 'our_scouts');
+      insert.run(save, dates[1], RATED, OURS, OURS, 55, 55, 55, 55, 55, 55, 'our_scouts');
+      for (const d of dates) stampSnapshotMode(d, { mode: 'scouted-complete', additionalScouted: true, source: 'export_settings', reason: null }, null);
+      const list = await request(`/api/development/${OURS}?from=${dates[0]}&to=${dates[1]}`);
+      expect(list.changes.map((c: { player_id: number }) => c.player_id)).not.toContain(SWITCHER);
+      expect(list.changes.map((c: { player_id: number }) => c.player_id)).toContain(RATED);
+      const switched = list.ratingSourceSwitches.find((s: { playerId: number }) => s.playerId === SWITCHER);
+      expect(switched.text).toMatch(/from OSA's view to our scouts' full reports: the change is a switch, not development/);
+      // In his history and trend: today he is our scouts' (he is not in the file, so not filled), so OSA's row is left out
+      const trend = developmentTrendByPlayer().get(SWITCHER);
+      expect(trend?.snapshotCount ?? 0).toBe(1);
+      expect(trend?.reasons.join(' ')).toMatch(/changed source/);
+      expect((loadScoutedObservations([SWITCHER]).get(SWITCHER) ?? []).map((o) => o.ability.ratingsFrom)).toEqual(['our_scouts']);
+    } finally {
+      historyDb.prepare(`DELETE FROM save_rating_snapshots WHERE save_key = ? AND game_date IN (?, ?)`).run(save, ...dates);
+      historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date IN (?, ?)`).run(save, ...dates);
     }
   });
 

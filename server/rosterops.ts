@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { ratingFrom } from './scoutedEvidence.js';
+import { ratingFillOf, ratingFrom } from './scoutedEvidence.js';
 import { LEVEL_NAMES, seasonYear } from './valuation.js';
 import { positionNeeds } from './positionNeeds.js';
 import { leagueRulesForOrganization } from './leagueRules.js';
@@ -686,6 +686,8 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
         player_id: Number(r.player_id),
         name: String(r.name),
         age: Number(r.age ?? 0),
+        // OSA's view filling in for our scouts (D-067): a quiet mark and its sentence for the grades; null otherwise
+        ratingsFill: ratingFillOf(Number(r.player_id)),
         positionName: POSITION_NAMES[r.position as number] ?? '?',
         bats: HANDS[r.bats as number] ?? '?',
         throws: HANDS[r.throws as number] ?? '?',

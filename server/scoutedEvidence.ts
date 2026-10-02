@@ -41,7 +41,7 @@ import { databaseGeneration, db, importRecord, tableColumns, tableExists } from 
 import { ratingScaleMax } from './valuation.js';
 import { gloves, glovesFromRow, type Gloves, type PositionRating } from './gloves.js';
 import { parseGameDate } from './dataFreshness.js';
-import { currentRatingMode, historyDb, modeFilter, snapshotModes } from './history.js';
+import { currentRatingMode, historyDb, modeFilter, otherSource, snapshotModes } from './history.js';
 import { currentHistoryKey } from './historyIdentity.js';
 import { RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 
@@ -145,15 +145,18 @@ export function viewerContext(): ViewerContext {
 // ── Whose eyes: our scouts' full reports (D-067) ─────────────────────────
 
 /**
- * What a player our scouts haven't rated is, when their full reports are the evidence (D-067): unknown to our scouts.
- * Never OSA's view or true ratings in his place (D-018). This is the builder's recommendation, and the owner's to change;
- * the alternative ("OSA's view, said so per player") would need a per-player source on every rating and snapshot row,
- * and is not built, so the type admits only this value.
+ * What a player our scouts haven't rated is, when their full reports are the evidence (D-067). The owner decided
+ * (2026-10-02) "OSA's view, said so": his OSA row in the same file is used and every rating served from it says so for
+ * him; never the main tables, so never true ratings, and with no OSA row he is unknown (D-018). `'unknown'` leaves him
+ * unknown to our scouts (the builder's earlier recommendation), kept as the one switch.
  */
-export const UNRATED_BY_OUR_SCOUTS: 'unknown' = 'unknown';
+export const UNRATED_BY_OUR_SCOUTS: 'unknown' | 'osa' = 'osa';
 
 /** The export's complete scouted ratings: one row per player per scouting organisation (OOTP's "Additional complete scouted ratings"). */
 const OUR_SCOUTS_TABLE = 'players_scouted_ratings';
+
+/** OSA, the league's scouting service, in that file: the `scouting_team_id` no club has (no coach, every player rated). */
+const OSA_SCOUTING_TEAM_ID = 0;
 
 /** Our scouts' full reports, when the export carries them: our club's id (`scouting_team_id`) and how many players they rate. */
 export interface OurScoutsRatings {
@@ -169,22 +172,52 @@ function keptFromEarlierImport(record: Record<string, unknown> | null): boolean 
   return stale.some((t) => t.table === OUR_SCOUTS_TABLE) || tables.some((t) => t.table === OUR_SCOUTS_TABLE && t.source === 'carried');
 }
 
-function findOurScouts(record: Record<string, unknown> | null): OurScoutsRatings | null {
-  // "Show no player ratings" withholds every rating, this file's included: what OOTP writes in it then isn't established
-  if (ratingsWithheld() || !tableExists(OUR_SCOUTS_TABLE) || keptFromEarlierImport(record)) return null;
-  const columns = tableColumns(OUR_SCOUTS_TABLE);
-  if (!columns.includes('player_id') || !columns.includes('scouting_team_id')) return null;
-  // Whose scouts: the club the save marks as human-managed; more than one, or none, reads nobody's rows as ours
-  const teamId = viewerContext().viewerOrgId;
-  if (teamId === null || !Number.isInteger(teamId)) return null;
-  const row = db.prepare(
-    `SELECT COUNT(DISTINCT player_id) AS n FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ?`
-  ).get(teamId) as { n: number } | undefined;
-  const players = Number(row?.n ?? 0);
-  return players > 0 ? { teamId, players } : null;
+/** What the export's complete scouted ratings offer now: our scouts' rows, OSA's rows, and the players OSA fills in for us. */
+interface FileViews {
+  ours: OurScoutsRatings | null;
+  /** How many players OSA's rows rate; null when the file has none (or isn't usable). */
+  osaPlayers: number | null;
+  /** The players our scouts haven't rated whom OSA has, read from OSA's view (`UNRATED_BY_OUR_SCOUTS = 'osa'`). */
+  filled: Set<number>;
 }
 
-let ourScoutsCache: { generation: number; conn: unknown; record: unknown; value: OurScoutsRatings | null } | null = null;
+const NO_VIEWS: FileViews = { ours: null, osaPlayers: null, filled: new Set() };
+
+function findViews(record: Record<string, unknown> | null): FileViews {
+  // "Show no player ratings" withholds every rating, this file's included: what OOTP writes in it then isn't established
+  if (ratingsWithheld() || !tableExists(OUR_SCOUTS_TABLE) || keptFromEarlierImport(record)) return NO_VIEWS;
+  const columns = tableColumns(OUR_SCOUTS_TABLE);
+  if (!columns.includes('player_id') || !columns.includes('scouting_team_id')) return NO_VIEWS;
+  const count = (teamId: number): number => Number((db.prepare(
+    `SELECT COUNT(DISTINCT player_id) AS n FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ?`
+  ).get(teamId) as { n: number } | undefined)?.n ?? 0);
+  const osa = count(OSA_SCOUTING_TEAM_ID);
+  // Whose scouts: the club the save marks as human-managed; more than one, or none, reads nobody's rows as ours
+  const teamId = viewerContext().viewerOrgId;
+  const oursCount = teamId === null || !Number.isInteger(teamId) || teamId === OSA_SCOUTING_TEAM_ID ? 0 : count(teamId);
+  const ours = oursCount > 0 ? { teamId: teamId as number, players: oursCount } : null;
+  const filled = new Set<number>();
+  if (ours && UNRATED_BY_OUR_SCOUTS === 'osa' && osa > 0) {
+    const rows = db.prepare(
+      `SELECT o.player_id AS id FROM "${OUR_SCOUTS_TABLE}" o WHERE o.scouting_team_id = ${OSA_SCOUTING_TEAM_ID}
+       AND NOT EXISTS (SELECT 1 FROM "${OUR_SCOUTS_TABLE}" x WHERE x.scouting_team_id = ? AND x.player_id = o.player_id)`
+    ).all(ours.teamId) as Array<{ id: number }>;
+    for (const r of rows) filled.add(Number(r.id));
+  }
+  return { ours, osaPlayers: osa > 0 ? osa : null, filled };
+}
+
+let viewsCache: { generation: number; conn: unknown; record: unknown; value: FileViews } | null = null;
+
+function fileViews(): FileViews {
+  const record = importRecord();
+  if (viewsCache && viewsCache.generation === databaseGeneration() && viewsCache.conn === db && viewsCache.record === record) {
+    return viewsCache.value;
+  }
+  const value = findViews(record);
+  viewsCache = { generation: databaseGeneration(), conn: db, record, value };
+  return value;
+}
 
 /**
  * Our scouts' full reports, when they are the evidence (D-067): the served import carries the export's complete scouted
@@ -192,36 +225,63 @@ let ourScoutsCache: { generation: number; conn: unknown; record: unknown; value:
  * the main tables are the evidence as before (D-061). Cached per served import.
  */
 export function ourScoutsRatings(): OurScoutsRatings | null {
-  const record = importRecord();
-  if (ourScoutsCache && ourScoutsCache.generation === databaseGeneration() && ourScoutsCache.conn === db && ourScoutsCache.record === record) {
-    return ourScoutsCache.value;
-  }
-  const value = findOurScouts(record);
-  ourScoutsCache = { generation: databaseGeneration(), conn: db, record, value };
-  return value;
+  return fileViews().ours;
+}
+
+/** Where one player's ratings come from: the export's main tables, our scouts' full reports, or OSA's view filling in for them. */
+export type RatingsFrom = 'export' | 'our_scouts' | 'osa';
+
+/** A rating read from OSA's view because our scouts haven't rated him, in the GM's words: a quiet mark and its sentence. */
+export const OSA_FILL_WORDS = {
+  mark: 'OSA',
+  short: 'OSA\'s view',
+  text: 'OSA\'s view: our scouts haven\'t rated him.',
+} as const;
+
+/** Where this player's ratings come from now (D-067). */
+export function ratingsFromOf(playerId: number): RatingsFrom {
+  const views = fileViews();
+  if (!views.ours) return 'export';
+  return views.filled.has(playerId) ? 'osa' : 'our_scouts';
+}
+
+/** The words a page shows beside a player's grades when they are OSA's view filling in for our scouts; null otherwise. */
+export function ratingFillOf(playerId: number): { mark: string; hint: string } | null {
+  return ratingsFromOf(playerId) === 'osa' ? { mark: OSA_FILL_WORDS.mark, hint: OSA_FILL_WORDS.text } : null;
 }
 
 export type RatingTable = 'batting' | 'pitching' | 'fielding';
 const MAIN_TABLE: Record<RatingTable, string> = { batting: 'players_batting', pitching: 'players_pitching', fielding: 'players_fielding' };
 
+/** Our scouts' rows, with OSA's row for a player they haven't rated when the policy fills (one row per player, index-friendly). */
+function evidenceExpression(views: FileViews): string {
+  const ours = Number(views.ours!.teamId);
+  const fill = UNRATED_BY_OUR_SCOUTS === 'osa' && views.osaPlayers !== null;
+  return fill
+    ? `(SELECT * FROM "${OUR_SCOUTS_TABLE}" s WHERE s.scouting_team_id = ${ours} OR (s.scouting_team_id = ${OSA_SCOUTING_TEAM_ID}
+        AND NOT EXISTS (SELECT 1 FROM "${OUR_SCOUTS_TABLE}" x WHERE x.scouting_team_id = ${ours} AND x.player_id = s.player_id)))`
+    : `(SELECT * FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ${ours})`;
+}
+
 /**
- * Where a family of ratings is read from, as a table expression keyed by `player_id`, with its columns: our scouts'
- * rows when they are the evidence (every family is in their one file), otherwise the main table; null when absent.
- * A player our scouts haven't rated has no row in it, so he reads as unknown (`UNRATED_BY_OUR_SCOUTS`).
+ * Where a family of ratings is read from, as a table expression keyed by `player_id` (one row per player), with its
+ * columns: our scouts' rows when they are the evidence (every family is in their one file), OSA's row for a player they
+ * haven't rated (`UNRATED_BY_OUR_SCOUTS`), otherwise the main table; null when absent.
  */
 export function ratingFrom(kind: RatingTable): { from: string; columns: Set<string> } | null {
-  const ours = ourScoutsRatings();
-  if (ours) {
-    return { from: `(SELECT * FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ${Number(ours.teamId)})`, columns: new Set(tableColumns(OUR_SCOUTS_TABLE)) };
-  }
+  const views = fileViews();
+  if (views.ours) return { from: evidenceExpression(views), columns: new Set(tableColumns(OUR_SCOUTS_TABLE)) };
   const table = MAIN_TABLE[kind];
   return tableExists(table) ? { from: `"${table}"`, columns: new Set(tableColumns(table)) } : null;
 }
 
-/** Whether our scouts' full reports rate this player (only asked when they are the evidence). */
-function ourScoutsRate(playerId: number): boolean {
-  const ours = ourScoutsRatings();
-  return !!ours && !!db.prepare(`SELECT 1 FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ? AND player_id = ? LIMIT 1`).get(ours.teamId, playerId);
+/** The file's row the evidence reads for this player (ours, or OSA's filling in); undefined when neither rates him. */
+function evidenceFileRow(playerId: number): Record<string, unknown> | undefined {
+  const views = fileViews();
+  if (!views.ours) return undefined;
+  const teamId = views.filled.has(playerId) ? OSA_SCOUTING_TEAM_ID : views.ours.teamId;
+  return db.prepare(`SELECT * FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ? AND player_id = ?`)
+    .get(teamId, playerId) as Record<string, unknown> | undefined;
 }
 
 /** Each family's rating columns, by name. */
@@ -233,18 +293,17 @@ const FAMILY: Record<RatingTable, RegExp> = {
 
 /**
  * One player's row of a ratings table as the evidence sees it, for a page that shows the grades (the player card): the
- * export's row, every rating column in it our scouts' when their reports are the evidence (unknown, null, where they
- * haven't rated him; never the main table's grade), the rest of the row (handedness, experience) as exported.
+ * export's row, every rating column in it from the file's row the evidence reads (our scouts', or OSA's filling in;
+ * unknown, null, where neither rates him; never the main table's grade), the rest of the row (handedness, experience) as
+ * exported. `ratingFillOf` says whether it is OSA's view.
  */
 export function scoutedRatingRow(kind: RatingTable, playerId: number): Record<string, unknown> | undefined {
   const table = MAIN_TABLE[kind];
   const main = tableExists(table)
     ? (db.prepare(`SELECT * FROM "${table}" WHERE player_id = ?`).get(playerId) as Record<string, unknown> | undefined)
     : undefined;
-  const ours = ourScoutsRatings();
-  if (!ours) return main;
-  const scouts = db.prepare(`SELECT * FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ? AND player_id = ?`)
-    .get(ours.teamId, playerId) as Record<string, unknown> | undefined;
+  if (!ourScoutsRatings()) return main;
+  const scouts = evidenceFileRow(playerId);
   if (!main && !scouts) return undefined;
   const family = FAMILY[kind];
   const out: Record<string, unknown> = main ? { ...main } : { player_id: playerId, position: scouts?.position ?? null };
@@ -359,6 +418,8 @@ export interface ScoutedAbility {
   readonly scale: RatingScale;
   readonly provenance: EvidenceProvenance;
   readonly viewer: ViewerContext;
+  /** Where his ratings come from (D-067): the main tables, our scouts' full reports, or OSA's view filling in for them. */
+  readonly ratingsFrom: RatingsFrom;
 }
 
 const round = (value: number): number => Math.round(value);
@@ -396,7 +457,7 @@ interface AbilityInput {
   pitches: readonly unknown[];
 }
 
-function buildAbility(input: AbilityInput, scale: RatingScale, viewer: ViewerContext): ScoutedAbility {
+function buildAbility(input: AbilityInput, scale: RatingScale, viewer: ViewerContext, ratingsFrom: RatingsFrom = 'export'): ScoutedAbility {
   const tools: ReadonlyArray<{ key: ToolKey }> =
     input.kind === 'hitter' ? HITTER_TOOLS : input.kind === 'pitcher' ? PITCHER_TOOLS : [];
 
@@ -434,6 +495,7 @@ function buildAbility(input: AbilityInput, scale: RatingScale, viewer: ViewerCon
     scale,
     provenance: TOOL_PROVENANCE,
     viewer,
+    ratingsFrom,
   });
 }
 
@@ -442,7 +504,8 @@ export function unknownScoutedAbility(playerId: number, kind: ScoutedAbility['ki
   return buildAbility(
     { playerId, kind, current: {}, potential: {}, stamina: null, pitches: [] },
     ratingScale(),
-    viewerContext()
+    viewerContext(),
+    ratingsFromOf(playerId)
   );
 }
 
@@ -477,6 +540,7 @@ export function syntheticScoutedAbility(input: {
     scale,
     provenance: TOOL_PROVENANCE,
     viewer: { viewerOrgId: null, resolution: 'unresolved' },
+    ratingsFrom: 'export',
   });
 }
 
@@ -563,7 +627,7 @@ export function loadScoutedAbilities(playerIds: Iterable<number>): ScoutedAbilit
         potential,
         stamina: row[STAMINA_COLUMN],
         pitches: PITCH_COLUMNS.map((column) => row[column]),
-      }, scale, viewer));
+      }, scale, viewer, ratingsFromOf(playerId)));
     }
   }
   return new ScoutedAbilities(out);
@@ -582,6 +646,9 @@ export interface EvidenceSummary {
   viewerOrgId: number | null;
   viewerResolution: ViewerContext['resolution'];
   missing: { current: readonly ToolKey[]; potential: readonly ToolKey[] };
+  /** Where his ratings come from (D-067), and the sentence that says so when it is OSA's view filling in; null otherwise. */
+  ratingsFrom: RatingsFrom;
+  ratingsFromText: string | null;
 }
 
 export function summarizeEvidence(ability: ScoutedAbility): EvidenceSummary {
@@ -595,6 +662,8 @@ export function summarizeEvidence(ability: ScoutedAbility): EvidenceSummary {
     viewerOrgId: ability.viewer.viewerOrgId,
     viewerResolution: ability.viewer.resolution,
     missing: ability.missing,
+    ratingsFrom: ability.ratingsFrom,
+    ratingsFromText: ability.ratingsFrom === 'osa' ? OSA_FILL_WORDS.text : null,
   };
 }
 
@@ -620,7 +689,7 @@ export function scoutedGloves(playerId: number): Gloves | null {
   if (ratingsWithheld()) return null;
   // Our scouts' reports: a player they haven't rated has no profile (unknown), never one read off another view
   const profile = ourScoutsRatings()
-    ? (ourScoutsRate(playerId) ? glovesFromRow(scoutedRatingRow('fielding', playerId)) : null)
+    ? (evidenceFileRow(playerId) ? glovesFromRow(scoutedRatingRow('fielding', playerId)) : null)
     : gloves(playerId);
   if (!profile) return null;
   const scale = ratingScale();
@@ -645,7 +714,7 @@ const hitterPopulationCache = new Map<number, ScoutedHitterProfile[]>();
 
 /** Cleared whenever a fresh export is imported. */
 export function clearFieldingPopulationCache(): void {
-  ourScoutsCache = null;
+  viewsCache = null;
   fieldingPopulationCache.clear();
   hitterPopulationCache.clear();
 }
@@ -945,6 +1014,7 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
     present.has('level') ? 'level' : 'NULL AS level',
     present.has('team_id') ? 'team_id' : 'NULL AS team_id',
     present.has('age') ? 'age' : 'NULL AS age',
+    present.has('src') ? 'src' : 'NULL AS src',
     ...columns.map((c) => (present.has(c) ? `"${c}"` : `NULL AS "${c}"`)),
   ].join(', ');
   const scale = ratingScale();
@@ -955,6 +1025,8 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
   const take = (rows: Array<Record<string, unknown>>) => {
     for (const row of rows) {
       if (excluded.has(String(row.game_date))) continue;
+      // A row of his from another source than today's (our scouts' or OSA's view) is a switch, never development (D-067)
+      if (otherSource(Number(row.player_id), row.src)) continue;
       const gameDate = parseGameDate(row.game_date ?? null);
       const playerId = Number(row.player_id);
       if (!gameDate || !Number.isFinite(playerId)) continue;
@@ -975,7 +1047,8 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
         level: row.level === null || !Number.isFinite(level) ? null : level,
         teamId: row.team_id === null || row.team_id === undefined || !Number.isFinite(Number(row.team_id)) ? null : Number(row.team_id),
         age: row.age === null || !Number.isFinite(age) ? null : age,
-        ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer),
+        ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer,
+          row.src === 'our_scouts' || row.src === 'osa' ? row.src : 'export'),
         hitter: kind === 'hitter'
           ? hitterProfileFromRow(playerId, Object.fromEntries(Object.entries(SNAPSHOT_HITTER_COLUMNS).map(([exported, kept]) => [exported, row[kept]])), scale)
           : null,

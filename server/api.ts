@@ -33,7 +33,7 @@ import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from
 import { clearResultsCaches } from './resultsEvidence.js';
 import { clearFarmResultsCaches } from './farmResults.js';
 import { clearFarmUsageCaches } from './farmUsage.js';
-import { clearFieldingPopulationCache, loadScoutedAbilities, ratingFrom, type RatingTable } from './scoutedEvidence.js';
+import { clearFieldingPopulationCache, loadScoutedAbilities, ratingFillOf, ratingFrom, type RatingTable } from './scoutedEvidence.js';
 import { ratingScaleMax, clearScaleCache } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
 import { dashboardRoutes } from './dashboard.js';
@@ -1262,6 +1262,8 @@ api.get('/roster/:teamId', (req, res) => {
       batsName: BATS[p.bats as number] ?? String(p.bats ?? '?'),
       throwsName: THROWS[p.throws as number] ?? String(p.throws ?? '?'),
       ratings: ratingsByPlayer.get(id) ?? {},
+      // OSA's view filling in for our scouts (D-067): a quiet mark and its sentence for the grades; null otherwise
+      ratingsFill: ratingFillOf(id),
       fielding: fieldingByPlayer.get(id) ?? null,
       scouted: (() => {
         const a = abilities.for(id);
