@@ -107,7 +107,7 @@ struct OrganizationContent: View {
                 CellText($0.cells.spots).monospacedDigit()
             }
             TableColumn("Spots", sortUsing: ServedColumnSort("state") { .served($0.sort.state?.value1, $0.sort.state?.value2) }) { CellText($0.cells.state) }
-                .width(min: 140, ideal: 200)
+                .width(min: 90, ideal: 200)
         } rows: {
             ForEach(rows, id: \.id) { TableRow($0) }
         }
@@ -143,10 +143,10 @@ struct OrganizationContent: View {
 
     private var linesTable: some View {
         Table(of: Components.Schemas.FarmLineRow.self) {
-            TableColumn("What It Is") { CellText($0.cells.name).lineLimit(3) }.width(min: 260, ideal: 480)
+            TableColumn("What It Is") { CellText($0.cells.name).lineLimit(3) }.width(min: 90, ideal: 480)
             TableColumn("Value") { CellText($0.cells.value).monospacedDigit() }.width(min: 80, ideal: 160)
             TableColumn("Kind") { CellText($0.cells.kind) }.width(min: 90, ideal: 130)
-            TableColumn("Why") { CellText($0.cells.why, secondary: true) }.width(min: 160, ideal: 240)
+            TableColumn("Why") { CellText($0.cells.why, secondary: true) }.width(min: 90, ideal: 240)
         } rows: {
             ForEach(view.lines, id: \.id) { TableRow($0) }
         }

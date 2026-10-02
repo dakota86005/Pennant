@@ -51,7 +51,7 @@ struct AssignmentsTable: View {
                 TableColumn("Player", sortUsing: ServedColumnSort("player") { .served($0.sort.player?.value1, $0.sort.player?.value2) }) {
                     CellText($0.cells.player).fontWeight(.medium)
                 }
-                .width(min: 130, ideal: 170)
+                .width(min: 90, ideal: 170)
                 .customizationID("player")
                 TableColumn("Age", sortUsing: ServedColumnSort("age") { .served($0.sort.age?.value1, $0.sort.age?.value2) }) {
                     CellText($0.cells.age).monospacedDigit()
@@ -59,27 +59,27 @@ struct AssignmentsTable: View {
                 .width(min: 34, ideal: 40)
                 .customizationID("age")
                 TableColumn("Club", sortUsing: ServedColumnSort("club") { .served($0.sort.club?.value1, $0.sort.club?.value2) }) { CellText($0.cells.club) }
-                    .width(min: 120, ideal: 190)
+                    .width(min: 90, ideal: 190)
                     .customizationID("club")
                 TableColumn("The Level", sortUsing: ServedColumnSort("level") { .served($0.sort.level?.value1, $0.sort.level?.value2) }) { CellText($0.cells.level) }
-                    .width(min: 150, ideal: 240)
+                    .width(min: 90, ideal: 240)
                     .customizationID("level")
                 TableColumn("His Results", sortUsing: ServedColumnSort("results") { .served($0.sort.results?.value1, $0.sort.results?.value2) }) {
                     CellText($0.cells.results)
                 }
-                .width(min: 110, ideal: 170)
+                .width(min: 90, ideal: 170)
                 .customizationID("results")
                 TableColumn("His Work", sortUsing: ServedColumnSort("work") { .served($0.sort.work?.value1, $0.sort.work?.value2) }) { CellText($0.cells.work) }
                     .width(min: 90, ideal: 130)
                     .customizationID("work")
                 // No `sortUsing`: the stakes are never a sort key (D-050)
                 TableColumn("Stakes") { CellText($0.cells.stakes) }
-                    .width(min: 100, ideal: 140)
+                    .width(min: 90, ideal: 140)
                     .customizationID("stakes")
                 TableColumn("Conclusion", sortUsing: ServedColumnSort("conclusion") { .served($0.sort.conclusion?.value1, $0.sort.conclusion?.value2) }) {
                     CellText($0.cells.conclusion).fontWeight(.medium)
                 }
-                .width(min: 130, ideal: 170)
+                .width(min: 90, ideal: 170)
                 .customizationID("conclusion")
             } rows: {
                 ForEach(rows) { row in TableRow(row).draggable(PlayerRef(id: row.playerId)) }

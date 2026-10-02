@@ -60,32 +60,38 @@ struct AffiliatesSplit: View {
                     Text(verbatim: empty.display).foregroundStyle(.readableSecondary).padding()
                 }
             }
-            .frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
+            .frame(minWidth: 200, idealWidth: 280, maxWidth: 380)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text("Organization"))
 
             Group {
                 if let affiliate = view.affiliates.first(where: { $0.teamId == selection }) {
-                    MastheadScrollView {
-                        ClubMagazineMasthead(
-                            kicker: [view.preparedBy.display, view.asOf.display],
-                            kickerHint: view.asOf.hint,
-                            kickerStatus: updating ? String(localized: "Updating") : nil,
-                            headline: Text(verbatim: affiliate.name),
-                            deckText: affiliate.line.display
-                        ) { EmptyView() }
-                    } content: {
-                        AffiliateDetailContent(affiliate: affiliate)
-                            .padding(.horizontal, 28).padding(.vertical, 24)
-                            .frame(maxWidth: 1000, alignment: .leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    // A pane beside the organization: a plain header rather than the report's masthead, so it gives way
+                    // on a narrow window
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 6) {
+                                    Text(verbatim: [view.preparedBy.display, view.asOf.display].joined(separator: " · "))
+                                        .font(.caption.weight(.semibold)).textCase(.uppercase).foregroundStyle(.readableSecondary)
+                                        .help(detail: view.asOf.hint)
+                                    if updating { ProgressView().controlSize(.small).accessibilityLabel(Text("Updating")) }
+                                }
+                                Text(verbatim: affiliate.name).font(.largeTitle.weight(.bold)).accessibilityAddTraits(.isHeader)
+                                Text(verbatim: affiliate.line.display).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
+                            }
+                            AffiliateDetailContent(affiliate: affiliate)
+                        }
+                        .padding(.horizontal, 24).padding(.vertical, 20)
+                        .frame(maxWidth: 1000, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .id(affiliate.teamId)
                 } else {
                     Text("Choose an affiliate").foregroundStyle(.readableSecondary).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
@@ -146,9 +152,15 @@ struct AffiliateDetailContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .top, spacing: 14) {
-                Reading(title: "Can the club field a team?", claim: affiliate.operational)
-                Reading(title: "Are its players developing?", claim: affiliate.developmental)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 14) {
+                    Reading(title: "Can the club field a team?", claim: affiliate.operational).frame(minWidth: 240)
+                    Reading(title: "Are its players developing?", claim: affiliate.developmental).frame(minWidth: 240)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    Reading(title: "Can the club field a team?", claim: affiliate.operational)
+                    Reading(title: "Are its players developing?", claim: affiliate.developmental)
+                }
             }
             FarmSection("Can the club do its job?") {
                 if let empty = affiliate.operationalEmpty {
@@ -220,7 +232,7 @@ struct AffiliateDetailContent: View {
             TableColumn("Where It Leaves Him", sortUsing: ServedColumnSort("summary") { .served($0.sort.summary?.value1, $0.sort.summary?.value2) }) {
                 CellText($0.cells.summary).lineLimit(2)
             }
-            .width(min: 200, ideal: 320)
+            .width(min: 90, ideal: 320)
         } rows: {
             ForEach(rows) { row in TableRow(row).draggable(PlayerRef(id: row.playerId)) }
         }

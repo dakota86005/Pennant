@@ -305,13 +305,18 @@ struct FarmLoading<Payload, Content: View>: View {
     @ViewBuilder let content: (Payload) -> Content
 
     var body: some View {
-        if let payload {
-            content(payload)
-        } else if let problem {
-            ProblemLine(problem).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if let payload {
+                content(payload)
+            } else if let problem {
+                ProblemLine(problem).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
+        // The view asks no minimum of the window: its tables scroll and its panes give way, and the split view's own
+        // collapsing (the sidebar, the inspector) decides what shows on a narrow window, as macOS does
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
     }
 }
 

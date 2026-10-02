@@ -61,11 +61,11 @@ struct DevelopmentBoard: View {
                     TableColumn("Player", sortUsing: ServedColumnSort("player") { .served($0.sort.player?.value1, $0.sort.player?.value2) }) {
                         CellText($0.cells.player).fontWeight(.medium)
                     }
-                    .width(min: 120, ideal: 150).customizationID("player")
+                    .width(min: 90, ideal: 150).customizationID("player")
                     TableColumn("Age", sortUsing: ServedColumnSort("age") { .served($0.sort.age?.value1, $0.sort.age?.value2) }) { CellText($0.cells.age).monospacedDigit() }
                         .width(min: 34, ideal: 40).customizationID("age")
                     TableColumn("Club", sortUsing: ServedColumnSort("club") { .served($0.sort.club?.value1, $0.sort.club?.value2) }) { CellText($0.cells.club) }
-                        .width(min: 100, ideal: 150).customizationID("club")
+                        .width(min: 90, ideal: 150).customizationID("club")
                     TableColumn("Role", sortUsing: ServedColumnSort("role") { .served($0.sort.role?.value1, $0.sort.role?.value2) }) { CellText($0.cells.role) }
                         .width(min: 70, ideal: 110).customizationID("role")
                     TableColumn("Our Read", sortUsing: ServedColumnSort("current") { .served($0.sort.current?.value1, $0.sort.current?.value2) }) {
@@ -95,13 +95,13 @@ struct DevelopmentBoard: View {
                 .overlay {
                     if rows.isEmpty { Text(verbatim: view.empty.display).foregroundStyle(.readableSecondary).padding(40) }
                 }
-                .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("farm.development.table")
 
                 Group {
                     if let chosen { DevelopmentDetailPane(playerId: chosen.playerId) }
                 }
-                .frame(minWidth: 300, idealWidth: 360, maxWidth: 480, maxHeight: .infinity, alignment: .topLeading)
+                .frame(minWidth: 260, idealWidth: 360, maxWidth: 480, maxHeight: .infinity, alignment: .topLeading)
                 .background(.readablePage)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("farm.development.detail")
