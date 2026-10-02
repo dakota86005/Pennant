@@ -40,7 +40,7 @@ research are evidence and rationale, not current implementation truth.
 
 | Subsystem | Canonical detail | Claude rule |
 |---|---|---|
-| Scouted evidence and development authority | D-002, D-003, D-017 to D-019, D-025; ARCHITECTURE "Evidence and fog of war", "Player Development owns eligibility", "Organizational Philosophy owns preferences" | — |
+| Scouted evidence and development authority | D-002, D-003, D-017 to D-019, D-025, D-067 (whose ratings: our scouts' complete reports); ARCHITECTURE "Evidence and fog of war", "Player Development owns eligibility", "Organizational Philosophy owns preferences" | — |
 | Minor League Operations | D-044 to D-048, D-051; ARCHITECTURE "Minor League Operations owns placement, playing time and cascades"; MINOR_LEAGUE_OPERATIONS.md Parts 2, 3, 7, 8, 9 | `.claude/rules/farm-operations.md` |
 | MLB Operations | D-024 (then D-025 to D-043 by topic); ARCHITECTURE "MLB Operations"; MLB_OPERATIONS.md §10, §11; ROSTER_REVIEW.md §2, §4; CALIBRATION.md; BEHAVIOR_CASES.md "MLB Operations"; historical rationale: MLB_OPERATIONS_HARDENING.md | `.claude/rules/mlb-operations.md` |
 | Developmental stakes | D-050; ARCHITECTURE "Developmental stakes: the protection tier"; DEVELOPMENTAL_STAKES.md Parts 3, 4, 9 | `.claude/rules/developmental-stakes.md` |

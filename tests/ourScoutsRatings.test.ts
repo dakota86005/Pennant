@@ -4,6 +4,7 @@ import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
 import { historyDb, modeFilter, snapshotModes, stampSnapshotMode } from '../server/history.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { takeImportSnapshots } from '../server/importSnapshots.js';
+import { indexesFor } from '../server/importWorker.js';
 import { RATING_MODE_WORDS, type RatingMode } from '../server/ratingMode.js';
 import {
   clearFieldingPopulationCache,
@@ -233,6 +234,12 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
       historyDb.prepare('DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date IN (?, ?)').run(currentHistoryKey(), date, '2029-3-1');
       historyDb.prepare('DELETE FROM rating_snapshot_modes WHERE game_date = ?').run(date);
     }
+  });
+
+  it('indexes one scouting organisation\'s view of a player, so our scouts\' row is read directly', () => {
+    const names = indexesFor('players_scouted_ratings', new Set(['player_id', 'scouting_team_id', 'team_id'])).map((i) => i.columns.join(','));
+    expect(names).toContain('scouting_team_id,player_id');
+    expect(indexesFor('players_batting', new Set(['player_id'])).map((i) => i.columns.join(','))).not.toContain('scouting_team_id,player_id');
   });
 
   it('tells the GM whose view it is: "Your scouts\' view", with the source in the hint', async () => {
