@@ -367,6 +367,7 @@ struct DetailView: View {
         }
         .id(window.route)
         .environment(\.routeOpener, window)
+        .environment(\.currentRoute, window.route)
         .environment(\.claimActions, claimActions)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)

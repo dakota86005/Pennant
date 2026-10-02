@@ -65,6 +65,8 @@ public final class AppModel {
     public private(set) var following: FollowingStore
     /// Around the league (`LeagueStore`, N7): the full wire, each club's report for its window, and search.
     public private(set) var league: LeagueStore
+    /// Major League Ops' views and decisions (`MajorLeagueStore`, N8), loaded on `storeKey`.
+    public private(set) var majorLeague: MajorLeagueStore
     /// The club question still open for the chosen save, as the server last said on the status or the settings (N7,
     /// D-063's club question): while it is set the window holds the report and asks, across a relaunch. Nil when none.
     public private(set) var clubOwed: Components.Schemas.ClubOwed?
@@ -126,6 +128,7 @@ public final class AppModel {
         ) { line in log.write(line, source: "app") }
         following = FollowingStore { line in log.write(line, source: "app") }
         league = LeagueStore { line in log.write(line, source: "app") }
+        majorLeague = MajorLeagueStore { line in log.write(line, source: "app") }
     }
 
     #if DEBUG
@@ -144,7 +147,8 @@ public final class AppModel {
         ratingHistory: Components.Schemas.RatingHistoryView? = nil,
         savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil,
         following: FollowingStore? = nil,
-        league: LeagueStore? = nil
+        league: LeagueStore? = nil,
+        majorLeague: MajorLeagueStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -161,6 +165,7 @@ public final class AppModel {
         model.savePlayedElsewhere = savePlayedElsewhere ?? model.status?.savePlayedElsewhere
         if let following { model.following = following }
         if let league { model.league = league }
+        if let majorLeague { model.majorLeague = majorLeague }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }
@@ -504,6 +509,16 @@ public final class AppModel {
     /// Fetches the evidence trail behind an item, on demand.
     public func loadTrail(_ evidence: String) async {
         await frontOffice.loadTrail(evidence, client: client, key: storeKey)
+    }
+
+    /// Loads one of Major League Ops' views for the current key (N8).
+    public func loadMajorLeague(_ view: MajorLeagueStore.View) async {
+        await majorLeague.load(view, client: client, key: storeKey)
+    }
+
+    /// Opens one Major League Ops decision for the current key: built by the server on its first open.
+    public func loadDecision(_ query: MajorLeagueStore.DecisionQuery) async {
+        await majorLeague.loadDecision(query, client: client, key: storeKey)
     }
 
     // MARK: Rating history (D-064): the GM decides, and nothing is lost for good

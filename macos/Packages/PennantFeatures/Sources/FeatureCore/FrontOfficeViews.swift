@@ -25,11 +25,19 @@ public protocol RouteOpening: AnyObject {
 extension EnvironmentValues {
     /// The window's route opener (set by the Shell); nil where no window hosts the view, and nothing opens.
     @Entry public var routeOpener: (any RouteOpening)? = nil
+    /// The route the window shows (set by the Shell), so a view reads what it has open (a decision's key); nil outside
+    /// a window.
+    @Entry public var currentRoute: AppRoute? = nil
 }
 
-/// A served target as a route in this build, when it names a department's view.
+/// A served target as a route in this build, when it names a department's view, or a decision (N8: the department's
+/// Decision view with the served key open).
 public func route(_ target: Components.Schemas.Target?) -> AppRoute? {
-    guard let target, let view = target.view, let department = target.department else { return nil }
+    guard let target, let department = target.department else { return nil }
+    if target.kind.value1 == .decision, let key = target.key {
+        return AppRoute(department: DeptID(rawValue: department.rawValue), view: "decision", key: key)
+    }
+    guard let view = target.view else { return nil }
     return AppRoute(department: DeptID(rawValue: department.rawValue), view: view)
 }
 
@@ -70,6 +78,7 @@ public struct DeskItemRow: View {
     let handedUndoManager: UndoManager?
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var windowUndoManager
+    @Environment(\.routeOpener) private var opener
     @State private var editingNote = false
 
     public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false, undoManager: UndoManager? = nil) {
@@ -91,10 +100,21 @@ public struct DeskItemRow: View {
                 if let evidence = item.evidence {
                     TrailButton(evidence: evidence, compact: compact)
                 }
+                if !compact, let decision = route(item.open), opener?.canOpen(decision) == true {
+                    Button("Open Decision") { opener?.open(decision) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help(Text("Open Decision"))
+                        .accessibilityIdentifier("item.decision")
+                }
             }
         }
         .contentShape(.rect)
         .contextMenu {
+            if let decision = route(item.open), opener?.canOpen(decision) == true {
+                Button("Open Decision", systemImage: "checkmark.seal") { opener?.open(decision) }
+                Divider()
+            }
             DeskItemMenu(status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true })
         }
         .popover(isPresented: $editingNote, arrowEdge: .trailing) {
@@ -104,6 +124,11 @@ public struct DeskItemRow: View {
         .focusedValue(\.deskItem, FocusedDeskItem(
             key: item.key, status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true }
         ))
+        .accessibilityActions {
+            if let decision = route(item.open), opener?.canOpen(decision) == true {
+                Button("Open Decision") { opener?.open(decision) }
+            }
+        }
         .accessibilityAction(named: Text("Mark Reviewed")) { perform(.reviewed) }
         .accessibilityAction(named: Text("Mark Handled in OOTP")) { perform(.handled) }
         .accessibilityActions {
@@ -235,12 +260,15 @@ public struct DepartmentCardView: View {
 /// A department's report in the one anatomy (SWIFTUI_REBUILD.md section 3.5), set like a magazine: the masthead
 /// carries its served name, its summary as the deck and its key figures as the box score; below, what to decide, what
 /// it is watching, what changed and what it can't see. The staff memo appears when the server serves one (N7).
-public struct DepartmentReportView: View {
+public struct DepartmentReportView<After: View>: View {
     @Environment(AppModel.self) private var model
     let department: DeptID
+    /// What the department adds beneath its report (N8: Major League Ops' staff at a glance and the what-if).
+    let after: () -> After
 
-    public init(department: DeptID) {
+    public init(department: DeptID, @ViewBuilder after: @escaping () -> After) {
         self.department = department
+        self.after = after
     }
 
     public var body: some View {
@@ -266,6 +294,7 @@ public struct DepartmentReportView: View {
                                 || (store.reportProblems[department.rawValue] == nil && model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false),
                             showsHeader: false
                         )
+                        after()
                     }
                     .padding(.horizontal, 28).padding(.vertical, 24)
                     .frame(maxWidth: 1100, alignment: .leading)
@@ -279,6 +308,12 @@ public struct DepartmentReportView: View {
         }
         // The statuses of its items change without a new key (the GM's own change, the desk-changed event)
         .task(id: ReportTaskKey(key: model.storeKey, attention: store.attentionRevision)) { await model.loadReport(department) }
+    }
+}
+
+extension DepartmentReportView where After == EmptyView {
+    public init(department: DeptID) {
+        self.init(department: department, after: { EmptyView() })
     }
 }
 

@@ -1,0 +1,189 @@
+import FeatureCore
+import PennantAPI
+import PennantDesign
+import PennantKit
+import SwiftUI
+
+/// A served row as the table holds it: the row and its place in the served order (the order an unsorted table keeps).
+nonisolated struct ServedRow: Identifiable, Hashable, Sendable {
+    let row: Components.Schemas.MlbRow
+    let index: Int
+    var id: String { row.id }
+
+    /// The served sort key for a column, or nil when it is unknown (sorted last whichever way).
+    func key(_ column: String) -> SortKey? {
+        guard let served = row.sort.additionalProperties[column] ?? nil else { return nil }
+        if let number = served.value1 { return .number(number) }
+        if let text = served.value2 { return .text(text) }
+        return nil
+    }
+
+    /// The served cell for a column (every column has one).
+    func cell(_ column: String) -> Components.Schemas.Cell? { row.cells.additionalProperties[column] }
+}
+
+/// Sorting a column by its served keys with the unknown-last rule (D-056): the only ordering the app does.
+nonisolated struct ServedSort: SortComparator, Hashable, Sendable {
+    let column: String
+    var order: SortOrder = .forward
+
+    func compare(_ lhs: ServedRow, _ rhs: ServedRow) -> ComparisonResult {
+        let direction: SortDirection = order == .forward ? .ascending : .descending
+        let a = lhs.key(column), b = rhs.key(column)
+        if UnknownLast.precedes(a, b, direction: direction) { return .orderedAscending }
+        if UnknownLast.precedes(b, a, direction: direction) { return .orderedDescending }
+        return lhs.index < rhs.index ? .orderedAscending : lhs.index > rhs.index ? .orderedDescending : .orderedSame
+    }
+
+    /// The rows in this sort's order, stable (ties keep the served order).
+    func sorted(_ rows: [ServedRow]) -> [ServedRow] {
+        UnknownLast.sorted(rows, by: { $0.key(column) }, direction: order == .forward ? .ascending : .descending)
+    }
+}
+
+/// A served table as a native `Table` (SWIFTUI_REBUILD.md section 3.6): the served columns (each can be hidden, moved
+/// and resized, and the window remembers how), sorting by the served keys with unknowns last, keyboard navigation, a
+/// player's row that drags as the player, and a context menu (and double-click or Return) that opens his club, follows
+/// him, copies his name, or opens the decisions the row offers. The selected row's served detail is drawn beneath.
+/// Sized to its rows so the page scrolls as one.
+struct ServedTable: View {
+    let table: Components.Schemas.MlbTable
+    /// Where the window keeps this table's columns (a structural id, never shown).
+    let id: String
+    @Binding var selection: ServedRow.ID?
+    @State private var sortOrder: [ServedSort] = []
+    @SceneStorage private var customization: TableColumnCustomization<ServedRow>
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.routeOpener) private var opener
+
+    /// The height of one row and of the header, as the inset table style draws them at the default text size.
+    static let rowHeight: CGFloat = 26
+    static let headerHeight: CGFloat = 30
+
+    init(_ table: Components.Schemas.MlbTable, id: String, selection: Binding<ServedRow.ID?>) {
+        self.table = table
+        self.id = id
+        _selection = selection
+        _customization = SceneStorage(wrappedValue: TableColumnCustomization<ServedRow>(), "majorLeague.table.\(id)")
+    }
+
+    private var rows: [ServedRow] {
+        let served = table.rows.enumerated().map { ServedRow(row: $0.element, index: $0.offset) }
+        guard let sort = sortOrder.first else { return served }
+        return sort.sorted(served)
+    }
+
+    var body: some View {
+        if table.rows.isEmpty {
+            if let empty = table.empty {
+                Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
+            }
+        } else {
+            nativeTable
+                .frame(height: Self.headerHeight + Self.rowHeight * CGFloat(table.rows.count) + 6)
+                .accessibilityIdentifier("table.\(id)")
+        }
+    }
+
+    private var nativeTable: some View {
+        Table(of: ServedRow.self, selection: $selection, sortOrder: $sortOrder, columnCustomization: $customization) {
+            TableColumnForEach(table.columns, id: \.id) { column in
+                TableColumn(Text(verbatim: column.title.display), sortUsing: ServedSort(column: column.id)) { row in
+                    if let cell = row.cell(column.id) {
+                        CellText(cell)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                    }
+                }
+                .width(min: column.numeric ? 52 : 72, ideal: column.id == table.columns.first?.id || column.id == "player" ? 170 : column.numeric ? 72 : 120)
+                .customizationID(column.id)
+            }
+        } rows: {
+            ForEach(rows) { row in
+                if let player = row.row.player {
+                    TableRow(row).draggable(PlayerRef(id: player.playerId))
+                } else {
+                    TableRow(row)
+                }
+            }
+        }
+        .tableStyle(.inset(alternatesRowBackgrounds: false))
+        .scrollContentBackground(.hidden)
+        .background(Color.readablePage)
+        .contextMenu(forSelectionType: ServedRow.ID.self) { ids in
+            if let row = table.rows.first(where: { ids.contains($0.id) }) { menu(for: row) }
+        } primaryAction: { ids in
+            if let player = table.rows.first(where: { ids.contains($0.id) })?.player, let club = player.club { openWindow(value: club) }
+        }
+    }
+
+    @ViewBuilder
+    private func menu(for row: Components.Schemas.MlbRow) -> some View {
+        if let player = row.player {
+            if let club = player.club {
+                Button("Open His Club", systemImage: "macwindow.badge.plus") { openWindow(value: club) }
+            }
+            FollowMenuItem(kind: "player", id: player.playerId)
+            Button("Copy Name", systemImage: "doc.on.doc") { copy(player.name) }
+        }
+        let actions = row.actions.compactMap { action in route(action.open).map { (action, $0) } }.filter { opener?.canOpen($0.1) == true }
+        if !actions.isEmpty {
+            Divider()
+            ForEach(Array(actions.enumerated()), id: \.offset) { _, pair in
+                Button { opener?.open(pair.1) } label: { Text(verbatim: pair.0.text.display) }
+            }
+        }
+    }
+}
+
+/// A table with the selected row's served detail beneath it: what a scout would say if asked, and what it offers to
+/// open. With nothing selected, a line saying how to see it.
+struct TableWithDetail: View {
+    let table: Components.Schemas.MlbTable
+    let id: String
+    @State private var selection: ServedRow.ID?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ServedTable(table, id: id, selection: $selection)
+            if let row = table.rows.first(where: { $0.id == selection }) {
+                RowDetail(row: row)
+            } else if !table.rows.isEmpty {
+                Text("Select a row to see the staff's read.")
+                    .font(.callout).foregroundStyle(.readableSecondary)
+            }
+        }
+    }
+}
+
+/// One row's served detail: the player and the read's claim, the detail's blocks side by side when there is room, and
+/// the row's actions.
+struct RowDetail: View {
+    let row: Components.Schemas.MlbRow
+
+    var body: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    if let player = row.player { PlayerNameText(player: player, font: .title3.weight(.semibold)) }
+                    if let claim = row.claim { ClaimLine(claim) }
+                    Spacer(minLength: 0)
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 24) {
+                        ForEach(Array(row.detail.enumerated()), id: \.offset) { _, block in
+                            BlockView(block).frame(minWidth: 220, maxWidth: .infinity, alignment: .topLeading)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 14) {
+                        ForEach(Array(row.detail.enumerated()), id: \.offset) { _, block in BlockView(block) }
+                    }
+                }
+                ActionButtons(actions: row.actions)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("row.detail")
+    }
+}
