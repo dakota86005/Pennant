@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { historyDb } from '../server/history';
 import { recordCalibration, type CalibrationRecord } from '../server/saveCalibrationStore';
+import { populationSource } from '../server/scoutedEvidence';
 import { clearRosterReviewCalibrationCache, rosterReviewCalibration } from '../server/mlbCalibration';
 import { AGING_METHOD, priorAgingTable } from '../server/mlbCalibrationFit';
 import { RESULTS_METHOD } from '../server/mlbResultsFit';
@@ -22,7 +23,7 @@ import { bannedIn } from './bannedJargon';
 const L = 100;
 
 const rec = (component: string, method: string, passed: boolean, basis: Partial<CalibrationRecord['basis']> = {}, failures: string[] = []): CalibrationRecord => ({
-  leagueId: L, subsystem: 'mlb_operations', component, method,
+  leagueId: L, subsystem: 'mlb_operations', component, method, ratingSource: populationSource().id,
   basis: { throughSeason: basis.throughSeason ?? null, gameDate: basis.gameDate ?? null },
   window: { seasons: [2016, 2017, 2018], skipped: [], sample: 700, unit: 'pairs' },
   heldOut: [{ kind: 'club_split', part: 'estimate:hitter:floor', n: 120, expected: 0.1, observed: 0.12, passed: true },

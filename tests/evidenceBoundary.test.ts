@@ -231,6 +231,12 @@ describe('the evidence boundary', () => {
     for (const file of serverSources()) {
       expect(code(file), file).not.toMatch(/\b(overall_rating|talent_rating|scouting_accuracy)\b/);
     }
+    // ...nor its bare star columns, `overall` and `talent`: the adapter names the rating columns it reads, never `SELECT *` from
+    // the file, and never those two by name (review L7)
+    const adapter = code('scoutedEvidence.ts');
+    expect(adapter).not.toMatch(/SELECT\s+\*\s+FROM\s+"\$\{OUR_SCOUTS_TABLE\}"/);
+    expect(adapter).not.toMatch(/SELECT\s+\*\s+FROM\s+"?players_scouted_ratings/);
+    expect(adapter).not.toMatch(/[."'`](overall|talent)["'`]/);
   });
 
   it('league yardsticks and fits are built in the population view, and the policy is switched by no server module (D-068)', () => {

@@ -1,6 +1,6 @@
 import { importCache } from './importCache.js';
 import { db } from './db.js';
-import { bothReadings, inPopulationView, loadScoutedAbilities, populationAbilities, populationSource } from './scoutedEvidence.js';
+import { bothReadings, bothReadingsApply, inPopulationView, loadScoutedAbilities, populationComposite, populationSource } from './scoutedEvidence.js';
 import {
   judgmentOf,
   type ConstraintState,
@@ -185,6 +185,8 @@ interface PlayerRatings {
   stamina: number | null;
 
   pitches: number[];
+  /** His composite on our evidence (the unweighted mean of his visible tools), for the basis's second reading. */
+  composite: number | null;
 }
 
 interface LeagueInfo {
@@ -550,6 +552,8 @@ function playerRatings(
     stamina: ability.stamina,
 
     pitches: [...ability.pitches],
+
+    composite: ability.current,
   };
 }
 
@@ -955,7 +959,11 @@ export function evaluateDestinationFit(
   );
   // Whose ratings the yardstick is, and his own reading beside OSA's where they differ (D-068)
   notes.push(populationSource().text);
-  const both = bothReadings(loadScoutedAbilities([playerId]).for(playerId).current, populationAbilities([playerId]).for(playerId).current);
+  // His OSA reading is read only when the basis can show it (OSA's file rows are the yardstick, he is read from our scouts');
+  // his own is the one already loaded (review M3)
+  const both = bothReadingsApply()
+    ? bothReadings(ratings.composite, populationComposite(playerId))
+    : null;
   if (both) notes.push(`${both}: he is placed on our scouts' reading against the league as OSA sees it.`);
 
   if (unassessedComponents.length) {

@@ -72,7 +72,8 @@ import {
   RATINGS_PRIOR, RATINGS_PRIOR_CALIBRATION,
 } from './playerValueCalibration.js';
 import {
-  adoptedProductionFit, clearFitStoreCaches, latestProductionFitAttempt, productionFitAttempted, recordProductionFit, saveIdentity, type StoredFit,
+  adoptedProductionFit, clearFitStoreCaches, fitSourceAttempted, latestProductionFitAttempt, productionFitAttempted, recordFitSourceAttempt, recordProductionFit,
+  saveIdentity, type FitSourceAttempt, type StoredFit,
 } from './playerValueFitStore.js';
 import {
   affiliatedLevels, ageFacts, firstLeagueSeason, hasSeasonLines, injuredThisSeason, injuryDurationSentinels, inSeasonContinuation,
@@ -95,6 +96,7 @@ import {
 } from './playerValueRatingsFit.js';
 import {
   inPopulationView, loadScoutedAbilities, loadScoutedGlovesAtPosition, loadScoutedHitterProfiles, loadScoutedObservations, populationSource,
+  ratingSourceNamed, sameRatingSource,
 } from './scoutedEvidence.js';
 
 export type { ContractFacts, ContractSeason, ContractTerm } from './playerValueContract.js';
@@ -1325,7 +1327,13 @@ function savedRatingsStamp(fit: StoredRatingsFit): CalibrationStamp {
 
 /** The ratings model in force for a league: the save's adopted ratings fit, else the provisional prior (which measures no arrivals). */
 export function ratingsModelFor(leagueId: number, rules: Map<number, LeagueRules> = allLeagueRules()): RatingsModelInForce {
-  const fit = adoptedProductionFit<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD, completedThrough(leagueId, rules).season);
+  const adopted = adoptedProductionFit<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD, completedThrough(leagueId, rules).season);
+  // Served only on today's ratings source (D-068, the owner's decision): a fit on other ratings is set aside, said so
+  const today = populationSource().id;
+  const fit = adopted && sameRatingSource(adopted.record.ratingSource, today) ? adopted : null;
+  const setAside = adopted && !fit
+    ? `The save's earlier fit rests on ${ratingSourceNamed(adopted.record.ratingSource)}, not today's ratings (${ratingSourceNamed(today)}), so it isn't used.`
+    : null;
   if (fit) {
     return {
       model: fit.model,
@@ -1337,7 +1345,9 @@ export function ratingsModelFor(leagueId: number, rules: Map<number, LeagueRules
     model: RATINGS_PRIOR,
     provenance: {
       source: 'fallback_prior',
-      label: `not yet calibrated on this save: the provisional ratings prior, which measures no arrivals; ${last === null ? 'no ratings fit has been made on this save yet' : `the last ratings fit was not adopted: ${last.reason}`}`,
+      label: setAside
+        ? `not calibrated on today's ratings: the provisional ratings prior, which measures no arrivals. ${setAside}`
+        : `not yet calibrated on this save: the provisional ratings prior, which measures no arrivals; ${last === null ? 'no ratings fit has been made on this save yet' : `the last ratings fit was not adopted: ${last.reason}`}`,
       stamp: RATINGS_PRIOR_CALIBRATION, fitId: null, priorWeight: 1, observed: null,
     },
   };
@@ -1564,6 +1574,8 @@ export interface PendingFit<R> {
   ms: number | null;
   force: boolean;
   outcome: RefitOutcome;
+  /** A ratings refit after a change of source: recorded as tried when it isn't recorded as a fit, so it isn't rerun (D-068). */
+  sourceAttempt?: FitSourceAttempt;
 }
 
 export interface PendingRefits {
@@ -1617,6 +1629,14 @@ function refitFailure(err: unknown): string {
 }
 
 /** Record fits computed elsewhere (the main thread's half): each at its key, idempotent, never replacing an adopted fit with a failing one. */
+const recordAttempt = (attempt: FitSourceAttempt, reason: string): void => {
+  try {
+    recordFitSourceAttempt(attempt, reason);
+  } catch (err) {
+    console.warn(`[player value] a ratings refit's attempt could not be recorded: ${refitFailure(err)}`);
+  }
+};
+
 export function recordRefits(pending: PendingRefits): RefitOutcome[] {
   const out: RefitOutcome[] = [];
   for (const p of [...pending.production, ...pending.ratings] as Array<PendingFit<{ model: unknown; record: FitRecord | RatingsFitRecord }>>) {
@@ -1629,9 +1649,17 @@ export function recordRefits(pending: PendingRefits): RefitOutcome[] {
         continue;
       }
       if (written === 0 && p.force && !p.outcome.adopted) {
+        // After a change of source the fit at this key rests on other ratings: it is set aside and the prior serves (D-068)
+        if (p.sourceAttempt) {
+          recordAttempt(p.sourceAttempt, p.outcome.reason);
+          out.push({ ...p.outcome, reason: `${p.outcome.reason} Not recorded; the earlier fit rests on other ratings, so the provisional ratings prior serves.` });
+          continue;
+        }
         out.push({ ...p.outcome, reason: `${p.outcome.reason} Not recorded: the fit in force at this key stays (a failing refit never replaces an adopted one).` });
         continue;
       }
+    } else if (p.sourceAttempt) {
+      recordAttempt(p.sourceAttempt, p.outcome.reason);
     }
     out.push(p.outcome);
   }
@@ -1857,7 +1885,16 @@ export function computeRatingsRefits(options: { fit?: (input: RatingsFitInput) =
     const attempted = productionFitAttempted(leagueId, through, RATINGS_METHOD);
     // The ratings the fit rests on now (D-068): a fit through this season on another source is refitted, never kept as if continuous
     const source = populationSource();
-    const sourceChanged = attempted && last?.throughSeason === through && (last.record.ratingSource ?? null) !== source.id;
+    // OSA in the main tables and OSA's rows in the file are one source (the owner's decision): that switch keeps its fit
+    const sourceChanged = attempted && last?.throughSeason === through && !sameRatingSource(last.record.ratingSource, source.id);
+    const sourceAttempt: FitSourceAttempt | undefined = sourceChanged
+      ? { leagueId, throughSeason: through, method: RATINGS_METHOD, source: source.id, inputs: parseGameDate(leagueGameDate(leagueId)) ?? 'unknown' }
+      : undefined;
+    // Already tried on this source for this export and not adopted: not run again until the export or the source changes
+    if (!options.force && sourceAttempt && fitSourceAttempted(sourceAttempt)) {
+      out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome: { leagueId, throughSeason: through, refit: false, adopted: null, reason: `Already tried on ${source.id} for this export (${RATINGS_METHOD}); the provisional ratings prior serves until a refit on it passes.`, ms: null } });
+      continue;
+    }
     const pairsNow = attempted && last?.throughSeason === through && last.record.development.pairs < last.record.development.minimumPairs ? countedPairs() : 0;
     const longitudinalArrived = attempted && last !== null && last.record.development.pairs < last.record.development.minimumPairs
       && pairsNow >= last.record.development.minimumPairs;
@@ -1878,13 +1915,14 @@ export function computeRatingsRefits(options: { fit?: (input: RatingsFitInput) =
         ? `${source.text} The ratings' source changed (from ${last?.record.ratingSource ?? 'an unrecorded source'} to ${source.id}): refitted on the new source, not compared with the earlier fit.`
         : source.text;
     } catch (err) {
-      out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome: { leagueId, throughSeason: through, refit: false, adopted: null, reason: refitFailure(err), ms: null } });
+      out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome: { leagueId, throughSeason: through, refit: false, adopted: null, reason: refitFailure(err), ms: null }, sourceAttempt });
       continue;
     }
     const ms = performance.now() - start;
     out.push({
       leagueId, throughSeason: through, run, gameDate: leagueGameDate(leagueId), ms, force: options.force === true || longitudinalArrived || sourceChanged,
       outcome: { leagueId, throughSeason: through, refit: true, adopted: run.record.gate.passed, reason: run.record.gate.reason, ms },
+      sourceAttempt,
     });
   }
   return out;

@@ -2007,10 +2007,10 @@ record names the ratings it was fitted on (`ratingSource`, `populationSource().i
 was fitted on (OSA in the main tables and OSA's rows in the export's scouted file count as one): after a change of
 source, the refit on the new source is served if it passes its gate, and otherwise the provisional prior, labelled
 ("the earlier fit rests on another source and isn't used"), never the earlier fit. The failed attempt is recorded per
-key and source with the export's game date (`save_calibration_source_attempts`; Player Value's ratings fit uses the same
-table), so the refit runs again only when the export or the source changes. Implementation: `saveCalibration.ts`
+key and source with the export's game date (`save_calibration_source_attempts`; Player Value's ratings fit keeps its own,
+`value_fit_source_attempts`), so the refit runs again only when the export or the source changes. Implementation: `saveCalibration.ts`
 (`computeCalibrationRefits`), `saveCalibrationStore.ts` (`adoptedCalibrationOnSource`, the attempt markers),
-`playerValue.ts` (`computeRatingsRefits`, `ratingsModelFor`), and the serving readers (`stakesLines.ts`,
+`playerValue.ts` and `playerValueFitStore.ts` (`computeRatingsRefits`, `ratingsModelFor`), and the serving readers (`stakesLines.ts`,
 `toolsCalibration.ts`, `mlbCalibration.ts`).
 
 ## D-054 — Charting library
@@ -2717,7 +2717,8 @@ the club, so it is within fog of war (D-002, D-017).
   served: it rests on other ratings. Pennant serves the provisional prior, labelled, and the basis says the earlier fit
   rests on another source and isn't used. An earlier fit whose source wasn't recorded (made before D-068) is not assumed
   to be on today's source: it is refitted once, and served only if that refit passes. The failed attempt is recorded
-  (`save_calibration_source_attempts`: the key, the source and the export's game date), so the refit is not run again
+  (`save_calibration_source_attempts`, and Player Value's `value_fit_source_attempts`: the key, the source and the
+  export's game date), so the refit is not run again
   at every import and start-up; it is tried again when the inputs change (a new export, or another source). The gate
   still governs adoption.
 - **History:** a population snapshot holds OSA's rows for every player, stamped with its kind per row. A fit reads only

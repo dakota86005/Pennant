@@ -160,3 +160,35 @@ export const ratingModeNamed = (mode: RatingMode): string => RATING_MODE_WORDS[m
 export function ourScoutsRecord(record: RatingModeRecord | null): RatingModeRecord {
   return { mode: 'scouted-complete', additionalScouted: record?.additionalScouted ?? null, source: record?.source ?? 'settings_missing', reason: null };
 }
+
+/**
+ * The stamp of a snapshot read in the evidence's kind (D-067): our scouts' full reports, or OSA's view read from the file in
+ * place of true ratings (review L6), stamped as that kind with what the export's settings said kept beside it; otherwise
+ * the import's own record.
+ */
+export function evidenceRecord(record: RatingModeRecord | null, evidenceMode: RatingMode | null): RatingModeRecord | null {
+  if (evidenceMode === 'scouted-complete') return ourScoutsRecord(record);
+  if (evidenceMode === 'osa' && record && record.mode !== 'osa') {
+    return { mode: 'osa', additionalScouted: record.additionalScouted ?? null, source: record.source ?? 'settings_missing', reason: null };
+  }
+  return record;
+}
+
+/**
+ * Whether two ratings sources a fit records are the same ratings (D-068, the owner's decision): equal, or OSA's view either
+ * way (in the main tables, `export:osa`, or in the file, `osa_file`). An unrecorded source is never assumed to be the same.
+ */
+export function sameRatingSource(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  const osa = (id: string) => id === 'osa_file' || id === 'export:osa';
+  return a === b || (osa(a) && osa(b));
+}
+
+/** A recorded ratings source in the GM's words, for a basis that says a fit rests on other ratings. */
+export function ratingSourceNamed(id: string | null | undefined): string {
+  if (!id) return 'ratings whose source wasn\'t recorded';
+  if (id === 'osa_file' || id === 'evidence:osa' || id === 'export:osa') return 'OSA\'s view';
+  if (id === 'our_scouts_file' || id === 'evidence:scouted-complete') return 'your scouts\' full reports';
+  const mode = /^(?:export|evidence):(.+)$/.exec(id)?.[1] as RatingMode | undefined;
+  return mode && RATING_MODE_WORDS[mode] ? ratingModeNamed(mode) : id;
+}

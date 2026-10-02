@@ -47,6 +47,51 @@ historyDb.exec(`
   );
 `);
 
+/*
+ * A ratings refit after a change of ratings source that was tried and not recorded as a fit (D-068, the owner's decision): it
+ * failed its gate where an adopted fit of another source holds the season, or it could not be computed. Kept per season,
+ * method and source with the export's game date it was tried on (`inputs`), so it is not run again at every import and
+ * start-up, only when the export or the source changes. Player Value's own, beside its fits (the boundary: history.db only).
+ */
+historyDb.exec(`
+  CREATE TABLE IF NOT EXISTS value_fit_source_attempts (
+    save_name TEXT NOT NULL,
+    league_id INTEGER NOT NULL,
+    through_season INTEGER NOT NULL,
+    method TEXT NOT NULL,
+    rating_source TEXT NOT NULL,
+    inputs TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    attempted_at TEXT NOT NULL,
+    PRIMARY KEY (save_name, league_id, through_season, method, rating_source)
+  );
+`);
+
+/** A ratings refit after a change of source: the season, the method, the source it was tried on and the export (`inputs`). */
+export interface FitSourceAttempt {
+  leagueId: number;
+  throughSeason: number;
+  method: string;
+  source: string;
+  /** The export's game date it was tried on (normalized), or `unknown`. */
+  inputs: string;
+}
+
+/** Whether this refit was already tried on this source for these inputs. */
+export function fitSourceAttempted(a: FitSourceAttempt): boolean {
+  return historyDb.prepare(
+    `SELECT 1 FROM value_fit_source_attempts WHERE save_name = ? AND league_id = ? AND through_season = ? AND method = ? AND rating_source = ? AND inputs = ?`
+  ).get(saveIdentity(a.leagueId), a.leagueId, a.throughSeason, a.method, a.source, a.inputs) !== undefined;
+}
+
+/** Records a ratings refit after a change of source that was tried and not recorded as a fit. */
+export function recordFitSourceAttempt(a: FitSourceAttempt, reason: string): void {
+  historyDb.prepare(
+    `INSERT OR REPLACE INTO value_fit_source_attempts (save_name, league_id, through_season, method, rating_source, inputs, reason, attempted_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(saveIdentity(a.leagueId), a.leagueId, a.throughSeason, a.method, a.source, a.inputs, reason, new Date().toISOString());
+}
+
 /** What the store needs of any fit's run record: its key, the gate's verdict and the prior's weight. */
 export interface StorableRecord {
   id: string;

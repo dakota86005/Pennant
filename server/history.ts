@@ -3,7 +3,7 @@ import { Router } from 'express';
 import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
-import { isModeSwitch, ourScoutsRecord, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
+import { evidenceRecord, isModeSwitch, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 import { evidenceRatingMode, inPopulationView, populationSource, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
@@ -464,12 +464,14 @@ function snapshotRows(
 }
 
 /** Capture a ratings snapshot of every rostered player. Idempotent per game date. */
-export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean } | null {
+export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean; evidenceMode: RatingMode | null } | null {
   // The ratings the evidence reads: our scouts' full reports when the export carries them (D-067), else the main tables
   const battingFrom = ratingFrom('batting');
   const pitchingFrom = ratingFrom('pitching');
   if (!tableExists('players') || !battingFrom) return null;
-  const ourScouts = evidenceRatingMode() === 'scouted-complete';
+  // The kind the evidence is read in (our scouts' reports, OSA's view in place of true ratings, else the export's): the stamp
+  const evidenceMode = evidenceRatingMode();
+  const ourScouts = evidenceMode === 'scouted-complete';
   const gameDate = leagueGameDate();
   if (!gameDate) return null;
   const resolved = currentHistoryKey();
@@ -558,7 +560,7 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
   insertAll.immediate();
   if (!filed) return null;
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players${populationRows.length ? ` (and OSA's view of ${populationRows.length}, the league's yardstick)` : ''}`);
-  return { gameDate, players: rows.length, ourScouts };
+  return { gameDate, players: rows.length, ourScouts, evidenceMode };
 }
 
 /**
@@ -571,7 +573,7 @@ export function baselineSnapshot(): { gameDate: string; players: number } | null
   const mode = currentRatingMode();
   if (!tableExists('players') || !servedLeagueCertain() || mode?.mode === 'none' || snapshotDates().length > 0) return null;
   const snapshot = takeSnapshot();
-  if (snapshot) stampSnapshotMode(snapshot.gameDate, snapshot.ourScouts ? ourScoutsRecord(mode) : mode, null);
+  if (snapshot) stampSnapshotMode(snapshot.gameDate, evidenceRecord(mode, snapshot.evidenceMode), null);
   return snapshot;
 }
 

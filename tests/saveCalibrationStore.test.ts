@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { historyDb } from '../server/history';
+import { populationSource } from '../server/scoutedEvidence';
 import { adoptedCalibration, calibrationAttempted, latestCalibrationAttempt, recordCalibration, type CalibrationRecord } from '../server/saveCalibrationStore';
 import { onCalibrationRecorded, recordCalibrationRefits, type PendingCalibration } from '../server/saveCalibration';
 import { saveIdentity } from '../server/saveIdentity';
@@ -120,7 +121,8 @@ describe('the roster review reads the yardsticks in force', () => {
     clear();
     clearRosterReviewCalibrationCache();
     const served = { ...STARTING_STANDARDS, source: 'save' as const, roles: { ...STARTING_STANDARDS.roles, pos3: { typical: 60, bat: 70 } } };
-    const rec = (passed: boolean, date: string) => ({ ...record({ passed, season: null, date, component: 'standards', method: 'standards-1' }), subsystem: 'mlb_operations' });
+    // Fitted on today's ratings source: a fit that reads ratings serves only on it (D-068)
+    const rec = (passed: boolean, date: string) => ({ ...record({ passed, season: null, date, component: 'standards', method: 'standards-1' }), subsystem: 'mlb_operations', ratingSource: populationSource().id });
     // a failed measurement: the starting floor stays
     recordCalibration({ model: { served, roles: {} }, record: rec(false, '2000-01-01') }, { fitMs: 1 });
     expect(rosterReviewCalibration(L).standards.hitter(3)!.floor).toBe(57);

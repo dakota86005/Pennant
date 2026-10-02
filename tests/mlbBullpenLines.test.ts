@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { historyDb } from '../server/history';
 import { recordCalibration, type CalibrationRecord } from '../server/saveCalibrationStore';
+import { populationSource } from '../server/scoutedEvidence';
 import { clearRosterReviewCalibrationCache, rosterReviewCalibration } from '../server/mlbCalibration';
 import { lineInForce, measureLongLine, LONG_LINE_POLICY, type BullpenRecord, type RelieverUsage } from '../server/mlbBullpenLines';
 import { measureStandards, rekeyRelievers, STANDARDS_METHOD, STANDARDS_METHOD_BEFORE_LINES, type StandardsSample } from '../server/mlbCalibrationFit';
@@ -159,7 +160,7 @@ describe('the reliever standards are measured under the same line they are serve
 describe('the lines in force are the ones the standards in force were measured under', () => {
   const L = 100;
   const rec = (method: string, passed: boolean, date: string, failures: string[] = []): CalibrationRecord => ({
-    leagueId: L, subsystem: 'mlb_operations', component: 'standards', method, basis: { throughSeason: null, gameDate: date },
+    leagueId: L, subsystem: 'mlb_operations', component: 'standards', method, basis: { throughSeason: null, gameDate: date }, ratingSource: populationSource().id,
     window: { seasons: [], skipped: [], sample: 600, unit: 'holders' },
     heldOut: [{ kind: 'club_split', part: 'long_line', n: 110, expected: 0.15, observed: 0.17, passed: true }],
     priorWeight: { overall: 0.2, byPart: { long_line: 0.22 } }, gate: { passed, reason: passed ? 'ok' : 'no', failures }, priorSource: 'test', notes: [],

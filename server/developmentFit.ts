@@ -109,6 +109,11 @@ export interface CeilingLinesInForce {
    * changed because a line moved can say so (and when), at that import and after it until the lines move again.
    */
   previous: { lines: CeilingLines; source: 'save' | 'starting'; measuredOn: string | null; replacedOn?: string | null } | null;
+  /**
+   * The league's own lines measured on other ratings than today's, set aside (D-068, the owner's decision): why, in a sentence,
+   * for the basis beside the starting lines. Absent or null otherwise.
+   */
+  setAside?: string | null;
 }
 
 /** Pennant's starting lines, with the true reason they serve. */

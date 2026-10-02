@@ -21,6 +21,7 @@
 import { historyDb } from './history.js';
 import { parseGameDate } from './dataFreshness.js';
 import { saveIdentity } from './saveIdentity.js';
+import { ratingSourceNamed, sameRatingSource } from './ratingMode.js';
 
 historyDb.exec(`
   CREATE TABLE IF NOT EXISTS save_calibration_fits (
@@ -42,6 +43,68 @@ historyDb.exec(`
     PRIMARY KEY (save_name, league_id, subsystem, component, method, basis)
   );
 `);
+
+/*
+ * A refit after a change of ratings source that was tried and not recorded (D-068, the owner's decision): it failed its gate
+ * where an adopted fit of another source holds the key, or it could not be computed. Kept per key and source with the
+ * export's game date it was tried on (`inputs`), so the refit is not run again at every import and start-up, only when the
+ * export or the source changes. (Player Value's ratings fit keeps its own, `value_fit_source_attempts`.) Additive.
+ */
+historyDb.exec(`
+  CREATE TABLE IF NOT EXISTS save_calibration_source_attempts (
+    save_name TEXT NOT NULL,
+    league_id INTEGER NOT NULL,
+    subsystem TEXT NOT NULL,
+    component TEXT NOT NULL,
+    method TEXT NOT NULL,
+    basis TEXT NOT NULL,
+    rating_source TEXT NOT NULL,
+    inputs TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    attempted_at TEXT NOT NULL,
+    PRIMARY KEY (save_name, league_id, subsystem, component, method, basis, rating_source)
+  );
+`);
+
+/** Where a refit after a change of source stands: the key, the source it was tried on and the export it was tried on. */
+export interface SourceAttempt {
+  leagueId: number;
+  subsystem: string;
+  component: string;
+  method: string;
+  basis: string;
+  source: string;
+  /** The export's game date it was tried on (normalized), or `unknown`. */
+  inputs: string;
+}
+
+/** The export's game date as a source attempt's inputs. */
+export const attemptInputs = (gameDate: string | null | undefined): string => parseGameDate(gameDate ?? null) ?? 'unknown';
+
+/** Whether this refit was already tried on this source for these inputs (and so isn't run again until they change). */
+export function sourceAttempted(a: SourceAttempt): boolean {
+  return historyDb.prepare(
+    `SELECT 1 FROM save_calibration_source_attempts WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ?
+       AND basis = ? AND rating_source = ? AND inputs = ?`
+  ).get(saveIdentity(a.leagueId), a.leagueId, a.subsystem, a.component, a.method, a.basis, a.source, a.inputs) !== undefined;
+}
+
+/** Records a refit after a change of source that was tried and not recorded as a fit (replacing an earlier try at its key). */
+export function recordSourceAttempt(a: SourceAttempt, reason: string): void {
+  historyDb.prepare(
+    `INSERT OR REPLACE INTO save_calibration_source_attempts
+       (save_name, league_id, subsystem, component, method, basis, rating_source, inputs, reason, attempted_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(saveIdentity(a.leagueId), a.leagueId, a.subsystem, a.component, a.method, a.basis, a.source, a.inputs, reason, new Date().toISOString());
+}
+
+/**
+ * Why a fit is set aside: it rests on other ratings than today's (D-068, the owner's decision), in a sentence for the basis.
+ * `null` and `undefined` sources (a fit recorded before sources were kept) are never assumed to be today's.
+ */
+export function otherSourceText(fitSource: string | null | undefined, now: string): string {
+  return `The save's earlier fit rests on ${ratingSourceNamed(fitSource)}, not today's ratings (${ratingSourceNamed(now)}), so it isn't used.`;
+}
 
 /** A check the fit was put to, in the record: what was checked, on what, what was expected and what happened. */
 export interface CalibrationCheck {
@@ -124,7 +187,12 @@ export function withRatingSource<T>(scope: { subsystem: string; component: strin
   const before = sourceScope;
   sourceScope = scope;
   try {
-    return compute();
+    const out = compute();
+    // The scope is a module variable: a compute that returned a promise would leave it open across an await (review L4)
+    if (out !== null && (typeof out === 'object' || typeof out === 'function') && typeof (out as { then?: unknown }).then === 'function') {
+      throw new Error('withRatingSource takes synchronous code only: the scope would leak across an await');
+    }
+    return out;
   } finally {
     sourceScope = before;
   }
@@ -147,7 +215,7 @@ export function calibrationSourceAt(leagueId: number, subsystem: string, compone
 function inScope<M>(stored: StoredCalibration<M> | null): StoredCalibration<M> | null {
   if (!stored || !sourceScope) return stored;
   if (stored.subsystem !== sourceScope.subsystem || stored.component !== sourceScope.component) return stored;
-  return stored.record.ratingSource === sourceScope.source ? stored : null;
+  return sameRatingSource(stored.record.ratingSource, sourceScope.source) ? stored : null;
 }
 
 function parse<M>(row: Row | undefined): StoredCalibration<M> | null {
@@ -239,4 +307,18 @@ export function latestCalibrationAttempt<M = unknown>(leagueId: number, subsyste
     `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ?
        ${WITHIN} ${ORDER}, fitted_at DESC LIMIT 1`
   ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined));
+}
+
+/**
+ * The fit in force for a component that reads ratings (D-068, the owner's decision): the adopted fit `adoptedCalibration`
+ * finds, served only when it rests on today's ratings source (`sameRatingSource`). One on other ratings, or on ratings
+ * whose source wasn't recorded, is set aside, and the reader serves its provisional prior, labelled with `setAside.text`.
+ */
+export function adoptedCalibrationOnSource<M = unknown>(
+  leagueId: number, subsystem: string, component: string, method: string, bound: CalibrationBound, source: string,
+): { fit: StoredCalibration<M> | null; setAside: { source: string | null; basis: string; text: string } | null } {
+  const adopted = adoptedCalibration<M>(leagueId, subsystem, component, method, bound);
+  if (!adopted) return { fit: null, setAside: null };
+  if (sameRatingSource(adopted.record.ratingSource, source)) return { fit: adopted, setAside: null };
+  return { fit: null, setAside: { source: adopted.record.ratingSource ?? null, basis: adopted.basis, text: otherSourceText(adopted.record.ratingSource, source) } };
 }

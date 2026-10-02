@@ -5,6 +5,7 @@ import { CEILING_LINES, evaluateDevelopmentProtection, startingLines, type Ceili
 import { historyDb } from '../server/history.js';
 import { syntheticScoutedAbility } from '../server/scoutedEvidence.js';
 import { recordCalibration } from '../server/saveCalibrationStore.js';
+import { populationSource } from '../server/scoutedEvidence.js';
 import {
   measureCeilingLines, nearestRank, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, STAKES_SUBSYSTEM, stakesLinesFor, type MajorLeaguer,
 } from '../server/stakesLines.js';
@@ -147,9 +148,22 @@ describe('what a tier says about the lines', () => {
 });
 
 describe('the lines in force for a save', () => {
-  const run = (gameDate: string, hitter: number, clubEffect = 0, previous: CeilingLinesInForce = START) =>
-    measureCeilingLines(league(30, 13, { hitter, pitcher: 48 }, clubEffect), { leagueId: IDS.league, gameDate, throughSeason: 2029 }, previous);
+  // Measured on today's ratings source, as the calibration driver records it (D-068): only such lines serve
+  const run = (gameDate: string, hitter: number, clubEffect = 0, previous: CeilingLinesInForce = START, ratingSource = populationSource().id) => {
+    const measured = measureCeilingLines(league(30, 13, { hitter, pitcher: 48 }, clubEffect), { leagueId: IDS.league, gameDate, throughSeason: 2029 }, previous);
+    measured.record.ratingSource = ratingSource;
+    return measured;
+  };
   afterAll(() => historyDb.prepare(`DELETE FROM save_calibration_fits WHERE subsystem = ?`).run(STAKES_SUBSYSTEM));
+
+  it('lines measured on other ratings than today\'s are set aside: the starting lines, said why (D-068, the owner\'s decision)', () => {
+    historyDb.prepare(`DELETE FROM save_calibration_fits WHERE subsystem = ?`).run(STAKES_SUBSYSTEM);
+    recordCalibration(run('2030-04-01', 55, 0, START, 'export:real'), { fitMs: 1 });
+    const lines = stakesLinesFor(IDS.league);
+    expect(lines.source).toBe('starting');
+    expect(lines.setAside).toMatch(/rests on true ratings, not today's ratings .*so it isn't used/);
+    historyDb.prepare(`DELETE FROM save_calibration_fits WHERE subsystem = ?`).run(STAKES_SUBSYSTEM);
+  });
 
   it('nothing measured yet: the starting lines, "not measured"; a league not in the export: "no league"', () => {
     historyDb.prepare(`DELETE FROM save_calibration_fits WHERE subsystem = ?`).run(STAKES_SUBSYSTEM);
