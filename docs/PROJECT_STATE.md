@@ -71,6 +71,13 @@ material implementation state changes.
 - Records which kind of ratings the export carries (OOTP's export settings: the
   scouts' view, true, OSA or none) with each import and rating snapshot, serves
   it on the data status, and never reads a switch between kinds as development.
+- Reads the club's own scouts' complete ratings as the scouted evidence when the
+  export carries them (OOTP's "Additional complete scouted ratings", D-067):
+  every rating the evidence, the player card, the roster, the staff and the
+  draft board read is our scouts', whatever the main tables carry; a player they
+  haven't rated is unknown (the owner's choice between that and "OSA's view, said
+  so" is open); snapshots from them are a kind of their own. Not established, so
+  not used: what the file holds under "real", "none" or the scouts'-view mode.
 - After an import, the snapshots run in a worker and both refits at the same
   time (a post-import hook list later milestones register into); the
   destination-fit league populations are cached once per import.

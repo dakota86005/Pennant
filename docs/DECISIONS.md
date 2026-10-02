@@ -2593,8 +2593,9 @@ The rule:
   kind that build already leaves out, so a rolled-back build never compares it.
 - **Served words.** The data status's ratings line reads "Your scouts' view" with the source in its help tag ("Your
   scouts' full reports, from the export's scouted ratings file"); a claim's basis (`ratingSource`) says the same. The
-  import's record keeps the main tables' kind as D-061 records it. The player card reads its ratings through the same
-  rows (`scoutedRatingRow`), so it shows what the evidence uses.
+  import's record keeps the main tables' kind as D-061 records it. The player card, the roster grid, the pitching staff
+  and the draft board read their grades through the same rows (`scoutedRatingRow`, `ratingFrom`), so every page shows
+  what the evidence uses.
 
 Not changed: OOTP's star figures in the file (`overall`, `talent`, `overall_rating`, `talent_rating`) are not read, as
 the main tables' Overall and Potential are not (D-017); the display scale is still read off the main tables (the same

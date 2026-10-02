@@ -1318,6 +1318,9 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
   an ⓘ popover; the subtitle short enough for the title bar (the game date and a word or two) with the full one as
   `subtitleHint` (the Data Status toolbar button's help tag); the game date as served and written; the four source lines as rows (why the
   log is unavailable in the help tag); every date and place as a row, a missing one saying why; the action.
+  The ratings line says whose ratings the evidence reads (D-067): "Your scouts' view" with the help tag "Your scouts'
+  full reports, from the export's scouted ratings file" when the export carries our scouts' complete ratings, otherwise
+  the main tables' kind (D-061); `DataStatus.import.ourScouts` carries our club's id and how many players they rate.
 - The N3 gaps, served additively on reused routes: `ImportProgress.words` (the phase, the table named for a person, the
   progress line); `ServerStatus.importNote` and the import-finished event's `note` (why an import failed, as a sentence
   to act on with the raw message as its detail, was interrupted, or has no export folder); `POST /api/config` answers

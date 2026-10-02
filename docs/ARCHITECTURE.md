@@ -196,7 +196,9 @@ export folder --(exportFiles.ts: quiet 10 s, one burst, fingerprint)--> importer
   a philosophy input may live there (`tests/importCache.test.ts`). The served schema (tables and columns) is also
   remembered per read-only connection.
 - The export's rating mode (`ratingMode.ts`) is read from `<save>.lg/settings/db_dump_standard_csv.cfg` at each import
-  and recorded in `pennant_import`; see "Evidence and fog of war".
+  and recorded in `pennant_import`; see "Evidence and fog of war". The export's complete scouted ratings
+  (`players_scouted_ratings`) are imported like any file; when they rate players for our club they are the evidence
+  (D-067).
 
 ### Persistent local state
 
@@ -313,6 +315,19 @@ and serves the revealed glove at a player's listed position in bulk
 (`loadScoutedGlovesAtPosition`); Player Value's reader is its only caller in
 Player Value, and the pure ratings modules take its types only.
 
+- **Whose ratings (D-067):** when the export carries OOTP's "Additional complete
+  scouted ratings" (`players_scouted_ratings`, one row per player per scouting
+  organisation) from this export, with rows for the club the save marks as ours,
+  those rows are the evidence: every rating below is read from them
+  (`ourScoutsRatings`, `ratingFrom`), whatever the main ratings tables carry
+  (OSA's view, true ratings or the scouts' view), and OSA's and other clubs' rows
+  are never read. A player our scouts haven't rated is unknown
+  (`UNRATED_BY_OUR_SCOUTS`), never filled from another view. Otherwise the main
+  tables are the evidence, labelled with their kind (D-061). The rating snapshot
+  reads the same rows and is stamped `scouted-complete`, a kind of its own; the
+  player card, roster grid, pitching staff and draft board read the same grades
+  (`scoutedRatingRow`, `ratingFrom`). Only `scoutedEvidence.ts` names the file
+  (`tests/evidenceBoundary.test.ts`), and nothing reads its star figures.
 - **Approved:** the exported tool ratings (`*_ratings_overall_*` current,
   `*_ratings_talent_*` potential), stamina and pitch grades, and revealed
   fielding-position grades (`gloves.ts`: a current grade above zero is the only
