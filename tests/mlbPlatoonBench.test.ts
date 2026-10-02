@@ -135,7 +135,7 @@ describe('the bench', () => {
     expect(bench.gaps.map((g) => g.key)).toEqual(['catcher', 'middle_infield', 'center_field']);
     const needs = reviewNeeds(view, groups).filter((n) => n.kind === 'bench_coverage');
     expect(needs.map((n) => n.id)).toEqual(['mlb:bench_coverage:catcher', 'mlb:bench_coverage:middle_infield', 'mlb:bench_coverage:center_field']);
-    expect(needs[0].unknowns[0]).toMatch(/coverage question, not a performance one/);
+    expect(needs[0].unknowns[0]).toMatch(/question of backups, not of performance/);
   });
 
   it('no coverage need when the bench covers every required position, and none without a coverage port', () => {

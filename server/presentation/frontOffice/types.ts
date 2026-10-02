@@ -46,6 +46,11 @@ export interface FoItem {
   dueInDays: Integer | null;
   /** The key of the evidence trail `GET /api/v2/claims/:key` serves for it; null when it has none beyond its basis. */
   evidence: string | null;
+  /**
+   * The view that opens the item in full (N8: a Major League Ops need opens its decision, `kind: 'decision'` with the
+   * need's id as `key`); null when the item opens nothing beyond its basis and trail.
+   */
+  open: Target | null;
   /** How many of the department's own items this row stands for: 1, or more when the grouping rule put several in one row. */
   count: Integer;
   /**

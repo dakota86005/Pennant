@@ -104,7 +104,7 @@ export const REASON_TEXT: Record<StartingReason, string> = {
   no_later_season: 'there is no later season to check them on yet',
   check_failed: "the league's own ones did not hold up when checked",
   kept: "they were checked on this league's seasons and held up",
-  confirming: "this league's own did better at the last check and must do so once more before they are used",
+  confirming: "this league's own did better at the last check and have to do so once more before they are used",
   returned: "they did better than this league's own when checked again",
   no_splits: "this league's export has no batting records against left- and right-handed pitchers",
   relievers: 'too few relievers have pitched enough to measure',

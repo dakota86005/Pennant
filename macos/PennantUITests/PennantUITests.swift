@@ -98,6 +98,12 @@ final class PennantUITests: XCTestCase {
     /// - a contrast finding on an element wholly outside every window's frame, or cut by its window's edge (text of a
     ///   report longer than its window, scrolled wholly or partly out of view: the audit measures pixels that are not the
     ///   text's, or a sliver of it; N7);
+    /// - a contrast or description finding on an element of a served table that lies wholly or partly outside the visible
+    ///   rectangle of the table's own scroll area (`ScrollClip`: the innermost scroll view holding the table in the
+    ///   accessibility tree, inside its window, less its scroll bars), matched to the table through one snapshot of its
+    ///   tree. A native table clips its rows and columns there, as Finder's list view does, and VoiceOver scrolls to
+    ///   them; the audit measured pixels that are not theirs (PR #54 on the runner: the row under the detail pane, the
+    ///   column past the trailing edge). Anything inside the rectangle fails as before (`ScrollClipTests`);
     /// - a contrast finding on a sidebar row label (`sidebar.…`) only: outside the sidebar's visible frame (GitHub's runner
     ///   has a 1024 × 768 screen, so rows below the window are measured against pixels that are not theirs), or inside it
     ///   when its own pixels, in a screenshot of the window that holds it taken at the audit, read at 4.5:1 or better
@@ -161,6 +167,36 @@ final class PennantUITests: XCTestCase {
             return windows.contains { $0.frame.minY == frame.minY && $0.frame.height == frame.height }
                 && abs(frame.minX - sidebarFrame.minX) <= 12 && abs(frame.maxX - sidebarFrame.maxX) <= 12
         }
+        // The served tables (N8): native `Table`s, whose rows AppKit draws in cell containers of its own
+        let servedTables = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.'"))
+            .allElementsBoundByIndex.map(\.frame)
+        func isInServedTable(_ frame: CGRect) -> Bool { servedTables.contains { $0.contains(frame) } }
+        // Each served table's own scroll area as the tree reports it: the innermost scroll view holding the table (or
+        // the table itself when it is one), less its scroll bars, inside its window; and every element of the table,
+        // from one snapshot, so an element is matched to its own table, never guessed from where it sits
+        let tableClips: [(clip: ScrollClip, members: Set<ScrollClip.Member>)] = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'table.'")).allElementsBoundByIndex.compactMap { table in
+                let area = table.elementType == .scrollView ? table
+                    : app.scrollViews.containing(.any, identifier: table.identifier).allElementsBoundByIndex
+                        .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }
+                guard let window = windows.first(where: { $0.frame.intersects(table.frame) })?.frame,
+                      let snapshot = try? (area ?? table).snapshot() else { return nil }
+                var members: Set<ScrollClip.Member> = []
+                var bars: [CGRect] = []
+                func walk(_ node: XCUIElementSnapshot, depth: Int) {
+                    members.insert(ScrollClip.Member(node.elementType, node.frame))
+                    // The scroll area's own scroll bars, not a scroll bar of something inside a row
+                    if node.elementType == .scrollBar, depth == 1 { bars.append(node.frame) }
+                    for child in node.children { walk(child, depth: depth + 1) }
+                }
+                walk(snapshot, depth: 0)
+                return (ScrollClip(scrollArea: snapshot.frame, window: window, scrollBars: bars), members)
+            }
+        /// The scroll area clipping an element of a served table, when the element lies wholly or partly outside it.
+        func clippingArea(_ element: XCUIElement, _ frame: CGRect) -> ScrollClip? {
+            let key = ScrollClip.Member(element.elementType, frame)
+            return tableClips.first { $0.members.contains(key) && $0.clip.clips(frame) }?.clip
+        }
         try app.performAccessibilityAudit { issue in
             let element = issue.element
             let line = "\(issue.auditType): \(issue.compactDescription): "
@@ -184,11 +220,37 @@ final class PennantUITests: XCTestCase {
                 // Cut by its window's edge (a line of a report longer than the window, partly scrolled out of view): the
                 // audit measures the whole line, of which only a sliver is on the screen
                 setAside.append(line + " (cut by its window's edge: partly scrolled out of view)")
+            } else if issue.auditType == .contrast || issue.auditType == .sufficientElementDescription,
+                      let clip = clippingArea(element, frame) {
+                // A row or column of a served table past its own scroll area's edge (under the detail pane, or past the
+                // trailing edge on a narrow window): the native table clips it there and VoiceOver scrolls to it, and
+                // what the audit measured on the screen is not its own. Only outside the visible rectangle measured from
+                // the tree; a cell inside it fails as before (`ScrollClipTests`)
+                setAside.append(line + " (clipped by its own table's scroll area, visible \(clip.visible))")
             } else if element.elementType == .touchBar || (touchBarFrame.map { $0.contains(frame) } ?? false) {
                 setAside.append(line + " (the Touch Bar the system draws, or a key on it)")
             } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
                       element.identifier.isEmpty, element.label.isEmpty, isSidebarColumn(frame) {
                 setAside.append(line + " (the sidebar column's own container)")
+            } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
+                      element.identifier.isEmpty, element.label.isEmpty, isInServedTable(frame),
+                      element.staticTexts.allElementsBoundByIndex.contains(where: { !$0.label.isEmpty || !(($0.value as? String) ?? "").isEmpty }) {
+                // A served table's cell: AppKit's own container around the cell's text, which no SwiftUI modifier reaches
+                // (a label on the cell's content makes a second element inside it, and the container stays unnamed); the
+                // text inside it is named, and that is what VoiceOver reads
+                setAside.append(line + " (a served table's cell container; its text is named)")
+            } else if issue.auditType == .contrast, element.elementType == .staticText, isInServedTable(frame),
+                      let ratio = windows.first(where: { $0.frame.contains(frame) })?.pixels?.contrast(in: frame), ratio >= 4.5 {
+                // A served table cell's short text (a hand, a share, a number): the audit reported glyphs of one to three
+                // characters in the label colour on the page as failing while their own pixels read at 8:1 to 15:1; the
+                // line carries the measured ratio, so it is checked, not muted, and below 4.5:1 it fails
+                setAside.append(line + String(format: " (a served table cell's text whose own pixels read at %.1f:1)", ratio))
+            } else if issue.auditType == .contrast, element.elementType == .staticText, frame.width <= 60, frame.height <= 24,
+                      let ratio = windows.first(where: { $0.frame.contains(frame) })?.pixels?.contrast(in: frame), ratio >= 7 {
+                // A text of a few characters (a number such as "22", a chip's word such as "Now"): the audit reported such
+                // short texts in the label colour as failing or nearly passing while their own pixels read at 13:1 to 15:1
+                // (N8). Only at 7:1 or better by its pixels, the Increase Contrast bar; the line carries the ratio
+                setAside.append(line + String(format: " (a short text whose own pixels read at %.1f:1)", ratio))
             } else if issue.auditType == .parentChild, element.elementType == .group, frame.width <= 16, frame.height <= 16,
                       controls.contains(where: { $0.contains(frame) }) {
                 setAside.append(line + " (inside the window's own title-bar button)")
@@ -234,6 +296,46 @@ final class PennantUITests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
         XCTAssertEqual(issues, [], "the accessibility audit found issues")
+    }
+
+    /// Scrolls a container (an element, never the screen) until the target is there and can be clicked: a report draws
+    /// its lower sections lazily, so the target may exist only once scrolled to. Down first (as `testMajorLeagueViews`
+    /// reaches the glances), then up.
+    /// The scroll is aimed at the container's leading side: on a window too narrow for the sidebar, the content and the
+    /// inspector, the system lays the inspector over the content's trailing side, and a scroll at the container's middle
+    /// would land on the inspector.
+    @MainActor
+    private func reveal(_ target: XCUIElement, in container: XCUIElement) {
+        let leading = container.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.6))
+        for delta in [-2000.0, -2000, -2000, -2000, 5000, 3000, 3000] {
+            if target.exists && target.isHittable { return }
+            leading.scroll(byDeltaX: 0, deltaY: delta)
+            _ = target.waitForExistence(timeout: 1)
+        }
+    }
+
+    /// Scrolls a container until the target lies wholly inside the window (not cut by its bottom edge), so the audit reads
+    /// the element itself; whichever way moves it up is kept.
+    @MainActor
+    private func wholly(_ target: XCUIElement, in container: XCUIElement, of window: XCUIElement) {
+        let leading = container.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.6))
+        var delta = -150.0
+        for _ in 0..<8 where target.exists && target.frame.maxY > window.frame.maxY - 12 {
+            let before = target.frame.maxY
+            leading.scroll(byDeltaX: 0, deltaY: delta)
+            _ = target.waitForExistence(timeout: 0.5)
+            if target.frame.maxY >= before { delta = -delta }
+        }
+    }
+
+    /// A served table's first row, whether the table's identifier is on the table itself or on a container around it.
+    @MainActor
+    private func firstRow(of table: XCUIElement) -> XCUIElement {
+        switch table.elementType {
+        case .outline: table.outlineRows.firstMatch
+        case .table: table.tableRows.firstMatch
+        default: table.descendants(matching: .outlineRow).firstMatch
+        }
     }
 
     /// The sidebar at its top, as a window opens: its departments stay unfolded (the audit reads every row there is).
@@ -748,6 +850,194 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Major League Ops (N8): the report with the staff at a glance; a glance opens Position players (a native table);
+    /// Bench & Backups' table selects a row and draws its served detail, and its context menu offers the player's
+    /// actions; the report's need opens its decision, whose served choice asks again; Back returns. Audited on each view.
+    @MainActor
+    func testMajorLeagueViews() throws {
+        // A 1280-point window: the captures at the size the GM most often uses (the narrow one has its own test)
+        let app = launch(arguments: ["-PennantDebugWindowSize", "1280x820"])
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
+        let glance = element(app, "glance.positionPlayers")
+        // The report draws its lower sections as they are scrolled to: the glances are at its foot
+        reveal(glance, in: element(app, "detail.majorLeague.report"))
+        if !glance.waitForExistence(timeout: 30) { keep(app.windows.firstMatch.screenshot(), named: "n8-1280-missing-glance") }
+        XCTAssertTrue(glance.exists, "the staff at a glance did not load")
+        // The companion's foot (the what-if) wholly in the window, not cut by its edge, for the capture and the audit
+        reveal(element(app, "whatIf"), in: element(app, "detail.majorLeague.report"))
+        wholly(element(app, "whatIf"), in: element(app, "detail.majorLeague.report"), of: app.windows.firstMatch)
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-report-glances")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-report")
+        reveal(glance, in: element(app, "detail.majorLeague.report"))
+        glance.click()
+        let lineup = element(app, "table.lineup")
+        XCTAssertTrue(lineup.waitForExistence(timeout: 20), "Position players' table did not load")
+        // A native table on whatever window this is (on the runner's screen, about 1024 points): its scroll area lies
+        // inside the window, columns past it scroll sideways inside it, and its first row's first cell is in its visible
+        // rectangle, so the audit's scroll-area rule never excuses it
+        let lineupArea = app.scrollViews.containing(.any, identifier: "table.lineup").allElementsBoundByIndex
+            .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }?.frame ?? lineup.frame
+        let mainWindow = app.windows.firstMatch.frame
+        XCTAssertTrue(mainWindow.insetBy(dx: -1, dy: -1).contains(lineupArea), "the table's scroll area \(lineupArea) runs past the window \(mainWindow)")
+        let firstCell = firstRow(of: lineup).staticTexts.firstMatch
+        XCTAssertTrue(firstCell.waitForExistence(timeout: 10), "the table's first row has no text")
+        XCTAssertFalse(ScrollClip(scrollArea: lineupArea, window: mainWindow).clips(firstCell.frame), "the first row's first cell \(firstCell.frame) is outside the table's visible rectangle")
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-position-players")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-position-players")
+        // Back to the report, then on to the bench
+        app.typeKey("[", modifierFlags: .command)
+        let benchGlance = element(app, "glance.benchBackups")
+        reveal(benchGlance, in: element(app, "detail.majorLeague.report"))
+        XCTAssertTrue(benchGlance.waitForExistence(timeout: 20), "Back did not return to the report")
+        benchGlance.click()
+        let bench = element(app, "table.bench")
+        XCTAssertTrue(bench.waitForExistence(timeout: 20), "the bench's table did not load")
+        let row = firstRow(of: bench)
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the bench's table has no row")
+        // A row's leading side (its name): the outline reports the row itself as not hittable
+        let rowName = row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5))
+        rowName.click()
+        XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "selecting a row did not draw its served detail")
+        rowName.rightClick()
+        XCTAssertTrue(contextMenuItem(app, "Copy Name").waitForExistence(timeout: 5), "the row's context menu has no Copy Name")
+        app.typeKey(.escape, modifierFlags: [])
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-bench-row-selected")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-bench")
+        // The report's need opens its decision
+        app.typeKey("2", modifierFlags: .command)
+        let open = element(app, "item.decision")
+        XCTAssertTrue(open.waitForExistence(timeout: 20), "the report's need offers no decision")
+        open.click()
+        XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-decision")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-decision")
+        app.typeKey("[", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "Back did not return from the decision")
+        // A what-if always serves its durations: choosing one loads that decision, which then says it is the one chosen
+        // (the served `selected`), never skipped
+        let whatIf = element(app, "whatIf")
+        XCTAssertTrue(whatIf.waitForExistence(timeout: 20), "the report offers no what-if")
+        whatIf.click()
+        let player = app.descendants(matching: .button).matching(NSPredicate(format: "identifier BEGINSWITH 'whatIf.player.'")).firstMatch
+        XCTAssertTrue(player.waitForExistence(timeout: 10), "the what-if lists no player")
+        player.click()
+        let duration = element(app, "choices.duration")
+        XCTAssertTrue(duration.waitForExistence(timeout: 30), "the what-if's decision serves no durations")
+        duration.click()
+        let fortnight = contextMenuItem(app, "Two weeks")
+        XCTAssertTrue(fortnight.exists, "the served durations have no \"Two weeks\"")
+        fortnight.click()
+        let chosen = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in (duration.value as? String) == "Two weeks" }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [chosen], timeout: 30), .completed, "the decision for the chosen duration did not load")
+        XCTAssertTrue(element(app, "decision.header").exists)
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-decision-what-if-two-weeks")
+        quitCleanly(app)
+    }
+
+    /// The narrow window (the N8 review, H2): 900 × 700 with the inspector open, where a table nested in a page's scroll
+    /// view made AppKit abort ("more Update Constraints in Window passes than there are views in the window"). Every
+    /// Major League Ops view in turn and back to the report, three rounds, a row selected in each table and a decision's
+    /// candidates opened: the app stays up throughout and quits cleanly.
+    @MainActor
+    func testMajorLeagueNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in XCTAssertEqual(app.state, .runningForeground, "the app stopped at \(step)") }
+        // Clicks aimed at an element's leading side: on a window this narrow the system lays the inspector over the
+        // content's trailing side, and a click at a wide element's middle would land on the inspector
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        let views: [(view: String, table: String)] = [
+            ("positionPlayers", "table.lineup"), ("pitchingStaff", "table.pitching.0"), ("benchBackups", "table.bench"),
+        ]
+        keep(window.screenshot(), named: "n8-narrow-900-report")
+        for round in 1...3 {
+            for view in views {
+                let item = element(app, "sidebar.majorLeague.\(view.view)")
+                XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                item.click()
+                let table = element(app, view.table)
+                if !table.waitForExistence(timeout: 20) { keep(window.screenshot(), named: "n8-narrow-900-missing-\(view.table)") }
+                XCTAssertTrue(table.exists, "round \(round): \(view.view)'s table did not load")
+                let row = firstRow(of: table)
+                XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                leading(row)
+                XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s row detail did not draw")
+                if view.view == "pitchingStaff" {
+                    let pen = element(app, "pitching.sections").radioButtons.element(boundBy: 1)
+                    if pen.exists {
+                        pen.click()
+                        XCTAssertTrue(element(app, "table.pitching.1").waitForExistence(timeout: 10), "round \(round): the pen's table did not draw")
+                    }
+                }
+                if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-\(view.view)") }
+                up("\(view.view), round \(round)")
+                app.typeKey("[", modifierFlags: .command)
+                XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "round \(round): Back did not return to the report")
+                up("the report, round \(round)")
+            }
+            // Decision: the open needs, one opened and back; a what-if (a scenario with candidates), its candidates in
+            // their table, and back
+            let inbox = element(app, "sidebar.majorLeague.decision")
+            XCTAssertTrue(inbox.waitForExistence(timeout: 10), "round \(round): the sidebar has no Decision")
+            inbox.click()
+            let needs = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'need.'"))
+            let need = needs.firstMatch
+            if !need.waitForExistence(timeout: 20) { keep(window.screenshot(), named: "n8-narrow-900-missing-need") }
+            XCTAssertTrue(need.exists, "round \(round): the decision list has no open need")
+            leading(need)
+            XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "round \(round): the decision did not load")
+            if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-decision") }
+            up("the decision, round \(round)")
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(needs.firstMatch.waitForExistence(timeout: 10), "round \(round): Back did not return to the decision list")
+            let whatIf = element(app, "whatIf")
+            reveal(whatIf, in: element(app, "detail.majorLeague.decision"))
+            XCTAssertTrue(whatIf.waitForExistence(timeout: 10), "round \(round): the decision list offers no what-if")
+            whatIf.click()
+            // A reliever's what-if: the synthetic league's relievers have candidates behind them (the others' do not)
+            let players = app.descendants(matching: .button).matching(NSPredicate(format: "identifier BEGINSWITH 'whatIf.player.'"))
+            XCTAssertTrue(players.firstMatch.waitForExistence(timeout: 10), "round \(round): the what-if lists no player")
+            let player = players.allElementsBoundByIndex.first { $0.label.contains("relief") } ?? players.firstMatch
+            player.click()
+            XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "round \(round): the what-if's decision did not load")
+            let show = element(app, "decision.showCandidates")
+            reveal(show, in: element(app, "detail.majorLeague.decision"))
+            XCTAssertTrue(show.waitForExistence(timeout: 10), "round \(round): the what-if's decision has no candidates to show")
+            show.click()
+            let candidateTable = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.candidates.'")).firstMatch
+            if !candidateTable.waitForExistence(timeout: 10) { keep(window.screenshot(), named: "n8-narrow-900-missing-candidates") }
+            XCTAssertTrue(candidateTable.exists, "round \(round): the candidates' tables did not draw")
+            let row = firstRow(of: candidateTable)
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): the candidates' table has no row")
+            leading(row)
+            XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): a candidate's detail did not draw")
+            if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-candidates") }
+            element(app, "candidates.showDecision").click()
+            XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 10), "round \(round): the decision did not come back")
+            up("the what-if, round \(round)")
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(needs.firstMatch.waitForExistence(timeout: 10), "round \(round): Back did not return to the decision list")
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "round \(round): Back did not return to the report")
+            up("the report after the decisions, round \(round)")
+        }
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-narrow")
+        quitCleanly(app)
+    }
+
     /// Following by drag (D-058): a club's name dragged from around the league onto the sidebar's Following section is
     /// followed (the server's answer redraws the section), and ⌘Z unfollows it again.
     @MainActor
@@ -919,6 +1209,12 @@ struct WindowPixels {
             return true
         }
         guard drawn else { return nil }
+        // The picture must be the whole window at one scale: a window running past its screen's edge is pictured only in
+        // the part on the screen, and a scale taken from its width would read every element's pixels from the wrong place
+        // (PR #54: a 1280-point window on the runner's 1024-point screen read black text at 1.0:1). No pixels, then, and
+        // nothing is set aside by them
+        let across = CGFloat(w) / frame.width, down = CGFloat(h) / frame.height
+        guard abs(across - down) < 0.05 else { return nil }
         width = w
         height = h
         data = bytes
@@ -964,5 +1260,77 @@ struct WindowPixels {
             text = lighter[lighter.count - 1 - lighter.count / 10]
         }
         return ratio(text, middle)
+    }
+}
+
+/// The visible rectangle of a native table's own scroll area, measured from the accessibility tree, and whether an
+/// element of that table is clipped by it (see `audit`). A native `Table` clips its rows and columns to its own scroll
+/// view, as Finder's list view does, and VoiceOver scrolls to them; the audit still measures a row or a column past
+/// that edge, whose pixels on the screen are not its own.
+nonisolated struct ScrollClip: Equatable {
+    /// What of the scroll area shows: its frame, inside its window, less the strips its scroll bars draw over.
+    let visible: CGRect
+
+    /// An element of a table's tree as the audit names one: its type and its frame, to whole points.
+    struct Member: Hashable {
+        let type: UInt
+        let x, y, w, h: Int
+
+        init(_ type: XCUIElement.ElementType, _ frame: CGRect) {
+            self.type = type.rawValue
+            x = Int(frame.minX.rounded()); y = Int(frame.minY.rounded()); w = Int(frame.width.rounded()); h = Int(frame.height.rounded())
+        }
+    }
+
+    /// - Parameters:
+    ///   - scrollArea: the frame of the table's enclosing scroll view as the accessibility tree reports it (or the
+    ///     table's own frame, when the tree has no scroll view around it).
+    ///   - window: the frame of the window that holds it.
+    ///   - scrollBars: the frames of that scroll view's own scroll bars in the tree (none while they are hidden).
+    init(scrollArea: CGRect, window: CGRect, scrollBars: [CGRect] = []) {
+        var visible = scrollArea.intersection(window)
+        for bar in scrollBars where visible.intersects(bar) {
+            if bar.width > bar.height, bar.minY > visible.midY {
+                visible.size.height = max(0, bar.minY - visible.minY)
+            } else if bar.height > bar.width, bar.minX > visible.midX {
+                visible.size.width = max(0, bar.minX - visible.minX)
+            }
+        }
+        self.visible = visible.isNull ? .zero : visible
+    }
+
+    /// Whether an element's frame lies wholly or partly outside the visible rectangle. One wholly inside is never
+    /// clipped, whatever the audit says of it.
+    func clips(_ frame: CGRect) -> Bool {
+        !visible.contains(frame)
+    }
+}
+
+/// The scroll-area rule on its own: it excuses only what lies outside the visible rectangle (no app needed).
+final class ScrollClipTests: XCTestCase {
+    private let window = CGRect(x: 0, y: 23, width: 1024, height: 677)
+    private let table = CGRect(x: 290, y: 194, width: 734, height: 240)
+
+    func testAVisibleCellIsNeverExcused() {
+        let clip = ScrollClip(scrollArea: table, window: window)
+        XCTAssertFalse(clip.clips(CGRect(x: 304, y: 234, width: 46, height: 16)), "a cell wholly in the table's visible rectangle was excused")
+        XCTAssertFalse(clip.clips(table), "the visible rectangle itself was excused")
+    }
+
+    func testAClippedCellIsExcused() {
+        let clip = ScrollClip(scrollArea: table, window: window)
+        // A row past the table's bottom edge (under the detail pane), and a column past its trailing edge
+        XCTAssertTrue(clip.clips(CGRect(x: 304, y: 444, width: 104, height: 16)))
+        XCTAssertTrue(clip.clips(CGRect(x: 976, y: 230, width: 64, height: 24)), "a column cut by the table's edge")
+        XCTAssertTrue(clip.clips(CGRect(x: 1100, y: 230, width: 64, height: 24)), "a column wholly past it")
+    }
+
+    func testScrollBarsAndTheWindowNarrowTheVisibleRectangle() {
+        let bars = [CGRect(x: 290, y: 420, width: 720, height: 14), CGRect(x: 1010, y: 194, width: 14, height: 226)]
+        // A scroll area wider than its window: the window's edge bounds it too
+        let clip = ScrollClip(scrollArea: CGRect(x: 290, y: 194, width: 900, height: 240), window: window, scrollBars: bars)
+        XCTAssertEqual(clip.visible, CGRect(x: 290, y: 194, width: 720, height: 226))
+        XCTAssertTrue(clip.clips(CGRect(x: 814, y: 418.5, width: 17, height: 16)), "a cell under the horizontal scroll bar")
+        XCTAssertFalse(clip.clips(CGRect(x: 814, y: 391.5, width: 17, height: 16)), "a cell above the scroll bar")
     }
 }

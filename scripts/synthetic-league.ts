@@ -41,7 +41,7 @@ const { buildSave } = await import('../tests/syntheticSave.js');
 const { db } = await import('../server/db.js');
 const { historyDb } = await import('../server/history.js');
 
-const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
+const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true, lineups: true });
 fs.mkdirSync(folder, { recursive: true });
 // One consistent file, whatever the journal mode
 db.exec(`VACUUM INTO '${out.replaceAll("'", "''")}'`);

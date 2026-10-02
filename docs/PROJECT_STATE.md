@@ -1193,7 +1193,7 @@ Recorded in [MLB_OPERATIONS_HARDENING.md](MLB_OPERATIONS_HARDENING.md); decision
 - **Refined:** role standards (`roleStandards.ts`) and role-relative concern; pen-wide bullpen findings and a rotation/bullpen conflict;
   bench cover quality and functions; platoon drivers; a structured explanation on every review need; three kinds of constant stamp
   (calibrated, provisional, policy).
-- **UI:** one page became five views behind one entry (Overview, Position players, Pitching staff, Bench and coverage, Decision),
+- **UI:** one page became five views behind one entry (Overview, Position players, Pitching staff, Bench & Backups, Decision; "Bench and coverage" until the owner renamed it on 2026-10-01),
   addressable by URL hash.
 - **Not changed, on evidence:** the tools model (corner residuals within two standard errors), the results model, the platoon shrinkage,
   the philosophy shading (adversarial tests found no leak).

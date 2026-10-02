@@ -257,15 +257,22 @@ public struct PlaceStrips: View {
 public struct LegendEntry: View {
     let line: Components.Schemas.Cell
     let symbol: String
+    /// The symbol's own colour (a tone's orange), never the words': they keep the legend's readable colour.
+    let symbolTint: Color?
 
-    public init(_ line: Components.Schemas.Cell, symbol: String) {
+    public init(_ line: Components.Schemas.Cell, symbol: String, symbolTint: Color? = nil) {
         self.line = line
         self.symbol = symbol
+        self.symbolTint = symbolTint
     }
 
     public var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: symbol).accessibilityHidden(true)
+            if let symbolTint {
+                Image(systemName: symbol).foregroundStyle(symbolTint).accessibilityHidden(true)
+            } else {
+                Image(systemName: symbol).accessibilityHidden(true)
+            }
             Text(verbatim: line.display)
         }
         .help(line.hint.map { Text(verbatim: $0) } ?? Text(verbatim: line.display))

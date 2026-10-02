@@ -955,7 +955,7 @@ The department's views sit beneath it in the sidebar.
 | Department (head from the save) | Views |
 |---|---|
 | **Front Office** (GM) | Morning Report · Report (the whole desk, added at N4) · Storylines (AI) · GM Briefing (AI) |
-| **Major League Ops** (bench coach) | Report · Position players · Pitching staff · Bench & backups (named "Bench & coverage" until N3: "coverage" is on the banned-jargon list, meant for interval coverage; the owner decides the name) · Decision · Lineup · Pitching availability · Schedule & game plans · Depth chart · 40-man & options · Rosters · Season trends |
+| **Major League Ops** (bench coach) | Report · Position players · Pitching staff · Bench & Backups (the owner's name, 2026-10-01; "coverage" stays on the banned-jargon list, meant for interval coverage) · Decision · Lineup · Pitching availability · Schedule & game plans · Depth chart · 40-man & options · Rosters · Season trends |
 | **Farm & Development** (minor league staff) | Report · Organization · Affiliates · Assignments · Prospects · Development tracking · Decision |
 | **Scouting** (scouting director) | Draft board · Player search |
 | **Trades** (assistant GM) | Trade desk (offers, builder, analysis, league fits) |
@@ -984,6 +984,98 @@ it reads, "couldn't be read this time" for anything else) or `notYet`. What each
 The Mac app draws a report plainly (`DepartmentReportView`): the header, the summary, the figures, the sections, "What
 we can't see"; an item with an evidence trail has a Staff's Options button that fetches it (the need's basis above the
 responses). The Front Office's own report is its Report view.
+
+**As built at N8, 2026-10-01: Major League Ops (server and Mac).** Branch `feature/swiftui-n8-mlb`; D-065.
+- **Served** (`server/presentation/majorLeague/`): `GET /api/v2/views/:org/majorLeague/overview` (the report's companion:
+  the staff at a glance with each view's count, the open needs grouped as the React inbox grouped them, each opening its
+  decision, the what-if's players, how the philosophy leans, roster data when not current), `positionPlayers` (the lineup
+  as one table: spot, regular, bats, share, estimate, bat, glove, run, platoon, read; each row's detail the bat, glove and
+  running, and platoon blocks; Replacement options and Platoon partner as decision actions), `pitchingStaff` (rotation and
+  bullpen tables, the pen's deployment and pen findings as blocks, the reliever note with the long-man line in its
+  basis), `benchBackups` (each bench job with its strength and who does it, Who could back it up? on a required position
+  nobody backs up, the bench table, its findings and hands) and `decision?need=&role=&context=&days=` (in the GM's order:
+  the problem, why it was flagged with the gauge's served numbers and the estimate's parts, the role's picture as lenses,
+  the staff's read and call, the assignment Player Development judges, the ways to respond and pathways followed through,
+  the role to explore for an open spot, every candidate in Major League Ops' own groups with each row's detail, the roster
+  mechanics; a what-if's served durations). Tables are `MlbTable`: served columns, `MlbRow` (a `Row<string>` with the player,
+  the detail blocks and the actions), a null sort key where the evidence gives none. Each desk item that is a need carries
+  `open`, a decision target. Bench & coverage is Bench & Backups everywhere (registry id `benchBackups`).
+- **Drawn** (MajorLeague target): the report is `DepartmentReportView` with the companion beneath; Position players,
+  Pitching staff (a segmented Rotation | Bullpen) and Bench & Backups are pages of native `Table`s over the served columns
+  (sorted by the served keys with an unknown last whichever way, columns the window remembers, rows that drag as the player,
+  a context menu and double-click or Return that open his club, follow him, copy his name or open the row's decisions) with
+  the selected row's served detail beneath; Decision lists the open needs without a key and draws the decision with one
+  (`AppRoute.key`, so Back and Forward step through decisions; the sidebar selects Decision itself). A served choice is a
+  segmented control (a menu past four) and asks again as served; the last decision shown stays, said to be refreshing.
+  The desk's items have Open Decision (button, context menu, VoiceOver action). Since the review the tables sit in a
+  `TablePane` (below), never in a page's scroll view.
+- **Measured** (in process over HTTP, M4): the views add 3 to 6 ms to the club's build (the synthetic save; 4.9 ms on the
+  owner's export, a read-only scratch copy); warm GETs p50 0.6 to 1.1 ms, p95 0.9 to 2.0 ms on both; a decision 0.3 s cold
+  on the synthetic save and 1.1 to 1.6 s on the owner's export (in the worker; built ahead after a warm-up), warm p95
+  1 to 2 ms.
+- **Native layout** (the inspector on a narrow window): the sidebar is 270 to 380 pt (wider than the system's default, so
+  every view title fits, `SidebarWidthTests`), the inspector 280 to 440, the window at least 900. At 1000 pt with the
+  inspector open nothing is covered: the content column is squeezed to about 410 pt, and macOS does not collapse the
+  sidebar for it. A minimum on the detail column (with the inspector's width while it is open) did not make macOS collapse
+  the sidebar on a programmatic resize and was taken out; the tables take the width they are given (no column minimums
+  summed past the content) and scroll sideways. Mail and Notes were not compared side by side (no UI automation of other
+  apps); left for the owner's eye.
+- **Setup's zero-question flake:** the window closes when the model's count of ended runs moves while it is open, rather
+  than on a step change its view could miss (`SetupModel.completions`). Since the review (M7) the close is the window's
+  own: `WindowCloser` closes the `NSWindow` its view is in the moment that window is on screen (asked before, it waits
+  for the window's occlusion or key change), with no scene-wide dismiss and no timed retry (`SetupWindowCloseTests`).
+- **The crash at narrow widths, and its fix (the N8 review, H2).** At about 900 pt with the inspector open, N8's build (and
+  the farm branch's) aborted at random in AppKit with "more Update Constraints in Window passes than there are views in
+  the window" (`NSWindowGetDisplayCycleObserverForUpdateConstraints`, reports of 2026-10-01). The crash's last-exception
+  backtrace (a report of 2026-10-02, reproduced by the new narrow-window test) names the loop: `NSHostingView
+  ._willUpdateConstraintsForSubtree` → `SizeConstraints.update` → `SplitViewChildController.hostingView(_:didUpdateMinSize:
+  maxSize:)` → layout invalidated → constraints updated again. The split view's content column takes its minimum size from
+  its SwiftUI content, and a content whose minimum width moves with the width it is given (a table whose column minimums
+  are summed, a menu or segmented control sized to its title, a page that cannot wrap) on a window too narrow for the
+  sidebar, the content and the inspector never settles. A table inside a page's scroll view was the first way in, not the
+  only one: with the tables moved out, the Decision list (no table) still crashed until the column itself was fixed.
+  The fix, in two parts, both in PennantDesign for every department (the farm adopts them):
+  - `NoContentMinimum` (`.noContentMinimum()`): the window's content column (`DetailView`) and the inspector take the size
+    they are offered and report no minimum of their content's own, laid out from the top leading corner, so nothing a
+    view draws can reach the split view's constraints. What cannot be narrower than the column runs past its trailing
+    edge, under the inspector, as the system lays it there on a narrow window; never under the sidebar.
+  - `TablePane`: the native shape for a view that is mostly a table, as Mail and Finder lay out a list: the head at its
+    natural height, the `Table` filling the rest and scrolling by itself, and the selected row's detail (then the view's
+    own notes: the pen's findings, the bench's jobs, the lineup's basis) beneath in a pane that scrolls on its own, its
+    height a fixed share of the pane's. A table never goes inside a page's scroll view. The columns keep readable
+    minimums again (a name 110 pt, a number 44, words 72) and the table scrolls sideways past them.
+  A decision is a document, so its candidates moved out of it: the document says how many there are and offers Show
+  Candidates, which shows them one served group at a time in a `TablePane`, with Show Decision to go back. Identifiers on
+  a pane name the pane (`accessibilityElement(children: .contain)`), never every element inside it.
+  `testMajorLeagueNarrowWindow` opens every Major League Ops view, the Decision list, a decision and a what-if's
+  candidates at 900 × 700 with the inspector open, three rounds, a row selected in each table, and audits the window.
+  At 900 pt the system still lays the inspector over the content's trailing side (the report's masthead runs under it);
+  closing the sidebar or the inspector gives the room back, as in any Mac app.
+- **The audits with real rows.** With settled lineups the views' tables and details are audited with real content, and
+  three findings the old layout never put on screen were fixed: a player's name, a button, now presses (its default
+  action opens his club, `playerName`); a line naming a player keeps his name its own element; the lazy grids' own
+  containers are named (the bench's jobs, the evidence's picture, the ways to clear a spot). Three kinds of finding are
+  set aside, each line carrying its reason and, for contrast, the measured ratio: a served table's cell container (AppKit's
+  own, which no SwiftUI modifier reaches; its text is named), a served table cell's text whose own pixels read at 4.5:1 or
+  better, and a text of a few characters ("22", a chip's "Now") whose own pixels read at 7:1 or better. The what-if is a
+  button that opens its players in a popover: the pull-down `Menu` and the pop-up `Picker` were both found with no action
+  to press. The report's companion is a stack that is always there, so its read starts even before it draws anything
+  (it was a `Group` that drew nothing until read, so the read never started after the store was cleared).
+- **Never another club's (M1).** A view is drawn as current only when its own stamps (import, build, club) match the
+  key (`FrontOfficeStore.isCurrent`), else as updating; another save or club drops everything the store holds at once
+  (`MajorLeagueStore.follow`); a failed read shows its problem, never the old payload. The last decision shown is tracked
+  by the view, and only for the current club.
+- **Conventions for the farm (M8).** `route(_:)` passes a view target's served key through (the farm's affiliates open
+  with a team key); an open action is named by its target's kind (`openLabel`: Open Decision, or Open), the same on the
+  button, the context menu and the VoiceOver action.
+- **Words after the review.** The staff's call reads "Staff's view: act / worth pursuing / keep watching / hold" and its
+  headline is the staff's view, never an order; the lean is in the basis only; a working estimate is "N on the 0–100
+  scale" (a bare number under a column that names it); a rate with a blank part is "not known"; coded columns sort by
+  served ordinals, an unknown last; the stakes tier is "Development-sensitive"; the bench's chips are Backed up and Has
+  someone; the glance's count is spoken with what it counts (`MlbGlance.countLabel`). The inspector's "Nothing pinned"
+  is drawn in the label colour on the fixed page colour, a checked pair. The contract's synthetic save now has settled
+  lineups (`buildSave({ lineups: true })`), so the fixtures and snapshots draw real lineup rows.
+- *Left for later:* the per-view sidebar counts (the counts are on the glances); the clubhouse tools are N9's.
 
 ### 3.6 Signature interactions
 
@@ -1691,8 +1783,9 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
 - The app target is thin: `Registry.swift` assembles the registry from the nine modules (checked in Debug), the scenes,
   `@SceneStorage`, and `PennantCommands`.
 - The packages' views look their labels up in the app's bundle, so the app's one String Catalog holds every structural
-  label, and `tests/stringCatalog.test.ts` fails when a label in the Swift sources is missing from it. Section 3.5's
-  "Bench & coverage" is "Bench & Backups": "coverage" is on the banned-jargon list (the owner decides the name). The
+  label, and `tests/stringCatalog.test.ts` fails when a label in the Swift sources is missing from it. The bench
+  view is "Bench & Backups" (the owner's name, 2026-10-01; registry id `benchBackups` since N8): "coverage" is on the
+  banned-jargon list. The
   sidebar is 270 to 380 pt wide (ideal 280) so every view title fits at the default text size (`SidebarWidthTests`).
   `RequestProblem` (PennantKit) and `ProblemLine` (FeatureCore) turn a failed request into the server's sentence or a
   structural line, the raw error going to the log.
@@ -2151,6 +2244,9 @@ scratch folder).
 the chips, the desk's statuses with Undo, the wire, club windows, Following with drag to follow, search, the notification
 and the Dock badge, and the club owed across a relaunch. **N7 is complete.** Left open: the items in that section's "Left
 for later". **Next: N8** (Major League Ops).
+
+**N8 (2026-10-01)** on `feature/swiftui-n8-mlb`: Major League Ops served per view and drawn natively (section 3.5, "As
+built at N8"; D-065). Left open: the items in that section's "Left for later".
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

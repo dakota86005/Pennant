@@ -1076,6 +1076,252 @@
         }
       }
     },
+    "/api/v2/views/{org}/majorLeague/benchBackups": {
+      "get": {
+        "operationId": "getMajorLeagueBench",
+        "summary": "Bench & Backups: what the bench is for and who does each job (never a bench score), and the bench itself.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbBenchView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/decision": {
+      "get": {
+        "operationId": "getMajorLeagueDecision",
+        "summary": "One need's decision: the problem, why it was flagged, the staff's call, the ways to respond followed through, every candidate and the roster mechanics. Built on its first open and kept until the next import; it ranks nobody and makes no move.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "need",
+            "in": "query",
+            "required": true,
+            "description": "The need's id (a decision target's `key`), or `mlb:what_if:<playerId>`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "description": "For an open spot: the role to explore, as a served choice sends it.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "description": "The assignment Player Development is asked to judge, as a served choice sends it.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "description": "For a what-if: how many days he is assumed out, as a served choice sends it.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbDecisionView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/overview": {
+      "get": {
+        "operationId": "getMajorLeagueOverview",
+        "summary": "Major League Ops' companion to its report: the staff's views at a glance, the open needs grouped as the department groups them (each opening its decision), the what-if, how the philosophy leans and what it can't see.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbOverviewView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/pitchingStaff": {
+      "get": {
+        "operationId": "getMajorLeaguePitchingStaff",
+        "summary": "Pitching staff: the rotation and the bullpen, each arm read against the standard for his job, and the notes on how the pen is used.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbPitchingStaffView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/positionPlayers": {
+      "get": {
+        "operationId": "getMajorLeaguePositionPlayers",
+        "summary": "Position players: the lineup as usage shows it, each regular read on his bat, glove and running against the standard for his job, as a table with each row's detail.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbPositionPlayersView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/wire/{org}": {
       "get": {
         "operationId": "getWire",
@@ -3308,6 +3554,10 @@
             ],
             "description": "The key of the evidence trail `GET /api/v2/claims/:key` serves for it; null when it has none beyond its basis."
           },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "The view that opens the item in full (N8: a Major League Ops need opens its decision, `kind: 'decision'` with the need's id as `key`); null when the item opens nothing beyond its basis and trail."
+          },
           "count": {
             "$ref": "#/components/schemas/Integer",
             "description": "How many of the department's own items this row stands for: 1, or more when the grouping rule put several in one row."
@@ -4652,6 +4902,1190 @@
           "part",
           "line"
         ]
+      },
+      "MlbAction": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "text",
+          "open"
+        ],
+        "description": "Something a view offers to open: its words and where it leads (a decision, another view)."
+      },
+      "MlbBenchFunction": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "strength": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "by": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbLine"
+            }
+          },
+          "action": {
+            "$ref": "#/components/schemas/MlbAction"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "strength",
+          "text",
+          "by"
+        ],
+        "description": "One function a bench is for: who covers it and how well, and the decision that looks for a cover where nobody does."
+      },
+      "MlbBenchView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "functions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBenchFunction"
+            }
+          },
+          "bench": {
+            "$ref": "#/components/schemas/MlbTable"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "hands": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The sentence when there is no bench review at all."
+          }
+        },
+        "required": [
+          "bench",
+          "findings",
+          "functions",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "title"
+        ]
+      },
+      "MlbBlock": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "chips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbLine"
+            }
+          },
+          "collapsed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "chips",
+          "claims",
+          "lines",
+          "collapsed"
+        ],
+        "description": "A titled group of lines (a detail's section, a plan, a clearing option): its title or the player it is about, its chips, the lines with a basis (claims) and the plain lines. `collapsed` is drawn closed at first (a disclosure)."
+      },
+      "MlbCall": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "stance": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "stance",
+          "confidence",
+          "headline",
+          "blocks"
+        ],
+        "description": "The staff's call: its stance, how sure, the headline with its rubric and leans in the basis, and the sections."
+      },
+      "MlbCandidateGroup": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "collapsed": {
+            "type": "boolean"
+          },
+          "table": {
+            "$ref": "#/components/schemas/MlbTable"
+          }
+        },
+        "required": [
+          "title",
+          "collapsed",
+          "table"
+        ]
+      },
+      "MlbCandidates": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbCandidateGroup"
+            }
+          },
+          "notConsidered": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "title",
+          "count",
+          "groups",
+          "notConsidered"
+        ]
+      },
+      "MlbChoice": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "query": {
+            "$ref": "#/components/schemas/MlbDecisionQuery"
+          }
+        },
+        "required": [
+          "text",
+          "selected",
+          "query"
+        ],
+        "description": "One of the GM's choices in a decision (a duration, the assignment to judge, the role to explore)."
+      },
+      "MlbChoices": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbChoice"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "choices"
+        ]
+      },
+      "MlbColumn": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "numeric": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "numeric"
+        ],
+        "description": "A table's column: its id (the key of each row's cells and sort keys), its title, and whether it holds numbers."
+      },
+      "MlbConstraint": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "classes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "$ref": "#/components/schemas/Cell"
+                },
+                "description": {
+                  "$ref": "#/components/schemas/Cell"
+                },
+                "collapsed": {
+                  "type": "boolean"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MlbBlock"
+                  }
+                }
+              },
+              "required": [
+                "title",
+                "description",
+                "collapsed",
+                "options"
+              ]
+            },
+            "description": "Each kind of move (routine, costs something lasting, disruptive, not established): its options as blocks."
+          }
+        },
+        "required": [
+          "title",
+          "note",
+          "flags",
+          "classes"
+        ],
+        "description": "One way to clear a roster spot: the constraint, its note, and its options by kind of cost."
+      },
+      "MlbDecisionQuery": {
+        "type": "object",
+        "properties": {
+          "need": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          },
+          "days": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "need"
+        ],
+        "description": "What a decision is asked for: the need and the GM's choices so far. The app sends it back exactly as served."
+      },
+      "MlbDecisionView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "needId": {
+            "type": "string"
+          },
+          "scenario": {
+            "type": "boolean",
+            "description": "A what-if the GM posed, not a current problem."
+          },
+          "kicker": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "badges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "duration": {
+            "$ref": "#/components/schemas/MlbChoices"
+          },
+          "problem": {
+            "$ref": "#/components/schemas/MlbBlock"
+          },
+          "why": {
+            "$ref": "#/components/schemas/MlbWhy"
+          },
+          "picture": {
+            "$ref": "#/components/schemas/MlbPicture"
+          },
+          "read": {
+            "$ref": "#/components/schemas/MlbBlock"
+          },
+          "call": {
+            "$ref": "#/components/schemas/MlbCall"
+          },
+          "assignment": {
+            "$ref": "#/components/schemas/MlbChoices"
+          },
+          "responses": {
+            "$ref": "#/components/schemas/MlbResponses"
+          },
+          "roleChoice": {
+            "$ref": "#/components/schemas/MlbChoices"
+          },
+          "candidates": {
+            "$ref": "#/components/schemas/MlbCandidates"
+          },
+          "mechanics": {
+            "$ref": "#/components/schemas/MlbMechanics"
+          },
+          "footnote": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "badges",
+          "footnote",
+          "headline",
+          "importStamp",
+          "kicker",
+          "lede",
+          "needId",
+          "notes",
+          "orgId",
+          "problem",
+          "reportStamp",
+          "scenario",
+          "title"
+        ],
+        "description": "A decision: one need, opened, in the GM's order: the problem, why it was flagged, the staff's call, the ways to respond followed through, every candidate, and the roster mechanics. It ranks nobody and makes no move."
+      },
+      "MlbGauge": {
+        "type": "object",
+        "properties": {
+          "deepFloor": {
+            "type": "number"
+          },
+          "floor": {
+            "type": "number"
+          },
+          "typical": {
+            "type": "number"
+          },
+          "estimate": {
+            "type": "number"
+          },
+          "typicalLabel": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "estimateLabel": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "key": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "spoken": {
+            "type": "string",
+            "description": "The whole gauge in one sentence, for VoiceOver."
+          }
+        },
+        "required": [
+          "deepFloor",
+          "floor",
+          "typical",
+          "estimate",
+          "typicalLabel",
+          "estimateLabel",
+          "key",
+          "spoken"
+        ],
+        "description": "Where he stands against his role's line, as numbers on one scale (the app draws the geometry, nothing more)."
+      },
+      "MlbGlance": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "How many things it flags (the sidebar's and the card's count); null when the view could not be read."
+          },
+          "countLabel": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the count counts, in words, for VoiceOver (\"2 regulars flagged\"); null with no count."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "title",
+          "lines",
+          "open"
+        ],
+        "description": "One of the staff's views at a glance on the report: its title, its count, a line or three, and where it opens."
+      },
+      "MlbLens": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "display": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "display"
+        ],
+        "description": "One lens of a player's read: its label, its value on a 0 to 100 scale (null when unknown) and its words."
+      },
+      "MlbLine": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "quiet": {
+            "type": "boolean",
+            "description": "Quieter: a note under a line, drawn in the secondary style."
+          },
+          "chips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbPlayer"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "quiet",
+          "chips",
+          "players"
+        ],
+        "description": "One line of words: its text, the chips drawn before it, and the players it names (each can be opened or followed)."
+      },
+      "MlbMechanics": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            }
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbConstraint"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "blocks",
+          "constraints"
+        ],
+        "description": "The roster mechanics: activating a returning player, the chain of moves, and every way to clear a spot."
+      },
+      "MlbNeedEntry": {
+        "type": "object",
+        "properties": {
+          "needId": {
+            "type": "string"
+          },
+          "badge": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "needId",
+          "badge",
+          "kind",
+          "title",
+          "summary",
+          "open"
+        ],
+        "description": "One open need in the decision list: its badge, kind, title and first sentence, and the decision it opens."
+      },
+      "MlbNeedGroup": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "collapsed": {
+            "type": "boolean",
+            "description": "Drawn closed at first (the \"also worth a look\" group when something more pressing is open)."
+          },
+          "needs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbNeedEntry"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "collapsed",
+          "needs"
+        ],
+        "description": "A group of open needs, as the department groups them (the roster first, then the strongest cases, then the rest)."
+      },
+      "MlbOverviewView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Roster data when it is not current, in words; null when it is."
+          },
+          "glances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbGlance"
+            }
+          },
+          "philosophy": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How the club's philosophy leans on the department's advice: one line, what it reads in its basis; null when nothing is set."
+          },
+          "inbox": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbNeedGroup"
+            }
+          },
+          "inboxEmpty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The sentence when nothing is open."
+          },
+          "whatIf": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "prompt": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "note": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "players": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MlbWhatIfChoice"
+                }
+              }
+            },
+            "required": [
+              "title",
+              "prompt",
+              "note",
+              "players"
+            ]
+          },
+          "unknowns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "glances",
+          "importStamp",
+          "inbox",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "title",
+          "unknowns",
+          "whatIf"
+        ],
+        "description": "The report's companion: the staff's views at a glance, the what-if, the inbox of open needs and what lean there is."
+      },
+      "MlbPerson": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "subject": {
+            "type": "boolean",
+            "description": "The man under review, set apart."
+          },
+          "lenses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbLens"
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbLine"
+            }
+          }
+        },
+        "required": [
+          "player",
+          "status",
+          "subject",
+          "lenses",
+          "lines"
+        ],
+        "description": "A person in the role's picture: who he is, his lenses and the lines about him."
+      },
+      "MlbPicture": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbPerson"
+            }
+          },
+          "basisNote": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "title",
+          "people",
+          "basisNote"
+        ]
+      },
+      "MlbPitchingStaffView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbStaffSection"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The sentence when there are no pitchers to review."
+          }
+        },
+        "required": [
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "sections",
+          "title"
+        ]
+      },
+      "MlbPlan": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "pathState": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How certain the path is (open, needs a clearing move, not established, blocked), as a chip."
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "pathState",
+          "blocks"
+        ],
+        "description": "A way to respond, followed through: its title, how certain the path is, and its sections."
+      },
+      "MlbPlayer": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "A player target with his organization's club; null when the export doesn't place him."
+          }
+        },
+        "required": [
+          "playerId",
+          "name"
+        ],
+        "description": "A player a view names: his id and name, and where his name opens (his organization's club, until player windows)."
+      },
+      "MlbPositionPlayersView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "lineup": {
+            "$ref": "#/components/schemas/MlbTable"
+          },
+          "basisNote": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How the lineup was read from usage."
+          }
+        },
+        "required": [
+          "importStamp",
+          "lede",
+          "lineup",
+          "orgId",
+          "reportStamp",
+          "title"
+        ],
+        "description": "Position players: the lineup as usage shows it, each regular read against the standard for his job."
+      },
+      "MlbResponses": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "order": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbPlan"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "plans"
+        ]
+      },
+      "MlbRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "sort": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              ]
+            }
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "detail": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbAction"
+            }
+          }
+        },
+        "required": [
+          "actions",
+          "cells",
+          "detail",
+          "id",
+          "sort"
+        ],
+        "description": "A table row: a cell and a raw sort key per column (null is unknown and sorts last both ways), the player the row is about, what a scout would say if asked (its detail, drawn when the row is selected) and what it offers to open."
+      },
+      "MlbStaffSection": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            },
+            "description": "The bullpen's deployment findings (what his role is now, what the evidence supports, why it matters)."
+          },
+          "findingsEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "table": {
+            "$ref": "#/components/schemas/MlbTable"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "A note under the table (how a reliever's role is read), with its detail in the basis."
+          }
+        },
+        "required": [
+          "title",
+          "findings",
+          "table"
+        ],
+        "description": "A section of the pitching staff: the rotation or the bullpen."
+      },
+      "MlbTable": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbColumn"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbRow"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "description": "A table, ready to show: its columns, its rows in the specialist's own order, and its sentence when it has none."
+      },
+      "MlbViewHead": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "title",
+          "lede"
+        ],
+        "description": "What every Major League Ops view carries: its build, its title and the one line saying what it is."
+      },
+      "MlbWhatIfChoice": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "player",
+          "open"
+        ],
+        "description": "A player the GM can pose \"what if he's out?\" about, with the decision that scenario opens."
+      },
+      "MlbWhy": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "gauge": {
+            "$ref": "#/components/schemas/MlbGauge"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "claim",
+          "blocks"
+        ],
+        "description": "Why it was flagged: the reading with its basis, the gauge when there is a line, and the sections under it."
       },
       "NoPickReason": {
         "description": "Why nothing was picked.",

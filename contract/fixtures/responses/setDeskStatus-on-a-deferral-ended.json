@@ -97,7 +97,7 @@
             "basis": {
               "because": [
                 {
-                  "label": "Coverage floor",
+                  "label": "Minimum",
                   "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
                 },
                 {
@@ -135,6 +135,11 @@
           "due": null,
           "dueInDays": null,
           "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher",
+          "open": {
+            "kind": "decision",
+            "department": "majorLeague",
+            "key": "mlb:role_below_standard:catcher"
+          },
           "count": 1,
           "attention": {
             "status": "open",
@@ -237,6 +242,7 @@
           "due": null,
           "dueInDays": null,
           "evidence": null,
+          "open": null,
           "count": 4,
           "attention": {
             "status": "open",
@@ -352,6 +358,7 @@
             "due": null,
             "dueInDays": null,
             "evidence": null,
+            "open": null,
             "count": 4,
             "attention": {
               "note": "Ask again after the break",

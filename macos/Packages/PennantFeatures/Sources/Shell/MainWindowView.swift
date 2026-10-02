@@ -362,13 +362,19 @@ struct DetailView: View {
                         PlaceholderView(title: "Pennant", symbol: "questionmark.square.dashed")
                     }
                 }
+                // A container named for the route: the view's own elements keep their identifiers (an identifier on a
+                // view that is not an element would be put on every element inside it)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("detail.\(window.route.department.rawValue).\(window.route.view)")
             }
         }
         .id(window.route)
         .environment(\.routeOpener, window)
+        .environment(\.currentRoute, window.route)
         .environment(\.claimActions, claimActions)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The column reports no minimum of the view's own: a minimum that moved with the content looped AppKit's
+        // constraint passes on a narrow window with the inspector open until it aborted (the N8 crash, `NoContentMinimum`)
+        .noContentMinimum()
         .background(.background)
     }
 }
@@ -475,19 +481,27 @@ struct InspectorView: View {
                     // evidence's text must read on the page, not on that (the audit, N6 Stage B2 review)
                     .background(.background)
             } else {
-                // Drawn by hand rather than with ContentUnavailableView, whose dimmed text failed the contrast audit
+                // Drawn by hand rather than with ContentUnavailableView, whose dimmed text failed the contrast audit, on
+                // the fixed, checked page colour: on the column's glass (the masthead's colour beneath it) the label
+                // colour read dark on dark in a 900-point window (the N8 review)
                 VStack(spacing: 10) {
-                    Image(systemName: "doc.text.magnifyingglass").font(.system(size: 32)).foregroundStyle(.secondary).accessibilityHidden(true)
+                    Image(systemName: "doc.text.magnifyingglass").font(.system(size: 32)).foregroundStyle(.readableSecondary).accessibilityHidden(true)
                     Text("Nothing pinned").font(.body.weight(.semibold))
                     Text("Pin a figure's basis from its popover").font(.callout)
                 }
-                .foregroundStyle(.primary)
+                // The label colour and the page as AppKit resolves both for the column's own appearance: a checked pair
+                // (`ThemeTests`), where SwiftUI's `.primary` followed a scheme the column's glass did not
+                .foregroundStyle(Color(nsColor: .labelColor))
                 .multilineTextAlignment(.center)
                 .padding()
-                .frame(maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.readablePage)
+                .accessibilityIdentifier("inspector.empty")
             }
         }
         .controlSize(.small)
+        // No minimum of the pinned evidence's own pushed on the column (`NoContentMinimum`, the N8 crash)
+        .noContentMinimum()
         // AppKit's container for the column, named for VoiceOver (the audit)
         .background(InspectorColumnName())
         // A container, so its identifier does not replace the pinned evidence's own

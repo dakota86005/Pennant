@@ -93,7 +93,7 @@ export function OverviewView({ data, go, whatIf, setWhatIf }: { data: Overview; 
             ]}
           />
           <Glance
-            title="Bench and coverage" onOpen={() => go({ view: 'bench', needId: null })}
+            title="Bench & Backups" onOpen={() => go({ view: 'bench', needId: null })}
             lines={bench ? [
               `${bench.rows.length} on the bench`,
               bench.gaps.length ? `Not covered: ${bench.gaps.map((g) => g.label.replace(/^an? /, '')).join('; ')}` : 'Catcher, middle infield and center field covered',

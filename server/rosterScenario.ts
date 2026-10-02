@@ -199,10 +199,10 @@ export function evaluateScenario(before: ClubView, moves: Move[], floors: Covera
   };
   const problems: string[] = [];
   for (const a of applied) if (!a.applied && a.note) problems.push(a.note);
-  if (counts.active.over) problems.push(`The active roster would be ${counts.active.after} of ${counts.active.limit}: a player must also leave it.`);
-  if (counts.fortyMan.over) problems.push(`The 40-man would be ${counts.fortyMan.after} of ${counts.fortyMan.limit}: a spot must also be cleared.`);
+  if (counts.active.over) problems.push(`The active roster would be ${counts.active.after} of ${counts.active.limit}: a player also has to leave it.`);
+  if (counts.fortyMan.over) problems.push(`The 40-man would be ${counts.fortyMan.after} of ${counts.fortyMan.limit}: a spot also has to be cleared.`);
   for (const g of groups) {
-    if (g.belowFloorAfter) problems.push(`${g.label} coverage would be ${g.after.healthy} against a floor of ${g.after.floor}.`);
+    if (g.belowFloorAfter) problems.push(`${g.label} depth would be ${g.after.healthy} against a minimum of ${g.after.floor}.`);
   }
   return { applied, counts, groups, problems };
 }

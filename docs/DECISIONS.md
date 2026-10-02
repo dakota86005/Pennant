@@ -865,7 +865,7 @@ One page had accumulated the inbox, the scouting book, every candidate and every
 attention sat under all of it. The module is now five views behind one navigation entry, addressable by URL hash so a decision
 can be linked to and returned to: **Overview** (what needs my attention: an operational inbox, a one-line reading of the club,
 summary cards, no tables of players), **Position players** and **Pitching staff** (the scouting book: each player against the
-standard for his job, expandable to what a scout would say), **Bench and coverage** (functions, not a score) and **Decision**
+standard for his job, expandable to what a scout would say), **Bench & Backups** (named "Bench and coverage" until the owner renamed it on 2026-10-01; functions, not a score) and **Decision**
 (one need opened, in the order a GM decides: the problem, why it was flagged and on what evidence, the staff's recommendation,
 the ways to respond followed through to their consequences, and only then the candidates and roster mechanics behind them).
 Information becomes more detailed as the GM drills down; nothing was deleted.
@@ -2533,6 +2533,47 @@ overwrote part of the other's.
 
 Not changed: the watchlist and player notes are still filed under the save's name, and the per-save fits keep D-053's
 identity (PROJECT_STATE lists both as known gaps).
+
+## D-065 — A department's views are served one payload per view, worded with its report; a decision is built when opened
+
+**Status:** Proposed (N8 builder, 2026-10-01; the supervisor renumbers on a collision). **Implementation:**
+`server/presentation/majorLeague/` (`types.ts`, `words.ts`, `common.ts`, `views.ts`, `decision.ts`),
+`buildFrontOffice` and `buildDecision` (`server/frontOfficeBuild.ts`), `majorLeagueView`, `majorLeagueDecision` and the
+decisions built ahead (`server/frontOfficeService.ts`), the routes in `server/v2Routes.ts` and `server/contract/routes.ts`;
+`MajorLeagueStore` (PennantKit) and the MajorLeague target (PennantFeatures). Refines D-024, D-036, D-043, D-056 and D-060.
+
+SWIFTUI_REBUILD.md section 4.2 planned one per-view endpoint, `GET /api/v2/views/:org/:dept/:view`. A department's views
+are each a payload of a different shape, and a contract operation has one response type, so each view is its own
+operation under that path (`/api/v2/views/:org/majorLeague/positionPlayers`, ...): one named type per view, its surface
+for the scoped jargon exceptions named by its operation.
+
+- **Worded with the department's report, in the same build.** Major League Ops' standing views (the report's companion,
+  Position players, Pitching staff, Bench & Backups) are worded from the very overview its report reads, inside the
+  club's Front Office build (in the worker, warmed after every import), so they cost a few milliseconds more there and a
+  warm read is a map lookup. They are never built on their own and never kept across an import.
+- **A decision is the one deep read a click computes.** A need's decision (Major League Ops' response packet for the need
+  and the GM's served choices) is built in the worker on its first open and kept with the build per need and choice;
+  after a warm-up the open needs' decisions are built ahead, one at a time, so opening one from the desk is a cached
+  read. A choice (a what-if's days, the assignment to judge, the role for an open spot) is served as the request that
+  asks it, and the app sends it back as served.
+- **The words moved from React.** The label maps, the platoon copy and the need badges are server words; the specialists'
+  own sentences lost their method and verdict words at the source (percentile, coverage, holders, must, recommend,
+  accepted), which the React pages show too. The stakes tier Player Development calls "development priority" reads
+  "Development-sensitive" in these views, the owner's name for it (2026-10-02; the farm adopts it): "priority" is a
+  verdict word on every shown string, and the tier is a consequence, never an instruction (D-050). A working estimate,
+  a tools composite or a results read is a place on the 0 to 100 scale and is said as one ("62 on the 0–100 scale"),
+  never as an ordinal ("62nd") or a percentile ("better than 62%"), which stays for a true share of peers only.
+- **The staff's call is the staff's view, never an order** (amended 2026-10-02, the owner's wording, after the N8
+  review). Its label reads "Staff's view: act", "Staff's view: worth pursuing", "Staff's view: keep watching" or
+  "Staff's view: hold", and its headline reads as the staff's view ("Staff's view: the change is worth making now:
+  ..."), never an imperative ("Make the change", "Set up the platoon"), as D-001 and D-004 ask and as the advice on
+  another club's moves is worded (something to look at, never an instruction). Its rubric is in the basis; how the
+  club's philosophy leaned on it is in the headline's basis only, never a block on the decision's face. The banned-words
+  list carries the imperative headline patterns.
+- **D-060 in a department's views.** No view or decision carries the postseason odds or the deadline posture, its basis
+  included; the club's philosophy and season shade a flag or the staff's call only as a lean in the basis, beside what a
+  club with no philosophy would get, and no window label is on the face. A need's badge takes the department's
+  philosophy-free severity, as the desk does.
 
 ## D-067 — The club's own scouts' complete ratings are the scouted evidence when the export carries them
 
