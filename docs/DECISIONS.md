@@ -2533,3 +2533,69 @@ overwrote part of the other's.
 
 Not changed: the watchlist and player notes are still filed under the save's name, and the per-save fits keep D-053's
 identity (PROJECT_STATE lists both as known gaps).
+
+## D-067 — The club's own scouts' complete ratings are the scouted evidence when the export carries them
+
+**Status:** Accepted (supervisor, 2026-10-02: the brief "read the club's own scouts' complete ratings"); the rule for a
+player our scouts haven't rated is the builder's recommendation, implemented behind one policy line and **open for the
+owner**. **Implementation:** `server/scoutedEvidence.ts` (`ourScoutsRatings`, `evidenceRatingMode`,
+`scoutedRatingRow`, `UNRATED_BY_OUR_SCOUTS`); the rating snapshot (`takeSnapshot`, `history.ts`) and its stamp; the
+`scouted-complete` kind (`ratingMode.ts`); the data status's ratings line. Refines D-002 and D-017 (what "the
+organisation's scouted ratings" are), D-018, D-061 (the kind of ratings) and D-064 (the stamps are the save's).
+
+OOTP's CSV export has an option "Additional complete scouted ratings". With it on, the export carries
+`players_scouted_ratings.csv` beside the main ratings tables: one row per player per scouting organisation, each with
+`scouting_team_id`, `scouting_coach_id`, `scouting_accuracy` and the full rating columns. The main tables carry
+whichever kind the other options choose (D-061): OSA's view, true ratings, the scouts' view or none. Until now Pennant
+never read the file, so on a save exported with "Show OSA player ratings" its scouted evidence was OSA's view, not the
+GM's own scouts'.
+
+What the owner's USBL save (OSA on, real off, none off, complete scouted on) establishes, read from its export alone:
+
+- 13,414 rows. `scouting_team_id` 33, the club the save marks as human-managed, has 5,049 rows: every player who is
+  not retired, one row each, by one scouting coach (`scouting_coach_id` 1471). `scouting_team_id` 0 is no club
+  (no `teams` row) and has no coach (`-1`); it rates the same 5,049 players and agrees with the main tables (exported in
+  OSA mode) on 99.7% of shared rating values, so it is read as OSA, the league's scouting service. The other ids
+  (1, 3, 4, ... 114) are the league's other nineteen major-league clubs, each with its own scouting coach, each rating
+  138 to 210 players (all among the 5,049; a handful their own): their scouts' views, which our club cannot see.
+- The file's rating columns are the main tables' (batting, pitching, running, fielding) on the same display scale (20
+  to 80 here), plus `pitching_ratings_babip` and OOTP's star figures (`overall`, `talent`, `overall_rating`,
+  `talent_rating`); our scouts differ from OSA on about 2% of values, by about 4.5 points on average where they differ.
+  `scouting_accuracy` is 5 on every row.
+- Not established, and left so: what `scouting_coach_id` changes beyond naming the scout (one per club here); what
+  the file holds under "Show real player ratings", "Show no player ratings" or the scouts'-view mode (only an OSA-mode
+  export was available, and no OOTP experiment is asked for); whether the scouts'-view main tables equal our rows in
+  that mode; what `scouting_accuracy` 5 means on OOTP's scale.
+
+The rule:
+
+- **Our scouts' rows are the evidence.** When the served import carries `players_scouted_ratings` from this export
+  (not a table kept from an earlier import), the club the save marks as human-managed resolves (D-017's viewer), and
+  the file has at least one row whose `scouting_team_id` is that club, those rows are the scouted evidence: every
+  rating `scoutedEvidence.ts` serves (tools, potential, stamina, pitches, splits, running, fielding, the populations
+  peers are ranked against) is read from them, whatever the main tables carry (OSA, true ratings or the scouts' view),
+  and the main tables' ratings are not read as evidence at all. The other clubs' rows and OSA's row are never read.
+- **Otherwise the current behaviour stands** (D-061): the main tables, labelled with their kind. "Show no player
+  ratings" still withholds every rating, the file included: what OOTP writes into the file in that mode is not
+  established, and the GM's choice of no ratings is kept.
+- **A player our scouts haven't rated is unknown to our scouts** (`UNRATED_BY_OUR_SCOUTS = 'unknown'`, the policy line):
+  he is never filled from OSA's view or true ratings (D-018). The builder's reasons: one source per evidence population
+  (a peer percentile, a lineup or a snapshot never mixes our scouts' grades with OSA's); a snapshot's kind is stamped per
+  snapshot, so a mixed one could not be stamped honestly; under "real ratings" the fill would be true ratings, a fog-of-war
+  breach, so an "OSA's view" alternative would exist under one export setting only; and on the USBL save our scouts
+  rated every active player, so the cost is nil there. The alternative (use OSA's view and say so per player, "OSA's
+  view: our scouts haven't rated him") is the owner's to choose; it would need a per-player source on every rating and
+  on the snapshot row, and is not built.
+- **A new kind of ratings, never mixed in history.** A rating snapshot read from our scouts' rows is stamped
+  `scouted-complete`, a kind of its own (D-061's switch rule applies unchanged: two known, different kinds are a switch,
+  never development). It is not equated with the scouts'-view main tables (`scouted`), since nothing establishes the two
+  are the same numbers. The name-keyed copy an earlier build reads (D-064) is stamped `unknown` for such a snapshot, a
+  kind that build already leaves out, so a rolled-back build never compares it.
+- **Served words.** The data status's ratings line reads "Your scouts' view" with the source in its help tag ("Your
+  scouts' full reports, from the export's scouted ratings file"); a claim's basis (`ratingSource`) says the same. The
+  import's record keeps the main tables' kind as D-061 records it. The player card reads its ratings through the same
+  rows (`scoutedRatingRow`), so it shows what the evidence uses.
+
+Not changed: OOTP's star figures in the file (`overall`, `talent`, `overall_rating`, `talent_rating`) are not read, as
+the main tables' Overall and Potential are not (D-017); the display scale is still read off the main tables (the same
+export, the same scale).

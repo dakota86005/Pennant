@@ -303,6 +303,14 @@ evidence rules: which rows a table holds after an import, and what a rating is.
 | `importAtomic.test.ts` | An import is all or nothing: the pages read the previous import, whole, until the new one is complete, then the new one, whole; a failed or interrupted import leaves the previous one exactly as it was. A table whose export file was not rewritten this time keeps the previous import's rows, named as older, only when that import read the same export folder; otherwise the table is absent (unknown), never another save's rows. A file that cannot be read leaves its table absent, never the previous import's rows. A stale or unreadable players, clubs or leagues file refuses the import and keeps the previous one. |
 | `importFollowUps.test.ts` (B2) | A file whose time is no later than the newest file of the last import of the same folder was not rewritten by the export now being written: the export is waited on as one in groups, and that file is named as not rewritten, never read as part of the new export, however close in time the two exports are. |
 
+## Our scouts' complete ratings (D-067)
+
+Written before the code that holds them. Each is an evidence rule: whose eyes a rating is.
+
+| File | What it protects |
+|---|---|
+| `ourScoutsRatings.test.ts` | **Our scouts' reports are the evidence when the export carries them.** When the export's complete scouted ratings hold rows for the club the save marks as ours, every rating the evidence serves (tools, potential, stamina, pitches, splits, running, fielding and the peers they are ranked against) is our scouts', whatever the main tables carry: OSA's view, true ratings or the scouts' view. OSA's rows and other clubs' rows are never read, even for a player they rate and we don't. **Otherwise nothing changes:** no file, no row of ours, an unresolved or ambiguous club, or a file kept from an earlier export (not rewritten this time) leaves the main tables as the evidence, labelled with their kind. "Show no player ratings" still withholds every rating, the file included. **A player our scouts haven't rated is unknown to our scouts:** never filled from OSA's view or true ratings, never zero or an average. **A switch is never development:** a snapshot read from our scouts' reports is stamped as a kind of its own, so it is never compared with a snapshot of OSA's view, true ratings or the scouts'-view main tables, and the earlier build's copy is stamped so that build never compares it either. **The GM is told whose view it is:** the ratings line and a claim's basis say "Your scouts' view", with the source in the hint; the player card shows the same grades the evidence uses. |
+
 ## Finding the save (N3.5, Stage B2)
 
 Written at N3.5 Stage B2 (D-063), before the code that holds them. None is a baseball judgment; each keeps "the
