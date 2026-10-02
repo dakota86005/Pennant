@@ -1051,6 +1051,16 @@ responses). The Front Office's own report is its Report view.
   candidates at 900 × 700 with the inspector open, three rounds, a row selected in each table, and audits the window.
   At 900 pt the system still lays the inspector over the content's trailing side (the report's masthead runs under it);
   closing the sidebar or the inspector gives the room back, as in any Mac app.
+- **The audits with real rows.** With settled lineups the views' tables and details are audited with real content, and
+  three findings the old layout never put on screen were fixed: a player's name, a button, now presses (its default
+  action opens his club, `playerName`); a line naming a player keeps his name its own element; the lazy grids' own
+  containers are named (the bench's jobs, the evidence's picture, the ways to clear a spot). Three kinds of finding are
+  set aside, each line carrying its reason and, for contrast, the measured ratio: a served table's cell container (AppKit's
+  own, which no SwiftUI modifier reaches; its text is named), a served table cell's text whose own pixels read at 4.5:1 or
+  better, and a text of a few characters ("22", a chip's "Now") whose own pixels read at 7:1 or better. The what-if is a
+  button that opens its players in a popover: the pull-down `Menu` and the pop-up `Picker` were both found with no action
+  to press. The report's companion is a stack that is always there, so its read starts even before it draws anything
+  (it was a `Group` that drew nothing until read, so the read never started after the store was cleared).
 - **Never another club's (M1).** A view is drawn as current only when its own stamps (import, build, club) match the
   key (`FrontOfficeStore.isCurrent`), else as updating; another save or club drops everything the store holds at once
   (`MajorLeagueStore.follow`); a failed read shows its problem, never the old payload. The last decision shown is tracked

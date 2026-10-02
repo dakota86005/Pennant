@@ -47,7 +47,8 @@ struct ReportCompanion: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Group {
+        // A stack that is always there, so its read starts even while nothing is drawn yet
+        VStack(alignment: .leading, spacing: 0) {
             if let problem = model.majorLeague.problems[.overview] {
                 ProblemLine(problem)
             } else if let overview = model.majorLeague.overview {
@@ -61,8 +62,11 @@ struct ReportCompanion: View {
                     if let philosophy = overview.philosophy { ClaimLine(philosophy, font: .callout) }
                     WhatIfPicker(whatIf: overview.whatIf)
                 }
+            } else {
+                ProgressView { Text("Loading") }.controlSize(.small)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .loadsMajorLeague(.overview)
     }
 }
@@ -123,20 +127,40 @@ struct Glances: View {
 struct WhatIfPicker: View {
     let whatIf: Components.Schemas.MlbOverviewView.WhatIfPayload
     @Environment(\.routeOpener) private var opener
+    @State private var choosing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             MagazineSection(title: Text(verbatim: whatIf.title.display))
-            Menu {
-                ForEach(whatIf.players, id: \.player.playerId) { choice in
-                    Button {
-                        if let target = route(choice.open) { opener?.open(target) }
-                    } label: {
-                        Text(verbatim: choice.role.map { "\(choice.player.name) · \($0.display)" } ?? choice.player.name)
-                    }
-                }
+            // A button that opens the served players in a popover, each a button opening his scenario: the pull-down
+            // `Menu` and the pop-up `Picker` were both found by the accessibility audit with no action to press
+            Button {
+                choosing = true
             } label: {
-                Text(verbatim: whatIf.prompt.display)
+                Label { Text(verbatim: whatIf.prompt.display) } icon: { Image(systemName: "chevron.down") }
+                    .labelStyle(.titleAndIcon)
+            }
+            .popover(isPresented: $choosing, arrowEdge: .bottom) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(whatIf.players, id: \.player.playerId) { choice in
+                            Button {
+                                choosing = false
+                                if let target = route(choice.open) { opener?.open(target) }
+                            } label: {
+                                Text(verbatim: choice.role.map { "\(choice.player.name) · \($0.display)" } ?? choice.player.name)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(.rect)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .accessibilityIdentifier("whatIf.player.\(choice.player.playerId)")
+                        }
+                    }
+                    .padding(.vertical, 6)
+                }
+                .frame(minWidth: 260, maxHeight: 360)
+                .background(Color.readablePage)
             }
             .fixedSize()
             .disabled(whatIf.players.isEmpty)
@@ -156,7 +180,7 @@ struct PositionPlayersView: View {
     var body: some View {
         let store = model.majorLeague
         ViewState(payload: store.positionPlayers, problem: store.problems[.positionPlayers]) { view in
-            ServedTablePane(view.lineup, id: "lineup") {
+            ServedTablePane(view.lineup, id: "lineup", name: view.title.display) {
                 ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: view.yardsticks, refreshing: model.majorLeagueUpdating(.positionPlayers))
             } notes: {
                 if let note = view.basisNote {
@@ -165,7 +189,6 @@ struct PositionPlayersView: View {
             }
         }
         .loadsMajorLeague(.positionPlayers)
-        .accessibilityIdentifier("majorLeague.positionPlayers")
     }
 }
 
@@ -203,7 +226,7 @@ struct PitchingStaffView: View {
             }
             if view.sections.indices.contains(index) {
                 let shown = view.sections[index]
-                ServedTablePane(shown.table, id: "pitching.\(index)") {
+                ServedTablePane(shown.table, id: "pitching.\(index)", name: shown.title.display) {
                     head
                 } notes: {
                     StaffSectionNotes(section: shown)
@@ -216,7 +239,6 @@ struct PitchingStaffView: View {
             }
         }
         .loadsMajorLeague(.pitchingStaff)
-        .accessibilityIdentifier("majorLeague.pitchingStaff")
     }
 }
 
@@ -257,7 +279,7 @@ struct BenchBackupsView: View {
     var body: some View {
         let store = model.majorLeague
         ViewState(payload: store.bench, problem: store.problems[.benchBackups]) { view in
-            ServedTablePane(view.bench, id: "bench", detailShare: 0.5) {
+            ServedTablePane(view.bench, id: "bench", name: view.title.display, detailShare: 0.5) {
                 VStack(alignment: .leading, spacing: 10) {
                     ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: view.yardsticks, refreshing: model.majorLeagueUpdating(.benchBackups))
                     if let empty = view.empty {
@@ -285,6 +307,9 @@ struct BenchBackupsView: View {
                                 .accessibilityIdentifier("bench.function.\(function.key)")
                             }
                         }
+                        // The grid of jobs, named for VoiceOver (the audit found the lazy grid's container unnamed)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel(Text("Bench Jobs"))
                     }
                     ForEach(Array(view.findings.enumerated()), id: \.offset) { _, finding in
                         Label { Text(verbatim: finding.display) } icon: { Image(systemName: "flag").foregroundStyle(.readableSecondary) }
@@ -295,6 +320,5 @@ struct BenchBackupsView: View {
             }
         }
         .loadsMajorLeague(.benchBackups)
-        .accessibilityIdentifier("majorLeague.benchBackups")
     }
 }

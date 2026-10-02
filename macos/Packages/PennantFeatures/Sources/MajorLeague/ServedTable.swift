@@ -50,6 +50,8 @@ struct ServedTable: View {
     let table: Components.Schemas.MlbTable
     /// Where the window keeps this table's columns (a structural id, never shown).
     let id: String
+    /// What the table is, as served (the view's or the group's title), for VoiceOver.
+    let name: String
     @Binding var selection: ServedRow.ID?
     @State private var sortOrder: [ServedSort] = []
     @SceneStorage private var customization: TableColumnCustomization<ServedRow>
@@ -68,9 +70,10 @@ struct ServedTable: View {
         return column.numeric ? 64 : 104
     }
 
-    init(_ table: Components.Schemas.MlbTable, id: String, selection: Binding<ServedRow.ID?>) {
+    init(_ table: Components.Schemas.MlbTable, id: String, name: String, selection: Binding<ServedRow.ID?>) {
         self.table = table
         self.id = id
+        self.name = name
         _selection = selection
         _customization = SceneStorage(wrappedValue: TableColumnCustomization<ServedRow>(), "majorLeague.table.\(id)")
     }
@@ -91,9 +94,9 @@ struct ServedTable: View {
             .padding(.horizontal, 28).padding(.vertical, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
-            // A container named for the table, so its id does not replace the table's own (VoiceOver, the UI tests)
-            VStack(spacing: 0) { nativeTable }
-                .accessibilityElement(children: .contain)
+            // The table's own identifier (the pane around it is a container, so an id put on the view never replaces it)
+            nativeTable
+                .accessibilityLabel(Text(verbatim: name))
                 .accessibilityIdentifier("table.\(id)")
         }
     }
@@ -157,6 +160,7 @@ struct ServedTable: View {
 struct ServedTablePane<Head: View, Notes: View>: View {
     let table: Components.Schemas.MlbTable
     let id: String
+    let name: String
     let detailShare: CGFloat
     let head: Head
     let notes: Notes
@@ -165,12 +169,14 @@ struct ServedTablePane<Head: View, Notes: View>: View {
     init(
         _ table: Components.Schemas.MlbTable,
         id: String,
+        name: String,
         detailShare: CGFloat = 0.42,
         @ViewBuilder head: () -> Head,
         @ViewBuilder notes: () -> Notes
     ) {
         self.table = table
         self.id = id
+        self.name = name
         self.detailShare = detailShare
         self.head = head()
         self.notes = notes()
@@ -180,7 +186,7 @@ struct ServedTablePane<Head: View, Notes: View>: View {
         TablePane(detailShare: detailShare) {
             head
         } table: {
-            ServedTable(table, id: id, selection: $selection)
+            ServedTable(table, id: id, name: name, selection: $selection)
         } detail: {
             VStack(alignment: .leading, spacing: 16) {
                 if let row = table.rows.first(where: { $0.id == selection }) {

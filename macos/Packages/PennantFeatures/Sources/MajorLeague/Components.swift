@@ -88,7 +88,9 @@ struct LineView: View {
                 }
             }
         }
-        .accessibilityElement(children: .combine)
+        // A line that names a player keeps his name its own element (a button that opens his club), apart from the
+        // chips; a line that names nobody is read as one
+        .accessibilityElement(children: line.players.isEmpty ? .combine : .contain)
     }
 }
 

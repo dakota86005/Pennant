@@ -312,6 +312,8 @@ struct PlayerNameModifier: ViewModifier {
             .accessibilityElement(children: .combine)
             // A button that opens his club when one is served; Open His Club and Follow as actions
             .accessibilityAddTraits(club != nil ? .isButton : [])
+            // A button presses: its default action opens his club (the audit found the button with nothing to press)
+            .accessibilityAction { if let club { openWindow(value: club) } }
             .accessibilityActions {
                 if let club {
                     Button("Open His Club") { openWindow(value: club) }

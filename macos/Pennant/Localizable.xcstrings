@@ -61,6 +61,9 @@
     "Bench & Backups": {
       "extractionState": "manual"
     },
+    "Bench Jobs": {
+      "extractionState": "manual"
+    },
     "Bullpen": {
       "extractionState": "manual"
     },
@@ -118,6 +121,9 @@
       "extractionState": "manual"
     },
     "Detach": {
+      "extractionState": "manual"
+    },
+    "Details": {
       "extractionState": "manual"
     },
     "Development Tracking": {

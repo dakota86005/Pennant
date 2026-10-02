@@ -362,6 +362,9 @@ struct DetailView: View {
                         PlaceholderView(title: "Pennant", symbol: "questionmark.square.dashed")
                     }
                 }
+                // A container named for the route: the view's own elements keep their identifiers (an identifier on a
+                // view that is not an element would be put on every element inside it)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("detail.\(window.route.department.rawValue).\(window.route.view)")
             }
         }

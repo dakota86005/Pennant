@@ -161,6 +161,10 @@ final class PennantUITests: XCTestCase {
             return windows.contains { $0.frame.minY == frame.minY && $0.frame.height == frame.height }
                 && abs(frame.minX - sidebarFrame.minX) <= 12 && abs(frame.maxX - sidebarFrame.maxX) <= 12
         }
+        // The served tables (N8): native `Table`s, whose rows AppKit draws in cell containers of its own
+        let servedTables = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.'"))
+            .allElementsBoundByIndex.map(\.frame)
+        func isInServedTable(_ frame: CGRect) -> Bool { servedTables.contains { $0.contains(frame) } }
         try app.performAccessibilityAudit { issue in
             let element = issue.element
             let line = "\(issue.auditType): \(issue.compactDescription): "
@@ -189,6 +193,25 @@ final class PennantUITests: XCTestCase {
             } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
                       element.identifier.isEmpty, element.label.isEmpty, isSidebarColumn(frame) {
                 setAside.append(line + " (the sidebar column's own container)")
+            } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
+                      element.identifier.isEmpty, element.label.isEmpty, isInServedTable(frame),
+                      element.staticTexts.allElementsBoundByIndex.contains(where: { !$0.label.isEmpty || !(($0.value as? String) ?? "").isEmpty }) {
+                // A served table's cell: AppKit's own container around the cell's text, which no SwiftUI modifier reaches
+                // (a label on the cell's content makes a second element inside it, and the container stays unnamed); the
+                // text inside it is named, and that is what VoiceOver reads
+                setAside.append(line + " (a served table's cell container; its text is named)")
+            } else if issue.auditType == .contrast, element.elementType == .staticText, isInServedTable(frame),
+                      let ratio = windows.first(where: { $0.frame.contains(frame) })?.pixels?.contrast(in: frame), ratio >= 4.5 {
+                // A served table cell's short text (a hand, a share, a number): the audit reported glyphs of one to three
+                // characters in the label colour on the page as failing while their own pixels read at 8:1 to 15:1; the
+                // line carries the measured ratio, so it is checked, not muted, and below 4.5:1 it fails
+                setAside.append(line + String(format: " (a served table cell's text whose own pixels read at %.1f:1)", ratio))
+            } else if issue.auditType == .contrast, element.elementType == .staticText, frame.width <= 60, frame.height <= 24,
+                      let ratio = windows.first(where: { $0.frame.contains(frame) })?.pixels?.contrast(in: frame), ratio >= 7 {
+                // A text of a few characters (a number such as "22", a chip's word such as "Now"): the audit reported such
+                // short texts in the label colour as failing or nearly passing while their own pixels read at 13:1 to 15:1
+                // (N8). Only at 7:1 or better by its pixels, the Increase Contrast bar; the line carries the ratio
+                setAside.append(line + String(format: " (a short text whose own pixels read at %.1f:1)", ratio))
             } else if issue.auditType == .parentChild, element.elementType == .group, frame.width <= 16, frame.height <= 16,
                       controls.contains(where: { $0.contains(frame) }) {
                 setAside.append(line + " (inside the window's own title-bar button)")
@@ -249,6 +272,30 @@ final class PennantUITests: XCTestCase {
             if target.exists && target.isHittable { return }
             leading.scroll(byDeltaX: 0, deltaY: delta)
             _ = target.waitForExistence(timeout: 1)
+        }
+    }
+
+    /// Scrolls a container until the target lies wholly inside the window (not cut by its bottom edge), so the audit reads
+    /// the element itself; whichever way moves it up is kept.
+    @MainActor
+    private func wholly(_ target: XCUIElement, in container: XCUIElement, of window: XCUIElement) {
+        let leading = container.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.6))
+        var delta = -150.0
+        for _ in 0..<8 where target.exists && target.frame.maxY > window.frame.maxY - 12 {
+            let before = target.frame.maxY
+            leading.scroll(byDeltaX: 0, deltaY: delta)
+            _ = target.waitForExistence(timeout: 0.5)
+            if target.frame.maxY >= before { delta = -delta }
+        }
+    }
+
+    /// A served table's first row, whether the table's identifier is on the table itself or on a container around it.
+    @MainActor
+    private func firstRow(of table: XCUIElement) -> XCUIElement {
+        switch table.elementType {
+        case .outline: table.outlineRows.firstMatch
+        case .table: table.tableRows.firstMatch
+        default: table.descendants(matching: .outlineRow).firstMatch
         }
     }
 
@@ -775,31 +822,41 @@ final class PennantUITests: XCTestCase {
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
         let glance = element(app, "glance.positionPlayers")
-        XCTAssertTrue(glance.waitForExistence(timeout: 30), "the staff at a glance did not load")
-        element(app, "detail.majorLeague.report").scroll(byDeltaX: 0, deltaY: 5000)
+        // The report draws its lower sections as they are scrolled to: the glances are at its foot
+        reveal(glance, in: element(app, "detail.majorLeague.report"))
+        if !glance.waitForExistence(timeout: 30) { keep(app.windows.firstMatch.screenshot(), named: "n8-1280-missing-glance") }
+        XCTAssertTrue(glance.exists, "the staff at a glance did not load")
+        // The companion's foot (the what-if) wholly in the window, not cut by its edge, for the capture and the audit
+        reveal(element(app, "whatIf"), in: element(app, "detail.majorLeague.report"))
+        wholly(element(app, "whatIf"), in: element(app, "detail.majorLeague.report"), of: app.windows.firstMatch)
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-report-glances")
         sidebarAtTop(app)
         try audit(app, named: "accessibility-audit-n8-report")
+        reveal(glance, in: element(app, "detail.majorLeague.report"))
         glance.click()
         let lineup = element(app, "table.lineup")
         XCTAssertTrue(lineup.waitForExistence(timeout: 20), "Position players' table did not load")
-        keep(app.windows.firstMatch.screenshot(), named: "n8-position-players")
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-position-players")
         sidebarAtTop(app)
         try audit(app, named: "accessibility-audit-n8-position-players")
         // Back to the report, then on to the bench
         app.typeKey("[", modifierFlags: .command)
         let benchGlance = element(app, "glance.benchBackups")
+        reveal(benchGlance, in: element(app, "detail.majorLeague.report"))
         XCTAssertTrue(benchGlance.waitForExistence(timeout: 20), "Back did not return to the report")
         benchGlance.click()
         let bench = element(app, "table.bench")
         XCTAssertTrue(bench.waitForExistence(timeout: 20), "the bench's table did not load")
-        let row = bench.tables.firstMatch.tableRows.firstMatch
+        let row = firstRow(of: bench)
         XCTAssertTrue(row.waitForExistence(timeout: 10), "the bench's table has no row")
-        row.click()
+        // A row's leading side (its name): the outline reports the row itself as not hittable
+        let rowName = row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5))
+        rowName.click()
         XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "selecting a row did not draw its served detail")
-        row.rightClick()
+        rowName.rightClick()
         XCTAssertTrue(contextMenuItem(app, "Copy Name").waitForExistence(timeout: 5), "the row's context menu has no Copy Name")
         app.typeKey(.escape, modifierFlags: [])
-        keep(app.windows.firstMatch.screenshot(), named: "n8-bench-row-selected")
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-bench-row-selected")
         sidebarAtTop(app)
         try audit(app, named: "accessibility-audit-n8-bench")
         // The report's need opens its decision
@@ -808,7 +865,7 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(open.waitForExistence(timeout: 20), "the report's need offers no decision")
         open.click()
         XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision did not load")
-        keep(app.windows.firstMatch.screenshot(), named: "n8-decision")
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-decision")
         sidebarAtTop(app)
         try audit(app, named: "accessibility-audit-n8-decision")
         app.typeKey("[", modifierFlags: .command)
@@ -818,9 +875,9 @@ final class PennantUITests: XCTestCase {
         let whatIf = element(app, "whatIf")
         XCTAssertTrue(whatIf.waitForExistence(timeout: 20), "the report offers no what-if")
         whatIf.click()
-        let player = app.menuItems.allElementsBoundByIndex.first { $0.frame.width > 0 && $0.isEnabled }
-        XCTAssertNotNil(player, "the what-if lists no player")
-        player?.click()
+        let player = app.descendants(matching: .button).matching(NSPredicate(format: "identifier BEGINSWITH 'whatIf.player.'")).firstMatch
+        XCTAssertTrue(player.waitForExistence(timeout: 10), "the what-if lists no player")
+        player.click()
         let duration = element(app, "choices.duration")
         XCTAssertTrue(duration.waitForExistence(timeout: 30), "the what-if's decision serves no durations")
         duration.click()
@@ -830,7 +887,7 @@ final class PennantUITests: XCTestCase {
         let chosen = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in (duration.value as? String) == "Two weeks" }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [chosen], timeout: 30), .completed, "the decision for the chosen duration did not load")
         XCTAssertTrue(element(app, "decision.header").exists)
-        keep(app.windows.firstMatch.screenshot(), named: "n8-decision-what-if-two-weeks")
+        keep(app.windows.firstMatch.screenshot(), named: "n8-1280-decision-what-if-two-weeks")
         quitCleanly(app)
     }
 
@@ -864,11 +921,10 @@ final class PennantUITests: XCTestCase {
                 let table = element(app, view.table)
                 if !table.waitForExistence(timeout: 20) { keep(window.screenshot(), named: "n8-narrow-900-missing-\(view.table)") }
                 XCTAssertTrue(table.exists, "round \(round): \(view.view)'s table did not load")
-                let row = table.tables.firstMatch.tableRows.firstMatch
-                if row.waitForExistence(timeout: 5) {
-                    leading(row)
-                    XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s row detail did not draw")
-                }
+                let row = firstRow(of: table)
+                XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                leading(row)
+                XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s row detail did not draw")
                 if view.view == "pitchingStaff" {
                     let pen = element(app, "pitching.sections").radioButtons.element(boundBy: 1)
                     if pen.exists {
@@ -900,12 +956,12 @@ final class PennantUITests: XCTestCase {
             let whatIf = element(app, "whatIf")
             reveal(whatIf, in: element(app, "detail.majorLeague.decision"))
             XCTAssertTrue(whatIf.waitForExistence(timeout: 10), "round \(round): the decision list offers no what-if")
-            leading(whatIf)
+            whatIf.click()
             // A reliever's what-if: the synthetic league's relievers have candidates behind them (the others' do not)
-            let shown = app.menuItems.allElementsBoundByIndex.filter { $0.frame.width > 0 && $0.isEnabled }
-            let player = shown.first { $0.title.contains("relief") } ?? shown.first
-            XCTAssertNotNil(player, "round \(round): the what-if lists no player")
-            player?.click()
+            let players = app.descendants(matching: .button).matching(NSPredicate(format: "identifier BEGINSWITH 'whatIf.player.'"))
+            XCTAssertTrue(players.firstMatch.waitForExistence(timeout: 10), "round \(round): the what-if lists no player")
+            let player = players.allElementsBoundByIndex.first { $0.label.contains("relief") } ?? players.firstMatch
+            player.click()
             XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "round \(round): the what-if's decision did not load")
             let show = element(app, "decision.showCandidates")
             reveal(show, in: element(app, "detail.majorLeague.decision"))
@@ -914,11 +970,10 @@ final class PennantUITests: XCTestCase {
             let candidateTable = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.candidates.'")).firstMatch
             if !candidateTable.waitForExistence(timeout: 10) { keep(window.screenshot(), named: "n8-narrow-900-missing-candidates") }
             XCTAssertTrue(candidateTable.exists, "round \(round): the candidates' tables did not draw")
-            let row = app.tables.firstMatch.tableRows.firstMatch
-            if row.waitForExistence(timeout: 5) {
-                leading(row)
-                XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): a candidate's detail did not draw")
-            }
+            let row = firstRow(of: candidateTable)
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): the candidates' table has no row")
+            leading(row)
+            XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): a candidate's detail did not draw")
             if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-candidates") }
             element(app, "candidates.showDecision").click()
             XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 10), "round \(round): the decision did not come back")

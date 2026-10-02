@@ -55,15 +55,17 @@ public struct TablePane<Head: View, TableContent: View, Detail: View>: View {
                     detail
                         .padding(.horizontal, 28).padding(.vertical, 16)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        // Named for VoiceOver (the audit found the pane's content with no description)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel(Text("Details"))
                 }
                 .scrollBounceBehavior(.basedOnSize)
                 .frame(height: detailHeight)
+                .accessibilityLabel(Text("Details"))
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
         }
         .background(Color.readablePage)
-        // A container: an identifier the view puts on the pane names the pane, never every element inside it
-        .accessibilityElement(children: .contain)
     }
 }
 

@@ -119,7 +119,6 @@ struct OpenDecision: View {
             if let served { lastShown = served }
         }
         .task(id: TaskKey(key: model.storeKey, query: query)) { await model.loadDecision(query) }
-        .accessibilityIdentifier("majorLeague.decision")
     }
 
     /// The last decision shown, only while it is the current club's (another club's is never drawn, M1).
@@ -161,8 +160,6 @@ struct DecisionContent: View {
             }
         }
         .background(Color.readablePage)
-        // A container, so the decision's identifier does not replace its parts' own
-        .accessibilityElement(children: .contain)
     }
 
     private var document: some View {
@@ -331,8 +328,12 @@ struct PictureView: View {
                         }
                     }
                     .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("picture.person.\(person.player.playerId)")
                 }
             }
+            // The lazy grid's own container, named by the served title (the audit found it unnamed)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(verbatim: picture.title.display))
             DisclosureGroup {
                 Text(verbatim: picture.basisNote.display).font(.callout).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
             } label: {
@@ -364,7 +365,9 @@ struct LensBar: View {
                 .foregroundStyle(lens.value == nil ? Color.readableSecondary : Color.primary)
                 .frame(width: 92, alignment: .trailing)
         }
-        .accessibilityElement(children: .combine)
+        // The label and the value read as two texts (the bar is hidden): combined, the element spanned the bar's
+        // graphics and the audit measured those as the text's contrast
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -461,7 +464,7 @@ struct CandidatesPane: View {
     var body: some View {
         let index = min(group, max(candidates.groups.count - 1, 0))
         if candidates.groups.indices.contains(index) {
-            ServedTablePane(candidates.groups[index].table, id: "candidates.\(index)") {
+            ServedTablePane(candidates.groups[index].table, id: "candidates.\(index)", name: candidates.groups[index].title.display) {
                 VStack(alignment: .leading, spacing: 10) {
                     if let showDecision {
                         Button("Show Decision", systemImage: "chevron.backward", action: showDecision)
@@ -489,7 +492,6 @@ struct CandidatesPane: View {
                 }
             }
             .id(index)
-            .accessibilityIdentifier("decision.candidateTables")
         }
     }
 }
@@ -531,6 +533,9 @@ struct ClearingClassView: View {
                     Card { BlockView(option) }.accessibilityElement(children: .contain)
                 }
             }
+            // The lazy grid's own container, named by the served title (the audit found such a container unnamed)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(verbatim: kind.title.display))
             .padding(.top, 6)
         } label: {
             VStack(alignment: .leading, spacing: 2) {
