@@ -146,3 +146,23 @@ describe('the Lineup page talks like a front office (phase 6d)', () => {
     expect(text).toMatch(/Not scouted:/);
   });
 });
+
+describe('an affiliate\'s card is centred on its organization\'s major league (review L1)', () => {
+  it('reads its bats against the major league\'s hitters, as the tools params are, never its own league\'s (which has none)', async () => {
+    // The affiliate in a league of its own: its league has no major-league hitters to centre on
+    const before = (db.prepare('SELECT league_id FROM teams WHERE team_id = ?').get(IDS.aaaTeam) as { league_id: number }).league_id;
+    db.prepare('UPDATE teams SET league_id = ? WHERE team_id = ?').run(before + 1, IDS.aaaTeam);
+    // Enough bats on the affiliate to fill a card: the eight fielders, sent down for the test
+    const move = db.prepare(`UPDATE players SET team_id = ? WHERE player_id IN (${FIELDERS.join(', ')})`);
+    move.run(IDS.aaaTeam);
+    try {
+      const body: Any = await request(`/api/lineup/${IDS.aaaTeam}?vs=r&style=saber&sort=talent&dh=off`);
+      const shown = [...(body.lineup ?? []), ...(body.bench ?? [])];
+      expect(shown.length).toBeGreaterThan(0);
+      expect(shown.some((p: Any) => typeof p.off === 'number')).toBe(true);
+    } finally {
+      move.run(IDS.mlbTeam);
+      db.prepare('UPDATE teams SET league_id = ? WHERE team_id = ?').run(before, IDS.aaaTeam);
+    }
+  });
+});

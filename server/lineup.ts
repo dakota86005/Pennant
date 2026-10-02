@@ -387,10 +387,13 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
   const side: HitterSide = vs === 'r' ? 'vsRight' : 'vsLeft';
   // The tools model's slopes in force for the club's organization's major league (an affiliate's included): the same reader MLB
   // Operations uses, so one league has one set (cycle 4)
-  const tools = toolsParamsFor(majorLeagueOfClub(teamId));
+  const majorLeague = majorLeagueOfClub(teamId);
+  const tools = toolsParamsFor(majorLeague);
   const available = raw.filter((p) => !sidelined.has(p.player_id));
   const profiles = loadScoutedHitterProfiles(available.map((p) => p.player_id));
-  const league = teamRow ? scoutedHitterPopulation(teamRow.league_id).map((p) => batOf(p, side, tools)).filter((b): b is Bat => b !== null) : [];
+  // Centred on the organization's major league, the same one the tools params are read for: an affiliate's own league has no
+  // major-league hitters, so its centre would be empty (review L1)
+  const league = majorLeague !== null ? scoutedHitterPopulation(majorLeague).map((p) => batOf(p, side, tools)).filter((b): b is Bat => b !== null) : [];
   const centre = league.length > 0 ? league.reduce((sum, b) => sum + b.raw, 0) / league.length : null;
 
   const toCandidate = (p: (typeof raw)[number], bat: Bat): Candidate => {
