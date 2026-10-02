@@ -1022,7 +1022,8 @@ final class PennantUITests: XCTestCase {
             let row = firstRow(of: candidateTable)
             XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): the candidates' table has no row")
             leading(row)
-            XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): a candidate's detail did not draw")
+            if !element(app, "row.detail").waitForExistence(timeout: 10) { keep(window.screenshot(), named: "n8-narrow-900-missing-candidate-detail") }
+            XCTAssertTrue(element(app, "row.detail").exists, "round \(round): a candidate's detail did not draw")
             if round == 1 { keep(window.screenshot(), named: "n8-narrow-900-candidates") }
             element(app, "candidates.showDecision").click()
             XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 10), "round \(round): the decision did not come back")
