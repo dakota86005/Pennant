@@ -1094,11 +1094,13 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   between the farm's views is a read from memory; a Decision and a player's history are read when opened. What a view
   opens on is N8's `AppRoute.key`, read from `\.currentRoute`; the sidebar selects the view's row. Organization (findings, depth by level, starters against
   spots, the lines the reading used), Affiliates (the organization drawn as a rail of clubs from the major-league club
-  down, each with its two readings as pills; the chosen affiliate read twice beside it), Assignments (a native `Table`,
-  in question only at first, a level menu), Decision (numbered sections; the cascade as steps on a rail ending at the
+  down, each with its two readings as pills, the chosen one in a fixed fill; the chosen affiliate read twice beneath it),
+  Assignments (a native `Table`, in question only at first, a level filter, the chosen row's assignment beneath), Decision (numbered sections; the cascade as steps on a rail ending at the
   served stop, a hole left open in a neutral box with an information symbol, never an error; opened on its own, the
-  assignments in question), Prospects (React's inbox and board as one table with the chosen player's meeting beside it)
-  and Development tracking (the served tabs and order, a player's snapshots and grades beside it). Native tables sort
+  assignments in question), Prospects (React's inbox and board as one table with the chosen player's meeting beneath it)
+  and Development tracking (the served tabs and order, a player's snapshots and grades beneath it). Every view with a
+  table is N8's `TablePane`; a page's short tables (Organization's, an affiliate's) are grids that stack their rows on a
+  narrow column (`PageGrid`), never a `Table` inside a page's scroll view. Native tables sort
   by served keys through the unknown-last comparator (`ServedColumnSort`, FeatureCore), keep the served order until a
   header is clicked, remember their columns (`TableColumnCustomization` in scene storage), drag a `PlayerRef`, open the
   player's Decision on a double-click or Return, and offer Open Decision, Follow and Copy Name; the stakes column has no
@@ -1113,9 +1115,8 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   synthetic history; a player window (N11) will be the nearest view for a player outside the farm.
 - *Found in the live captures:* on the default 900-point window Assignments and Prospects crashed the app (AppKit ran
   out of constraint passes while the split view's content column took its minimum from the tables' column minimums and
-  the panes'). Every farm view now asks the window for no minimum (`FarmLoading`), with smaller pane and column
-  minimums; the affiliate pane has a plain header, not the report's masthead. A department view with wide tables should
-  do the same.
+  the panes'). The first fix (`minWidth: 0` on every farm view) clipped the content instead of fitting it (the review's
+  H1); after the merge with N8 the farm takes N8's answer instead (below).
 - *After the review (2026-10-02):* the farm's key also counts this save's rating-snapshot writes, so the import's
   snapshot (written by a post-import hook after the views may have warmed) is never missed; nobody is counted ahead of
   or behind his peers while the history is building ("Not yet"); an alternative with no preference says why by its
@@ -1123,8 +1124,20 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   line and a prospect's list line are served, not composed in Swift; the farm's tables, the affiliates list and the
   detail panes sit on `readablePage` with the system's content background hidden, and the cascade's circles and its
   open-hole box use fixed PennantDesign fills; a fold is the native `DisclosureGroup`. The tier `development_priority`
-  reads "Development-sensitive" (the owner's name). Held for N8's reusable table pattern: the narrow-window layout (the
-  `minWidth: 0` above clips rather than fits) and the Decision's long lines wrapping.
+  reads "Development-sensitive" (the owner's name).
+- *After the merge with N8 (2026-10-02):* the window's content column asks nothing of its content
+  (`.noContentMinimum()`), and Prospects, Development tracking, Assignments, the Decision list and Affiliates are
+  `TablePane`s, what goes with the chosen row beneath the table in its own scroll area, as Mail lays out a message
+  under its list (H1). A view's head puts its figures beneath its words when the column has no room for both
+  (`FarmHead`); label, value and why facts are a grid where there is room and stacked where there is not
+  (`FarmFacts`); a fold's title opens it too, as Get Info's sections do; the Decision's stakes and labelled lines wrap
+  (M4). Run under the accessibility audit for the first time, the farm's tables take N8's `table.…` identifiers and
+  their view's served name and drop the system's alternating rows, a neutral cell is plain text, the pages sit on
+  `readablePage`, the toolbar filters are a button and a popover of choices (N8's what-if pattern: a toolbar `Picker`
+  or `Menu` had no action to press), and the chosen affiliate is drawn in a fixed fill, not the system's grey
+  selection. N8's `TablePane` anchors a head too wide for it at the leading edge (with the farm in the synthetic league,
+  a decision's candidates' head was centred half under the sidebar). `testFarmNarrowWindow` cycles every farm view, a
+  Decision with its results fold and its cascade, and the Decision list at 900 × 700 with the inspector open.
 
 ### 3.6 Signature interactions
 
