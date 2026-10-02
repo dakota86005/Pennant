@@ -2608,3 +2608,42 @@ an earlier build that holds the file gains the index through D-061's one-time up
 Not changed: OOTP's star figures in the file (`overall`, `talent`, `overall_rating`, `talent_rating`) are not read, as
 the main tables' Overall and Potential are not (D-017); the display scale is still read off the main tables (the same
 export, the same scale).
+
+## D-068 — League-wide yardsticks and fits read OSA's view; judgments of a player read our scouts'
+
+**Status:** Accepted (the owner's direction, 2026-10-02: "we should also determine for league custom algorithms - if we
+use scouted or OSA numbers. OSA might provide more consistency over time"; the rule below is the supervisor's proposal
+to him, built). **Implementation:** `server/scoutedEvidence.ts` (`LEAGUE_POPULATION_SOURCE`, `populationSource`,
+`inPopulationView`, the population readers); the population snapshots (`save_population_snapshots`, `history.ts`); the
+calibration driver (`saveCalibration.ts`) and Player Value's ratings refit (`playerValue.ts`), which fit inside the
+population view and record its source; the league comparisons' basis (`destinationFit.ts`, `mlbEvidence.ts`).
+Refines D-053 (calibration belongs to the save) and D-067 (whose ratings).
+
+OSA rates every player the same way every season, so a yardstick or a fit built on it does not drift with the club's own
+scouting staff (who change, and whose reports are uneven across the league). OSA is visible to the club, so it is within
+fog of war (D-002, D-017).
+
+- **League-wide populations and fits use OSA** (`LEAGUE_POPULATION_SOURCE = 'osa'`, the policy line): every per-save fit
+  or refit that reads ratings (Player Value's ratings fit, the MLB tools fit, the MLB standards and bullpen measurement,
+  the stakes lines) and every league-wide population or yardstick built from ratings (the destination-fit populations
+  behind "Nth percentile of MLB relievers", the hitter-tools and fielding populations, the peer distributions the
+  standards are measured from). OSA's view is the export's complete scouted ratings' `scouting_team_id` 0 rows, from
+  this export (D-067's conditions), and its history is kept in its own snapshots (`save_population_snapshots`), since
+  the evidence snapshots hold our scouts' reports.
+- **Judgments about a player stay on our scouts' complete ratings** (D-067): Player Development, the staff's read, his
+  grades and his history, with OSA filling in for a player our scouts haven't rated, said so per player.
+- **Where his two readings differ inside a league comparison, the basis says both** ("Our scouts: 65 · OSA: 70"): he is
+  placed on our scouts' reading against a yardstick in OSA's terms, and the basis shows the gap.
+- **No OSA view in the export** (no complete-scouted file with OSA's rows, e.g. a "real ratings" export without it):
+  populations and fits use the main tables, as before D-067, labelled with their kind (D-061).
+- **Never a silent switch.** Each fit's run record names its ratings source (`ratingSource`) and says it in its notes.
+  When the source changes between imports, the fit is refitted on the new source and recorded as such ("The ratings'
+  source changed ...: refitted, not compared with the earlier fit"), and no earlier fit of another source is used as its
+  predecessor (no hysteresis across the change). A failing refit leaves the fit in force as D-053 does, and that fit's
+  record still names its own source.
+- **History:** a population snapshot holds OSA's rows for every player, stamped with its kind per row. A fit reads only
+  snapshots of the current population kind; until OSA's history builds up, a fit that needs pairs of snapshots has
+  fewer and says so (its fallback prior, labelled, D-053).
+
+Not established, and left so: whether OSA's rows in the file hold OSA's view under "Show real player ratings" (they are
+read as OSA's by their label, `scouting_team_id` 0; only an OSA-mode export was available to check them against).
