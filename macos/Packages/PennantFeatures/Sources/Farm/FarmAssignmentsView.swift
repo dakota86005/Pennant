@@ -7,7 +7,8 @@ import SwiftUI
 /// Farm & Development ▸ Assignments (N10): every minor leaguer's assignment in one native table, in the farm's stated
 /// order (whether the GM needs to look, then name) until he sorts by a column; only those in question at first, as the
 /// React view opened. Developmental stakes are shown and can't be sorted (D-050: never a rank). A double-click or Return
-/// opens a player's Decision; his row can be dragged and has the player's menu.
+/// opens a player's Decision; his row can be dragged and has the player's menu. The chosen row's assignment, its stakes
+/// with every reason a click away, is beneath the table in its own scroll area (a `TablePane`).
 public struct FarmAssignmentsView: View {
     @Environment(AppModel.self) private var model
 
@@ -23,6 +24,7 @@ public struct FarmAssignmentsView: View {
 }
 
 struct AssignmentsTable: View {
+    @Environment(AppModel.self) private var model
     let view: Components.Schemas.FarmAssignmentsView
     let updating: Bool
     let problem: RequestProblem?
@@ -49,8 +51,12 @@ struct AssignmentsTable: View {
 
     var body: some View {
         let rows = rows
-        VStack(alignment: .leading, spacing: 0) {
+        let chosen = rows.first { selection.contains($0.id) }
+        // The head at its height, the table filling the rest and scrolling itself, the chosen row beneath it: never a
+        // table in a page's scroll view (N8's `TablePane`, the narrow-window crash)
+        TablePane(detailShare: 0.3) {
             AssignmentsHeader(view: view, updating: updating, problem: problem, shown: shownLabel)
+        } table: {
             Table(of: Components.Schemas.FarmAssignmentRow.self, selection: $selection, sortOrder: $order, columnCustomization: $columns) {
                 TableColumn("Player", sortUsing: ServedColumnSort("player") { .served($0.sort.player?.value1, $0.sort.player?.value2) }) {
                     CellText($0.cells.player).fontWeight(.medium)
@@ -104,11 +110,25 @@ struct AssignmentsTable: View {
                         .accessibilityIdentifier("farm.assignments.empty")
                 }
             }
+            // Rows on the fixed page, as N8's tables: the system's alternating rows are a system colour under the words
+            .tableStyle(.inset(alternatesRowBackgrounds: false))
             .onReadablePage()
-            .accessibilityIdentifier("farm.assignments.table")
+            // Named for VoiceOver by the view's served name
+            .accessibilityLabel(Text(verbatim: model.servedViewName(department: "farm", view: "assignments") ?? ""))
+            // A served table's identifier as N8 names them (`table.…`), so the audit knows AppKit's cell containers in it
+            .accessibilityIdentifier("table.farm.assignments")
+        } detail: {
+            Group {
+                if let chosen {
+                    AssignmentRowDetail(row: chosen)
+                } else if !rows.isEmpty {
+                    Text("Select a player to see his assignment.").font(.callout).foregroundStyle(.readableSecondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("farm.assignments.detail")
         }
-        // The header's words on the same fixed page as the table's
-        .background(Color.readablePage)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 LevelPicker(levels: view.levels, selection: level)
@@ -142,6 +162,34 @@ struct AssignmentsHeader: View {
                 Text(verbatim: view.asOf.display).font(.callout).foregroundStyle(.readableSecondary).help(detail: view.asOf.hint)
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 10)
+    }
+}
+
+/// The chosen row's assignment in full: his name (his menu, his Decision), each served cell under its column's name, his
+/// stakes with every reason a click away, and Open Decision.
+struct AssignmentRowDetail: View {
+    let row: Components.Schemas.FarmAssignmentRow
+    @Environment(\.routeOpener) private var opener
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(verbatim: row.cells.player.display).font(.title3.weight(.semibold))
+                .farmPlayer(id: row.playerId, name: row.cells.player.display, open: row.open)
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 4) {
+                GridRow { Text("Club").foregroundStyle(.readableSecondary); CellText(row.cells.club).fixedSize(horizontal: false, vertical: true) }
+                GridRow { Text("The Level").foregroundStyle(.readableSecondary); CellText(row.cells.level).fixedSize(horizontal: false, vertical: true) }
+                GridRow { Text("His Results").foregroundStyle(.readableSecondary); CellText(row.cells.results).fixedSize(horizontal: false, vertical: true) }
+                GridRow { Text("His Work").foregroundStyle(.readableSecondary); CellText(row.cells.work).fixedSize(horizontal: false, vertical: true) }
+                GridRow { Text("Stakes").foregroundStyle(.readableSecondary); ServedClaimLine(row.stakes, font: .callout) }
+                GridRow { Text("Conclusion").foregroundStyle(.readableSecondary); CellText(row.cells.conclusion).fontWeight(.medium).fixedSize(horizontal: false, vertical: true) }
+            }
+            .font(.callout)
+            if let r = route(row.open), opener?.canOpen(r) ?? false {
+                Button("Open Decision") { opener?.open(r) }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("farm.assignments.openDecision")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

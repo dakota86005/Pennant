@@ -6,7 +6,7 @@ import SwiftUI
 
 /// Farm & Development ▸ Prospects (N10; React's Player Development page): Player Development's calls on every minor
 /// leaguer as one native table, filtered by the served groups (the development meetings first, as React opened), with the
-/// chosen player's meeting beside it. React's inbox and board are one view here: choosing a row is opening his meeting.
+/// chosen player's meeting beneath it in its own scroll area (a `TablePane`). React's inbox and board are one view here: choosing a row is opening his meeting.
 /// No score orders the board: it is in the roster's stated order until the GM sorts a column (D-044).
 public struct FarmProspectsView: View {
     @Environment(AppModel.self) private var model
@@ -23,6 +23,7 @@ public struct FarmProspectsView: View {
 }
 
 struct ProspectsBoard: View {
+    @Environment(AppModel.self) private var model
     let view: Components.Schemas.FarmProspectsView
     let updating: Bool
     let problem: RequestProblem?
@@ -42,9 +43,11 @@ struct ProspectsBoard: View {
     var body: some View {
         let rows = rows
         let chosen = rows.first { selection.contains($0.id) } ?? rows.first
-        VStack(alignment: .leading, spacing: 0) {
+        // The head at its height, the table filling the rest and scrolling itself, the chosen player's meeting beneath it
+        // in its own scroll area: never a table in a page's scroll view (N8's `TablePane`, the narrow-window crash)
+        TablePane(detailShare: 0.48) {
             ProspectsHeader(view: view, updating: updating, problem: problem, guide: $guide)
-            HSplitView {
+        } table: {
                 Table(of: Components.Schemas.FarmProspectRow.self, selection: $selection, sortOrder: $order, columnCustomization: $columns) {
                     TableColumn("Player", sortUsing: ServedColumnSort("player") { .served($0.sort.player?.value1, $0.sort.player?.value2) }) {
                         CellText($0.cells.player).fontWeight(.medium)
@@ -81,37 +84,36 @@ struct ProspectsBoard: View {
                         Text(verbatim: view.empty.display).foregroundStyle(.readableSecondary).padding(40)
                     }
                 }
-                .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+                // Rows on the fixed page, as N8's tables: the system's alternating rows are a system colour under the words
+                .tableStyle(.inset(alternatesRowBackgrounds: false))
                 .onReadablePage()
-                .accessibilityIdentifier("farm.prospects.table")
-
-                Group {
-                    if let chosen, let card = view.meetings.first(where: { $0.playerId == chosen.playerId }) {
-                        ScrollView { ProspectCardView(card: card).padding(20) }.onReadablePage()
-                    } else if let chosen {
-                        ProspectRowDetail(row: chosen)
-                    } else if let empty = view.meetingsEmpty {
-                        Text(verbatim: empty.display).foregroundStyle(.readableSecondary).padding(20)
-                    }
+                // Named for VoiceOver by the view's served name
+                .accessibilityLabel(Text(verbatim: model.servedViewName(department: "farm", view: "prospects") ?? ""))
+                // A served table's identifier as N8 names them (`table.…`), so the audit knows AppKit's cell containers in it
+                .accessibilityIdentifier("table.farm.prospects")
+        } detail: {
+            Group {
+                if let chosen, let card = view.meetings.first(where: { $0.playerId == chosen.playerId }) {
+                    ProspectCardView(card: card)
+                } else if let chosen {
+                    ProspectRowDetail(row: chosen)
+                } else if let empty = view.meetingsEmpty {
+                    Text(verbatim: empty.display).foregroundStyle(.readableSecondary)
                 }
-                .frame(minWidth: 260, idealWidth: 360, maxWidth: 480, maxHeight: .infinity, alignment: .topLeading)
-                .background(.readablePage)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("farm.prospects.detail")
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("farm.prospects.detail")
         }
-        // The header's words on the same fixed page as the table's
-        .background(Color.readablePage)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Picker(selection: $filter) {
-                    ForEach(view.filters, id: \.id) { f in
-                        Text(verbatim: f.label).tag(f.id)
-                    }
-                } label: {
-                    Label("Show", systemImage: "line.3.horizontal.decrease.circle")
-                }
-                .help(Text("Show"))
+                FilterMenu(
+                    title: "Show",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    choices: view.filters.map { (id: $0.id, text: Text(verbatim: $0.label)) },
+                    current: Text(verbatim: view.filters.first { $0.id == filter }?.label ?? ""),
+                    selection: $filter
+                )
                 .accessibilityIdentifier("farm.filter.prospects")
                 LevelPicker(levels: view.levels, selection: Binding(get: { levelStored.isEmpty ? nil : levelStored }, set: { levelStored = $0 ?? "" }))
             }
@@ -129,17 +131,18 @@ struct ProspectsHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let problem { ProblemLine(problem) }
-            HStack(alignment: .top, spacing: 20) {
+            FarmHead(figures: view.figures) {
                 VStack(alignment: .leading, spacing: 6) {
                     ServedClaimLine(view.summary, font: .callout)
-                    HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(verbatim: view.order.display).font(.callout.weight(.medium)).foregroundStyle(.readableSecondary).help(detail: view.order.hint)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(verbatim: view.meetingsNote.display).font(.callout).foregroundStyle(.readableSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                         if updating { ProgressView().controlSize(.small).accessibilityLabel(Text("Updating")) }
                     }
                 }
-                Spacer(minLength: 12)
-                ReportFigures(figures: view.figures)
+            } accessory: {
                 Button { guide.toggle() } label: { Label("How to Read This", systemImage: "questionmark.circle") }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
@@ -148,7 +151,6 @@ struct ProspectsHeader: View {
                     .popover(isPresented: $guide, arrowEdge: .bottom) { GuidePopover(rows: view.guide, footer: [view.boardNote, view.model]) }
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
     }
 }
 
@@ -263,9 +265,7 @@ struct ProspectRowDetail: View {
             if let r = route(row.open), opener?.canOpen(r) ?? false {
                 Button("Open Decision") { opener?.open(r) }.controlSize(.small)
             }
-            Spacer()
         }
-        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

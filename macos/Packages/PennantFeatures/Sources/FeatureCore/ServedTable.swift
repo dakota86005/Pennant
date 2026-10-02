@@ -70,20 +70,20 @@ public struct CellText: View {
 
     public var body: some View {
         let tone = Tone(cell.tone)
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            if cell.tone != nil, tone != .neutral { ToneMark(tone).font(.caption) }
-            Text(verbatim: cell.display)
-                .foregroundStyle(secondary ? AnyShapeStyle(.readableSecondary) : AnyShapeStyle(.primary))
+        let words = Text(verbatim: cell.display)
+            .foregroundStyle(secondary ? AnyShapeStyle(.readableSecondary) : AnyShapeStyle(.primary))
+        if cell.tone != nil, tone != .neutral {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                ToneMark(tone).font(.caption)
+                words
+            }
+            .help(detail: cell.hint)
+            // One element that says its words (a table's cell is read by them; a group with none has no description)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(verbatim: cell.display))
+        } else {
+            // Plain words: an element of their own, as a table's cell needs
+            words.help(detail: cell.hint)
         }
-        .help(detail: cell.hint)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// The height a short native table needs to show every row without scrolling, on a page that scrolls (a table of a few
-/// served rows inside a report): the header and each row at the table's row height.
-public enum ShortTable {
-    public static func height(rows: Int, rowHeight: CGFloat = 24) -> CGFloat {
-        CGFloat(max(rows, 1)) * rowHeight + 30
     }
 }

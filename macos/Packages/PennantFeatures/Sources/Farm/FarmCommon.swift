@@ -51,6 +51,8 @@ struct FarmPage<Figures: View, Content: View>: View {
             .frame(maxWidth: 1100, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        // A fixed, checked page, never a system background (the words' contrast is measured against it)
+        .background(Color.readablePage)
     }
 }
 
@@ -102,8 +104,10 @@ struct ServedLines: View {
                     Image(systemName: "circle.fill").font(.system(size: 4)).foregroundStyle(.readableSecondary).accessibilityHidden(true)
                     CellText(line).font(font).fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -136,16 +140,7 @@ struct FindingView: View {
         Fold(open: finding.expanded) {
             VStack(alignment: .leading, spacing: 8) {
                 if !finding.evidence.isEmpty {
-                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
-                        ForEach(finding.evidence, id: \.id) { row in
-                            GridRow(alignment: .firstTextBaseline) {
-                                Text(verbatim: row.cells.label.display).foregroundStyle(.readableSecondary)
-                                CellText(row.cells.value).fontWeight(.semibold)
-                                Text(verbatim: row.cells.why.display).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    .font(.callout)
+                    FarmFacts(facts: finding.evidence.map { .init(id: $0.id, label: $0.cells.label.display, value: $0.cells.value, why: $0.cells.why.display) })
                 }
                 ForEach(finding.players, id: \.playerId) { player in
                     FarmPlayerName(player: player).font(.callout)
@@ -167,6 +162,8 @@ struct FindingView: View {
                 Text(verbatim: finding.owner.display).font(.callout).foregroundStyle(.readableSecondary)
             }
         }
+        // A container of its own, so the identifier is the finding's and not put on every element inside it
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("farm.finding.\(finding.id)")
     }
 }
@@ -178,9 +175,11 @@ struct LabeledLines: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.callout.weight(.semibold))
+            Text(title).font(.callout.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
             ServedLines(lines: lines, font: .callout)
         }
+        // Each line wraps to the column rather than running past its edge (the review's M4)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -266,21 +265,68 @@ func openServed(_ target: Components.Schemas.Target?, with opener: (any RouteOpe
     opener?.open(r)
 }
 
-/// The served level filter as a menu: every level, then each served level by name.
+/// A toolbar filter: a button naming the current choice that opens the choices in a popover, the chosen one checked, as
+/// N8's what-if does (the pull-down `Menu` and the pop-up `Picker` were both found by the accessibility audit with no
+/// action to press).
+struct FilterMenu<ID: Hashable>: View {
+    let title: LocalizedStringResource
+    let systemImage: String
+    let choices: [(id: ID, text: Text)]
+    let current: Text
+    @Binding var selection: ID
+    @State private var choosing = false
+
+    var body: some View {
+        Button {
+            choosing = true
+        } label: {
+            Label { current } icon: { Image(systemName: systemImage) }
+                .labelStyle(.titleAndIcon)
+        }
+        .help(Text(title))
+        .accessibilityValue(current)
+        .popover(isPresented: $choosing, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.callout.weight(.semibold)).foregroundStyle(.readableSecondary)
+                    .padding(.horizontal, 10).padding(.bottom, 4)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
+                    Button {
+                        choosing = false
+                        selection = choice.id
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark").opacity(choice.id == selection ? 1 : 0).accessibilityHidden(true)
+                            choice.text
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .accessibilityAddTraits(choice.id == selection ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 8)
+            .frame(minWidth: 220, alignment: .leading)
+            .background(Color.readablePage)
+        }
+    }
+}
+
+/// The served level filter: every level, then each served level by name.
 struct LevelPicker: View {
     let levels: [Components.Schemas.FarmLevelChoice]
     @Binding var selection: String?
 
     var body: some View {
-        Picker(selection: $selection) {
-            Text("All Levels").tag(String?.none)
-            ForEach(levels, id: \.id) { level in
-                Text(verbatim: level.name).tag(String?.some(level.id))
-            }
-        } label: {
-            Label("Level", systemImage: "square.stack.3d.up")
-        }
-        .help(Text("Level"))
+        FilterMenu(
+            title: "Level",
+            systemImage: "square.stack.3d.up",
+            choices: [(id: String?.none, text: Text("All Levels"))] + levels.map { (id: String?.some($0.id), text: Text(verbatim: $0.name)) },
+            current: selection.flatMap { id in levels.first { $0.id == id } }.map { Text(verbatim: $0.name) } ?? Text("All Levels"),
+            selection: $selection
+        )
         .accessibilityIdentifier("farm.filter.level")
     }
 }
@@ -314,9 +360,179 @@ struct FarmLoading<Payload, Content: View>: View {
                 ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        // The view asks no minimum of the window: its tables scroll and its panes give way, and the split view's own
-        // collapsing (the sidebar, the inspector) decides what shows on a narrow window, as macOS does
-        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        // The window's content column asks nothing of its content (`.noContentMinimum()` on the detail, N8): a view
+        // with a table is a `TablePane`, and a page's short tables are grids that wrap (`PageGrid`), so nothing here
+        // has a width of its own to push past the column
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// A table view's head: its served words with its figures beside them where the column has room, and beneath them
+/// (each on its own line, if need be) where it hasn't, so nothing in the head is wider than the column it is in.
+struct FarmHead<Words: View, Accessory: View>: View {
+    let figures: [Components.Schemas.Claim]
+    @ViewBuilder let words: () -> Words
+    @ViewBuilder let accessory: () -> Accessory
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 20) {
+                // The words want a readable measure beside the figures; below it, the figures go beneath
+                words().frame(minWidth: 0, idealWidth: 340, maxWidth: .infinity, alignment: .leading)
+                ReportFigures(figures: figures)
+                accessory()
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    words().frame(maxWidth: .infinity, alignment: .leading)
+                    accessory()
+                }
+                ViewThatFits(in: .horizontal) {
+                    ReportFigures(figures: figures)
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(figures.enumerated()), id: \.offset) { _, figure in
+                            ClaimText(figure) {
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Text(verbatim: figure.value?.display ?? figure.text).font(.title3.weight(.bold)).monospacedDigit()
+                                    if figure.value != nil {
+                                        Text(verbatim: figure.text).font(.callout).foregroundStyle(.readableSecondary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A short served table on a page that scrolls (a few rows inside a report: depth by level, an affiliate's cover): a
+/// native `Grid` under its column names where the column has room for it, else each row stacked (its first cell, then
+/// each other cell under its column's name), its rows in the served order, its words wrapping. A `Table` is never put
+/// inside a page's scroll view (N8's crash at narrow widths, see `TablePane`); a grid has no scroll view of its own,
+/// takes the width it is given and grows to its rows. A player's name keeps his menu, drag and Decision.
+struct PageGrid<Row: Identifiable>: View {
+    let name: Text
+    let columns: [Text]
+    let rows: [Row]
+    let cells: (Row) -> [AnyView]
+
+    init(_ name: Text, columns: [Text], rows: [Row], cells: @escaping (Row) -> [AnyView]) {
+        self.name = name
+        self.columns = columns
+        self.rows = rows
+        self.cells = cells
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 18, verticalSpacing: 7) {
+                GridRow {
+                    ForEach(Array(columns.enumerated()), id: \.offset) { _, title in
+                        title.font(.callout.weight(.semibold)).foregroundStyle(.readableSecondary).accessibilityAddTraits(.isHeader)
+                    }
+                }
+                Divider()
+                ForEach(rows) { row in
+                    let row = cells(row)
+                    GridRow {
+                        ForEach(row.indices, id: \.self) { row[$0] }
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(rows) { row in
+                    let row = cells(row)
+                    VStack(alignment: .leading, spacing: 3) {
+                        if let first = row.first { first.fontWeight(.semibold) }
+                        ForEach(Array(row.indices.dropFirst()), id: \.self) { index in
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                if columns.indices.contains(index) {
+                                    columns[index].foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
+                                }
+                                row[index]
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Divider()
+                }
+            }
+        }
+        .font(.callout)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(name)
+    }
+}
+
+/// Served facts, each a label, its value and why where it has one: a grid where the column has room, else each fact
+/// stacked (the label, its value beneath, then the why), so a narrow window wraps them rather than squeezing a
+/// column to a word.
+struct FarmFacts: View {
+    struct Fact: Identifiable {
+        let id: String
+        let label: String
+        let value: Components.Schemas.Cell
+        var why: String?
+        var strong = true
+    }
+
+    let facts: [Fact]
+    var secondaryLabels = true
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 4) {
+                ForEach(facts) { fact in
+                    GridRow {
+                        label(fact)
+                        GridCell(fact.value).fontWeight(fact.strong ? .semibold : .regular)
+                        if let why = fact.why {
+                            Text(verbatim: why).foregroundStyle(.readableSecondary)
+                        }
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(facts) { fact in
+                    VStack(alignment: .leading, spacing: 1) {
+                        // The label over its value: a long value gets the column's whole width
+                        label(fact)
+                        GridCell(fact.value).fontWeight(fact.strong ? .semibold : .regular)
+                        if let why = fact.why {
+                            Text(verbatim: why).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .font(.callout)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func label(_ fact: Fact) -> some View {
+        Text(verbatim: fact.label)
+            .foregroundStyle(secondaryLabels ? AnyShapeStyle(.readableSecondary) : AnyShapeStyle(.primary))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// A served cell in a `PageGrid`, wrapping to its column.
+struct GridCell: View {
+    let cell: Components.Schemas.Cell
+    var secondary = false
+
+    init(_ cell: Components.Schemas.Cell, secondary: Bool = false) {
+        self.cell = cell
+        self.secondary = secondary
+    }
+
+    var body: some View {
+        CellText(cell, secondary: secondary).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -356,7 +572,8 @@ struct Fold<Label: View, Content: View>: View {
         DisclosureGroup(isExpanded: $open) {
             content().frame(maxWidth: .infinity, alignment: .leading)
         } label: {
-            label()
+            // The title opens and closes it too, as a section's title does in Finder's Get Info
+            label().fixedSize(horizontal: false, vertical: true).contentShape(.rect).onTapGesture { withAnimation { open.toggle() } }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -6,7 +6,7 @@ import SwiftUI
 
 /// Farm & Development ▸ Development tracking (N10; React's Scouted Development page): what our scouts have seen of each
 /// minor leaguer over this save's own rating history (D-064), as one native table, with the served tabs (ahead, behind,
-/// the biggest changes, everyone) in the served order and the chosen player's history beside it. With fewer than two
+/// the biggest changes, everyone) in the served order and the chosen player's history beneath it (a `TablePane`). With fewer than two
 /// snapshots it says the history is building, never a change of zero.
 public struct FarmDevelopmentView: View {
     @Environment(AppModel.self) private var model
@@ -23,6 +23,7 @@ public struct FarmDevelopmentView: View {
 }
 
 struct DevelopmentBoard: View {
+    @Environment(AppModel.self) private var model
     let view: Components.Schemas.FarmDevelopmentView
     let updating: Bool
     let problem: RequestProblem?
@@ -50,13 +51,16 @@ struct DevelopmentBoard: View {
     var body: some View {
         let rows = rows
         let chosen = rows.first { selection.contains($0.id) } ?? rows.first
-        VStack(alignment: .leading, spacing: 0) {
-            DevelopmentHeader(view: view, tab: tab, updating: updating, problem: problem, guide: $guide)
-            if let building = view.building {
-                ServedClaimLine(building).padding(.horizontal, 16).padding(.bottom, 10)
-                    .accessibilityIdentifier("farm.development.building")
+        // The head at its height, the table filling the rest and scrolling itself, the chosen player's history beneath it
+        // in its own scroll area: never a table in a page's scroll view (N8's `TablePane`, the narrow-window crash)
+        TablePane(detailShare: 0.45) {
+            VStack(alignment: .leading, spacing: 8) {
+                DevelopmentHeader(view: view, tab: tab, updating: updating, problem: problem, guide: $guide)
+                if let building = view.building {
+                    ServedClaimLine(building).accessibilityIdentifier("farm.development.building")
+                }
             }
-            HSplitView {
+        } table: {
                 Table(of: Components.Schemas.FarmDevelopmentRow.self, selection: $selection, sortOrder: $order, columnCustomization: $columns) {
                     TableColumn("Player", sortUsing: ServedColumnSort("player") { .served($0.sort.player?.value1, $0.sort.player?.value2) }) {
                         CellText($0.cells.player).fontWeight(.medium)
@@ -95,29 +99,30 @@ struct DevelopmentBoard: View {
                 .overlay {
                     if rows.isEmpty { Text(verbatim: view.empty.display).foregroundStyle(.readableSecondary).padding(40) }
                 }
-                .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+                // Rows on the fixed page, as N8's tables: the system's alternating rows are a system colour under the words
+                .tableStyle(.inset(alternatesRowBackgrounds: false))
                 .onReadablePage()
-                .accessibilityIdentifier("farm.development.table")
-
-                Group {
-                    if let chosen { DevelopmentDetailPane(playerId: chosen.playerId) }
-                }
-                .frame(minWidth: 260, idealWidth: 360, maxWidth: 480, maxHeight: .infinity, alignment: .topLeading)
-                .background(.readablePage)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("farm.development.detail")
+                // Named for VoiceOver by the view's served name
+                .accessibilityLabel(Text(verbatim: model.servedViewName(department: "farm", view: "developmentTracking") ?? ""))
+                // A served table's identifier as N8 names them (`table.…`), so the audit knows AppKit's cell containers in it
+                .accessibilityIdentifier("table.farm.development")
+        } detail: {
+            Group {
+                if let chosen { DevelopmentDetailPane(playerId: chosen.playerId) }
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("farm.development.detail")
         }
-        // The header's words on the same fixed page as the table's
-        .background(Color.readablePage)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Picker(selection: Binding(get: { tab?.id ?? view.initialTab }, set: { tabStored = $0; order = [] })) {
-                    ForEach(view.tabs, id: \.id) { t in Text(verbatim: t.label).tag(t.id) }
-                } label: {
-                    Label("Show", systemImage: "line.3.horizontal.decrease.circle")
-                }
-                .help(Text("Show"))
+                FilterMenu(
+                    title: "Show",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    choices: view.tabs.map { (id: $0.id, text: Text(verbatim: $0.label)) },
+                    current: Text(verbatim: tab?.label ?? ""),
+                    selection: Binding(get: { tab?.id ?? view.initialTab }, set: { tabStored = $0; order = [] })
+                )
                 .accessibilityIdentifier("farm.filter.development")
                 LevelPicker(levels: view.levels, selection: Binding(get: { levelStored.isEmpty ? nil : levelStored }, set: { levelStored = $0 ?? "" }))
             }
@@ -136,11 +141,13 @@ struct DevelopmentHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let problem { ProblemLine(problem) }
-            HStack(alignment: .top, spacing: 20) {
+            FarmHead(figures: view.figures) {
                 VStack(alignment: .leading, spacing: 6) {
                     if let tab {
                         Text(verbatim: tab.title.display).font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(verbatim: tab.rule.display).font(.callout).foregroundStyle(.readableSecondary).help(detail: tab.rule.hint)
+                            .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("farm.development.rule")
                     }
                     ForEach(Array(view.historyNotes.enumerated()), id: \.offset) { _, note in
@@ -148,8 +155,7 @@ struct DevelopmentHeader: View {
                     }
                     if updating { ProgressView().controlSize(.small).accessibilityLabel(Text("Updating")) }
                 }
-                Spacer(minLength: 12)
-                ReportFigures(figures: view.figures)
+            } accessory: {
                 Button { guide.toggle() } label: { Label("How to Read This", systemImage: "questionmark.circle") }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
@@ -157,7 +163,6 @@ struct DevelopmentHeader: View {
                     .popover(isPresented: $guide, arrowEdge: .bottom) { GuidePopover(rows: view.guide, footer: [view.tableNote, view.model]) }
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
     }
 }
 
@@ -170,12 +175,13 @@ struct DevelopmentDetailPane: View {
     var body: some View {
         let farm = model.farm
         Group {
+            // In the pane beneath the table, which scrolls it
             if let detail = farm.details[playerId] {
-                ScrollView { DevelopmentDetailContent(detail: detail).padding(20) }.onReadablePage()
+                DevelopmentDetailContent(detail: detail)
             } else if let problem = farm.problems["detail:\(playerId)"] {
-                ProblemLine(problem).padding(20)
+                ProblemLine(problem)
             } else {
-                ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                ProgressView { Text("Loading") }.frame(maxWidth: .infinity)
             }
         }
         .task(id: DetailKey(id: playerId, key: model.storeKey)) { await model.loadFarmDetail(playerId) }

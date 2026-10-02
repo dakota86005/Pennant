@@ -1208,14 +1208,15 @@ final class PennantUITests: XCTestCase {
 
         // Assignments: the table, the in-question filter, and a double-click into a Decision
         element(app, "sidebar.farm.assignments").click()
-        let table = element(app, "farm.assignments.table")
+        let table = element(app, "table.farm.assignments")
         XCTAssertTrue(table.waitForExistence(timeout: 20), "Assignments did not load")
         element(app, "farm.filter.inQuestion").click()
-        let row = table.tableRows.firstMatch
+        let row = firstRow(of: table)
         XCTAssertTrue(row.waitForExistence(timeout: 10), "Assignments lists no player")
         keep(app.windows.firstMatch.screenshot(), named: "n10-farm-assignments")
         try audit(app, named: "accessibility-audit-n10-farm-assignments")
-        row.doubleClick()
+        // A cell on the screen (the audit may leave the table scrolled sideways; the row runs past its edge)
+        (row.cells.allElementsBoundByIndex.first { $0.isHittable } ?? row).doubleClick()
         XCTAssertTrue(element(app, "farm.decision.head").waitForExistence(timeout: 30), "a double-click did not open the player's Decision")
         // Every synthetic farm player's departure leaves his club a hole no one fills: the chain stops, and says so
         XCTAssertTrue(element(app, "farm.cascade").waitForExistence(timeout: 10), "the Decision drew no cascade")
@@ -1229,11 +1230,151 @@ final class PennantUITests: XCTestCase {
 
         // Every other view draws and passes
         for (view, ready) in [("organization", "farm.organization.depth"), ("affiliates", "farm.affiliates.clubs"),
-                              ("prospects", "farm.prospects.table"), ("developmentTracking", "farm.development.table")] {
+                              ("prospects", "table.farm.prospects"), ("developmentTracking", "table.farm.development")] {
             element(app, "sidebar.farm.\(view)").click()
             XCTAssertTrue(element(app, ready).waitForExistence(timeout: 30), "Farm ▸ \(view) did not draw")
             keep(app.windows.firstMatch.screenshot(), named: "n10-farm-\(view)")
             try audit(app, named: "accessibility-audit-n10-farm-\(view)")
+        }
+        quitCleanly(app)
+    }
+
+    /// The narrow window for the farm (the N10 review, H1 and M4): 900 × 700 with the inspector open, where the farm's
+    /// tables beside their panes clipped the content on both sides (or crashed AppKit before the panes gave way). Every
+    /// farm view in turn, a row chosen in each table and what goes with it drawn beneath, a Decision opened from
+    /// Assignments with its cascade and its results fold, and the Decision list, three rounds: the app stays up, each
+    /// table and pane lies inside the window (nothing cut off at either side), and the open fold covers nothing after it.
+    @MainActor
+    func testFarmNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("3", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.farm.report").waitForExistence(timeout: 30), "⌘3 did not open Farm & Development")
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in XCTAssertEqual(app.state, .runningForeground, "the app stopped at \(step)") }
+        // Inside the window, both sides: the review found the content run past the window's leading and trailing edges
+        let inside = { (target: XCUIElement, step: String) in
+            let frame = target.frame, bounds = window.frame
+            XCTAssertGreaterThanOrEqual(frame.minX, bounds.minX - 1, "\(step) starts left of the window")
+            XCTAssertLessThanOrEqual(frame.maxX, bounds.maxX + 1, "\(step) runs past the window's right edge")
+            XCTAssertGreaterThan(frame.width, 0, "\(step) has no width")
+        }
+        // Clicks aimed at an element's leading side: on a window this narrow the system lays the inspector over the
+        // content's trailing side, and a click at a wide element's middle would land on the inspector
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)) }
+        let affiliate = app.descendants(matching: .any).matching(NSPredicate(format: "identifier MATCHES 'farm\\.affiliate\\.[0-9]+'")).firstMatch
+        let views: [(view: String, ready: String, table: Bool, detail: String?)] = [
+            ("organization", "farm.organization.depth", false, nil),
+            ("affiliates", "farm.affiliates.clubs", false, nil),
+            ("assignments", "table.farm.assignments", true, "farm.assignments.detail"),
+            ("prospects", "table.farm.prospects", true, "farm.prospects.detail"),
+            ("developmentTracking", "table.farm.development", true, "farm.development.detail"),
+        ]
+        keep(window.screenshot(), named: "n10-narrow-900-report")
+        for round in 1...3 {
+            for view in views {
+                let item = element(app, "sidebar.farm.\(view.view)")
+                XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                item.click()
+                let ready = element(app, view.ready)
+                if !ready.waitForExistence(timeout: 20) { keep(window.screenshot(), named: "n10-narrow-900-missing-\(view.view)") }
+                XCTAssertTrue(ready.exists, "round \(round): \(view.view) did not draw")
+                inside(ready, "round \(round): \(view.view)")
+                if view.table {
+                    let row = firstRow(of: ready)
+                    // Assignments opens on those in question; the synthetic farm has none, so every player is shown (kept
+                    // by the window from then on)
+                    if view.view == "assignments", !row.waitForExistence(timeout: 5) {
+                        let filter = element(app, "farm.filter.inQuestion")
+                        if !filter.exists { keep(window.screenshot(), named: "n10-narrow-900-no-filter") }
+                        XCTAssertTrue(filter.exists, "round \(round): Assignments' filter is not in the toolbar")
+                        filter.click()
+                    }
+                    // Prospects opens on the development meetings; the synthetic farm has none, so All
+                    if view.view == "prospects", !row.waitForExistence(timeout: 5) {
+                        let filter = element(app, "farm.filter.prospects")
+                        XCTAssertTrue(filter.exists, "round \(round): Prospects' filter is not in the toolbar")
+                        filter.click()
+                        // The served label carries its count ("All · 6")
+                        let all = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'All ·'")).firstMatch
+                        XCTAssertTrue(all.waitForExistence(timeout: 5), "round \(round): Prospects' filter offers no All")
+                        all.click()
+                    }
+                    // Development tracking lists the players with a history in this save, which a new synthetic save
+                    // may not have yet: then its served sentence, and nothing to choose
+                    let rows = view.view != "developmentTracking" || row.waitForExistence(timeout: 5)
+                    if rows {
+                        XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                        leading(row).click()
+                    }
+                }
+                if let detail = view.detail, view.view != "developmentTracking" || firstRow(of: ready).exists {
+                    let pane = element(app, detail)
+                    XCTAssertTrue(pane.waitForExistence(timeout: 10), "round \(round): \(view.view)'s chosen row drew nothing beneath")
+                    inside(pane, "round \(round): \(view.view)'s detail")
+                }
+                if view.view == "affiliates" {
+                    XCTAssertTrue(affiliate.waitForExistence(timeout: 10), "round \(round): no affiliate is read beneath the organization")
+                    inside(affiliate, "round \(round): the affiliate")
+                }
+                if round == 1 { keep(window.screenshot(), named: "n10-narrow-900-\(view.view)") }
+                up("\(view.view), round \(round)")
+            }
+            // A Decision from Assignments (in question only, as it opens): its cascade drawn, its results fold opened
+            // over nothing, and Back
+            element(app, "sidebar.farm.assignments").click()
+            let table = element(app, "table.farm.assignments")
+            XCTAssertTrue(table.waitForExistence(timeout: 20), "round \(round): Assignments did not load")
+            let row = firstRow(of: table)
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): Assignments lists no player")
+            leading(row).doubleClick()
+            let head = element(app, "farm.decision.head")
+            if !head.waitForExistence(timeout: 30) {
+                keep(window.screenshot(), named: "n10-narrow-900-missing-decision")
+            }
+            XCTAssertTrue(head.exists, "round \(round): a double-click did not open the player's Decision")
+            inside(head, "round \(round): the Decision's head")
+            let page = element(app, "detail.farm.decision")
+            let section2 = element(app, "farm.decision.section.2"), section3 = element(app, "farm.decision.section.3")
+            XCTAssertTrue(section2.exists && section3.exists, "round \(round): the Decision has no second or third section")
+            inside(section2, "round \(round): what Player Development says")
+            let fold = section2.disclosureTriangles.firstMatch
+            XCTAssertTrue(fold.exists, "round \(round): the results fold is not there")
+            // Scrolled into the window (the page is long at this width), so the click lands on it
+            let onPage = page.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.6))
+            for _ in 0..<20 where fold.frame.maxY > window.frame.maxY - 40 || fold.frame.minY < window.frame.minY + 80 {
+                onPage.scroll(byDeltaX: 0, deltaY: fold.frame.maxY > window.frame.maxY - 40 ? -300 : 300)
+                _ = fold.waitForExistence(timeout: 0.5)
+            }
+            if element(app, "farm.decision.results").exists == false { fold.click() }
+            let results = element(app, "farm.decision.results")
+            if !results.waitForExistence(timeout: 10) {
+                keep(window.screenshot(), named: "n10-narrow-900-missing-results")
+            }
+            XCTAssertTrue(results.exists, "round \(round): the results fold did not open")
+            XCTAssertLessThanOrEqual(results.frame.maxY, section3.frame.minY + 1, "round \(round): the open fold covers section 3")
+            inside(results, "round \(round): the results")
+            if round == 1 { keep(window.screenshot(), named: "n10-narrow-900-decision") }
+            let cascade = element(app, "farm.cascade")
+            XCTAssertTrue(cascade.exists, "round \(round): the Decision drew no cascade")
+            reveal(element(app, "farm.cascade.stop"), in: page)
+            XCTAssertTrue(element(app, "farm.cascade.stop").exists, "round \(round): the cascade states no stop")
+            XCTAssertTrue(element(app, "farm.cascade.open").exists, "round \(round): the cascade's open hole is not shown as information")
+            inside(element(app, "farm.cascade.stop"), "round \(round): the cascade's stop")
+            if round == 1 { keep(window.screenshot(), named: "n10-narrow-900-cascade") }
+            up("the Decision, round \(round)")
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(table.waitForExistence(timeout: 10), "round \(round): Back did not return to Assignments")
+            // The Decision list, opened on its own
+            element(app, "sidebar.farm.decision").click()
+            let index = element(app, "table.farm.decision")
+            XCTAssertTrue(index.waitForExistence(timeout: 20), "round \(round): the Decision list did not draw")
+            inside(index, "round \(round): the Decision list")
+            if round == 1 { keep(window.screenshot(), named: "n10-narrow-900-decision-list") }
+            up("the Decision list, round \(round)")
         }
         quitCleanly(app)
     }
@@ -1245,9 +1386,30 @@ final class PennantUITests: XCTestCase {
         waitForShell(app)
         app.typeKey("3", modifierFlags: .command)
         XCTAssertTrue(element(app, "report.content").waitForExistence(timeout: 30), "the farm's report did not load")
-        for (view, ready) in [("affiliates", "farm.affiliates.clubs"), ("assignments", "farm.assignments.table"), ("prospects", "farm.prospects.table")] {
+        for (view, ready) in [("affiliates", "farm.affiliates.clubs"), ("assignments", "table.farm.assignments"), ("prospects", "table.farm.prospects")] {
             element(app, "sidebar.farm.\(view)").click()
             XCTAssertTrue(element(app, ready).waitForExistence(timeout: 30), "Farm ▸ \(view) did not draw")
+            // The GM's focus in the view, as after reading it (the sidebar's focused selection is the system's accent,
+            // which the shell's own tests reach by ⌘-number, never by a click left in the sidebar)
+            // (a table's first row or the first affiliate; a table's own frame runs under the sidebar, so never its corner)
+            if view == "affiliates" {
+                app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'farm.club.'")).element(boundBy: 1).click()
+            } else {
+                let row = firstRow(of: element(app, ready))
+                // The synthetic farm has nobody in question and no meeting: every player, as the GM would ask
+                if !row.waitForExistence(timeout: 5) {
+                    if view == "assignments" {
+                        element(app, "farm.filter.inQuestion").click()
+                    } else {
+                        element(app, "farm.filter.prospects").click()
+                        let all = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'All ·'")).firstMatch
+                        XCTAssertTrue(all.waitForExistence(timeout: 5), "Prospects' filter offers no All")
+                        all.click()
+                    }
+                }
+                XCTAssertTrue(row.waitForExistence(timeout: 10), "Farm ▸ \(view) lists no player")
+                (row.cells.allElementsBoundByIndex.first { $0.isHittable } ?? row).click()
+            }
             keep(app.windows.firstMatch.screenshot(), named: "n10-farm-\(view)-dark")
             try audit(app, named: "accessibility-audit-n10-farm-\(view)-dark")
         }

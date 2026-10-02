@@ -60,12 +60,13 @@ struct DecisionIndex: View {
         let farm = model.farm
         FarmLoading(payload: farm.assignments, problem: farm.assignments == nil ? farm.problems["assignments"] : nil) { view in
             let rows = view.rows.filter(\.inQuestion)
-            VStack(alignment: .leading, spacing: 0) {
+            let chosen = rows.first { selection.contains($0.id) }
+            TablePane(detailShare: 0.3) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Choose a player to decide on").font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
                     Text(verbatim: view.order.display).font(.callout).foregroundStyle(.readableSecondary).help(detail: view.order.hint)
                 }
-                .padding(.horizontal, 16).padding(.vertical, 12)
+            } table: {
                 Table(of: Components.Schemas.FarmAssignmentRow.self, selection: $selection) {
                     TableColumn("Player") { CellText($0.cells.player).fontWeight(.medium) }
                     TableColumn("Club") { CellText($0.cells.club) }
@@ -85,8 +86,19 @@ struct DecisionIndex: View {
                         Text(verbatim: view.emptyInQuestion.display).foregroundStyle(.readableSecondary).multilineTextAlignment(.center).padding(40)
                     }
                 }
+                // Rows on the fixed page, as N8's tables: the system's alternating rows are a system colour under the words
+                .tableStyle(.inset(alternatesRowBackgrounds: false))
                 .onReadablePage()
-                .accessibilityIdentifier("farm.decision.index")
+                // Named for VoiceOver by the view's served name
+                .accessibilityLabel(Text(verbatim: model.servedViewName(department: "farm", view: "decision") ?? ""))
+                // A served table's identifier as N8 names them (`table.…`), so the audit knows AppKit's cell containers in it
+                .accessibilityIdentifier("table.farm.decision")
+            } detail: {
+                if let chosen {
+                    AssignmentRowDetail(row: chosen)
+                } else if !rows.isEmpty {
+                    Text("Select a player to see his assignment.").font(.callout).foregroundStyle(.readableSecondary)
+                }
             }
         }
         .loadsFarm()
@@ -101,12 +113,14 @@ struct DecisionContent: View {
         VStack(alignment: .leading, spacing: 26) {
             // Who he is and where things stand
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
                     ClaimText(view.conclusion, edge: .bottom) { Pill(view.conclusion.text, tone: Tone(view.conclusion.tone)) }
                     ClaimText(view.stakes, edge: .bottom) {
                         Text(verbatim: view.stakes.text).font(.callout).foregroundStyle(.readableSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("farm.decision.head")
@@ -117,22 +131,13 @@ struct DecisionContent: View {
             NumberedSection(number: 2, title: "What Player Development says") {
                 ServedClaimLine(view.verdict)
                 if !view.verdictParts.isEmpty {
-                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
-                        ForEach(view.verdictParts, id: \.id) { row in
-                            GridRow(alignment: .firstTextBaseline) {
-                                Text(verbatim: row.cells.label.display).foregroundStyle(.readableSecondary)
-                                CellText(row.cells.value).fontWeight(.semibold)
-                                Text(verbatim: row.cells.why.display).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    .font(.callout)
+                    FarmFacts(facts: view.verdictParts.map { .init(id: $0.id, label: $0.cells.label.display, value: $0.cells.value, why: $0.cells.why.display) })
                 }
                 if !view.stakesReasons.isEmpty {
                     LabeledLines(title: "Developmental stakes", lines: view.stakesReasons)
                 }
                 Fold {
-                    FactGrid(rows: view.results)
+                    FactGrid(rows: view.results).accessibilityIdentifier("farm.decision.results")
                 } label: {
                     Text("His results, against his league and park-adjusted")
                 }
@@ -148,16 +153,7 @@ struct DecisionContent: View {
             NumberedSection(number: 4, title: "What he is getting where he is", note: view.opportunityNote) {
                 if let line = view.opportunity { CellText(line).fixedSize(horizontal: false, vertical: true) }
                 if !view.work.isEmpty {
-                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
-                        ForEach(view.work, id: \.id) { row in
-                            GridRow(alignment: .firstTextBaseline) {
-                                Text(verbatim: row.cells.read.display).fontWeight(.semibold)
-                                CellText(row.cells.level)
-                                Text(verbatim: row.cells.why.display).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    .font(.callout)
+                    FarmFacts(facts: view.work.map { .init(id: $0.id, label: $0.cells.read.display, value: $0.cells.level, why: $0.cells.why.display, strong: false) }, secondaryLabels: false)
                 }
                 if let missing = view.workMissing { UnknownLine(cell: missing) }
                 if let change = view.roleChange { CellText(change).fixedSize(horizontal: false, vertical: true) }
@@ -175,16 +171,7 @@ struct DecisionContent: View {
             }
             if let retention = view.retention {
                 NumberedSection(number: 6, title: "His case for a roster spot", note: retention.note) {
-                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 6) {
-                        ForEach(retention.rows, id: \.id) { row in
-                            GridRow(alignment: .firstTextBaseline) {
-                                Text(verbatim: row.cells.label.display).fontWeight(.semibold)
-                                CellText(row.cells.value)
-                                Text(verbatim: row.cells.why.display).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    .font(.callout)
+                    FarmFacts(facts: retention.rows.map { .init(id: $0.id, label: $0.cells.label.display, value: $0.cells.value, why: $0.cells.why.display, strong: false) }, secondaryLabels: false)
                     ServedLines(lines: retention.guardrails, font: .callout)
                 }
             }
@@ -196,21 +183,14 @@ struct DecisionContent: View {
             NumberedSection(number: view.retention == nil ? 7 : 8, title: "What remains your decision") {
                 ServedLines(lines: view.yours)
                 Fold {
-                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
-                        ForEach(view.owners, id: \.id) { row in
-                            GridRow(alignment: .firstTextBaseline) {
-                                Text(verbatim: row.cells.label.display)
-                                Text(verbatim: row.cells.value.display).fontWeight(.semibold)
-                                Text(verbatim: row.cells.why.display).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    .font(.callout)
+                    FarmFacts(facts: view.owners.map { .init(id: $0.id, label: $0.cells.label.display, value: $0.cells.value, why: $0.cells.why.display) }, secondaryLabels: false)
                 } label: {
                     Text("Who decided what")
                 }
             }
         }
+        // A container with an identifier of its own: on a plain stack it would be put on every element inside it
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("farm.decision.\(view.playerId)")
     }
 }
@@ -239,23 +219,17 @@ struct NumberedSection<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("farm.decision.section.\(number)")
     }
 }
 
-/// Labels and values, two columns.
+/// Labels and values: a grid where the column has room, else stacked (`FarmFacts`).
 struct FactGrid: View {
     let rows: [Components.Schemas.FarmFactRow]
 
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
-            ForEach(rows, id: \.id) { row in
-                GridRow(alignment: .firstTextBaseline) {
-                    Text(verbatim: row.cells.label.display).foregroundStyle(.readableSecondary)
-                    CellText(row.cells.value).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .font(.callout)
+        FarmFacts(facts: rows.map { .init(id: $0.id, label: $0.cells.label.display, value: $0.cells.value, strong: false) })
+            .accessibilityElement(children: .contain)
     }
 }
 
@@ -266,9 +240,9 @@ struct AlternativeRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(verbatim: row.cells.assignment.display).fontWeight(.semibold)
+                Text(verbatim: row.cells.assignment.display).fontWeight(.semibold).fixedSize(horizontal: false, vertical: true)
                 Pill(row.cells.development.display, tone: Tone(row.cells.development.tone))
-                CellText(row.cells.philosophy, secondary: true)
+                CellText(row.cells.philosophy, secondary: true).fixedSize(horizontal: false, vertical: true)
             }
             CellText(row.cells.play).font(.callout).fixedSize(horizontal: false, vertical: true)
             if !row.notes.isEmpty { ServedLines(lines: row.notes, font: .callout) }

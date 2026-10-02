@@ -19,6 +19,9 @@
     "Against his peers": {
       "extractionState": "manual"
     },
+    "Age": {
+      "extractionState": "manual"
+    },
     "AI": {
       "extractionState": "manual"
     },
@@ -85,6 +88,9 @@
     "Bullpen": {
       "extractionState": "manual"
     },
+    "Can the club do its job?": {
+      "extractionState": "manual"
+    },
     "Can the club field a team?": {
       "extractionState": "manual"
     },
@@ -126,6 +132,9 @@
       "extractionState": "manual"
     },
     "Commands": {
+      "extractionState": "manual"
+    },
+    "Conclusion": {
       "extractionState": "manual"
     },
     "Contracts": {
@@ -246,6 +255,9 @@
     "Go": {
       "extractionState": "manual"
     },
+    "Graded Cover": {
+      "extractionState": "manual"
+    },
     "Grades that moved": {
       "extractionState": "manual"
     },
@@ -258,7 +270,13 @@
     "His case for a roster spot": {
       "extractionState": "manual"
     },
+    "His Results": {
+      "extractionState": "manual"
+    },
     "His results, against his league and park-adjusted": {
+      "extractionState": "manual"
+    },
+    "His Work": {
       "extractionState": "manual"
     },
     "Horizon Board": {
@@ -320,6 +338,9 @@
       "extractionState": "manual"
     },
     "Lineup": {
+      "extractionState": "manual"
+    },
+    "Listed Only": {
       "extractionState": "manual"
     },
     "Loading": {
@@ -458,6 +479,9 @@
     "Pitching Staff": {
       "extractionState": "manual"
     },
+    "Player": {
+      "extractionState": "manual"
+    },
     "Player Development": {
       "extractionState": "manual"
     },
@@ -465,6 +489,9 @@
       "extractionState": "manual"
     },
     "Player Search": {
+      "extractionState": "manual"
+    },
+    "Position": {
       "extractionState": "manual"
     },
     "Position Players": {
@@ -507,6 +534,9 @@
     "Rotation": {
       "extractionState": "manual"
     },
+    "Rotation Spots": {
+      "extractionState": "manual"
+    },
     "Save": {},
     "Save Club": {
       "extractionState": "manual"
@@ -533,6 +563,9 @@
       "extractionState": "manual"
     },
     "Section": {
+      "extractionState": "manual"
+    },
+    "Select a player to see his assignment.": {
       "extractionState": "manual"
     },
     "Select a row to see the staff's read.": {
@@ -576,10 +609,19 @@
     "Snapshots": {
       "extractionState": "manual"
     },
+    "Spots": {
+      "extractionState": "manual"
+    },
     "Staff's Options": {
       "extractionState": "manual"
     },
+    "Stakes": {
+      "extractionState": "manual"
+    },
     "Standings": {
+      "extractionState": "manual"
+    },
+    "Starters against rotation spots": {
       "extractionState": "manual"
     },
     "Starting…": {},
@@ -596,6 +638,9 @@
     "Strengths": {
       "extractionState": "manual"
     },
+    "Strong": {
+      "extractionState": "manual"
+    },
     "System": {
       "extractionState": "manual"
     },
@@ -603,6 +648,12 @@
       "extractionState": "manual"
     },
     "The chain": {
+      "extractionState": "manual"
+    },
+    "The Level": {
+      "extractionState": "manual"
+    },
+    "The lines this reading used": {
       "extractionState": "manual"
     },
     "The Pennant server isn't running": {
@@ -676,6 +727,9 @@
       "extractionState": "manual"
     },
     "Try Again": {},
+    "Upper Minors": {
+      "extractionState": "manual"
+    },
     "Us vs Them": {
       "extractionState": "manual"
     },
@@ -686,6 +740,12 @@
       "extractionState": "manual"
     },
     "Use This Save": {
+      "extractionState": "manual"
+    },
+    "Used as Starters": {
+      "extractionState": "manual"
+    },
+    "Value": {
       "extractionState": "manual"
     },
     "W": {
@@ -709,6 +769,9 @@
     "What is uncertain": {
       "extractionState": "manual"
     },
+    "What It Is": {
+      "extractionState": "manual"
+    },
     "What Player Development says": {
       "extractionState": "manual"
     },
@@ -716,6 +779,9 @@
       "extractionState": "manual"
     },
     "What the chain leaves open": {
+      "extractionState": "manual"
+    },
+    "What the Level Is Doing": {
       "extractionState": "manual"
     },
     "What This Comparison Is": {
@@ -727,6 +793,9 @@
     "What would settle it": {
       "extractionState": "manual"
     },
+    "Where It Leaves Him": {
+      "extractionState": "manual"
+    },
     "Where Pennant looked": {
       "extractionState": "manual"
     },
@@ -736,6 +805,9 @@
     "Who decided what": {
       "extractionState": "manual"
     },
+    "Who the organization could reach for": {
+      "extractionState": "manual"
+    },
     "Who we have": {
       "extractionState": "manual"
     },
@@ -743,6 +815,9 @@
       "extractionState": "manual"
     },
     "Whose playing time changes": {
+      "extractionState": "manual"
+    },
+    "Whose Question": {
       "extractionState": "manual"
     },
     "Why": {

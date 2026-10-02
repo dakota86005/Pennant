@@ -146,6 +146,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   # Farm & Development (N10): a desk item into Decision and its cascade; every farm view in dark
   prepare_ui_test testFarmDeskToDecision configured '{"theme":"light"}'
   prepare_ui_test testFarmViewsDark configured '{"theme":"dark"}'
+  prepare_ui_test testFarmNarrowWindow configured '{"theme":"light"}'
   # Major League Ops (N8): the report's companion, the tables, a row's detail and context menu, a decision
   prepare_ui_test testMajorLeagueViews configured '{"theme":"light"}'
   prepare_ui_test testMajorLeagueNarrowWindow configured '{"theme":"light"}'
