@@ -95,6 +95,7 @@ function card(ctx: FarmContext, player: ScoutedDevelopmentPlayer, p: ProspectInp
       }),
       links: [decisionTarget(player.playerId)],
     }),
+    means: cell(call.means),
     facts: [
       factRow('fact:ratings', 'Scouted now → ceiling', ratings ?? 'Not seen', ratings ? {} : { tone: 'unknown', hint: 'Some of his ratings aren\'t visible to our scouts' }),
       factRow('fact:season', 'Season at this level', seasonLine(p) || 'Not known'),
@@ -104,8 +105,8 @@ function card(ctx: FarmContext, player: ScoutedDevelopmentPlayer, p: ProspectInp
     cautions: sentenceCells(p.decision.cautions),
     next,
     nextEmpty: next.length ? null : cell('No move up or down is supported by the evidence yet.'),
-    whereTitle: cell(mlb ? 'A major-league opportunity to weigh' : 'A Minor League Operations question'),
-    where: cell(mlb
+    placeTitle: cell(mlb ? 'A major-league opportunity to weigh' : 'A Minor League Operations question'),
+    place: cell(mlb
       ? 'Player Development has raised him for discussion, but the roster need, the 40-man, his options and his service time are Major League Ops\' to weigh.'
       : 'Whether he can get the work where he is, who is ahead of him, and what follows if he moves are answered on his Decision, from the same Player Development judgment shown here.'),
     scoresNote: cell('Player Development\'s own 0 to 100 evidence scores, not OOTP ratings.'),
@@ -174,12 +175,9 @@ export function prospectsView(
     if (p && MEETING_CALLS.has(p.decision.recommendation)) meetings.push(card(ctx, player, p, rating));
   }
 
+  const filter = (id: string, name: string): FarmFilter => ({ id, name, count: counts[id], label: `${name} · ${counts[id]}` });
   const filters: FarmFilter[] = [
-    { id: 'attention', name: 'Meetings', count: counts.attention },
-    { id: 'eligible', name: 'A move supported', count: counts.eligible },
-    { id: 'watch', name: 'Watching', count: counts.watch },
-    { id: 'behind', name: 'Behind his peers', count: counts.behind },
-    { id: 'all', name: 'All', count: counts.all },
+    filter('attention', 'Meetings'), filter('eligible', 'A move supported'), filter('watch', 'Watching'), filter('behind', 'Behind his peers'), filter('all', 'All'),
   ];
   const levels = [...new Map(players.map((p) => [p.level, p.levelName])).entries()].sort((a, b) => a[0] - b[0]).map(([id, name]) => ({ id: String(id), name }));
   const figure = (text: string, n: number, hint: string, because: string) => claim({

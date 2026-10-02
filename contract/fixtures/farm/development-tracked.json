@@ -1,9 +1,9 @@
 {
   "orgId": 1,
-  "importStamp": null,
-  "reportStamp": "rstamp",
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
   "asOf": {
-    "display": "Through May 5, 2040",
+    "display": "Through July 1, 2040",
     "hint": "The last game day in the imported export"
   },
   "preparedBy": {
@@ -23,14 +23,14 @@
           },
           {
             "label": "From",
-            "value": "March 20, 2040 to June 20, 2040"
+            "value": "April 1, 2040 to July 1, 2040"
           }
         ],
         "source": {
           "department": "farm",
           "specialist": "Player Development",
-          "asOf": null,
-          "gameDate": "2040-05-05"
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
         },
         "unknown": [],
         "wouldChange": [],
@@ -39,7 +39,7 @@
         "called": "A fact from the export"
       },
       "links": [],
-      "hint": "March 20, 2040 to June 20, 2040",
+      "hint": "April 1, 2040 to July 1, 2040",
       "value": {
         "n": 3,
         "unit": "count",
@@ -53,14 +53,14 @@
         "because": [
           {
             "label": "From",
-            "value": "March 20, 2040 to June 20, 2040"
+            "value": "April 1, 2040 to July 1, 2040"
           }
         ],
         "source": {
           "department": "farm",
           "specialist": "Player Development",
-          "asOf": null,
-          "gameDate": "2040-05-05"
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
         },
         "unknown": [],
         "wouldChange": [],
@@ -71,9 +71,9 @@
       "links": [],
       "hint": "Days of the season between the first and latest snapshot",
       "value": {
-        "n": 92,
+        "n": 91,
         "unit": "days",
-        "display": "92"
+        "display": "91"
       }
     },
     {
@@ -83,18 +83,18 @@
         "because": [
           {
             "label": "Ahead",
-            "value": "0"
+            "value": "1"
           },
           {
             "label": "Tracked",
-            "value": "1"
+            "value": "3"
           }
         ],
         "source": {
           "department": "farm",
           "specialist": "Player Development",
-          "asOf": null,
-          "gameDate": "2040-05-05"
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
         },
         "unknown": [],
         "wouldChange": [],
@@ -105,9 +105,9 @@
       "links": [],
       "hint": "Moving as fast as or faster than four in five comparable players",
       "value": {
-        "n": 0,
+        "n": 1,
         "unit": "count",
-        "display": "0"
+        "display": "1"
       }
     },
     {
@@ -117,18 +117,18 @@
         "because": [
           {
             "label": "Behind",
-            "value": "0"
+            "value": "1"
           },
           {
             "label": "Tracked",
-            "value": "1"
+            "value": "3"
           }
         ],
         "source": {
           "department": "farm",
           "specialist": "Player Development",
-          "asOf": null,
-          "gameDate": "2040-05-05"
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
         },
         "unknown": [],
         "wouldChange": [],
@@ -139,9 +139,9 @@
       "links": [],
       "hint": "Moving as slowly as or slower than four in five comparable players",
       "value": {
-        "n": 0,
+        "n": 1,
         "unit": "count",
-        "display": "0"
+        "display": "1"
       }
     }
   ],
@@ -212,119 +212,235 @@
     {
       "id": "ahead",
       "name": "Ahead",
-      "count": 0,
+      "count": 1,
       "title": {
         "display": "Ahead of his peers"
       },
-      "order": [],
+      "order": [
+        "development:9201"
+      ],
       "rule": {
         "display": "Furthest ahead first"
       },
-      "label": "Ahead · 0"
+      "label": "Ahead · 1"
     },
     {
       "id": "behind",
       "name": "Behind",
-      "count": 0,
+      "count": 1,
       "title": {
         "display": "Behind his peers"
       },
-      "order": [],
+      "order": [
+        "development:9202"
+      ],
       "rule": {
         "display": "Furthest behind first"
       },
-      "label": "Behind · 0"
+      "label": "Behind · 1"
     },
     {
       "id": "changes",
       "name": "Biggest changes",
-      "count": 1,
+      "count": 3,
       "title": {
         "display": "Largest changes"
       },
       "order": [
-        "development:1104"
+        "development:9201",
+        "development:9202",
+        "development:9203"
       ],
       "rule": {
         "display": "The 25 largest changes in our scouts' read, up or down",
         "hint": "Across the whole organization, before a level is chosen"
       },
-      "label": "Biggest changes · 1"
+      "label": "Biggest changes · 3"
     },
     {
       "id": "all",
       "name": "All",
-      "count": 1,
+      "count": 3,
       "title": {
         "display": "Every player we track"
       },
       "order": [
-        "development:1104"
+        "development:9201",
+        "development:9203",
+        "development:9202"
       ],
       "rule": {
         "display": "Furthest ahead of his peers first; no pace yet last"
       },
-      "label": "All · 1"
+      "label": "All · 3"
     }
   ],
-  "initialTab": "changes",
+  "initialTab": "ahead",
   "levels": [
     {
       "id": "2",
-      "name": "AAA"
+      "name": "Level 2"
+    },
+    {
+      "id": "3",
+      "name": "Level 3"
     }
   ],
   "rows": [
     {
-      "id": "development:1104",
+      "id": "development:9201",
       "cells": {
         "player": {
-          "display": "P 1104"
+          "display": "Player 9201"
         },
         "age": {
-          "display": "22"
+          "display": "21"
         },
         "club": {
-          "display": "AAA · Farm 1 F"
+          "display": "Level 2 · Club 2"
         },
         "role": {
-          "display": "2B"
+          "display": "SS"
         },
         "current": {
-          "display": "42"
+          "display": "48"
         },
         "change": {
-          "display": "+2",
+          "display": "+4.5",
           "tone": "good"
         },
         "pace": {
-          "display": "History still building",
-          "tone": "unknown"
+          "display": "Ahead · 88th",
+          "tone": "good"
         },
         "history": {
           "display": "3 snapshots"
         }
       },
       "sort": {
-        "player": "P 1104",
-        "age": 22,
-        "club": "02 Farm 1 F",
-        "role": "2B",
-        "current": 42,
-        "change": 2,
-        "pace": null,
+        "player": "Player 9201",
+        "age": 21,
+        "club": "02 Club 2",
+        "role": "SS",
+        "current": 48,
+        "change": 4.5,
+        "pace": 88,
         "history": 3
       },
-      "playerId": 1104,
-      "teamId": 101,
+      "playerId": 9201,
+      "teamId": 102,
       "levelId": "2",
       "listLine": {
-        "display": "22 · AAA · Farm 1 F"
+        "display": "21 · Level 2 · Club 2"
       },
       "open": {
         "kind": "decision",
         "department": "farm",
-        "key": "1104"
+        "key": "9201"
+      }
+    },
+    {
+      "id": "development:9202",
+      "cells": {
+        "player": {
+          "display": "Player 9202"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 3 · Club 3"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "current": {
+          "display": "42"
+        },
+        "change": {
+          "display": "−2",
+          "tone": "bad"
+        },
+        "pace": {
+          "display": "Behind · 9th",
+          "tone": "bad"
+        },
+        "history": {
+          "display": "3 snapshots"
+        }
+      },
+      "sort": {
+        "player": "Player 9202",
+        "age": 21,
+        "club": "03 Club 3",
+        "role": "SS",
+        "current": 42,
+        "change": -2,
+        "pace": 9,
+        "history": 3
+      },
+      "playerId": 9202,
+      "teamId": 103,
+      "levelId": "3",
+      "listLine": {
+        "display": "21 · Level 3 · Club 3"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9202"
+      }
+    },
+    {
+      "id": "development:9203",
+      "cells": {
+        "player": {
+          "display": "Player 9203"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 3 · Club 3"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "current": {
+          "display": "48"
+        },
+        "change": {
+          "display": "+1",
+          "tone": "good"
+        },
+        "pace": {
+          "display": "Typical · 50th",
+          "tone": "neutral"
+        },
+        "history": {
+          "display": "3 snapshots"
+        }
+      },
+      "sort": {
+        "player": "Player 9203",
+        "age": 21,
+        "club": "03 Club 3",
+        "role": "SS",
+        "current": 48,
+        "change": 1,
+        "pace": 50,
+        "history": 3
+      },
+      "playerId": 9203,
+      "teamId": 103,
+      "levelId": "3",
+      "listLine": {
+        "display": "21 · Level 3 · Club 3"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9203"
       }
     }
   ],

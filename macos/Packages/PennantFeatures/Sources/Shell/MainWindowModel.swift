@@ -79,8 +79,9 @@ public final class MainWindowModel {
 
     /// The sidebar's selection: the current route. Selecting a row goes there.
     public var selection: AppRoute? {
-        get { route }
-        set { if let newValue { go(to: newValue) } }
+        // The view's row, whatever it opens on (a decision's player): choosing the row the window is on changes nothing
+        get { route.withoutSubject }
+        set { if let newValue, newValue != route.withoutSubject { go(to: newValue) } }
     }
 
     /// Goes to a route this build knows; its department opens in the sidebar.

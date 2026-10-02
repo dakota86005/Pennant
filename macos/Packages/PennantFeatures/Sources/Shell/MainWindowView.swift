@@ -366,6 +366,7 @@ struct DetailView: View {
             }
         }
         .id(window.route)
+        .environment(\.routeSubject, window.route.subject)
         .environment(\.routeOpener, window)
         .environment(\.claimActions, claimActions)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

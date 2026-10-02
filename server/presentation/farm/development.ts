@@ -117,6 +117,7 @@ function detailOf(ctx: FarmContext, t: Tracked, rating: RatingDisplay): FarmDeve
     movement,
     movementEmpty: movement.length ? null : cell(snaps.length >= 2 ? 'None of his visible scouting grades changed across these snapshots.' : 'One snapshot so far: nothing to compare yet.'),
     peers: sentenceCells(player.evidence.peerDevelopment.reasons),
+    open: decisionTarget(player.playerId),
     fogNote: cell('These snapshots keep what the organization could see at the time. A change can be real development, a revised scouting read, or both; Pennant never puts OOTP\'s hidden ratings in their place.'),
   };
 }
@@ -163,7 +164,8 @@ export function developmentViews(
       return dir * (pb - pa) || a.i - b.i;
     }).map(({ t }) => t);
   const id = (t: Tracked) => `development:${t.player.playerId}`;
-  const tabs: FarmDevelopmentTab[] = [
+  const labelled = (tabsIn: Array<Omit<FarmDevelopmentTab, 'label'>>): FarmDevelopmentTab[] => tabsIn.map((t) => ({ ...t, label: `${t.name} · ${t.count}` }));
+  const tabs: FarmDevelopmentTab[] = labelled([
     { id: 'ahead', name: 'Ahead', count: ahead.length, title: cell('Ahead of his peers'), order: byPlace(ahead, 1).map(id), rule: cell('Furthest ahead first') },
     { id: 'behind', name: 'Behind', count: behind.length, title: cell('Behind his peers'), order: byPlace(behind, -1).map(id), rule: cell('Furthest behind first') },
     {
@@ -175,7 +177,7 @@ export function developmentViews(
       rule: cell(`The ${MOVERS_SHOWN} largest changes in our scouts' read, up or down`, { hint: 'Across the whole organization, before a level is chosen' }),
     },
     { id: 'all', name: 'All', count: tracked.length, title: cell('Every player we track'), order: byPlace(tracked, 1).map(id), rule: cell('Furthest ahead of his peers first; no pace yet last') },
-  ];
+  ]);
   const initialTab = ahead.length ? 'ahead' : movers.length ? 'changes' : 'all';
 
   const rows: FarmDevelopmentRow[] = tracked.map((t) => {

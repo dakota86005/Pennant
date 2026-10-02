@@ -304,6 +304,8 @@ export interface FarmFilter {
   id: string;
   name: string;
   count: Integer;
+  /** The filter as a menu shows it, with its count ("Meetings · 4"). */
+  label: string;
 }
 
 /** One minor leaguer on the development board. */
@@ -337,13 +339,15 @@ export interface FarmProspectCard {
   queueLine: Cell;
   /** Player Development's call, with what it means as its help tag and its evidence as its basis. */
   call: Claim;
+  /** What the call means, in a sentence. */
+  means: Cell;
   facts: FarmFactRow[];
   supporting: Cell[];
   cautions: Cell[];
   next: FarmNextAssignment[];
   nextEmpty: Cell | null;
-  whereTitle: Cell;
-  where: Cell;
+  placeTitle: Cell;
+  place: Cell;
   scoresNote: Cell;
   scores: FarmFactRow[];
   evaluations: FarmEvaluationRow[];
@@ -373,6 +377,8 @@ export interface FarmDevelopmentTab {
   id: string;
   name: string;
   count: Integer;
+  /** The tab as a menu shows it, with its count ("Ahead · 3"). */
+  label: string;
   /** The list's heading for this tab ("Ahead of his peers"). */
   title: Cell;
   /** The rows in this tab, in its stated order (their ids). */
@@ -411,6 +417,8 @@ export interface FarmDevelopmentDetail extends FarmViewHead {
   movementEmpty: Cell | null;
   peers: Cell[];
   fogNote: Cell;
+  /** Where his name opens: his Decision. */
+  open: Target;
 }
 
 export interface FarmDevelopmentView extends FarmViewHead {

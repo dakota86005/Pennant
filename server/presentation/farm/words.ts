@@ -147,7 +147,7 @@ export const judgmentWord = (code: string): Toned => toned(JUDGMENT, code, { tex
 /** Philosophy's preference among defensible moves (never a judgment). */
 export const PREFERENCE: Record<string, string> = {
   preferred: 'The club prefers it',
-  acceptable: 'Acceptable to the club',
+  acceptable: 'Fine by the club',
   disfavored: 'The club leans against it',
 };
 export const preferenceWord = (code: string | null): string | null => (code === null ? null : PREFERENCE[code] ?? plain(code));

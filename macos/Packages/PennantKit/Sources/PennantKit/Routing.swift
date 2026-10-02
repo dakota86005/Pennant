@@ -25,11 +25,19 @@ public struct AppRoute: Codable, Hashable, Sendable {
     public var department: DeptID
     /// The view's id inside its department (`report`, `positionPlayers`, …).
     public var view: String
+    /// What the view opens on, when it opens on one thing (N10): a player's id on Farm & Development ▸ Decision, an
+    /// affiliate's team id on Affiliates (the served target's `key`). Nil for the view itself; a route saved by an
+    /// earlier build has none and decodes as nil, so a window's history is kept.
+    public var subject: String?
 
-    public init(department: DeptID, view: String) {
+    public init(department: DeptID, view: String, subject: String? = nil) {
         self.department = department
         self.view = view
+        self.subject = subject
     }
+
+    /// The view itself, without what it opens on: the sidebar's row for it.
+    public var withoutSubject: AppRoute { AppRoute(department: department, view: view) }
 }
 
 extension UTType {

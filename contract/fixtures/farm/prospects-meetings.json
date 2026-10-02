@@ -1,0 +1,872 @@
+{
+  "orgId": 1,
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
+  "asOf": {
+    "display": "Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "summary": {
+    "text": "Player Development asks what level each player's evidence supports. Whether to move him now is Minor League Operations' question, on his Decision.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Minor leaguers",
+          "value": "3"
+        },
+        {
+          "label": "With a call",
+          "value": "2"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [
+        "1 player has too little at their level for a call yet."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "figures": [
+    {
+      "text": "Development meetings",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Raised for a meeting",
+            "value": "2"
+          },
+          {
+            "label": "Minor leaguers on the board",
+            "value": "3"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Player Development",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "A promotion, a lower level or a major-league discussion",
+      "value": {
+        "n": 2,
+        "unit": "count",
+        "display": "2"
+      }
+    },
+    {
+      "text": "Players with a move supported",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "With a defensible move",
+            "value": "2"
+          },
+          {
+            "label": "Minor leaguers on the board",
+            "value": "3"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Player Development",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "A level up or down supported by the evidence now",
+      "value": {
+        "n": 2,
+        "unit": "count",
+        "display": "2"
+      }
+    },
+    {
+      "text": "Behind their peers",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Behind comparable minor leaguers",
+            "value": "1"
+          },
+          {
+            "label": "Minor leaguers on the board",
+            "value": "3"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Player Development",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "Our scouts' read is moving slower than similar players'",
+      "value": {
+        "n": 1,
+        "unit": "count",
+        "display": "1"
+      }
+    }
+  ],
+  "guide": [
+    {
+      "id": "guide:call",
+      "cells": {
+        "label": {
+          "display": "Player Development's call"
+        },
+        "value": {
+          "display": "What assignment his evidence supports now."
+        }
+      },
+      "sort": {
+        "label": "Player Development's call",
+        "value": "What assignment his evidence supports now."
+      }
+    },
+    {
+      "id": "guide:move",
+      "cells": {
+        "label": {
+          "display": "A move supported"
+        },
+        "value": {
+          "display": "A level or a club his evidence clears. It is not a transaction, and not one the staff is asking for."
+        }
+      },
+      "sort": {
+        "label": "A move supported",
+        "value": "A level or a club his evidence clears. It is not a transaction, and not one the staff is asking for."
+      }
+    },
+    {
+      "id": "guide:ops",
+      "cells": {
+        "label": {
+          "display": "His Decision"
+        },
+        "value": {
+          "display": "Whether moving him now helps the organization: who takes his job, and what follows."
+        }
+      },
+      "sort": {
+        "label": "His Decision",
+        "value": "Whether moving him now helps the organization: who takes his job, and what follows."
+      }
+    },
+    {
+      "id": "guide:pace",
+      "cells": {
+        "label": {
+          "display": "Against his peers"
+        },
+        "value": {
+          "display": "How fast our scouts' read of him is changing against similar players over the history there is. It is what we have seen, not what he truly is."
+        }
+      },
+      "sort": {
+        "label": "Against his peers",
+        "value": "How fast our scouts' read of him is changing against similar players over the history there is. It is what we have seen, not what he truly is."
+      }
+    }
+  ],
+  "meetingsNote": {
+    "display": "Player Development's discussions, not transactions."
+  },
+  "meetings": [
+    {
+      "playerId": 9101,
+      "name": "Player 9101",
+      "line": {
+        "display": "21 · SS · Level 2 · Club 2"
+      },
+      "queueLine": {
+        "display": "Level 2 → Level 2",
+        "hint": "The nearest move Player Development finds defensible"
+      },
+      "call": {
+        "text": "Consider promotion",
+        "tone": "good",
+        "basis": {
+          "because": [
+            {
+              "label": "What it means",
+              "value": "He has done enough to discuss a normal promotion, but the case is not overwhelming."
+            },
+            {
+              "label": "For",
+              "value": "His line is well above the league at his level."
+            },
+            {
+              "label": "Against",
+              "value": "His sample is still short of a full season."
+            },
+            {
+              "label": "How sure",
+              "value": "Moderate"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's prospect model: performance sets readiness, age the urgency, the club's philosophy the bar for a promotion"
+        },
+        "links": [
+          {
+            "kind": "decision",
+            "department": "farm",
+            "key": "9101"
+          }
+        ]
+      },
+      "means": {
+        "display": "He has done enough to discuss a normal promotion, but the case is not overwhelming."
+      },
+      "facts": [
+        {
+          "id": "fact:ratings",
+          "cells": {
+            "label": {
+              "display": "Scouted now → ceiling"
+            },
+            "value": {
+              "display": "45 → 60"
+            }
+          },
+          "sort": {
+            "label": "Scouted now → ceiling",
+            "value": "45 → 60"
+          }
+        },
+        {
+          "id": "fact:season",
+          "cells": {
+            "label": {
+              "display": "Season at this level"
+            },
+            "value": {
+              "display": "240 PA · .842 OPS · 9 HR"
+            }
+          },
+          "sort": {
+            "label": "Season at this level",
+            "value": "240 PA · .842 OPS · 9 HR"
+          }
+        },
+        {
+          "id": "fact:pace",
+          "cells": {
+            "label": {
+              "display": "Development against his peers"
+            },
+            "value": {
+              "display": "Ahead · 86th",
+              "tone": "good"
+            }
+          },
+          "sort": {
+            "label": "Development against his peers",
+            "value": "Ahead · 86th"
+          }
+        }
+      ],
+      "supporting": [
+        {
+          "display": "His line is well above the league at his level."
+        }
+      ],
+      "cautions": [
+        {
+          "display": "His sample is still short of a full season."
+        }
+      ],
+      "next": [
+        {
+          "move": {
+            "display": "Normal promotion to Level 2"
+          },
+          "destinations": [
+            {
+              "display": "Club 2 · Workable fit"
+            }
+          ]
+        }
+      ],
+      "nextEmpty": null,
+      "placeTitle": {
+        "display": "A Minor League Operations question"
+      },
+      "place": {
+        "display": "Whether he can get the work where he is, who is ahead of him, and what follows if he moves are answered on his Decision, from the same Player Development judgment shown here."
+      },
+      "scoresNote": {
+        "display": "Player Development's own 0 to 100 evidence scores, not OOTP ratings."
+      },
+      "scores": [
+        {
+          "id": "score:readiness",
+          "cells": {
+            "label": {
+              "display": "Readiness"
+            },
+            "value": {
+              "display": "74"
+            }
+          },
+          "sort": {
+            "label": "Readiness",
+            "value": 74
+          }
+        },
+        {
+          "id": "score:performance",
+          "cells": {
+            "label": {
+              "display": "Results at the level"
+            },
+            "value": {
+              "display": "71"
+            }
+          },
+          "sort": {
+            "label": "Results at the level",
+            "value": 71
+          }
+        },
+        {
+          "id": "score:maturity",
+          "cells": {
+            "label": {
+              "display": "How settled his ratings are"
+            },
+            "value": {
+              "display": "62"
+            }
+          },
+          "sort": {
+            "label": "How settled his ratings are",
+            "value": 62
+          }
+        },
+        {
+          "id": "score:sample",
+          "cells": {
+            "label": {
+              "display": "How much he has played"
+            },
+            "value": {
+              "display": "68"
+            }
+          },
+          "sort": {
+            "label": "How much he has played",
+            "value": 68
+          }
+        }
+      ],
+      "evaluations": [
+        {
+          "id": "evaluation:9101:0",
+          "cells": {
+            "move": {
+              "display": "Normal promotion to Level 2"
+            },
+            "judgment": {
+              "display": "Defensible",
+              "tone": "good"
+            },
+            "philosophy": {
+              "display": "The club prefers it"
+            }
+          },
+          "sort": {
+            "move": 2,
+            "judgment": "defensible",
+            "philosophy": "preferred"
+          },
+          "notes": []
+        }
+      ],
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9101"
+      }
+    },
+    {
+      "playerId": 9102,
+      "name": "Player 9102",
+      "line": {
+        "display": "21 · SS · Level 3 · Club 3"
+      },
+      "queueLine": {
+        "display": "Level 3 → Level 2",
+        "hint": "The nearest move Player Development finds defensible"
+      },
+      "call": {
+        "text": "Consider a lower level",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "What it means",
+              "value": "His results at this level and his sample support discussing a lower-level assignment."
+            },
+            {
+              "label": "For",
+              "value": "His line is well above the league at his level."
+            },
+            {
+              "label": "Against",
+              "value": "His sample is still short of a full season."
+            },
+            {
+              "label": "How sure",
+              "value": "Moderate"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's prospect model: performance sets readiness, age the urgency, the club's philosophy the bar for a promotion"
+        },
+        "links": [
+          {
+            "kind": "decision",
+            "department": "farm",
+            "key": "9102"
+          }
+        ]
+      },
+      "means": {
+        "display": "His results at this level and his sample support discussing a lower-level assignment."
+      },
+      "facts": [
+        {
+          "id": "fact:ratings",
+          "cells": {
+            "label": {
+              "display": "Scouted now → ceiling"
+            },
+            "value": {
+              "display": "45 → 60"
+            }
+          },
+          "sort": {
+            "label": "Scouted now → ceiling",
+            "value": "45 → 60"
+          }
+        },
+        {
+          "id": "fact:season",
+          "cells": {
+            "label": {
+              "display": "Season at this level"
+            },
+            "value": {
+              "display": "240 PA · .842 OPS · 9 HR"
+            }
+          },
+          "sort": {
+            "label": "Season at this level",
+            "value": "240 PA · .842 OPS · 9 HR"
+          }
+        },
+        {
+          "id": "fact:pace",
+          "cells": {
+            "label": {
+              "display": "Development against his peers"
+            },
+            "value": {
+              "display": "Behind · 12th",
+              "tone": "bad"
+            }
+          },
+          "sort": {
+            "label": "Development against his peers",
+            "value": "Behind · 12th"
+          }
+        }
+      ],
+      "supporting": [
+        {
+          "display": "His line is well above the league at his level."
+        }
+      ],
+      "cautions": [
+        {
+          "display": "His sample is still short of a full season."
+        }
+      ],
+      "next": [
+        {
+          "move": {
+            "display": "Normal promotion to Level 2"
+          },
+          "destinations": [
+            {
+              "display": "Club 2 · Workable fit"
+            }
+          ]
+        }
+      ],
+      "nextEmpty": null,
+      "placeTitle": {
+        "display": "A Minor League Operations question"
+      },
+      "place": {
+        "display": "Whether he can get the work where he is, who is ahead of him, and what follows if he moves are answered on his Decision, from the same Player Development judgment shown here."
+      },
+      "scoresNote": {
+        "display": "Player Development's own 0 to 100 evidence scores, not OOTP ratings."
+      },
+      "scores": [
+        {
+          "id": "score:readiness",
+          "cells": {
+            "label": {
+              "display": "Readiness"
+            },
+            "value": {
+              "display": "74"
+            }
+          },
+          "sort": {
+            "label": "Readiness",
+            "value": 74
+          }
+        },
+        {
+          "id": "score:performance",
+          "cells": {
+            "label": {
+              "display": "Results at the level"
+            },
+            "value": {
+              "display": "71"
+            }
+          },
+          "sort": {
+            "label": "Results at the level",
+            "value": 71
+          }
+        },
+        {
+          "id": "score:maturity",
+          "cells": {
+            "label": {
+              "display": "How settled his ratings are"
+            },
+            "value": {
+              "display": "62"
+            }
+          },
+          "sort": {
+            "label": "How settled his ratings are",
+            "value": 62
+          }
+        },
+        {
+          "id": "score:sample",
+          "cells": {
+            "label": {
+              "display": "How much he has played"
+            },
+            "value": {
+              "display": "68"
+            }
+          },
+          "sort": {
+            "label": "How much he has played",
+            "value": 68
+          }
+        }
+      ],
+      "evaluations": [
+        {
+          "id": "evaluation:9102:0",
+          "cells": {
+            "move": {
+              "display": "Normal promotion to Level 2"
+            },
+            "judgment": {
+              "display": "Defensible",
+              "tone": "good"
+            },
+            "philosophy": {
+              "display": "The club prefers it"
+            }
+          },
+          "sort": {
+            "move": 2,
+            "judgment": "defensible",
+            "philosophy": "preferred"
+          },
+          "notes": []
+        }
+      ],
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9102"
+      }
+    }
+  ],
+  "meetingsEmpty": null,
+  "boardNote": {
+    "display": "Players without enough at their level for a call stay on the board rather than disappearing."
+  },
+  "order": {
+    "display": "By level, then by last name",
+    "hint": "The roster's own order; no score orders the board"
+  },
+  "filters": [
+    {
+      "id": "attention",
+      "name": "Meetings",
+      "count": 2,
+      "label": "Meetings · 2"
+    },
+    {
+      "id": "eligible",
+      "name": "A move supported",
+      "count": 2,
+      "label": "A move supported · 2"
+    },
+    {
+      "id": "watch",
+      "name": "Watching",
+      "count": 0,
+      "label": "Watching · 0"
+    },
+    {
+      "id": "behind",
+      "name": "Behind his peers",
+      "count": 1,
+      "label": "Behind his peers · 1"
+    },
+    {
+      "id": "all",
+      "name": "All",
+      "count": 3,
+      "label": "All · 3"
+    }
+  ],
+  "levels": [
+    {
+      "id": "2",
+      "name": "Level 2"
+    },
+    {
+      "id": "3",
+      "name": "Level 3"
+    }
+  ],
+  "rows": [
+    {
+      "id": "prospect:9101",
+      "cells": {
+        "player": {
+          "display": "Player 9101"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 2 · Club 2"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "ratings": {
+          "display": "45 → 60"
+        },
+        "pace": {
+          "display": "Ahead · 86th",
+          "tone": "good"
+        },
+        "call": {
+          "display": "Consider promotion",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "player": "Player 9101",
+        "age": 21,
+        "club": "02 Club 2",
+        "role": "SS",
+        "ratings": 45,
+        "pace": 86,
+        "call": 1
+      },
+      "playerId": 9101,
+      "teamId": 102,
+      "levelId": "2",
+      "filters": [
+        "attention",
+        "eligible"
+      ],
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9101"
+      }
+    },
+    {
+      "id": "prospect:9102",
+      "cells": {
+        "player": {
+          "display": "Player 9102"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 3 · Club 3"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "ratings": {
+          "display": "45 → 60"
+        },
+        "pace": {
+          "display": "Behind · 12th",
+          "tone": "bad"
+        },
+        "call": {
+          "display": "Consider a lower level",
+          "tone": "caution"
+        }
+      },
+      "sort": {
+        "player": "Player 9102",
+        "age": 21,
+        "club": "03 Club 3",
+        "role": "SS",
+        "ratings": 45,
+        "pace": 12,
+        "call": 3
+      },
+      "playerId": 9102,
+      "teamId": 103,
+      "levelId": "3",
+      "filters": [
+        "attention",
+        "eligible",
+        "behind"
+      ],
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9102"
+      }
+    },
+    {
+      "id": "prospect:9103",
+      "cells": {
+        "player": {
+          "display": "Player 9103"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 3 · Club 3"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "ratings": {
+          "display": "45 → 60"
+        },
+        "pace": {
+          "display": "Typical · 50th",
+          "tone": "neutral"
+        },
+        "call": {
+          "display": "Not enough at this level yet",
+          "tone": "neutral",
+          "hint": "Too few plate appearances or innings at his level for a call"
+        }
+      },
+      "sort": {
+        "player": "Player 9103",
+        "age": 21,
+        "club": "03 Club 3",
+        "role": "SS",
+        "ratings": 45,
+        "pace": 50,
+        "call": null
+      },
+      "playerId": 9103,
+      "teamId": 103,
+      "levelId": "3",
+      "filters": [],
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9103"
+      }
+    }
+  ],
+  "empty": {
+    "display": "No players match this view."
+  },
+  "model": {
+    "display": "Results set readiness, age the urgency, and the club's philosophy the bar for a promotion; scouting history says what our scouts have seen; Minor League Operations says whether a move is useful now."
+  },
+  "unknowns": []
+}

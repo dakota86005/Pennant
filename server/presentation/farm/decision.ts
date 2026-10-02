@@ -169,7 +169,7 @@ export function consequenceView(ctx: FarmContext, c: FarmConsequenceV2): FarmCon
     impact: impact
       ? [
         factRow('impact:now', `${club} now`, `${before!.text}: ${impact.before}`, { tone: before!.tone }),
-        factRow('impact:after', 'Without him', `${after!.text}: ${impact.after}${impact.findingsAfter.length ? ` ${impact.findingsAfter.join(' ')}` : ''}`, { tone: after!.tone }),
+        factRow('impact:after', 'Without him', `${after!.text}: ${impact.after}${impact.findingsAfter.length ? `. ${impact.findingsAfter.join(' ')}` : ''}`.replace(/\.\./g, '.'), { tone: after!.tone }),
         factRow('impact:job', 'The job he leaves', `${c.lostRole ?? 'Not known'} · ${impact.absorbed ? 'can be absorbed' : 'leaves a hole'}`, { tone: impact.absorbed ? 'good' : 'caution' }),
       ]
       : [],

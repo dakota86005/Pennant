@@ -334,6 +334,112 @@ describe('the farm\'s words are plain (AGENTS.md "Writing for the GM")', () => {
   });
 });
 
+/*
+ * Fuller farm payloads than the contract's synthetic save makes (one affiliate, no meetings, no cascade step), worded by
+ * the real adapters from synthetic answers, for the Mac app's previews and snapshots (`contract/fixtures/farm/`). Written
+ * with `npm run contract:fixtures`, checked here otherwise.
+ */
+describe('fixtures for the Mac app\'s farm previews (N10)', () => {
+  const FOLDER = path.join(process.cwd(), 'contract', 'fixtures', 'farm');
+  const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
+  const fixture = (name: string, value: unknown): void => {
+    const file = path.join(FOLDER, name);
+    if (process.env.CONTRACT_FIXTURES === 'write') {
+      fs.mkdirSync(FOLDER, { recursive: true });
+      fs.writeFileSync(file, json(value));
+      return;
+    }
+    expect(fs.existsSync(file), `${name} is missing: run npm run contract:fixtures`).toBe(true);
+    expect(fs.readFileSync(file, 'utf8'), `${name} differs: run npm run contract:fixtures`).toBe(json(value));
+  };
+
+  it('a decision whose chain has steps and leaves a hole open', () => {
+    const review = system.assignments[0];
+    const view = decisionView(ctx, system, review, {
+      player: { playerId: review.playerId, name: review.name },
+      sourceAffiliate: { teamId: review.teamId, label: review.team, level: review.level, levelName: review.levelName },
+      lostRole: 'the everyday shortstop job',
+      affiliateImpact: { before: 'eight of eight positions fillable', after: 'seven of eight positions fillable', absorbed: false, statusBefore: 'healthy', statusAfter: 'thin', findingsAfter: ['Only one man covers SS.'] },
+      currentOpportunity: null,
+      playingTimeImpact: [{ playerId: 9002, name: 'Bo Glove', effect: 'Bo Glove moves from sharing short to holding it.' }],
+      replacementOptions: [{ playerId: 9002, name: 'Bo Glove', from: 'Double-A Club', judgment: 'defensible', preference: 'preferred', detail: 'x' }],
+      cascade: {
+        origin: { playerId: review.playerId, name: review.name, fromTeamId: review.teamId, fromTeam: review.team, job: { kind: 'position', position: 'SS' }, reason: 'He leaves.' },
+        steps: [
+          {
+            index: 1,
+            vacancy: { teamId: review.teamId, team: review.team, level: review.level, levelName: review.levelName, job: { kind: 'position', position: 'SS' }, after: 1, floor: 2, absorbed: false, detail: 'x' },
+            candidate: { playerId: 9002, name: 'Bo Glove', age: 22, fromTeamId: 77, fromTeam: 'Double-A Club', fromLevel: 3, fromLevelName: 'Double-A' },
+            development: { judgment: 'defensible', blockers: [], missingEvidence: [] },
+            preference: 'preferred',
+            preferenceBasis: 'The club leans toward promoting a man who is ready.',
+            alternatives: [{ playerId: 9003, name: 'Cy Range', age: 21, fromTeam: 'Double-A Club', preference: 'acceptable' }],
+            consequence: { destination: 'He takes the everyday shortstop job.', source: 'Double-A Club loses its shortstop.', destinationOpportunity: 'He would start most days.', opensFurtherVacancy: true },
+            uncertainty: [],
+            usable: true,
+          },
+          {
+            index: 2,
+            vacancy: { teamId: 77, team: 'Double-A Club', level: 3, levelName: 'Double-A', job: { kind: 'position', position: 'SS' }, after: 1, floor: 2, absorbed: false, detail: 'x' },
+            candidate: null,
+            development: { judgment: 'not_evaluated', blockers: [], missingEvidence: [] },
+            preference: null,
+            preferenceBasis: null,
+            alternatives: [],
+            consequence: { destination: 'Double-A Club stays one short at SS.', source: 'No player moves.', destinationOpportunity: 'Not applicable: no move.', opensFurtherVacancy: false },
+            uncertainty: ['Nobody below has a qualifying sample at his own level yet.'],
+            usable: false,
+          },
+        ],
+        stop: 'indeterminate',
+        stopDetail: 'Nobody below Double-A could be judged for shortstop.',
+        unresolved: [{ teamId: 77, team: 'Double-A Club', job: 'SS', detail: 'one short of the two it needs.' }],
+        certainty: 'indeterminate',
+        gmDecision: [],
+      },
+      unresolvedIssues: ['Double-A Club is one shortstop short.'],
+      confidence: 'indeterminate',
+      evidence: ['Measured on the active lists, rehab assignees excluded.'],
+      summary: 'Bo Glove can take the job; Double-A is then one shortstop short, and the chain stops there.',
+    });
+    expect(bannedInPayload(view)).toEqual([]);
+    fixture('decision-cascade.json', view);
+  });
+
+  it('prospects with development meetings', () => {
+    const players = [scoutedPlayer(9101, 2, { pace: 'ahead', percentile: 86 }), scoutedPlayer(9102, 3, { pace: 'behind', percentile: 12 }), scoutedPlayer(9103, 3)];
+    const meeting = (id: number, recommendation: string) => ({
+      player_id: id, team_id: 103, name: `Player ${id}`, age: 21, team: 'Club 3', level: 3, levelName: 'Level 3', cur: 45, pot: 60, pa: 240, opsVal: 0.842, hr: 9,
+      decision: {
+        recommendation, confidence: 'moderate', evidence: { performance: 71, ageLevelUrgency: 55, ratingsMaturity: 62, sampleConfidence: 68, readiness: 74 },
+        positives: ['His line is well above the league at his level.'], cautions: ['His sample is still short of a full season.'], missingEvidence: [],
+      },
+      assignments: {
+        evaluations: [{ kind: 'normal_promotion', direction: 'promotion' as const, target: { level: 2, levelName: 'Level 2', teams: [{ teamId: 102, label: 'Club 2' }], isMajorLeague: false }, judgment: 'defensible', preference: 'preferred', blockers: [], missingEvidence: [], destinationFit: { teams: [{ fit: { destinationTeamId: 102, destinationTeam: 'Club 2', classification: 'viable' } }], eligibleTeamIds: [102], indeterminateTeamIds: [] } }],
+        eligible: [{ kind: 'normal_promotion', direction: 'promotion' as const, target: { level: 2, levelName: 'Level 2', teams: [{ teamId: 102, label: 'Club 2' }], isMajorLeague: false }, judgment: 'defensible', preference: 'preferred', blockers: [], missingEvidence: [], destinationFit: { teams: [{ fit: { destinationTeamId: 102, destinationTeam: 'Club 2', classification: 'viable' } }], eligibleTeamIds: [102], indeterminateTeamIds: [] } }],
+        indeterminate: [],
+      },
+    });
+    const view = prospectsView(ctx, players, [meeting(9101, 'consider_promotion'), meeting(9102, 'consider_demotion')], RATING);
+    expect(view.meetings).toHaveLength(2);
+    expect(bannedInPayload(view)).toEqual([]);
+    fixture('prospects-meetings.json', view);
+  });
+
+  it('development tracking with three snapshots and movers', () => {
+    const dates = ['2040-4-1', '2040-5-15', '2040-7-1'];
+    const players = [scoutedPlayer(9201, 2, { pace: 'ahead', percentile: 88 }, 4.5), scoutedPlayer(9202, 3, { pace: 'behind', percentile: 9 }, -2), scoutedPlayer(9203, 3, {}, 1)];
+    const rows = players.flatMap((p, i) => dates.map((d, j) => ({
+      game_date: d, player_id: p.playerId, name: p.name, team_id: p.teamId, level: p.level, levelName: p.levelName, position: i === 1 ? 1 : 6, age: 21, cur: 44 + j * (i === 1 ? -1 : 2), pot: 60,
+      con: 40 + j, gap: 40, pow: 42 + j, eye: 40, avk: 40, spd: 50, stu: 45 - j, mov: 45, ctl: 44,
+    })));
+    const { view, details } = developmentViews(ctx, players, { snapshots: 3, dates, observationDays: 91, rows, ratingModeSwitches: [], history: { note: null, because: [] } }, RATING);
+    expect(bannedInPayload({ view, details })).toEqual([]);
+    fixture('development-tracked.json', view);
+    fixture('development-detail.json', details[0]);
+  });
+});
+
 describe('the farm\'s views read the specialists only through their public modules', () => {
   it('farmViewsBuild.ts loads only the public modules it words, and nothing of odds, posture or AI (D-001, D-060)', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'server/farmViewsBuild.ts'), 'utf8');

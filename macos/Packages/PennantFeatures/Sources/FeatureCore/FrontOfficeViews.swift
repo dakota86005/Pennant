@@ -29,8 +29,12 @@ extension EnvironmentValues {
 
 /// A served target as a route in this build, when it names a department's view.
 public func route(_ target: Components.Schemas.Target?) -> AppRoute? {
-    guard let target, let view = target.view, let department = target.department else { return nil }
-    return AppRoute(department: DeptID(rawValue: department.rawValue), view: view)
+    guard let target, let department = target.department else { return nil }
+    let dept = DeptID(rawValue: department.rawValue)
+    // A decision opens its department's Decision view on its key (N10: the farm's, a player's id)
+    if target.kind.value1 == .decision, let key = target.key { return AppRoute(department: dept, view: "decision", subject: key) }
+    guard let view = target.view else { return nil }
+    return AppRoute(department: dept, view: view, subject: target.key)
 }
 
 /// A served claim as one line: its tone's symbol, its text, its help tag, and its basis one click away.
@@ -70,6 +74,7 @@ public struct DeskItemRow: View {
     let handedUndoManager: UndoManager?
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var windowUndoManager
+    @Environment(\.routeOpener) private var opener
     @State private var editingNote = false
 
     public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false, undoManager: UndoManager? = nil) {
@@ -81,6 +86,14 @@ public struct DeskItemRow: View {
 
     private var undoManager: UndoManager? { handedUndoManager ?? windowUndoManager }
 
+    /// The item's first served link this build opens in the window (its department's view or decision), when it has one.
+    private var openable: AppRoute? {
+        for link in item.headline.links {
+            if let r = route(link), opener?.canOpen(r) ?? false { return r }
+        }
+        return nil
+    }
+
     public var body: some View {
         let choices = model.frontOffice.summary?.desk.deferChoices ?? []
         DeskRow(item, showsDepartment: showsDepartment, compact: compact) {
@@ -90,11 +103,29 @@ public struct DeskItemRow: View {
                 }
                 if let evidence = item.evidence {
                     TrailButton(evidence: evidence, compact: compact)
+                } else if let open = openable {
+                    // Where the department answers it, in this window (N10: a farm player's Decision, an affiliate)
+                    Button { opener?.open(open) } label: {
+                        if compact {
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary)
+                                .accessibilityLabel(Text("Open"))
+                        } else {
+                            Text("Open")
+                        }
+                    }
+                    .buttonStyle(compact ? AnyButtonStyle(.plain) : AnyButtonStyle(.bordered))
+                    .controlSize(.small)
+                    .help(Text("Open"))
+                    .accessibilityIdentifier("item.open")
                 }
             }
         }
         .contentShape(.rect)
         .contextMenu {
+            if let open = openable {
+                Button("Open", systemImage: "arrow.up.forward.square") { opener?.open(open) }
+                Divider()
+            }
             DeskItemMenu(status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true })
         }
         .popover(isPresented: $editingNote, arrowEdge: .trailing) {

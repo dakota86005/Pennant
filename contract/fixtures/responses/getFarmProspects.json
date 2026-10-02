@@ -223,27 +223,32 @@
     {
       "id": "attention",
       "name": "Meetings",
-      "count": 0
+      "count": 0,
+      "label": "Meetings · 0"
     },
     {
       "id": "eligible",
       "name": "A move supported",
-      "count": 0
+      "count": 0,
+      "label": "A move supported · 0"
     },
     {
       "id": "watch",
       "name": "Watching",
-      "count": 0
+      "count": 0,
+      "label": "Watching · 0"
     },
     {
       "id": "behind",
       "name": "Behind his peers",
-      "count": 0
+      "count": 0,
+      "label": "Behind his peers · 0"
     },
     {
       "id": "all",
       "name": "All",
-      "count": 6
+      "count": 6,
+      "label": "All · 6"
     }
   ],
   "levels": [

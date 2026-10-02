@@ -4763,6 +4763,10 @@
           },
           "fogNote": {
             "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Where his name opens: his Decision."
           }
         },
         "required": [
@@ -4776,6 +4780,7 @@
           "line",
           "movement",
           "name",
+          "open",
           "orgId",
           "pace",
           "peers",
@@ -4995,6 +5000,10 @@
           "count": {
             "$ref": "#/components/schemas/Integer"
           },
+          "label": {
+            "type": "string",
+            "description": "The tab as a menu shows it, with its count (\"Ahead · 3\")."
+          },
           "title": {
             "$ref": "#/components/schemas/Cell",
             "description": "The list's heading for this tab (\"Ahead of his peers\")."
@@ -5015,6 +5024,7 @@
           "id",
           "name",
           "count",
+          "label",
           "title",
           "order",
           "rule"
@@ -5374,12 +5384,17 @@
           },
           "count": {
             "$ref": "#/components/schemas/Integer"
+          },
+          "label": {
+            "type": "string",
+            "description": "The filter as a menu shows it, with its count (\"Meetings · 4\")."
           }
         },
         "required": [
           "id",
           "name",
-          "count"
+          "count",
+          "label"
         ]
       },
       "FarmFindingView": {
@@ -5998,6 +6013,10 @@
             "$ref": "#/components/schemas/Claim",
             "description": "Player Development's call, with what it means as its help tag and its evidence as its basis."
           },
+          "means": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the call means, in a sentence."
+          },
           "facts": {
             "type": "array",
             "items": {
@@ -6025,10 +6044,10 @@
           "nextEmpty": {
             "$ref": "#/components/schemas/Cell"
           },
-          "whereTitle": {
+          "placeTitle": {
             "$ref": "#/components/schemas/Cell"
           },
-          "where": {
+          "place": {
             "$ref": "#/components/schemas/Cell"
           },
           "scoresNote": {
@@ -6056,12 +6075,13 @@
           "line",
           "queueLine",
           "call",
+          "means",
           "facts",
           "supporting",
           "cautions",
           "next",
-          "whereTitle",
-          "where",
+          "placeTitle",
+          "place",
           "scoresNote",
           "scores",
           "evaluations",

@@ -1,29 +1,29 @@
 {
   "orgId": 1,
-  "importStamp": null,
-  "reportStamp": "rstamp",
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
   "asOf": {
-    "display": "Through May 5, 2040",
+    "display": "Through July 1, 2040",
     "hint": "The last game day in the imported export"
   },
   "preparedBy": {
     "display": "Prepared by the minor league staff"
   },
-  "playerId": 1104,
-  "teamId": 101,
-  "name": "P 1104",
+  "playerId": 9201,
+  "teamId": 102,
+  "name": "Player 9201",
   "line": {
-    "display": "22 · 2B · AAA · Farm 1 F"
+    "display": "21 · SS · Level 2 · Club 2"
   },
   "pace": {
-    "display": "History still building",
-    "tone": "unknown"
+    "display": "Ahead · 88th",
+    "tone": "good"
   },
   "first": {
-    "display": "40"
+    "display": "44"
   },
   "latest": {
-    "display": "42"
+    "display": "48"
   },
   "change": {
     "text": "Change in our scouts' read",
@@ -32,26 +32,22 @@
       "because": [
         {
           "label": "First snapshot",
-          "value": "March 20, 2040: 40"
+          "value": "April 1, 2040: 44"
         },
         {
           "label": "Latest snapshot",
-          "value": "June 20, 2040: 42"
+          "value": "July 1, 2040: 48"
         },
         {
           "label": "Snapshots in this save",
           "value": "3"
-        },
-        {
-          "label": "History",
-          "value": "Current-skill scouting composite improved by 2.0 across 3 snapshots and 92 in-game days."
         }
       ],
       "source": {
         "department": "farm",
         "specialist": "Player Development",
-        "asOf": null,
-        "gameDate": "2040-05-05"
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
       },
       "unknown": [],
       "wouldChange": [],
@@ -61,33 +57,30 @@
     },
     "links": [],
     "value": {
-      "n": 2,
+      "n": 4.5,
       "unit": "count",
-      "display": "+2"
+      "display": "+4.5"
     }
   },
   "ceilingChange": {
-    "display": "0"
+    "display": "Not enough history yet",
+    "tone": "unknown"
   },
   "summary": {
-    "text": "Our scouts' read of his current skills has changed +2; there aren't enough comparable players yet to say how that compares.",
+    "text": "Our scouts' read of his current skills has changed +4.5, faster than comparable players.",
     "tone": "neutral",
     "basis": {
       "because": [
         {
-          "label": "History",
-          "value": "Current-skill scouting composite improved by 2.0 across 3 snapshots and 92 in-game days."
-        },
-        {
-          "label": "Against his peers",
-          "value": "Peer evidence is still insufficient: not enough comparable scouting-history observations are available for a stable baseline."
+          "label": "Read from",
+          "value": "The imported export"
         }
       ],
       "source": {
         "department": "farm",
         "specialist": "Player Development",
-        "asOf": null,
-        "gameDate": "2040-05-05"
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
       },
       "unknown": [],
       "wouldChange": [],
@@ -99,16 +92,16 @@
   },
   "snapshots": [
     {
-      "id": "snap:1104:0",
+      "id": "snap:9201:0",
       "cells": {
         "date": {
-          "display": "March 20, 2040"
+          "display": "April 1, 2040"
         },
         "level": {
-          "display": "AAA"
+          "display": "Level 2"
         },
         "current": {
-          "display": "40"
+          "display": "44"
         },
         "ceiling": {
           "display": "60"
@@ -117,21 +110,21 @@
       "sort": {
         "date": 0,
         "level": 2,
-        "current": 40,
+        "current": 44,
         "ceiling": 60
       }
     },
     {
-      "id": "snap:1104:1",
+      "id": "snap:9201:1",
       "cells": {
         "date": {
-          "display": "April 30, 2040"
+          "display": "May 15, 2040"
         },
         "level": {
-          "display": "AAA"
+          "display": "Level 2"
         },
         "current": {
-          "display": "41"
+          "display": "46"
         },
         "ceiling": {
           "display": "60"
@@ -140,21 +133,21 @@
       "sort": {
         "date": 1,
         "level": 2,
-        "current": 41,
+        "current": 46,
         "ceiling": 60
       }
     },
     {
-      "id": "snap:1104:2",
+      "id": "snap:9201:2",
       "cells": {
         "date": {
-          "display": "June 20, 2040"
+          "display": "July 1, 2040"
         },
         "level": {
-          "display": "AAA"
+          "display": "Level 2"
         },
         "current": {
-          "display": "42"
+          "display": "48"
         },
         "ceiling": {
           "display": "60"
@@ -163,14 +156,14 @@
       "sort": {
         "date": 2,
         "level": 2,
-        "current": 42,
+        "current": 48,
         "ceiling": 60
       }
     }
   ],
   "movement": [
     {
-      "id": "move:1104:con",
+      "id": "move:9201:con",
       "cells": {
         "tool": {
           "display": "Contact"
@@ -192,18 +185,38 @@
         "to": 42,
         "change": 2
       }
+    },
+    {
+      "id": "move:9201:pow",
+      "cells": {
+        "tool": {
+          "display": "Power"
+        },
+        "from": {
+          "display": "42"
+        },
+        "to": {
+          "display": "44"
+        },
+        "change": {
+          "display": "+2",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "tool": "Power",
+        "from": 42,
+        "to": 44,
+        "change": 2
+      }
     }
   ],
   "movementEmpty": null,
-  "peers": [
-    {
-      "display": "Peer evidence is still insufficient: not enough comparable scouting-history observations are available for a stable baseline."
-    }
-  ],
+  "peers": [],
   "open": {
     "kind": "decision",
     "department": "farm",
-    "key": "1104"
+    "key": "9201"
   },
   "fogNote": {
     "display": "These snapshots keep what the organization could see at the time. A change can be real development, a revised scouting read, or both; Pennant never puts OOTP's hidden ratings in their place."
