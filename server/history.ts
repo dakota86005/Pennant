@@ -5,7 +5,7 @@ import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { evidenceRecord, isModeSwitch, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 import { evidenceRatingMode, inPopulationView, populationSource, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
-import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, rollbackName, servedLeagueCertain } from './historyIdentity.js';
+import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, releaseCarriedPopulation, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -265,7 +265,18 @@ historyDb.exec(`
     PRIMARY KEY (save_key, kind, game_date, player_id)
   );
   CREATE INDEX IF NOT EXISTS idx_save_population_player ON save_population_snapshots (save_key, kind, player_id, game_date);
+  /* The population rows a carry-over copied (D-064, review M4), by kind, so its undo removes exactly those. */
+  CREATE TABLE IF NOT EXISTS history_carried_population_rows (
+    carry_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    player_id INTEGER NOT NULL,
+    PRIMARY KEY (carry_id, kind, game_date, player_id)
+  );
 `);
+
+/** A population snapshot's data columns: the evidence snapshot's, without the per-player source (one kind per row). */
+export const POPULATION_DATA_COLUMNS = SNAPSHOT_DATA_COLUMNS.filter((c) => c !== 'src');
 
 /**
  * Records the rating mode of the snapshot of `gameDate` (replacing it, as the snapshot itself is replaced on a re-import
@@ -555,6 +566,7 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
     }
     // The save's own ratings now: what a carry-over copied at this date and player is no longer the carry-over's (D-064)
     releaseCarried(saveKey, gameDate, rows.map((r) => Number(r.player_id)));
+    if (populationRows.length) releaseCarriedPopulation(saveKey, population.id, gameDate, populationRows.map((r) => Number(r.player_id)));
     if (saveName !== null) dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
   });
   insertAll.immediate();

@@ -515,6 +515,43 @@ describe('the GM decides: questions about a save that might have moved, the list
     expect((await choose(answered.body.carriedOver[0].id, 'undo')).status).toBe(400);
   });
 
+  it('carries OSA\'s history (the population snapshots) along with the evidence, kind by kind, and its undo removes exactly that (review M4)', async () => {
+    const a = saveFolder('mac-app-store', 'New Game');
+    const renamed = saveFolder('mac-app-store', 'Dynasty');
+    useSave(a.csvDir, 'New Game');
+    const keyA = currentHistoryKey();
+    takeSnapshot();
+    copyDate(keyA, '2030-5-1');
+    const population = (key: string) => historyDb.prepare(
+      `SELECT kind, game_date, player_id, con FROM save_population_snapshots WHERE save_key = ? ORDER BY kind, game_date, player_id`
+    ).all(key) as Array<{ kind: string; game_date: string; player_id: number; con: number }>;
+    const addPopulation = (key: string, kind: string, date: string, playerId: number, con: number) => historyDb.prepare(
+      `INSERT OR REPLACE INTO save_population_snapshots (save_key, kind, game_date, player_id, position, con) VALUES (?, ?, ?, ?, 2, ?)`
+    ).run(key, kind, date, playerId, con);
+    addPopulation(keyA, 'osa_file', '2030-5-1', 1, 55);
+    addPopulation(keyA, 'osa_file', '2030-5-1', 2, 60);
+    addPopulation(keyA, 'our_scouts_file', '2030-5-1', 1, 70);
+    fs.rmSync(a.lgPath, { recursive: true });
+    useSave(renamed.csvDir, 'Dynasty');
+    const keyNew = currentHistoryKey();
+    takeSnapshot();
+    // The new save's own row of one kind at that date and player: never replaced, never removed by the undo
+    addPopulation(keyNew, 'osa_file', '2030-5-1', 2, 45);
+    const answered = await choose(`${keyNew}:${keyA}`, 'adopt');
+    expect(answered.status).toBe(200);
+    expect(population(keyNew)).toEqual([
+      { kind: 'osa_file', game_date: '2030-5-1', player_id: 1, con: 55 },
+      { kind: 'osa_file', game_date: '2030-5-1', player_id: 2, con: 45 },
+      { kind: 'our_scouts_file', game_date: '2030-5-1', player_id: 1, con: 70 },
+    ]);
+    const undone = await choose(answered.body.carriedOver[0].id, 'undo');
+    expect(undone.status).toBe(200);
+    expect(population(keyNew)).toEqual([{ kind: 'osa_file', game_date: '2030-5-1', player_id: 2, con: 45 }]);
+    // The source is never changed
+    expect(population(keyA)).toHaveLength(3);
+    historyDb.prepare('DELETE FROM save_population_snapshots WHERE save_key IN (?, ?)').run(keyA, keyNew);
+  });
+
   it('keeps them apart on a no, never asks again, and refuses a second answer or one to a question not asked', async () => {
     const a = saveFolder('mac-app-store', 'New Game');
     const renamed = saveFolder('mac-app-store', 'Dynasty');

@@ -2488,7 +2488,9 @@ overwrote part of the other's.
     later dates stay where they were, kept apart. The source is never changed or unbound. The rows copied are recorded,
     and a row or rating-kind stamp the save's own snapshot later writes is no longer the carry-over's, so "Undo
     carry-over" removes exactly what it copied and never the save's own ratings; after an undo the question can be asked
-    again. Before a carry-over a copy of `history.db` is made in `backups/history-before-carry-over-<time>.db` (after a
+    again. The league's population view at those dates (OSA's history, D-068: `save_population_snapshots`) is carried
+    with them, kind by kind, recorded (`history_carried_population_rows`) and undone the same way (review M4, 2026-10-02);
+    the name-keyed history an earlier build wrote has no population view, so the review of it has none to bring over. Before a carry-over a copy of `history.db` is made in `backups/history-before-carry-over-<time>.db` (after a
     cheap check for room; no room refuses it in words), unless the last such copy is newer than the last import (the
     carry-overs since can be undone); the newest three are kept, and the one-time copy made before earlier history was
     brought over is never removed.
