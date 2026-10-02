@@ -975,7 +975,7 @@ it reads, "couldn't be read this time" for anything else) or `notYet`. What each
 | Department | Reads (through the specialist's public module) | Items | Key figures | What it can't answer yet |
 |---|---|---|---|---|
 | Major League Ops | `mlbOverview` (needs), `computeRosterCrunchIssues` (the 40-man's clocks and option notes, from Player State and Player Rights) | every need, every designation or waiver clock (urgent, days left), every option note (noted) | active roster, 40-man, injured list | the 40-man when the export has no roster status (said in "What we can't see") |
-| Farm & Development | `computeFarmSystem` (its attention list, with each item's code and position) | every item on it, in its own words (counts in words, never a zero) and scale, the same kind about one subject in one row | players in the system, affiliates (and how many are short), players we have a read on | Player Development's prospect ladder (the Prospects view, N10) |
+| Farm & Development | `computeFarmSystem` (its attention list, with each item's code and position) | every item on it, in its own words (counts in words, never a zero) and scale, the same kind about one subject in one row | players in the system, affiliates (and how many are short), players we have a read on (each figure opening its view since N10) | — (the prospect calls are on Prospects since N10; each item opens its Decision, Affiliates or Organization) |
 | Finance | `computeContracts`, `computePayroll` | every contract ending, holding an option or headed to arbitration (noted; never a recommendation) | payroll this season, room under the budget, free agents after this season (a floor, "at least three", while any player is not settled) | a decision date (the export has none, so no clock) |
 | Medical | the injury report (`orgInjuries`) | every injured player, less a return Major League Ops has on its desk | injured, with the major league club, day-to-day | — |
 | Scouting, Trades, League Office, Philosophy & Staff | — | — | — | no report yet, said plainly ("No scouting report yet.") |
@@ -984,6 +984,42 @@ it reads, "couldn't be read this time" for anything else) or `notYet`. What each
 The Mac app draws a report plainly (`DepartmentReportView`): the header, the summary, the figures, the sections, "What
 we can't see"; an item with an evidence trail has a Staff's Options button that fetches it (the need's basis above the
 responses). The Front Office's own report is its Report view.
+
+**As built at N10 (2026-10-01): Farm & Development.** Branch `feature/swiftui-n10-farm` (D-065; BEHAVIOR_CASES.md "Pennant
+for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
+- **Server.** `GET /api/v2/views/:org/farm/organization`, `/affiliates`, `/assignments`, `/prospects`, `/development`, and
+  `/decision/:playerId`, `/development/:playerId` (each its own operation and type in `presentation/farm/types.ts`). The
+  adapters (`presentation/farm/`) word what `farmViewsBuild.ts` reads through the specialists' public modules
+  (`computeFarmSystem` with one `FarmSession`, `farmConsequenceFor`, `computeProspects`, `computeScoutedDevelopment`,
+  `developmentHistoryFor`, now shared with `/api/development-history`). `farmViewService.ts` keeps one club's build on the
+  Front Office's key, built in its worker after each kept Front Office build; the desk's players and every assignment in
+  question have their Decision read ahead; another is read on the request in the worker and kept. The farm's desk items
+  link to Decision (a `decision` target keyed by the player) and Affiliates (a view target with a `key`); the report's
+  figures open their views. Richer payloads for the previews are worded by the real adapters from synthetic answers in
+  `contract/fixtures/farm/` (`npm run contract:fixtures` writes them too); the contract's synthetic save and the app's
+  synthetic league gain a farm (`minors: true`).
+- **Mac.** `FarmStore` (PennantKit, on `AppModel.farm`) reads the five lists together once per store key, so moving
+  between the farm's views is a read from memory; a Decision and a player's history are read when opened. `AppRoute`
+  gains `subject` (what a view opens on; decoded as nil from a route an earlier build saved), handed to the view as
+  `\.routeSubject`; the sidebar keeps the view's row chosen. Organization (findings, depth by level, starters against
+  spots, the lines the reading used), Affiliates (the organization drawn as a rail of clubs from the major-league club
+  down, each with its two readings as pills; the chosen affiliate read twice beside it), Assignments (a native `Table`,
+  in question only at first, a level menu), Decision (numbered sections; the cascade as steps on a rail ending at the
+  served stop, a hole left open in a neutral box with an information symbol, never an error; opened on its own, the
+  assignments in question), Prospects (React's inbox and board as one table with the chosen player's meeting beside it)
+  and Development tracking (the served tabs and order, a player's snapshots and grades beside it). Native tables sort
+  by served keys through the unknown-last comparator (`ServedColumnSort`, FeatureCore), keep the served order until a
+  header is clicked, remember their columns (`TableColumnCustomization` in scene storage), drag a `PlayerRef`, open the
+  player's Decision on a double-click or Return, and offer Open Decision, Follow and Copy Name; the stakes column has no
+  `sortUsing`. A desk or report item with a link this build opens gains Open (button and context menu).
+- **Speed** (the owner's export, a read-only scratch copy, 7 affiliates and 230 assignments, in process under tsx): the
+  build 1.2 s on the server's thread when called directly (farm system 0.6 s, prospects 0.1 s, scouted development
+  0.09 s, 18 decisions ahead 0.2 s, the words 0.03 s), 2.3 s through the worker under tsx; warm GETs p50 / p95:
+  Organization 1.0 / 2.0 ms (47 kB), Affiliates 2.1 / 2.8 ms (188 kB), Assignments 2.1 / 2.6 ms (185 kB), Prospects
+  3.2 / 3.7 ms (210 kB), Development 0.4 / 0.7 ms; a Decision read ahead 0.5 / 0.5 ms; a routine one 0.9 s on its first
+  request (in the worker under tsx; the consequence itself is 0.24 s), 0.5 / 1.0 ms after.
+- *Left for later:* the scratch export's rating history has one snapshot, so Development tracking was timed only on the
+  synthetic history; a player window (N11) will be the nearest view for a player outside the farm.
 
 ### 3.6 Signature interactions
 
@@ -2143,6 +2179,10 @@ scratch folder).
 the chips, the desk's statuses with Undo, the wire, club windows, Following with drag to follow, search, the notification
 and the Dock badge, and the club owed across a relaunch. **N7 is complete.** Left open: the items in that section's "Left
 for later". **Next: N8** (Major League Ops).
+
+**N10 (2026-10-01)** on `feature/swiftui-n10-farm`, beside N8: Farm & Development, server and Mac (section 3.5, "As built
+at N10"; D-065). Left open: the owner's calls listed in D-065, and the XCUITests `testFarmDeskToDecision` and
+`testFarmViewsDark`, written and built but not run on the owner's Mac (its screen was locked); CI runs them.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

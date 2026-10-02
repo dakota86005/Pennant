@@ -100,3 +100,8 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
   (the audit). SWIFTUI_REBUILD.md section 3.4, "As built at N6 (Stage B2)".
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   snapshot PNGs (`build/macos-snapshots/`), not from asking the owner to look.
+- **A department's views (N10, Farm & Development):** one served payload per view under `/api/v2/views/:org/<dept>/…`,
+  built with the club's Front Office on its key (in its worker) and kept; a native `Table` sorts by served keys through
+  `ServedColumnSort` (unknown last, served order until a header is clicked) and a column with no served key gets no
+  `sortUsing` (the stakes, D-050); a view that opens on one thing reads `\.routeSubject` (`AppRoute.subject`, a served
+  target's `key`). SWIFTUI_REBUILD.md section 3.5, "As built at N10"; D-065.
