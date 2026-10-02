@@ -94,7 +94,7 @@ import {
   type ArrivalPlayer, type ForwardSeason, type MappingCase, type Observation, type RatingsFitInput, type RatingsFitRecord, type RatingsFitRun,
 } from './playerValueRatingsFit.js';
 import {
-  loadScoutedAbilities, loadScoutedGlovesAtPosition, loadScoutedHitterProfiles, loadScoutedObservations,
+  inPopulationView, loadScoutedAbilities, loadScoutedGlovesAtPosition, loadScoutedHitterProfiles, loadScoutedObservations, populationSource,
 } from './scoutedEvidence.js';
 
 export type { ContractFacts, ContractSeason, ContractTerm } from './playerValueContract.js';
@@ -1855,25 +1855,35 @@ export function computeRatingsRefits(options: { fit?: (input: RatingsFitInput) =
     if (leagueSeasons(leagueId, through).length === 0) continue;
     const last = latestProductionFitAttempt<RatingsModel, RatingsFitRecord>(leagueId, RATINGS_METHOD);
     const attempted = productionFitAttempted(leagueId, through, RATINGS_METHOD);
+    // The ratings the fit rests on now (D-068): a fit through this season on another source is refitted, never kept as if continuous
+    const source = populationSource();
+    const sourceChanged = attempted && last?.throughSeason === through && (last.record.ratingSource ?? null) !== source.id;
     const pairsNow = attempted && last?.throughSeason === through && last.record.development.pairs < last.record.development.minimumPairs ? countedPairs() : 0;
     const longitudinalArrived = attempted && last !== null && last.record.development.pairs < last.record.development.minimumPairs
       && pairsNow >= last.record.development.minimumPairs;
-    if (!options.force && attempted && !longitudinalArrived) {
+    if (!options.force && attempted && !longitudinalArrived && !sourceChanged) {
       out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome: { leagueId, throughSeason: through, refit: false, adopted: null, reason: `Already fitted through ${through} (${RATINGS_METHOD}).`, ms: null } });
       continue;
     }
     const start = performance.now();
     let run: RatingsFitRun;
     try {
-      const input = ratingsHistory(leagueId, through, current, rules, options.production?.(leagueId));
-      run = (options.fit ?? ((i: RatingsFitInput) => fitRatingsModel(i, { prior: RATINGS_PRIOR })))(input);
+      // Fitted in the league's population view: OSA's ratings and OSA's own snapshots when OSA is the yardstick (D-068)
+      run = inPopulationView(() => {
+        const input = ratingsHistory(leagueId, through, current, rules, options.production?.(leagueId));
+        return (options.fit ?? ((i: RatingsFitInput) => fitRatingsModel(i, { prior: RATINGS_PRIOR })))(input);
+      });
+      run.record.ratingSource = source.id;
+      run.record.ratingSourceText = sourceChanged
+        ? `${source.text} The ratings' source changed (from ${last?.record.ratingSource ?? 'an unrecorded source'} to ${source.id}): refitted on the new source, not compared with the earlier fit.`
+        : source.text;
     } catch (err) {
       out.push({ leagueId, throughSeason: through, run: null, gameDate: null, ms: null, force: false, outcome: { leagueId, throughSeason: through, refit: false, adopted: null, reason: refitFailure(err), ms: null } });
       continue;
     }
     const ms = performance.now() - start;
     out.push({
-      leagueId, throughSeason: through, run, gameDate: leagueGameDate(leagueId), ms, force: options.force === true || longitudinalArrived,
+      leagueId, throughSeason: through, run, gameDate: leagueGameDate(leagueId), ms, force: options.force === true || longitudinalArrived || sourceChanged,
       outcome: { leagueId, throughSeason: through, refit: true, adopted: run.record.gate.passed, reason: run.record.gate.reason, ms },
     });
   }
@@ -1891,7 +1901,8 @@ export function refitRatingsIfNeeded(options: { fit?: (input: RatingsFitInput) =
 
 /** How many rating-snapshot pairs about a season apart the save holds now (the development path's evidence). */
 function countedPairs(): number {
-  return snapshotPairCount(observationsOf(new Map()));
+  // In the fit's own source: OSA's snapshots when OSA is the league's yardstick (D-068)
+  return inPopulationView(() => snapshotPairCount(observationsOf(new Map())));
 }
 
 /** What the API shows about calibration: the fit in force, and the latest attempt if it was not adopted. */

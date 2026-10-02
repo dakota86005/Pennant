@@ -233,6 +233,19 @@ describe('the evidence boundary', () => {
     }
   });
 
+  it('league yardsticks and fits are built in the population view, and the policy is switched by no server module (D-068)', () => {
+    // The population builders and the refits ask for OSA's view through the adapter
+    expect(code('destinationFit.ts')).toMatch(/inPopulationView\(\(\) => computePopulationRows/);
+    expect(code('stakesLinesRefit.ts')).toMatch(/inPopulationView\(\(\) => loadScoutedAbilities/);
+    expect(code('saveCalibration.ts')).toMatch(/inPopulationView\(\(\) => c\.compute/);
+    expect(code('playerValue.ts')).toMatch(/run = inPopulationView\(/);
+    // OSA's own history is written and read in two places only; the policy is a line, never flipped by the app
+    const naming = serverSources().filter((file) => /save_population_snapshots/.test(code(file))).sort();
+    expect(naming).toEqual(['history.ts', 'scoutedEvidence.ts']);
+    const flipping = serverSources().filter((file) => file !== 'scoutedEvidence.ts' && /withPopulationPolicy/.test(code(file)));
+    expect(flipping).toEqual([]);
+  });
+
   it('requires evidence, not bare numbers, at the development entry points', () => {
     // Structural: the inputs that carry ratings are typed as ScoutedAbility
     expect(code('developmentFit.ts')).toMatch(/ability:\s*ScoutedAbility/);

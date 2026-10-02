@@ -769,7 +769,7 @@ export function rememberToolsVerdict(leagueId: number, through: number, model: T
 // Registered BEFORE the standards: the standards measured in the same refit are measured under its verdict (the slopes and the hitters'
 // tools weight that will serve beside them)
 registerCalibration({
-  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'tools', method: TOOLS_METHOD, trigger: 'completed_season',
+  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'tools', readsRatings: true, method: TOOLS_METHOD, trigger: 'completed_season',
   compute: (b) => {
     if (need(b) === null) return { skip: 'No completed season.' };
     const through = b.throughSeason as number;
@@ -782,7 +782,7 @@ registerCalibration({
 });
 
 registerCalibration({
-  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', method: STANDARDS_METHOD, trigger: 'each_import',
+  subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'standards', readsRatings: true, method: STANDARDS_METHOD, trigger: 'each_import',
   compute: (b) => {
     const results = resultsParamsFor(b.leagueId, b.throughSeason);
     const history = resultsLensHistory(b.leagueId, b.throughSeason, results);

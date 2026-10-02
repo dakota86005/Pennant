@@ -173,6 +173,12 @@ export interface RatingsFitRecord {
   leagueId: number;
   throughSeason: number;
   method: string;
+  /**
+   * The ratings the fit was fitted on (D-068): `populationSource().id`, and the sentence that says so. Absent on a fit
+   * recorded before the source was kept (unrecorded, never assumed).
+   */
+  ratingSource?: string;
+  ratingSourceText?: string;
   mapping: {
     cases: Record<ProductionKind, number>;
     variants: Record<HitterVariant, number>;

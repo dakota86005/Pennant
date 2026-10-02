@@ -229,7 +229,7 @@ export function ourScoutsRatings(): OurScoutsRatings | null {
 }
 
 /** Where one player's ratings come from: the export's main tables, our scouts' full reports, or OSA's view filling in for them. */
-export type RatingsFrom = 'export' | 'our_scouts' | 'osa';
+export type RatingsFrom = 'export' | 'our_scouts' | 'osa' | 'league_osa';
 
 /** A rating read from OSA's view because our scouts haven't rated him, in the GM's words: a quiet mark and its sentence. */
 export const OSA_FILL_WORDS = {
@@ -238,16 +238,19 @@ export const OSA_FILL_WORDS = {
   text: 'OSA\'s view: our scouts haven\'t rated him.',
 } as const;
 
-/** Where this player's ratings come from now (D-067). */
+/** Where this player's ratings come from now (D-067); inside a league population, OSA's view when it is the yardstick (D-068). */
 export function ratingsFromOf(playerId: number): RatingsFrom {
   const views = fileViews();
+  if (inPopulation()) {
+    if (populationPolicy === 'osa') return views.osaPlayers !== null ? 'league_osa' : 'export';
+  }
   if (!views.ours) return 'export';
   return views.filled.has(playerId) ? 'osa' : 'our_scouts';
 }
 
 /** The words a page shows beside a player's grades when they are OSA's view filling in for our scouts; null otherwise. */
 export function ratingFillOf(playerId: number): { mark: string; hint: string } | null {
-  return ratingsFromOf(playerId) === 'osa' ? { mark: OSA_FILL_WORDS.mark, hint: OSA_FILL_WORDS.text } : null;
+  return !inPopulation() && ratingsFromOf(playerId) === 'osa' ? { mark: OSA_FILL_WORDS.mark, hint: OSA_FILL_WORDS.text } : null;
 }
 
 export type RatingTable = 'batting' | 'pitching' | 'fielding';
@@ -270,6 +273,14 @@ function evidenceExpression(views: FileViews): string {
  */
 export function ratingFrom(kind: RatingTable): { from: string; columns: Set<string> } | null {
   const views = fileViews();
+  // Inside a league population: OSA's rows when OSA is the yardstick and the export carries them (D-068), else the main table
+  if (inPopulation() && populationPolicy === 'osa') {
+    if (views.osaPlayers !== null) {
+      return { from: `(SELECT * FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ${OSA_SCOUTING_TEAM_ID})`, columns: new Set(tableColumns(OUR_SCOUTS_TABLE)) };
+    }
+    const table = MAIN_TABLE[kind];
+    return tableExists(table) ? { from: `"${table}"`, columns: new Set(tableColumns(table)) } : null;
+  }
   if (views.ours) return { from: evidenceExpression(views), columns: new Set(tableColumns(OUR_SCOUTS_TABLE)) };
   const table = MAIN_TABLE[kind];
   return tableExists(table) ? { from: `"${table}"`, columns: new Set(tableColumns(table)) } : null;
@@ -310,6 +321,87 @@ export function scoutedRatingRow(kind: RatingTable, playerId: number): Record<st
   for (const column of Object.keys(out)) if (family.test(column)) out[column] = scouts ? scouts[column] ?? null : null;
   if (scouts) for (const [column, value] of Object.entries(scouts)) if (family.test(column) && !(column in out)) out[column] = value;
   return out;
+}
+
+// ── League yardsticks and fits: OSA's view (D-068) ───────────────────────
+
+/**
+ * What every league-wide population and per-save fit that reads ratings is built on (the owner's direction,
+ * 2026-10-02): OSA's view, which rates every player the same way every season, so a yardstick or a fit does not drift
+ * with the club's own scouting staff. `'evidence'` would build them on the same ratings a judgment of a player reads.
+ * Without an OSA view in the export they read the main tables (D-061), labelled.
+ */
+export const LEAGUE_POPULATION_SOURCE: 'osa' | 'evidence' = 'osa';
+
+let populationPolicy: 'osa' | 'evidence' = LEAGUE_POPULATION_SOURCE;
+let populationDepth = 0;
+
+/** Whether the code running now is building a league population or a fit (inside `inPopulationView`). */
+export const inPopulation = (): boolean => populationDepth > 0;
+
+/**
+ * Runs `build` with every rating read in the league's population view: OSA's rows when OSA is the yardstick. Only for
+ * synchronous code (a refit, a population's computation): nothing else may run while it holds.
+ */
+export function inPopulationView<T>(build: () => T): T {
+  populationDepth += 1;
+  try {
+    return build();
+  } finally {
+    populationDepth -= 1;
+  }
+}
+
+/** For a measurement script or a test only: run `body` with the other population policy, then put the line back. */
+export function withPopulationPolicy<T>(policy: 'osa' | 'evidence', body: () => T): T {
+  const before = populationPolicy;
+  populationPolicy = policy;
+  clearPopulationCaches();
+  try {
+    return body();
+  } finally {
+    populationPolicy = before;
+    clearPopulationCaches();
+  }
+}
+
+/** The ratings the league's yardsticks and fits are built on now: an id a fit's record keeps, a name and a sentence. */
+export interface PopulationSource {
+  id: string;
+  short: string;
+  text: string;
+}
+
+export function populationSource(): PopulationSource {
+  if (populationPolicy === 'evidence') {
+    const evidence = ratingSource();
+    return { id: `evidence:${evidence.mode}`, short: evidence.short, text: `The league's yardsticks read the same ratings as a judgment of a player. ${evidence.text}` };
+  }
+  if (fileViews().osaPlayers !== null) {
+    return {
+      id: 'osa_file', short: 'OSA\'s view',
+      text: 'The league\'s yardsticks and fits read OSA\'s view (the league scouting service\'s complete ratings in the export), which rates every player the same way every season.',
+    };
+  }
+  const mode = exportRatingMode().mode;
+  return {
+    id: `export:${mode}`, short: RATING_MODE_WORDS[mode].short,
+    text: `${RATING_MODE_WORDS[mode].long} The export carries no OSA view, so the league's yardsticks read its main ratings.`,
+  };
+}
+
+/**
+ * A player's own reading beside his OSA reading, for a league comparison's basis (D-068): "Our scouts: 65 · OSA: 70",
+ * or null when they agree, either is unknown, or OSA is not the yardstick.
+ */
+export function bothReadings(ours: number | null, osa: number | null): string | null {
+  if (ours === null || osa === null || Math.round(ours) === Math.round(osa)) return null;
+  return `Our scouts: ${Math.round(ours)} · OSA: ${Math.round(osa)}`;
+}
+
+/** The players' composites in the league's population view (OSA's, when it is the yardstick), for `bothReadings`. */
+export function populationAbilities(playerIds: Iterable<number>): ScoutedAbilities {
+  return inPopulationView(() => loadScoutedAbilities(playerIds));
 }
 
 // ── Scale ───────────────────────────────────────────────────────────────
@@ -710,11 +802,15 @@ export const FIELDING_EVIDENCE_PROVENANCE: EvidenceProvenance = FIELDING_PROVENA
 
 const fieldingPopulationCache = new Map<string, number[]>();
 
-const hitterPopulationCache = new Map<number, ScoutedHitterProfile[]>();
+const hitterPopulationCache = new Map<string, ScoutedHitterProfile[]>();
 
 /** Cleared whenever a fresh export is imported. */
 export function clearFieldingPopulationCache(): void {
+  clearPopulationCaches();
   viewsCache = null;
+}
+
+function clearPopulationCaches(): void {
   fieldingPopulationCache.clear();
   hitterPopulationCache.clear();
 }
@@ -738,9 +834,16 @@ const majorLeaguerArgs = (leagueId: number): number[] => (tableColumns('players'
  * with a stray grade here is not a peer.
  */
 export function scoutedFieldingPopulation(leagueId: number, position: number): number[] {
-  const key = `${leagueId}:${position}`;
+  // A league yardstick: built in the population view (OSA's, when it is the yardstick, D-068), cached per source
+  const key = `${populationSource().id}:${leagueId}:${position}`;
   const hit = fieldingPopulationCache.get(key);
   if (hit) return hit;
+  const out = inPopulationView(() => fieldingPopulationOf(leagueId, position));
+  fieldingPopulationCache.set(key, out);
+  return out;
+}
+
+function fieldingPopulationOf(leagueId: number, position: number): number[] {
   const out: number[] = [];
   const column = `fielding_rating_pos${position}`;
   const fielding = ratingFrom('fielding');
@@ -756,7 +859,6 @@ export function scoutedFieldingPopulation(leagueId: number, position: number): n
     for (const r of rows) out.push(toScouting(r.grade, scale));
     out.sort((a, b) => a - b);
   }
-  fieldingPopulationCache.set(key, out);
   return out;
 }
 
@@ -874,17 +976,19 @@ export function loadScoutedHitterProfiles(playerIds: Iterable<number>): Map<numb
  * running are ranked against. Cached per league until the next import.
  */
 export function scoutedHitterPopulation(leagueId: number): ScoutedHitterProfile[] {
-  const hit = hitterPopulationCache.get(leagueId);
+  // A league yardstick: built in the population view (OSA's, when it is the yardstick, D-068), cached per source
+  const key = `${populationSource().id}:${leagueId}`;
+  const hit = hitterPopulationCache.get(key);
   if (hit) return hit;
-  let out: ScoutedHitterProfile[] = [];
-  if (tableExists('players') && tableExists('teams') && ratingFrom('batting')) {
+  const out = inPopulationView(() => {
+    if (!tableExists('players') || !tableExists('teams') || !ratingFrom('batting')) return [];
     const ids = (db.prepare(
       `SELECT p.player_id AS id FROM players p JOIN teams t ON t.team_id = p.team_id
        WHERE t.league_id = ? AND t.level = 1 AND p.position > 1 AND p.retired = 0${majorLeaguerOnly()}`
     ).all(leagueId, ...majorLeaguerArgs(leagueId)) as Array<{ id: number }>).map((r) => r.id);
-    out = [...loadScoutedHitterProfiles(ids).values()];
-  }
-  hitterPopulationCache.set(leagueId, out);
+    return [...loadScoutedHitterProfiles(ids).values()];
+  });
+  hitterPopulationCache.set(key, out);
   return out;
 }
 
@@ -1006,7 +1110,11 @@ const SNAPSHOT_TOOLS: Record<ToolKey, { current: string; potential: string }> = 
  */
 export function loadScoutedObservations(playerIds: Iterable<number> | null = null): Map<number, ScoutedObservation[]> {
   const out = new Map<number, ScoutedObservation[]>();
-  const present = new Set((historyDb.prepare(`PRAGMA table_info(save_rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
+  // Inside a league population or fit, with OSA as the yardstick: OSA's own snapshots, of that kind only (D-068)
+  const population = inPopulation() ? populationSource() : null;
+  const osaHistory = population?.id === 'osa_file';
+  const table = osaHistory ? 'save_population_snapshots' : 'save_rating_snapshots';
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name));
   if (!['save_key', 'game_date', 'player_id', 'position'].every((c) => present.has(c))) return out;
   const columns = [...new Set([...Object.values(SNAPSHOT_TOOLS).flatMap((t) => [t.current, t.potential]), ...Object.values(SNAPSHOT_HITTER_COLUMNS)])];
   const select = [
@@ -1020,13 +1128,13 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
   const scale = ratingScale();
   const viewer = viewerContext();
   // A snapshot in another known kind of ratings than today's export is a switch, never development: left out (D-061)
-  const { excluded } = modeFilter();
-  const modes = snapshotModes();
+  const { excluded } = osaHistory ? { excluded: new Set<string>() } : modeFilter();
+  const modes = osaHistory ? new Map<string, RatingMode>() : snapshotModes();
   const take = (rows: Array<Record<string, unknown>>) => {
     for (const row of rows) {
       if (excluded.has(String(row.game_date))) continue;
       // A row of his from another source than today's (our scouts' or OSA's view) is a switch, never development (D-067)
-      if (otherSource(Number(row.player_id), row.src)) continue;
+      if (!osaHistory && otherSource(Number(row.player_id), row.src)) continue;
       const gameDate = parseGameDate(row.game_date ?? null);
       const playerId = Number(row.player_id);
       if (!gameDate || !Number.isFinite(playerId)) continue;
@@ -1048,16 +1156,16 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
         teamId: row.team_id === null || row.team_id === undefined || !Number.isFinite(Number(row.team_id)) ? null : Number(row.team_id),
         age: row.age === null || !Number.isFinite(age) ? null : age,
         ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer,
-          row.src === 'our_scouts' || row.src === 'osa' ? row.src : 'export'),
+          osaHistory ? 'league_osa' : row.src === 'our_scouts' || row.src === 'osa' ? row.src : 'export'),
         hitter: kind === 'hitter'
           ? hitterProfileFromRow(playerId, Object.fromEntries(Object.entries(SNAPSHOT_HITTER_COLUMNS).map(([exported, kept]) => [exported, row[kept]])), scale)
           : null,
-        ratingMode: modes.get(String(row.game_date)) ?? null,
+        ratingMode: osaHistory ? 'osa' : modes.get(String(row.game_date)) ?? null,
       });
       out.set(playerId, list);
     }
   };
-  const base = `SELECT ${select} FROM save_rating_snapshots WHERE save_key = ?`;
+  const base = `SELECT ${select} FROM ${table} WHERE save_key = ?${osaHistory ? ` AND kind = '${population!.id}'` : ''}`;
   if (playerIds === null) take(historyDb.prepare(base).all(currentHistoryKey()) as Array<Record<string, unknown>>);
   else {
     const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { isModeSwitch, ourScoutsRecord, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
-import { evidenceRatingMode, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
+import { evidenceRatingMode, inPopulationView, populationSource, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
@@ -245,6 +245,28 @@ historyDb.exec(`
   if (!present.has('src')) historyDb.exec(`ALTER TABLE save_rating_snapshots ADD COLUMN src TEXT`);
 }
 
+/*
+ * OSA's view of every player at each snapshot, when it is the league's yardstick and the evidence is another source
+ * (D-068): the history the per-save fits read, kept apart from the evidence's snapshots so each stays in one source.
+ * `kind` is the population source's id (`populationSource().id`); a fit reads only rows of the kind it is fitted on.
+ */
+historyDb.exec(`
+  CREATE TABLE IF NOT EXISTS save_population_snapshots (
+    save_key TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    game_date TEXT NOT NULL,
+    player_id INTEGER NOT NULL,
+    name TEXT, team_id INTEGER, org_id INTEGER, level INTEGER, position INTEGER, age INTEGER,
+    con REAL, gap REAL, pow REAL, eye REAL, avk REAL, spd REAL,
+    conP REAL, gapP REAL, powP REAL, eyeP REAL, avkP REAL,
+    stu REAL, mov REAL, ctl REAL, stuP REAL, movP REAL, ctlP REAL,
+    cur REAL, pot REAL,
+    ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => `${c} REAL`).join(', ')},
+    PRIMARY KEY (save_key, kind, game_date, player_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_save_population_player ON save_population_snapshots (save_key, kind, player_id, game_date);
+`);
+
 /**
  * Records the rating mode of the snapshot of `gameDate` (replacing it, as the snapshot itself is replaced on a re-import
  * of that date). No record (an import from before N3.5 recorded none) stamps nothing: the snapshot stays unrecorded,
@@ -406,25 +428,18 @@ function leagueGameDate(): string | null {
   }
 }
 
-/** Capture a ratings snapshot of every rostered player. Idempotent per game date. */
-export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean } | null {
-  // The ratings the evidence reads: our scouts' full reports when the export carries them (D-067), else the main tables
-  const battingFrom = ratingFrom('batting');
-  const pitchingFrom = ratingFrom('pitching');
-  if (!tableExists('players') || !battingFrom) return null;
-  const ourScouts = evidenceRatingMode() === 'scouted-complete';
-  const gameDate = leagueGameDate();
-  if (!gameDate) return null;
-  const resolved = currentHistoryKey();
-  const saveName = rollbackName();
-
+/** The ratings a snapshot keeps for every rostered player, read from the given sources (the evidence's or the league's population view). */
+function snapshotRows(
+  battingFrom: { from: string; columns: Set<string> },
+  pitchingFrom: { from: string; columns: Set<string> } | null,
+): Array<Record<string, number | string | null>> {
   // The split and running columns are read where the export has them; a missing one is stored as unknown (NULL), never guessed
   const battingColumns = battingFrom.columns;
   const optional = (column: string, as: string) => (battingColumns.has(column) ? `b.${column} AS ${as}` : `NULL AS ${as}`);
   const splitSelect = (['l', 'r'] as const).flatMap((side) => (['contact', 'gap', 'power', 'eye', 'strikeouts'] as const).map((tool, i) =>
     optional(`batting_ratings_vs${side}_${tool}`, `${side}${['con', 'gap', 'pow', 'eye', 'avk'][i]}`)));
   const runningSelect = [optional('running_ratings_baserunning', 'brn'), optional('running_ratings_stealing', 'stl')];
-  const rows = leagueDb
+  return leagueDb
     .prepare(
       `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.team_id,
               p.organization_id AS org_id, t.level, p.position, p.age,
@@ -446,6 +461,30 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
        WHERE p.retired = 0 AND p.team_id > 0`
     )
     .all() as Array<Record<string, number | string | null>>;
+}
+
+/** Capture a ratings snapshot of every rostered player. Idempotent per game date. */
+export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean } | null {
+  // The ratings the evidence reads: our scouts' full reports when the export carries them (D-067), else the main tables
+  const battingFrom = ratingFrom('batting');
+  const pitchingFrom = ratingFrom('pitching');
+  if (!tableExists('players') || !battingFrom) return null;
+  const ourScouts = evidenceRatingMode() === 'scouted-complete';
+  const gameDate = leagueGameDate();
+  if (!gameDate) return null;
+  const resolved = currentHistoryKey();
+  const saveName = rollbackName();
+
+  const rows = snapshotRows(battingFrom, pitchingFrom);
+  // OSA's view of every player too, when it is the league's yardstick and differs from the evidence (D-068): the fits'
+  // history, kept apart so the evidence's snapshots stay in one source
+  const population = populationSource();
+  const populationRows = population.id === 'osa_file'
+    ? inPopulationView(() => {
+      const b = ratingFrom('batting');
+      return b ? snapshotRows(b, ratingFrom('pitching')) : [];
+    })
+    : [];
 
   const insertInto = (table: string, keyColumn: string) => historyDb.prepare(
     `INSERT OR REPLACE INTO ${table}
@@ -456,6 +495,14 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
      VALUES (${new Array(29 + SNAPSHOT_SPLIT_COLUMNS.length + SNAPSHOT_RUNNING_COLUMNS.length).fill('?').join(', ')})`
   );
   const insert = insertInto('save_rating_snapshots', 'save_key');
+  const insertPopulation = historyDb.prepare(
+    `INSERT OR REPLACE INTO save_population_snapshots
+     (save_key, kind, game_date, player_id, name, team_id, org_id, level, position, age,
+      con, gap, pow, eye, avk, spd, conP, gapP, powP, eyeP, avkP,
+      stu, mov, ctl, stuP, movP, ctlP, cur, pot,
+      ${[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].join(', ')})
+     VALUES (${new Array(29 + SNAPSHOT_SPLIT_COLUMNS.length + SNAPSHOT_RUNNING_COLUMNS.length).fill('?').join(', ')})`
+  );
   // The same snapshot under the save's name, exactly as the earlier (Electron) build writes it, so a rolled-back build
   // still has it (D-064); the date is recorded as this build's own, never taken for earlier history
   const insertByName = insertInto('rating_snapshots', 'save_name');
@@ -475,12 +522,24 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
       filed = false;
       return;
     }
-    for (const r of rows) {
+    const composites = (r: Record<string, number | string | null>) => {
       const isPitcher = r.position === 1;
-      const cur = isPitcher ? avg([r.stu, r.mov, r.ctl]) : avg([r.con, r.gap, r.pow, r.eye, r.avk]);
-      const pot = isPitcher
-        ? avg([r.stuP, r.movP, r.ctlP])
-        : avg([r.conP, r.gapP, r.powP, r.eyeP, r.avkP]);
+      return {
+        cur: isPitcher ? avg([r.stu, r.mov, r.ctl]) : avg([r.con, r.gap, r.pow, r.eye, r.avk]),
+        pot: isPitcher ? avg([r.stuP, r.movP, r.ctlP]) : avg([r.conP, r.gapP, r.powP, r.eyeP, r.avkP]),
+      };
+    };
+    for (const r of populationRows) {
+      const { cur, pot } = composites(r);
+      insertPopulation.run(
+        saveKey, population.id, gameDate, r.player_id, r.name, r.team_id, r.org_id, r.level, r.position, r.age,
+        r.con, r.gap, r.pow, r.eye, r.avk, r.spd, r.conP, r.gapP, r.powP, r.eyeP, r.avkP,
+        r.stu, r.mov, r.ctl, r.stuP, r.movP, r.ctlP, cur, pot,
+        ...[...SNAPSHOT_SPLIT_COLUMNS, ...SNAPSHOT_RUNNING_COLUMNS].map((c) => r[c] ?? null),
+      );
+    }
+    for (const r of rows) {
+      const { cur, pot } = composites(r);
       const values = [
         gameDate, r.player_id, r.name, r.team_id, r.org_id, r.level, r.position, r.age,
         r.con, r.gap, r.pow, r.eye, r.avk, r.spd, r.conP, r.gapP, r.powP, r.eyeP, r.avkP,
@@ -498,7 +557,7 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
   });
   insertAll.immediate();
   if (!filed) return null;
-  console.log(`[history] snapshot ${gameDate}: ${rows.length} players`);
+  console.log(`[history] snapshot ${gameDate}: ${rows.length} players${populationRows.length ? ` (and OSA's view of ${populationRows.length}, the league's yardstick)` : ''}`);
   return { gameDate, players: rows.length, ourScouts };
 }
 

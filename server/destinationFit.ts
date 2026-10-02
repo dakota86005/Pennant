@@ -1,6 +1,6 @@
 import { importCache } from './importCache.js';
 import { db } from './db.js';
-import { loadScoutedAbilities } from './scoutedEvidence.js';
+import { bothReadings, inPopulationView, loadScoutedAbilities, populationAbilities, populationSource } from './scoutedEvidence.js';
 import {
   judgmentOf,
   type ConstraintState,
@@ -630,7 +630,8 @@ function populationRows(
   leagueId: number,
   kind: DestinationPlayerKind
 ): Array<Record<string, unknown>> {
-  return populations.get(`${leagueId}:${kind}`, () => computePopulationRows(leagueId, kind));
+  // A league yardstick: OSA's view when it is the yardstick (D-068), cached per source
+  return populations.get(`${populationSource().id}:${leagueId}:${kind}`, () => inPopulationView(() => computePopulationRows(leagueId, kind)));
 }
 
 function computePopulationRows(
@@ -952,6 +953,10 @@ export function evaluateDestinationFit(
   notes.push(
     'Percentiles are calculated from active players in the actual destination league in the current save, using organization-visible ratings only.'
   );
+  // Whose ratings the yardstick is, and his own reading beside OSA's where they differ (D-068)
+  notes.push(populationSource().text);
+  const both = bothReadings(loadScoutedAbilities([playerId]).for(playerId).current, populationAbilities([playerId]).for(playerId).current);
+  if (both) notes.push(`${both}: he is placed on our scouts' reading against the league as OSA sees it.`);
 
   if (unassessedComponents.length) {
     notes.push(

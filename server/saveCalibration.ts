@@ -15,7 +15,8 @@
 
 import { Worker } from 'node:worker_threads';
 import { completedThrough, leagueGameDate, topLeagues } from './saveIdentity.js';
-import { calibrationAttempted, recordCalibration, basisKey, type CalibrationRecord } from './saveCalibrationStore.js';
+import { calibrationAttempted, calibrationSourceAt, recordCalibration, basisKey, withRatingSource, type CalibrationRecord } from './saveCalibrationStore.js';
+import { inPopulationView, populationSource } from './scoutedEvidence.js';
 
 export interface CalibrationRun<M = unknown> {
   model: M;
@@ -35,6 +36,8 @@ export interface CalibrationComponent {
   component: string;
   method: string;
   trigger: 'completed_season' | 'each_import';
+  /** Whether the fit reads ratings (D-068): then it is computed in the league's population view and records that source. */
+  readsRatings?: boolean;
   /** Compute the fit for a league on this basis; null when there is nothing to fit (the reason is the outcome's). Reads only. */
   compute(basis: CalibrationBasis): CalibrationRun | { skip: string };
 }
@@ -95,14 +98,30 @@ export function computeCalibrationRefits(options: { force?: boolean; leagues?: n
       const skip = (reason: string, basis: string | null) => out.push({ run: null, ms: null, force: false, outcome: { ...base, basis, refit: false, adopted: null, reason, ms: null } });
       const b = basisFor(leagueId, c);
       if ('skip' in b) { skip(b.skip, null); continue; }
-      if (!options.force && calibrationAttempted(leagueId, c.subsystem, c.component, c.method, b.key)) {
+      // The ratings a fit that reads them rests on now (D-068): a fit on another source at this key is refitted, never kept as if continuous
+      const source = c.readsRatings ? populationSource() : null;
+      const recorded = source ? calibrationSourceAt(leagueId, c.subsystem, c.component, c.method, b.key) : undefined;
+      const sourceChanged = source !== null && recorded !== undefined && recorded !== source.id;
+      if (!options.force && !sourceChanged && calibrationAttempted(leagueId, c.subsystem, c.component, c.method, b.key)) {
         skip(`Already measured for ${b.key} (${c.method}).`, b.key);
         continue;
       }
       const start = performance.now();
       let result: CalibrationRun | { skip: string };
       try {
-        result = c.compute(b.basis);
+        result = source
+          ? withRatingSource({ subsystem: c.subsystem, component: c.component, source: source.id }, () => inPopulationView(() => c.compute(b.basis)))
+          : c.compute(b.basis);
+        if (source && !('skip' in result)) {
+          result.record.ratingSource = source.id;
+          result.record.notes = [
+            ...result.record.notes,
+            `Ratings: ${source.text}`,
+            ...(sourceChanged
+              ? [`The ratings' source changed (from ${recorded ?? 'an unrecorded source'} to ${source.id}): refitted on the new source, not compared with the earlier fit.`]
+              : []),
+          ];
+        }
       } catch (err) {
         skip(`The refit failed (${err instanceof Error ? err.message : String(err)}); the fit in force stays.`, b.key);
         continue;
@@ -110,7 +129,7 @@ export function computeCalibrationRefits(options: { force?: boolean; leagues?: n
       if ('skip' in result) { skip(result.skip, b.key); continue; }
       const ms = performance.now() - start;
       out.push({
-        run: result, ms, force: options.force === true,
+        run: result, ms, force: options.force === true || sourceChanged,
         outcome: { ...base, basis: basisKey(result.record), refit: true, adopted: result.record.gate.passed, reason: result.record.gate.reason, ms },
       });
     }

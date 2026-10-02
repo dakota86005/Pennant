@@ -80,6 +80,11 @@ export interface CalibrationRecord {
   priorSource: string;
   /** Plain statements about what could not be measured and why (a limitation the record owns). */
   notes: string[];
+  /**
+   * The ratings a fit that reads them was fitted on (D-068): `populationSource().id` ("osa_file", "export:<mode>"). Absent
+   * on a fit that reads no ratings, and on one recorded before the source was kept (unrecorded, never assumed).
+   */
+  ratingSource?: string;
 }
 
 export interface StoredCalibration<M = unknown> {
@@ -107,6 +112,43 @@ interface Row {
 }
 
 const COLUMNS = 'save_name, league_id, subsystem, component, method, basis, through_season, game_date, fitted_at, adopted, reason, prior_weight, fit_ms, model_json, record_json';
+
+/**
+ * While a fit that reads ratings is computed (D-068): its own earlier fits count as its predecessors only when they rest on
+ * the same ratings source, so a change of source is never compared as if continuous. Other components' fits are unaffected.
+ */
+let sourceScope: { subsystem: string; component: string; source: string } | null = null;
+
+/** Runs `compute` with this component's earlier fits of another ratings source hidden from it. Synchronous code only. */
+export function withRatingSource<T>(scope: { subsystem: string; component: string; source: string }, compute: () => T): T {
+  const before = sourceScope;
+  sourceScope = scope;
+  try {
+    return compute();
+  } finally {
+    sourceScope = before;
+  }
+}
+
+/** The ratings source recorded on the fit at this key: undefined when there is none, null when it was not recorded. */
+export function calibrationSourceAt(leagueId: number, subsystem: string, component: string, method: string, basis: string): string | null | undefined {
+  const row = historyDb.prepare(
+    `SELECT record_json FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ? AND basis = ?`
+  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, basis) as { record_json: string } | undefined;
+  if (!row) return undefined;
+  try {
+    return (JSON.parse(row.record_json) as CalibrationRecord).ratingSource ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Hides a fit of another ratings source from the component being computed (`withRatingSource`). */
+function inScope<M>(stored: StoredCalibration<M> | null): StoredCalibration<M> | null {
+  if (!stored || !sourceScope) return stored;
+  if (stored.subsystem !== sourceScope.subsystem || stored.component !== sourceScope.component) return stored;
+  return stored.record.ratingSource === sourceScope.source ? stored : null;
+}
 
 function parse<M>(row: Row | undefined): StoredCalibration<M> | null {
   if (!row) return null;
@@ -184,17 +226,17 @@ const ORDER = `ORDER BY COALESCE(through_season, 0) DESC, COALESCE(game_date, ''
  */
 export function adoptedCalibration<M = unknown>(leagueId: number, subsystem: string, component: string, method: string, bound: CalibrationBound = {}): StoredCalibration<M> | null {
   const b = bounds(bound);
-  return parse<M>(historyDb.prepare(
+  return inScope(parse<M>(historyDb.prepare(
     `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ? AND adopted = 1
        ${WITHIN} ${ORDER} LIMIT 1`
-  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined);
+  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined));
 }
 
 /** The most recent attempt within the same bound, adopted or not (so a rejection's reason is visible, never a later export's). */
 export function latestCalibrationAttempt<M = unknown>(leagueId: number, subsystem: string, component: string, method: string, bound: CalibrationBound = {}): StoredCalibration<M> | null {
   const b = bounds(bound);
-  return parse<M>(historyDb.prepare(
+  return inScope(parse<M>(historyDb.prepare(
     `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ?
        ${WITHIN} ${ORDER}, fitted_at DESC LIMIT 1`
-  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined);
+  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined));
 }

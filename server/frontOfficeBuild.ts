@@ -8,7 +8,6 @@
  * status or no season, which no later read would change. Any other failure is "couldn't be read this time", with the
  * raw error in the log. Neither is ever read as all clear.
  */
-import { ratingFillOf } from './scoutedEvidence.js';
 import { readClubReport } from './clubReport.js';
 import { computeContracts } from './contracts.js';
 import type { DeptId } from './contract/presentation.js';
@@ -17,7 +16,7 @@ import { getDataStatus } from './dataStatus.js';
 import { tableExists } from './db.js';
 import { computeFarmSystem } from './farmOperations.js';
 import { leagueRulesForOrganization } from './leagueRules.js';
-import { mlbOverview, mlbResponses } from './mlbOperations.js';
+import { mlbOverview, mlbResponses, ratingsNoteOf } from './mlbOperations.js';
 import { catalogClubs } from './org.js';
 import { computePayroll } from './payroll.js';
 import { departmentOffice, servedDepartments } from './presentation/catalog.js';
@@ -191,7 +190,7 @@ export function buildTrail(request: TrailRequest): ClaimTrail | null {
   const { build, departments } = contextFor(request.orgId, request.importStamp, request.reportStamp);
   const ctx: DepartmentContext = { build, department: departments.find((d) => d.id === 'majorLeague')!, office: departmentOffice('majorLeague') };
   // A player whose grades are OSA's view filling in for our scouts says so in his basis (D-067)
-  return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null, (id) => ratingFillOf(id)?.hint ?? null);
+  return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null, ratingsNoteOf);
 }
 
 /** What one club report is asked for (N7, D-059). */
