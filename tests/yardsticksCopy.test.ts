@@ -124,7 +124,7 @@ describe('the yardsticks line gives the true reason, plainly', () => {
     expect(y.review.aging).toBeNull();
     expect(y.results).toBe(RESULTS_PRIOR);
     const waiting = state([() => recordCalibration({ model: { ...agingModel('starting'), decisions: { hitter: { previous: 'starting', streak: 1 }, pitcher: { previous: 'starting', streak: 0 } } }, record: rec('aging', AGING_METHOD, true, { throughSeason: 1991 }) }, { fitMs: 1 })]);
-    expect(waiting.tip).toMatch(/How players age: the starting values, because this league's own did better at the last check and must do so once more before they are used\./);
+    expect(waiting.tip).toMatch(/How players age: the starting values, because this league's own did better at the last check and have to do so once more before they are used\./);
     expect(bannedIn(waiting.tip)).toEqual([]);
     const back = state([returnedAging]);
     expect(back.tip).toMatch(/How players age: the starting values, because they did better than this league's own when checked again\./);
@@ -206,7 +206,7 @@ describe('the tools group gives the true reason in every state (review finding B
     ['enough seasons, too few hitters in them', fit(['starting', 'thin'], ['starting', 'thin'], false, ['thin: 6 forward seasons, too few hitters in them to judge']), 'thin_forward', /too few hitters to check them on/],
     ['the bat judged and held up, the blend not judged', fit(['starting', 'kept'], ['starting', 'thin'], true), 'kept_part', /held up where they could be checked/],
     ['both judged and held up', fit(['starting', 'kept'], ['starting', 'kept'], true), 'kept', /checked on this league's seasons and held up/],
-    ['one confirming', fit(['starting', 'confirming'], ['starting', 'kept'], true), 'confirming', /must do so once more/],
+    ['one confirming', fit(['starting', 'confirming'], ['starting', 'kept'], true), 'confirming', /have to do so once more/],
   ];
   it.each(CASES)('%s', (_name, setup, reason, text) => {
     const y = state([setup]);
