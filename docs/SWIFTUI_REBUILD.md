@@ -1020,6 +1020,11 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   request (in the worker under tsx; the consequence itself is 0.24 s), 0.5 / 1.0 ms after.
 - *Left for later:* the scratch export's rating history has one snapshot, so Development tracking was timed only on the
   synthetic history; a player window (N11) will be the nearest view for a player outside the farm.
+- *Found in the live captures:* on the default 900-point window Assignments and Prospects crashed the app (AppKit ran
+  out of constraint passes while the split view's content column took its minimum from the tables' column minimums and
+  the panes'). Every farm view now asks the window for no minimum (`FarmLoading`), with smaller pane and column
+  minimums; the affiliate pane has a plain header, not the report's masthead. A department view with wide tables should
+  do the same.
 
 ### 3.6 Signature interactions
 
