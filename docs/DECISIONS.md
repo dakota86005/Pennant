@@ -2645,5 +2645,26 @@ fog of war (D-002, D-017).
   snapshots of the current population kind; until OSA's history builds up, a fit that needs pairs of snapshots has
   fewer and says so (its fallback prior, labelled, D-053).
 
+What reads ratings league-wide, and where it now stands (the builder's inventory, 2026-10-02):
+
+- *On the population view:* the destination-fit populations (`destinationFit.ts`, behind the "Nth percentile of MLB
+  starters / relievers" readings, role standing, the farm's skip-level gate); the hitter-tools population
+  (`scoutedHitterPopulation`: the bat percentile, the lineup's centre, the platoon norm); the fielding populations
+  (`scoutedFieldingPopulation`); the stakes lines' major leaguers (`stakesLinesRefit.ts`); the MLB tools fit and the
+  standards and bullpen measurement (`readsRatings` components of `saveCalibration.ts`, whose per-club sample is read
+  wholly in OSA's view); Player Value's ratings fit (mapping, cross-section, arrivals by potential, development pairs).
+- *Left on the evidence, as judgments of players:* a player's own grades, his projection, his history and trend; the
+  peer development percentile (`history.ts`, a cohort of the club's own snapshots, not the league's); the draft board's
+  order (the club's own read of the class).
+- *Not a population:* the display scale (`ratingScaleMax`, the same export's scale) and OOTP's own league averages
+  (`leagues.avg_rating_*`, informational).
+
+Measured on the owner's USBL save (OSA mode, our scouts rating every active player; one rating snapshot): the league
+composites' 10th, 50th and 90th percentiles are identical in both sources (hitters 41/48/56, pitchers 38/47/53), the
+hitter-tools means move by at most 0.2, the fielding medians not at all, our 40 active players' destination percentiles
+by 0.3 points on average (at most 1.2), the stakes lines and the tools fit not at all, and Player Value's ratings fit in
+about a quarter of its 13,702 numbers (median change 0%, the largest in thin arrival cells). On this save the choice
+changes little today; it matters as scouting staffs change and our scouts' coverage thins.
+
 Not established, and left so: whether OSA's rows in the file hold OSA's view under "Show real player ratings" (they are
 read as OSA's by their label, `scouting_team_id` 0; only an OSA-mode export was available to check them against).

@@ -75,9 +75,16 @@ material implementation state changes.
   export carries them (OOTP's "Additional complete scouted ratings", D-067):
   every rating the evidence, the player card, the roster, the staff and the
   draft board read is our scouts', whatever the main tables carry; a player they
-  haven't rated is unknown (the owner's choice between that and "OSA's view, said
-  so" is open); snapshots from them are a kind of their own. Not established, so
-  not used: what the file holds under "real", "none" or the scouts'-view mode.
+  haven't rated is read from OSA's view and said so per player (the owner's
+  decision); snapshots from them are a kind of their own, each row with its
+  source. Not established, so not used: what the file holds under "real", "none"
+  or the scouts'-view mode.
+- Builds every league-wide yardstick and every per-save fit that reads ratings on
+  OSA's view when the export carries it (D-068, the owner's direction), keeps
+  OSA's history in its own snapshots, records each fit's ratings source and
+  refits on a change of source. Known gaps: a carried-over rating history
+  (D-064) brings no OSA snapshots; a forced refit on a new source that fails its
+  gate leaves the earlier source's adopted fit in force (named by its record).
 - After an import, the snapshots run in a worker and both refits at the same
   time (a post-import hook list later milestones register into); the
   destination-fit league populations are cached once per import.
