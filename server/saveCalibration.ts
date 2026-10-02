@@ -15,7 +15,12 @@
 
 import { Worker } from 'node:worker_threads';
 import { completedThrough, leagueGameDate, topLeagues } from './saveIdentity.js';
-import { calibrationAttempted, recordCalibration, basisKey, type CalibrationRecord } from './saveCalibrationStore.js';
+import {
+  attemptInputs, calibrationAttempted, calibrationSourceAt, recordCalibration, recordSourceAttempt, basisKey, sourceAttempted, withRatingSource,
+  type CalibrationRecord, type SourceAttempt,
+} from './saveCalibrationStore.js';
+import { sameRatingSource } from './ratingMode.js';
+import { inPopulationView, populationSource } from './scoutedEvidence.js';
 
 export interface CalibrationRun<M = unknown> {
   model: M;
@@ -35,6 +40,8 @@ export interface CalibrationComponent {
   component: string;
   method: string;
   trigger: 'completed_season' | 'each_import';
+  /** Whether the fit reads ratings (D-068): then it is computed in the league's population view and records that source. */
+  readsRatings?: boolean;
   /** Compute the fit for a league on this basis; null when there is nothing to fit (the reason is the outcome's). Reads only. */
   compute(basis: CalibrationBasis): CalibrationRun | { skip: string };
 }
@@ -56,6 +63,8 @@ export interface PendingCalibration {
   ms: number | null;
   force: boolean;
   outcome: CalibrationOutcome;
+  /** A refit after a change of ratings source: recorded as tried when it isn't recorded as a fit, so it isn't rerun (D-068). */
+  sourceAttempt?: SourceAttempt;
 }
 
 const registry: CalibrationComponent[] = [];
@@ -92,17 +101,44 @@ export function computeCalibrationRefits(options: { force?: boolean; leagues?: n
     for (const c of registry) {
       if (options.components && !options.components.includes(c.component)) continue;
       const base = { leagueId, subsystem: c.subsystem, component: c.component, method: c.method };
-      const skip = (reason: string, basis: string | null) => out.push({ run: null, ms: null, force: false, outcome: { ...base, basis, refit: false, adopted: null, reason, ms: null } });
+      let attempt: SourceAttempt | undefined;
+      const skip = (reason: string, basis: string | null) => out.push({ run: null, ms: null, force: false, outcome: { ...base, basis, refit: false, adopted: null, reason, ms: null }, sourceAttempt: attempt });
       const b = basisFor(leagueId, c);
       if ('skip' in b) { skip(b.skip, null); continue; }
-      if (!options.force && calibrationAttempted(leagueId, c.subsystem, c.component, c.method, b.key)) {
+      // The ratings a fit that reads them rests on now (D-068): a fit on another source at this key is refitted, never kept as if continuous
+      const source = c.readsRatings ? populationSource() : null;
+      const recorded = source ? calibrationSourceAt(leagueId, c.subsystem, c.component, c.method, b.key) : undefined;
+      // OSA in the main tables and OSA's rows in the file are one source (the owner's decision): that switch keeps its fit
+      const sourceChanged = source !== null && recorded !== undefined && !sameRatingSource(recorded, source.id);
+      if (!options.force && !sourceChanged && calibrationAttempted(leagueId, c.subsystem, c.component, c.method, b.key)) {
         skip(`Already measured for ${b.key} (${c.method}).`, b.key);
         continue;
+      }
+      if (sourceChanged) {
+        const tried: SourceAttempt = { leagueId, subsystem: c.subsystem, component: c.component, method: c.method, basis: b.key, source: source!.id, inputs: attemptInputs(b.basis.gameDate) };
+        // Already tried on this source for this export and not adopted: not run again until the export or the source changes
+        if (!options.force && sourceAttempted(tried)) {
+          skip(`Already tried on ${source!.id} for this export (${b.key}, ${c.method}); the provisional values serve until a refit on it passes.`, b.key);
+          continue;
+        }
+        attempt = tried;
       }
       const start = performance.now();
       let result: CalibrationRun | { skip: string };
       try {
-        result = c.compute(b.basis);
+        result = source
+          ? withRatingSource({ subsystem: c.subsystem, component: c.component, source: source.id }, () => inPopulationView(() => c.compute(b.basis)))
+          : c.compute(b.basis);
+        if (source && !('skip' in result)) {
+          result.record.ratingSource = source.id;
+          result.record.notes = [
+            ...result.record.notes,
+            `Ratings: ${source.text}`,
+            ...(sourceChanged
+              ? [`The ratings' source changed (from ${recorded ?? 'an unrecorded source'} to ${source.id}): refitted on the new source, not compared with the earlier fit.`]
+              : []),
+          ];
+        }
       } catch (err) {
         skip(`The refit failed (${err instanceof Error ? err.message : String(err)}); the fit in force stays.`, b.key);
         continue;
@@ -110,23 +146,39 @@ export function computeCalibrationRefits(options: { force?: boolean; leagues?: n
       if ('skip' in result) { skip(result.skip, b.key); continue; }
       const ms = performance.now() - start;
       out.push({
-        run: result, ms, force: options.force === true,
+        run: result, ms, force: options.force === true || sourceChanged,
         outcome: { ...base, basis: basisKey(result.record), refit: true, adopted: result.record.gate.passed, reason: result.record.gate.reason, ms },
+        sourceAttempt: attempt,
       });
     }
   }
   return out;
 }
 
+const safely = (write: () => void): void => {
+  try {
+    write();
+  } catch (err) {
+    console.warn(`[calibration] a refit's attempt could not be recorded: ${err instanceof Error ? err.message : String(err)}`);
+  }
+};
+
 /** Record refits computed elsewhere (the main thread's half): each at its key, idempotent, never replacing an adopted fit with a failing one. */
 export function recordCalibrationRefits(pending: PendingCalibration[]): CalibrationOutcome[] {
   const out: CalibrationOutcome[] = [];
   let changed = false;
   for (const p of pending) {
-    if (!p.run) { out.push(p.outcome); continue; }
+    if (!p.run) {
+      // A refit after a change of source that couldn't be computed: tried, so it isn't rerun until the inputs change
+      if (p.sourceAttempt) safely(() => recordSourceAttempt(p.sourceAttempt!, p.outcome.reason));
+      out.push(p.outcome);
+      continue;
+    }
     try {
       const written = recordCalibration(p.run, { fitMs: p.ms, force: p.force });
       if (written > 0) changed = true;
+      // Failed where an adopted fit of another source holds the key: tried, and the provisional values serve (D-068)
+      if (written === 0 && p.sourceAttempt) safely(() => recordSourceAttempt(p.sourceAttempt!, p.outcome.reason));
       out.push(written === 0 && p.force && !p.outcome.adopted
         ? { ...p.outcome, reason: `${p.outcome.reason} Not recorded: the fit in force stays (a failing refit never replaces an adopted one).` }
         : p.outcome);

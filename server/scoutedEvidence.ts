@@ -37,11 +37,12 @@
  *     weighted, position-aware Overall.
  */
 
-import { db, tableColumns, tableExists } from './db.js';
+import type { Statement } from 'better-sqlite3';
+import { databaseGeneration, db, importRecord, tableColumns, tableExists } from './db.js';
 import { ratingScaleMax } from './valuation.js';
-import { gloves, type Gloves, type PositionRating } from './gloves.js';
+import { gloves, glovesFromRow, type Gloves, type PositionRating } from './gloves.js';
 import { parseGameDate } from './dataFreshness.js';
-import { currentRatingMode, historyDb, modeFilter, snapshotModes } from './history.js';
+import { currentRatingMode, historyDb, modeFilter, otherSource, snapshotModes } from './history.js';
 import { currentHistoryKey } from './historyIdentity.js';
 import { RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 
@@ -97,9 +98,48 @@ export interface RatingSource {
 }
 
 export function ratingSource(): RatingSource {
+  if (ourScoutsRatings()) {
+    const words = RATING_MODE_WORDS['scouted-complete'];
+    return { mode: 'scouted-complete', short: words.short, text: words.long };
+  }
+  if (fileViews().osaEvidence) return { mode: 'osa', short: OSA_FILL_WORDS.short, text: osaEvidenceText() };
   const record = exportRatingMode();
   const words = RATING_MODE_WORDS[record.mode];
   return { mode: record.mode, short: words.short, text: record.mode === 'unknown' && record.reason ? `${words.long} ${record.reason}` : words.long };
+}
+
+/**
+ * The kind of ratings the evidence is read in now (D-067): our scouts' full reports when the export carries them for our
+ * club, otherwise the main tables' kind as the import recorded it; null for an import from before the kind was recorded
+ * (never evidence of a switch). Rating history compares only snapshots of this kind.
+ */
+export function evidenceRatingMode(): RatingMode | null {
+  if (ourScoutsRatings()) return 'scouted-complete';
+  // True ratings in the main tables, OSA's view in the file and none of ours: OSA's view is the evidence (review L6)
+  if (fileViews().osaEvidence) return 'osa';
+  return currentRatingMode()?.mode ?? null;
+}
+
+// ── Prepared statements, kept per connection and import (review M3) ──────
+
+/*
+ * Preparing a statement over the scouted file (139 columns) costs more than running it, and the readers below run the same
+ * few statements for every player a page shows. They are kept by their SQL text for the served connection and import.
+ */
+let statements: { conn: unknown; generation: number; byText: Map<string, Statement> } | null = null;
+const STATEMENTS_KEPT = 256;
+
+function prepared(sql: string): Statement {
+  if (!statements || statements.conn !== db || statements.generation !== databaseGeneration()) {
+    statements = { conn: db, generation: databaseGeneration(), byText: new Map() };
+  }
+  let statement = statements.byText.get(sql);
+  if (!statement) {
+    if (statements.byText.size >= STATEMENTS_KEPT) statements.byText.clear();
+    statement = db.prepare(sql);
+    statements.byText.set(sql, statement);
+  }
+  return statement;
 }
 
 /** "Show no player ratings": the export carries none, so every rating reads as unknown (never a zero, never a default). */
@@ -121,12 +161,414 @@ export function viewerContext(): ViewerContext {
   if (!tableExists('teams') || !tableColumns('teams').includes('human_team')) {
     return { viewerOrgId: null, resolution: 'unresolved' };
   }
-  const rows = db
-    .prepare(`SELECT team_id FROM teams WHERE human_team = 1 ORDER BY team_id`)
-    .all() as Array<{ team_id: number }>;
+  const rows = prepared(`SELECT team_id FROM teams WHERE human_team = 1 ORDER BY team_id`).all() as Array<{ team_id: number }>;
   if (rows.length === 1) return { viewerOrgId: rows[0].team_id, resolution: 'human_team' };
   if (rows.length > 1) return { viewerOrgId: null, resolution: 'ambiguous_human_teams' };
   return { viewerOrgId: null, resolution: 'unresolved' };
+}
+
+// ── Whose eyes: our scouts' full reports (D-067) ─────────────────────────
+
+/**
+ * What a player our scouts haven't rated is, when their full reports are the evidence (D-067). The owner decided
+ * (2026-10-02) "OSA's view, said so": his OSA row in the same file is used and every rating served from it says so for
+ * him; never the main tables, so never true ratings, and with no OSA row he is unknown (D-018). `'unknown'` leaves him
+ * unknown to our scouts (the builder's earlier recommendation), kept as the one switch.
+ */
+export const UNRATED_BY_OUR_SCOUTS: 'unknown' | 'osa' = 'osa';
+
+/** The export's complete scouted ratings: one row per player per scouting organisation (OOTP's "Additional complete scouted ratings"). */
+const OUR_SCOUTS_TABLE = 'players_scouted_ratings';
+
+/** OSA, the league's scouting service, in that file: the `scouting_team_id` no club has (no coach, every player rated). */
+const OSA_SCOUTING_TEAM_ID = 0;
+
+/** Our scouts' full reports, when the export carries them: our club's id (`scouting_team_id`) and how many players they rate. */
+export interface OurScoutsRatings {
+  teamId: number;
+  players: number;
+}
+
+/** Whether the served import kept this table from an earlier import (its file not rewritten this time, D-061): then it is not this export's. */
+function keptFromEarlierImport(record: Record<string, unknown> | null): boolean {
+  if (!record) return false;
+  const stale = Array.isArray(record.stale) ? (record.stale as Array<{ table?: unknown }>) : [];
+  const tables = Array.isArray(record.tables) ? (record.tables as Array<{ table?: unknown; source?: unknown }>) : [];
+  return stale.some((t) => t.table === OUR_SCOUTS_TABLE) || tables.some((t) => t.table === OUR_SCOUTS_TABLE && t.source === 'carried');
+}
+
+/** What the export's complete scouted ratings offer now: our scouts' rows, OSA's rows, and the players OSA fills in for us. */
+interface FileViews {
+  ours: OurScoutsRatings | null;
+  /** How many players OSA's rows rate; null when the file has none (or isn't usable). */
+  osaPlayers: number | null;
+  /** The players our scouts haven't rated whom OSA has, read from OSA's view (`UNRATED_BY_OUR_SCOUTS = 'osa'`). */
+  filled: Set<number>;
+  /**
+   * No row of ours can be read, the main tables are true ratings and the file carries OSA's rows: judgments read OSA's
+   * view, said so for the whole export, never the true ratings (D-067, review L6).
+   */
+  osaEvidence: boolean;
+  /** Why no row of ours is read, for the sentence that says OSA's view is the evidence. */
+  noOursReason: 'viewer_unresolved' | 'no_rows' | null;
+}
+
+const NO_VIEWS: FileViews = { ours: null, osaPlayers: null, filled: new Set(), osaEvidence: false, noOursReason: null };
+
+function findViews(record: Record<string, unknown> | null): FileViews {
+  // "Show no player ratings" withholds every rating, this file's included: what OOTP writes in it then isn't established
+  if (ratingsWithheld() || !tableExists(OUR_SCOUTS_TABLE) || keptFromEarlierImport(record)) return NO_VIEWS;
+  const columns = tableColumns(OUR_SCOUTS_TABLE);
+  if (!columns.includes('player_id') || !columns.includes('scouting_team_id')) return NO_VIEWS;
+  const count = (teamId: number): number => Number((db.prepare(
+    `SELECT COUNT(DISTINCT player_id) AS n FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ?`
+  ).get(teamId) as { n: number } | undefined)?.n ?? 0);
+  const osa = count(OSA_SCOUTING_TEAM_ID);
+  // Whose scouts: the club the save marks as human-managed; more than one, or none, reads nobody's rows as ours
+  const teamId = viewerContext().viewerOrgId;
+  const oursCount = teamId === null || !Number.isInteger(teamId) || teamId === OSA_SCOUTING_TEAM_ID ? 0 : count(teamId);
+  const ours = oursCount > 0 ? { teamId: teamId as number, players: oursCount } : null;
+  const filled = new Set<number>();
+  if (ours && UNRATED_BY_OUR_SCOUTS === 'osa' && osa > 0) {
+    const rows = db.prepare(
+      `SELECT o.player_id AS id FROM "${OUR_SCOUTS_TABLE}" o WHERE o.scouting_team_id = ${OSA_SCOUTING_TEAM_ID}
+       AND NOT EXISTS (SELECT 1 FROM "${OUR_SCOUTS_TABLE}" x WHERE x.scouting_team_id = ? AND x.player_id = o.player_id)`
+    ).all(ours.teamId) as Array<{ id: number }>;
+    for (const r of rows) filled.add(Number(r.id));
+  }
+  const osaEvidence = !ours && osa > 0 && exportRatingMode().mode === 'real';
+  const noOursReason = ours ? null : teamId === null ? 'viewer_unresolved' : 'no_rows';
+  return { ours, osaPlayers: osa > 0 ? osa : null, filled, osaEvidence, noOursReason };
+}
+
+/** The basis's sentence when OSA's view is the evidence in place of the export's true ratings (review L6). */
+function osaEvidenceText(): string {
+  const why = fileViews().noOursReason === 'viewer_unresolved'
+    ? 'Pennant couldn\'t tell which club is yours, so your scouts\' reports can\'t be picked out'
+    : 'the export carries no full reports from your scouts';
+  return `The ratings are OSA's view, the league's shared scouting service, from the export's complete scouted ratings: the export's main ratings are true ratings, and ${why}.`;
+}
+
+let viewsCache: { generation: number; conn: unknown; record: unknown; value: FileViews } | null = null;
+
+function fileViews(): FileViews {
+  const record = importRecord();
+  if (viewsCache && viewsCache.generation === databaseGeneration() && viewsCache.conn === db && viewsCache.record === record) {
+    return viewsCache.value;
+  }
+  const value = findViews(record);
+  viewsCache = { generation: databaseGeneration(), conn: db, record, value };
+  return value;
+}
+
+/**
+ * Our scouts' full reports, when they are the evidence (D-067): the served import carries the export's complete scouted
+ * ratings from THIS export, our club resolves, and the file rates at least one player for it. Null otherwise, and then
+ * the main tables are the evidence as before (D-061). Cached per served import.
+ */
+export function ourScoutsRatings(): OurScoutsRatings | null {
+  return fileViews().ours;
+}
+
+/** Where one player's ratings come from: the export's main tables, our scouts' full reports, or OSA's view filling in for them. */
+export type RatingsFrom = 'export' | 'our_scouts' | 'osa' | 'league_osa' | 'osa_view';
+
+/** A rating read from OSA's view because our scouts haven't rated him, in the GM's words: a quiet mark and its sentence. */
+export const OSA_FILL_WORDS = {
+  mark: 'OSA',
+  short: 'OSA\'s view',
+  text: 'OSA\'s view: our scouts haven\'t rated him.',
+} as const;
+
+/** Where this player's ratings come from now (D-067); inside a league population, OSA's view when it is the yardstick (D-068). */
+export function ratingsFromOf(playerId: number): RatingsFrom {
+  const views = fileViews();
+  if (inPopulation() && populationPolicy === 'osa') {
+    if (views.osaPlayers !== null) return 'league_osa';
+    // No OSA view: our scouts' reports are the yardstick when the file carries them (the owner's decision), else the main tables
+    if (!views.ours) return 'export';
+  }
+  if (!views.ours) return views.osaEvidence ? 'osa_view' : 'export';
+  return views.filled.has(playerId) ? 'osa' : 'our_scouts';
+}
+
+/** The words a page shows beside a player's grades when they are OSA's view filling in for our scouts; null otherwise. */
+export function ratingFillOf(playerId: number): { mark: string; hint: string } | null {
+  return !inPopulation() && ratingsFromOf(playerId) === 'osa' ? { mark: OSA_FILL_WORDS.mark, hint: OSA_FILL_WORDS.text } : null;
+}
+
+export type RatingTable = 'batting' | 'pitching' | 'fielding';
+const MAIN_TABLE: Record<RatingTable, string> = { batting: 'players_batting', pitching: 'players_pitching', fielding: 'players_fielding' };
+
+/**
+ * The file's columns a family is read from: `player_id` and that family's rating columns, named, never `SELECT *` (the file
+ * also carries OOTP's star figures, `overall` and `talent`, which are never read, D-017; and naming them keeps the statement
+ * cheap to prepare, review M3).
+ */
+function fileColumns(kind: RatingTable): string[] {
+  return fileShape().families[kind];
+}
+
+/** The file's columns by family, and its one-row read, worked out once per served import (review M3). */
+interface FileShape {
+  families: Record<RatingTable, string[]>;
+  /** One player's row of one family, with his listed position. */
+  rowSql: Record<RatingTable, string>;
+}
+let shape: { conn: unknown; generation: number; value: FileShape } | null = null;
+
+function fileShape(): FileShape {
+  // Kept only on the served, read-only connection (as `db.ts` keeps the schema): a writable one may change shape under it
+  if (db.readonly && shape && shape.conn === db && shape.generation === databaseGeneration()) return shape.value;
+  const all = tableColumns(OUR_SCOUTS_TABLE);
+  const families = Object.fromEntries((Object.keys(FAMILY) as RatingTable[]).map((kind) => [kind, ['player_id', ...all.filter((c) => FAMILY[kind].test(c))]])) as Record<RatingTable, string[]>;
+  const position = all.includes('position') ? ['position'] : [];
+  const rowSql = Object.fromEntries((Object.keys(FAMILY) as RatingTable[]).map((kind) => [kind,
+    `SELECT ${selectList([...position, ...families[kind]], 's')} FROM "${OUR_SCOUTS_TABLE}" s WHERE s.scouting_team_id = ? AND s.player_id = ?`])) as Record<RatingTable, string>;
+  const value = { families, rowSql };
+  shape = { conn: db, generation: databaseGeneration(), value };
+  return value;
+}
+
+const selectList = (columns: readonly string[], alias: string): string => columns.map((c) => `${alias}."${c}"`).join(', ');
+
+/** Our scouts' rows, with OSA's row for a player they haven't rated when the policy fills (one row per player, index-friendly). */
+function evidenceExpression(views: FileViews, kind: RatingTable): string {
+  const ours = Number(views.ours!.teamId);
+  const fill = UNRATED_BY_OUR_SCOUTS === 'osa' && views.osaPlayers !== null;
+  const columns = fileColumns(kind);
+  return fill
+    ? `(SELECT ${selectList(columns, 's')} FROM "${OUR_SCOUTS_TABLE}" s WHERE s.scouting_team_id = ${ours} OR (s.scouting_team_id = ${OSA_SCOUTING_TEAM_ID}
+        AND NOT EXISTS (SELECT 1 FROM "${OUR_SCOUTS_TABLE}" x WHERE x.scouting_team_id = ${ours} AND x.player_id = s.player_id)))`
+    : `(SELECT ${selectList(columns, 's')} FROM "${OUR_SCOUTS_TABLE}" s WHERE s.scouting_team_id = ${ours})`;
+}
+
+/** OSA's rows of the file, one per player, for a family. */
+function osaExpression(kind: RatingTable): { from: string; columns: Set<string> } {
+  const columns = fileColumns(kind);
+  return { from: `(SELECT ${selectList(columns, 's')} FROM "${OUR_SCOUTS_TABLE}" s WHERE s.scouting_team_id = ${OSA_SCOUTING_TEAM_ID})`, columns: new Set(columns) };
+}
+
+function mainTableFrom(kind: RatingTable): { from: string; columns: Set<string> } | null {
+  const table = MAIN_TABLE[kind];
+  return tableExists(table) ? { from: `"${table}"`, columns: new Set(tableColumns(table)) } : null;
+}
+
+/**
+ * Where a family of ratings is read from, as a table expression keyed by `player_id` (one row per player), with its
+ * columns: our scouts' rows when they are the evidence (every family is in their one file), OSA's row for a player they
+ * haven't rated (`UNRATED_BY_OUR_SCOUTS`), otherwise the main table; null when absent.
+ */
+export function ratingFrom(kind: RatingTable): { from: string; columns: Set<string> } | null {
+  const views = fileViews();
+  // Worked out once per served import, view and family (review M3)
+  const key = `${kind}:${inPopulation() ? populationPolicy : 'evidence'}`;
+  if (!fromCache || fromCache.views !== views || fromCache.generation !== databaseGeneration() || fromCache.conn !== db) {
+    fromCache = { views, generation: databaseGeneration(), conn: db, byKey: new Map() };
+  }
+  if (fromCache.byKey.has(key)) return fromCache.byKey.get(key)!;
+  const found = ratingFromOf(kind, views);
+  if (db.readonly) fromCache.byKey.set(key, found);
+  return found;
+}
+
+let fromCache: { views: FileViews; generation: number; conn: unknown; byKey: Map<string, { from: string; columns: Set<string> } | null> } | null = null;
+
+function ratingFromOf(kind: RatingTable, views: FileViews): { from: string; columns: Set<string> } | null {
+  // Inside a league population: OSA's rows when the export carries them (D-068); without them our scouts' reports when it
+  // carries those (the owner's decision, 2026-10-02); the main tables only when the file offers neither
+  if (inPopulation() && populationPolicy === 'osa') {
+    if (views.osaPlayers !== null) return osaExpression(kind);
+    if (!views.ours) return mainTableFrom(kind);
+  }
+  if (views.ours) return { from: evidenceExpression(views, kind), columns: new Set(fileColumns(kind)) };
+  if (views.osaEvidence) return osaExpression(kind);
+  return mainTableFrom(kind);
+}
+
+/** Whether the evidence is read from the file (our scouts' reports, or OSA's view in place of true ratings). */
+const fileIsEvidence = (views: FileViews): boolean => views.ours !== null || views.osaEvidence;
+
+/**
+ * The file's row the evidence reads for this player (ours, OSA's filling in, or OSA's when it is the evidence); undefined
+ * when none rates him. One family's rating columns by name, with his listed position.
+ */
+function evidenceFileRow(playerId: number, kind: RatingTable): Record<string, unknown> | undefined {
+  const views = fileViews();
+  if (!fileIsEvidence(views)) return undefined;
+  const teamId = views.ours && !views.filled.has(playerId) ? views.ours.teamId : OSA_SCOUTING_TEAM_ID;
+  return prepared(fileShape().rowSql[kind]).get(teamId, playerId) as Record<string, unknown> | undefined;
+}
+
+/** Each family's rating columns, by name. */
+const FAMILY: Record<RatingTable, RegExp> = {
+  batting: /^(batting_ratings_|running_ratings_)/,
+  pitching: /^pitching_ratings_/,
+  fielding: /^fielding_rating/,
+};
+/** Any family's rating column. */
+const RATING_COLUMN = /^(batting_ratings_|running_ratings_|pitching_ratings_|fielding_rating)/;
+
+/**
+ * One player's row of a ratings table as the evidence sees it, for a page that shows the grades (the player card): the
+ * export's row, every rating column in it from the file's row the evidence reads (our scouts', or OSA's filling in;
+ * unknown, null, where neither rates him; never the main table's grade), the rest of the row (handedness, experience) as
+ * exported. `ratingFillOf` says whether it is OSA's view.
+ */
+export function scoutedRatingRow(kind: RatingTable, playerId: number): Record<string, unknown> | undefined {
+  const views = fileViews();
+  return ratingRowWith(kind, playerId, fileIsEvidence(views) ? evidenceFileRow(playerId, kind) ?? null : undefined);
+}
+
+/** `scoutedRatingRow` with the file's row already read (`undefined`: the file isn't the evidence; null: it doesn't rate him). */
+function ratingRowWith(kind: RatingTable, playerId: number, scouts: Record<string, unknown> | null | undefined): Record<string, unknown> | undefined {
+  const table = MAIN_TABLE[kind];
+  const main = tableExists(table)
+    ? (prepared(`SELECT * FROM "${table}" WHERE player_id = ?`).get(playerId) as Record<string, unknown> | undefined)
+    : undefined;
+  if (scouts === undefined) return main;
+  if (!main && !scouts) return undefined;
+  const family = FAMILY[kind];
+  const out: Record<string, unknown> = main ? { ...main } : { player_id: playerId, position: scouts?.position ?? null };
+  for (const column of Object.keys(out)) if (family.test(column)) out[column] = scouts ? scouts[column] ?? null : null;
+  if (scouts) for (const [column, value] of Object.entries(scouts)) if (family.test(column) && !(column in out)) out[column] = value;
+  return out;
+}
+
+// ── League yardsticks and fits: OSA's view (D-068) ───────────────────────
+
+/**
+ * What every league-wide population and per-save fit that reads ratings is built on (the owner's direction,
+ * 2026-10-02): OSA's view, the league's shared scouting service, so a yardstick or a fit does not drift with the club's
+ * own scouting staff. `'evidence'` would build them on the same ratings a judgment of a player reads. Without an OSA
+ * view they read our scouts' reports when the file carries them (the owner's decision, 2026-10-02), and the main tables
+ * (D-061) only when it carries neither; labelled either way.
+ */
+export const LEAGUE_POPULATION_SOURCE: 'osa' | 'evidence' = 'osa';
+
+let populationPolicy: 'osa' | 'evidence' = LEAGUE_POPULATION_SOURCE;
+let populationDepth = 0;
+
+/** Whether the code running now is building a league population or a fit (inside `inPopulationView`). */
+export const inPopulation = (): boolean => populationDepth > 0;
+
+/**
+ * Runs `build` with every rating read in the league's population view: OSA's rows when OSA is the yardstick. Only for
+ * synchronous code (a refit, a population's computation): nothing else may run while it holds.
+ */
+export function inPopulationView<T>(build: () => T): T {
+  populationDepth += 1;
+  try {
+    return synchronousOnly(build(), 'inPopulationView');
+  } finally {
+    populationDepth -= 1;
+  }
+}
+
+/**
+ * A scope held by a module variable (the population view, a fit's ratings source) must close before anything else runs:
+ * a build that returns a promise would leave it open across an await (review L4). Refused, loudly.
+ */
+export function synchronousOnly<T>(value: T, scope: string): T {
+  if (value !== null && (typeof value === 'object' || typeof value === 'function') && typeof (value as { then?: unknown }).then === 'function') {
+    throw new Error(`${scope} takes synchronous code only: the scope would leak across an await`);
+  }
+  return value;
+}
+
+/** For a measurement script or a test only: run `body` with the other population policy, then put the line back. */
+export function withPopulationPolicy<T>(policy: 'osa' | 'evidence', body: () => T): T {
+  const before = populationPolicy;
+  populationPolicy = policy;
+  clearPopulationCaches();
+  try {
+    return synchronousOnly(body(), 'withPopulationPolicy');
+  } finally {
+    populationPolicy = before;
+    clearPopulationCaches();
+  }
+}
+
+/** The ratings the league's yardsticks and fits are built on now: an id a fit's record keeps, a name and a sentence. */
+export interface PopulationSource {
+  id: string;
+  short: string;
+  text: string;
+}
+
+export function populationSource(): PopulationSource {
+  if (populationPolicy === 'evidence') {
+    const evidence = ratingSource();
+    return { id: `evidence:${evidence.mode}`, short: evidence.short, text: `How players compare across the league reads the same ratings as a judgment of a player. ${evidence.text}` };
+  }
+  const views = fileViews();
+  if (views.osaPlayers !== null) {
+    return {
+      id: 'osa_file', short: 'OSA\'s view',
+      text: 'How players compare across the league, and the numbers Pennant fits to this save, read OSA\'s view: the league\'s shared scouting service, from the export\'s complete scouted ratings.',
+    };
+  }
+  if (views.ours) {
+    return {
+      id: 'our_scouts_file', short: RATING_MODE_WORDS['scouted-complete'].short,
+      text: 'How players compare across the league, and the numbers Pennant fits to this save, read your scouts\' full reports: the export carries no OSA view.',
+    };
+  }
+  const mode = exportRatingMode().mode;
+  return {
+    id: `export:${mode}`, short: RATING_MODE_WORDS[mode].short,
+    text: `${RATING_MODE_WORDS[mode].long} The export carries no OSA view and no full reports from your scouts, so how players compare across the league reads its main ratings.`,
+  };
+}
+
+export { ratingSourceNamed, sameRatingSource } from './ratingMode.js';
+
+/**
+ * Whether a league comparison's basis shows his second reading (D-068, review H1): only when the yardstick really is OSA's
+ * rows from the file and he is read from our scouts' reports. Otherwise there is no second reading to show, and nothing is
+ * labelled "OSA" that isn't (a "real" export without OSA's rows would otherwise show true ratings under that name).
+ */
+export function bothReadingsApply(): boolean {
+  return populationSource().id === 'osa_file' && ourScoutsRatings() !== null;
+}
+
+const ordinal = (n: number): string => {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+  return `${n}${suffix}`;
+};
+
+/**
+ * A player's own reading beside his OSA reading, for a league comparison's basis (D-068): "Our scouts: 65 · OSA: 70" for a
+ * grade, "Our scouts: 65th percentile · OSA: 70th" for a percentile; null when they agree, either is unknown, or the
+ * readings don't apply (`bothReadingsApply`).
+ */
+export function bothReadings(ours: number | null, osa: number | null, unit: 'grade' | 'percentile' = 'grade'): string | null {
+  if (ours === null || osa === null || Math.round(ours) === Math.round(osa) || !bothReadingsApply()) return null;
+  const o = Math.round(ours);
+  const a = Math.round(osa);
+  return unit === 'percentile' ? `Our scouts: ${ordinal(o)} percentile · OSA: ${ordinal(a)}` : `Our scouts: ${o} · OSA: ${a}`;
+}
+
+/** The players' composites in the league's population view (OSA's, when it is the yardstick), for `bothReadings`. */
+export function populationAbilities(playerIds: Iterable<number>): ScoutedAbilities {
+  return inPopulationView(() => loadScoutedAbilities(playerIds));
+}
+
+/** A player's current composite in the population view, kept per source until the next import (`bothReadings`, review M3). */
+const populationCompositeCache = new Map<string, Map<number, number | null>>();
+
+export function populationComposite(playerId: number): number | null {
+  const key = `${databaseGeneration()}:${populationSource().id}`;
+  let byPlayer = populationCompositeCache.get(key);
+  if (!byPlayer) {
+    populationCompositeCache.clear();
+    byPlayer = new Map();
+    populationCompositeCache.set(key, byPlayer);
+  }
+  if (!db.readonly) return populationAbilities([playerId]).for(playerId).current;
+  if (!byPlayer.has(playerId)) byPlayer.set(playerId, populationAbilities([playerId]).for(playerId).current);
+  return byPlayer.get(playerId) ?? null;
 }
 
 // ── Scale ───────────────────────────────────────────────────────────────
@@ -235,6 +677,8 @@ export interface ScoutedAbility {
   readonly scale: RatingScale;
   readonly provenance: EvidenceProvenance;
   readonly viewer: ViewerContext;
+  /** Where his ratings come from (D-067): the main tables, our scouts' full reports, or OSA's view filling in for them. */
+  readonly ratingsFrom: RatingsFrom;
 }
 
 const round = (value: number): number => Math.round(value);
@@ -272,7 +716,7 @@ interface AbilityInput {
   pitches: readonly unknown[];
 }
 
-function buildAbility(input: AbilityInput, scale: RatingScale, viewer: ViewerContext): ScoutedAbility {
+function buildAbility(input: AbilityInput, scale: RatingScale, viewer: ViewerContext, ratingsFrom: RatingsFrom = 'export'): ScoutedAbility {
   const tools: ReadonlyArray<{ key: ToolKey }> =
     input.kind === 'hitter' ? HITTER_TOOLS : input.kind === 'pitcher' ? PITCHER_TOOLS : [];
 
@@ -310,6 +754,7 @@ function buildAbility(input: AbilityInput, scale: RatingScale, viewer: ViewerCon
     scale,
     provenance: TOOL_PROVENANCE,
     viewer,
+    ratingsFrom,
   });
 }
 
@@ -318,7 +763,8 @@ export function unknownScoutedAbility(playerId: number, kind: ScoutedAbility['ki
   return buildAbility(
     { playerId, kind, current: {}, potential: {}, stamina: null, pitches: [] },
     ratingScale(),
-    viewerContext()
+    viewerContext(),
+    ratingsFromOf(playerId)
   );
 }
 
@@ -353,6 +799,7 @@ export function syntheticScoutedAbility(input: {
     scale,
     provenance: TOOL_PROVENANCE,
     viewer: { viewerOrgId: null, resolution: 'unresolved' },
+    ratingsFrom: 'export',
   });
 }
 
@@ -390,8 +837,10 @@ export function loadScoutedAbilities(playerIds: Iterable<number>): ScoutedAbilit
   const scale = ratingScale();
   const viewer = viewerContext();
 
-  const batting = new Set(tableColumns('players_batting'));
-  const pitching = new Set(tableColumns('players_pitching'));
+  const battingFrom = ratingFrom('batting');
+  const pitchingFrom = ratingFrom('pitching');
+  const batting = battingFrom?.columns ?? new Set<string>();
+  const pitching = pitchingFrom?.columns ?? new Set<string>();
   const hasBatting = batting.has('player_id');
   const hasPitching = pitching.has('player_id');
 
@@ -408,11 +857,11 @@ export function loadScoutedAbilities(playerIds: Iterable<number>): ScoutedAbilit
   select.push(alias(pitchingSet, 'pp', STAMINA_COLUMN));
   for (const column of PITCH_COLUMNS) select.push(alias(pitchingSet, 'pp', column));
 
-  const statement = (count: number) => db.prepare(
+  const statement = (count: number) => prepared(
     `SELECT p.player_id, p.position, ${select.join(', ')}
      FROM players p
-     ${hasBatting ? 'LEFT JOIN players_batting b ON b.player_id = p.player_id' : ''}
-     ${hasPitching ? 'LEFT JOIN players_pitching pp ON pp.player_id = p.player_id' : ''}
+     ${hasBatting ? `LEFT JOIN ${battingFrom!.from} b ON b.player_id = p.player_id` : ''}
+     ${hasPitching ? `LEFT JOIN ${pitchingFrom!.from} pp ON pp.player_id = p.player_id` : ''}
      WHERE p.player_id IN (${new Array(count).fill('?').join(', ')})`
   );
 
@@ -437,7 +886,7 @@ export function loadScoutedAbilities(playerIds: Iterable<number>): ScoutedAbilit
         potential,
         stamina: row[STAMINA_COLUMN],
         pitches: PITCH_COLUMNS.map((column) => row[column]),
-      }, scale, viewer));
+      }, scale, viewer, ratingsFromOf(playerId)));
     }
   }
   return new ScoutedAbilities(out);
@@ -456,6 +905,9 @@ export interface EvidenceSummary {
   viewerOrgId: number | null;
   viewerResolution: ViewerContext['resolution'];
   missing: { current: readonly ToolKey[]; potential: readonly ToolKey[] };
+  /** Where his ratings come from (D-067), and the sentence that says so when it is OSA's view filling in; null otherwise. */
+  ratingsFrom: RatingsFrom;
+  ratingsFromText: string | null;
 }
 
 export function summarizeEvidence(ability: ScoutedAbility): EvidenceSummary {
@@ -469,6 +921,8 @@ export function summarizeEvidence(ability: ScoutedAbility): EvidenceSummary {
     viewerOrgId: ability.viewer.viewerOrgId,
     viewerResolution: ability.viewer.resolution,
     missing: ability.missing,
+    ratingsFrom: ability.ratingsFrom,
+    ratingsFromText: ability.ratingsFrom === 'osa' ? OSA_FILL_WORDS.text : null,
   };
 }
 
@@ -492,7 +946,16 @@ const scalePosition = (rating: PositionRating, scale: RatingScale): PositionRati
  */
 export function scoutedGloves(playerId: number): Gloves | null {
   if (ratingsWithheld()) return null;
-  const profile = gloves(playerId);
+  // Our scouts' reports: a player they haven't rated has no profile (unknown), never one read off another view. The file's
+  // row is read once (review M3)
+  const views = fileViews();
+  let profile: Gloves | null;
+  if (fileIsEvidence(views)) {
+    const scouts = evidenceFileRow(playerId, 'fielding');
+    profile = scouts ? glovesFromRow(ratingRowWith('fielding', playerId, scouts)) : null;
+  } else {
+    profile = gloves(playerId);
+  }
   if (!profile) return null;
   const scale = ratingScale();
   if (scale.native2080) return profile;
@@ -512,12 +975,21 @@ export const FIELDING_EVIDENCE_PROVENANCE: EvidenceProvenance = FIELDING_PROVENA
 
 const fieldingPopulationCache = new Map<string, number[]>();
 
-const hitterPopulationCache = new Map<number, ScoutedHitterProfile[]>();
+const hitterPopulationCache = new Map<string, ScoutedHitterProfile[]>();
 
 /** Cleared whenever a fresh export is imported. */
 export function clearFieldingPopulationCache(): void {
+  clearPopulationCaches();
+  viewsCache = null;
+  statements = null;
+  shape = null;
+  fromCache = null;
+}
+
+function clearPopulationCaches(): void {
   fieldingPopulationCache.clear();
   hitterPopulationCache.clear();
+  populationCompositeCache.clear();
 }
 
 /**
@@ -539,16 +1011,24 @@ const majorLeaguerArgs = (leagueId: number): number[] => (tableColumns('players'
  * with a stray grade here is not a peer.
  */
 export function scoutedFieldingPopulation(leagueId: number, position: number): number[] {
-  const key = `${leagueId}:${position}`;
+  // A league yardstick: built in the population view (OSA's, when it is the yardstick, D-068), cached per source
+  const key = `${populationSource().id}:${leagueId}:${position}`;
   const hit = fieldingPopulationCache.get(key);
   if (hit) return hit;
+  const out = inPopulationView(() => fieldingPopulationOf(leagueId, position));
+  fieldingPopulationCache.set(key, out);
+  return out;
+}
+
+function fieldingPopulationOf(leagueId: number, position: number): number[] {
   const out: number[] = [];
   const column = `fielding_rating_pos${position}`;
-  if (!ratingsWithheld() && position >= 1 && position <= 9 && tableExists('players_fielding') && tableExists('teams') && tableColumns('players_fielding').includes(column)) {
+  const fielding = ratingFrom('fielding');
+  if (!ratingsWithheld() && position >= 1 && position <= 9 && fielding && tableExists('teams') && fielding.columns.has(column)) {
     const scale = ratingScale();
     const rows = db.prepare(
       `SELECT f."${column}" AS grade
-       FROM players_fielding f
+       FROM ${fielding.from} f
        JOIN players p ON p.player_id = f.player_id
        JOIN teams t ON t.team_id = p.team_id
        WHERE t.league_id = ? AND t.level = 1 AND p.position = ? AND p.retired = 0 AND f."${column}" > 0${majorLeaguerOnly()}`
@@ -556,7 +1036,6 @@ export function scoutedFieldingPopulation(leagueId: number, position: number): n
     for (const r of rows) out.push(toScouting(r.grade, scale));
     out.sort((a, b) => a - b);
   }
-  fieldingPopulationCache.set(key, out);
   return out;
 }
 
@@ -654,14 +1133,15 @@ const hitterColumns = (): string[] => {
 export function loadScoutedHitterProfiles(playerIds: Iterable<number>): Map<number, ScoutedHitterProfile> {
   const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
   const out = new Map<number, ScoutedHitterProfile>();
-  if (ids.length === 0 || !tableExists('players_batting') || ratingsWithheld()) return out;
-  const present = new Set(tableColumns('players_batting'));
+  const batting = ratingFrom('batting');
+  if (ids.length === 0 || !batting || ratingsWithheld()) return out;
+  const present = batting.columns;
   const select = hitterColumns().map((c) => (present.has(c) ? `b."${c}" AS "${c}"` : `NULL AS "${c}"`));
   const scale = ratingScale();
   for (let at = 0; at < ids.length; at += CHUNK) {
     const chunk = ids.slice(at, at + CHUNK);
-    const rows = db.prepare(
-      `SELECT b.player_id AS player_id, ${select.join(', ')} FROM players_batting b WHERE b.player_id IN (${chunk.map(() => '?').join(', ')})`
+    const rows = prepared(
+      `SELECT b.player_id AS player_id, ${select.join(', ')} FROM ${batting.from} b WHERE b.player_id IN (${chunk.map(() => '?').join(', ')})`
     ).all(...chunk) as Array<Record<string, unknown>>;
     for (const row of rows) out.set(Number(row.player_id), hitterProfileFromRow(Number(row.player_id), row, scale));
   }
@@ -673,17 +1153,19 @@ export function loadScoutedHitterProfiles(playerIds: Iterable<number>): Map<numb
  * running are ranked against. Cached per league until the next import.
  */
 export function scoutedHitterPopulation(leagueId: number): ScoutedHitterProfile[] {
-  const hit = hitterPopulationCache.get(leagueId);
+  // A league yardstick: built in the population view (OSA's, when it is the yardstick, D-068), cached per source
+  const key = `${populationSource().id}:${leagueId}`;
+  const hit = hitterPopulationCache.get(key);
   if (hit) return hit;
-  let out: ScoutedHitterProfile[] = [];
-  if (tableExists('players') && tableExists('teams') && tableExists('players_batting')) {
+  const out = inPopulationView(() => {
+    if (!tableExists('players') || !tableExists('teams') || !ratingFrom('batting')) return [];
     const ids = (db.prepare(
       `SELECT p.player_id AS id FROM players p JOIN teams t ON t.team_id = p.team_id
        WHERE t.league_id = ? AND t.level = 1 AND p.position > 1 AND p.retired = 0${majorLeaguerOnly()}`
     ).all(leagueId, ...majorLeaguerArgs(leagueId)) as Array<{ id: number }>).map((r) => r.id);
-    out = [...loadScoutedHitterProfiles(ids).values()];
-  }
-  hitterPopulationCache.set(leagueId, out);
+    return [...loadScoutedHitterProfiles(ids).values()];
+  });
+  hitterPopulationCache.set(key, out);
   return out;
 }
 
@@ -710,8 +1192,9 @@ export interface ScoutedGloveAtPosition {
 export function loadScoutedGlovesAtPosition(playerIds: Iterable<number>): Map<number, ScoutedGloveAtPosition> {
   const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
   const out = new Map<number, ScoutedGloveAtPosition>();
-  if (ids.length === 0 || !tableExists('players') || !tableExists('players_fielding') || ratingsWithheld()) return out;
-  const present = new Set(tableColumns('players_fielding'));
+  const fielding = ratingFrom('fielding');
+  if (ids.length === 0 || !tableExists('players') || !fielding || ratingsWithheld()) return out;
+  const present = fielding.columns;
   if (!present.has('player_id') || !tableColumns('players').includes('position')) return out;
   const select: string[] = [];
   for (let position = 2; position <= 9; position += 1) {
@@ -722,9 +1205,9 @@ export function loadScoutedGlovesAtPosition(playerIds: Iterable<number>): Map<nu
   const scale = ratingScale();
   for (let at = 0; at < ids.length; at += CHUNK) {
     const chunk = ids.slice(at, at + CHUNK);
-    const rows = db.prepare(
+    const rows = prepared(
       `SELECT p.player_id AS player_id, p.position AS position, ${select.join(', ')}
-       FROM players p JOIN players_fielding f ON f.player_id = p.player_id
+       FROM players p JOIN ${fielding.from} f ON f.player_id = p.player_id
        WHERE p.player_id IN (${chunk.map(() => '?').join(', ')})`
     ).all(...chunk) as Array<Record<string, unknown>>;
     for (const row of rows) {
@@ -804,7 +1287,11 @@ const SNAPSHOT_TOOLS: Record<ToolKey, { current: string; potential: string }> = 
  */
 export function loadScoutedObservations(playerIds: Iterable<number> | null = null): Map<number, ScoutedObservation[]> {
   const out = new Map<number, ScoutedObservation[]>();
-  const present = new Set((historyDb.prepare(`PRAGMA table_info(save_rating_snapshots)`).all() as Array<{ name: string }>).map((c) => c.name));
+  // Inside a league population or fit, with OSA as the yardstick: OSA's own snapshots, of that kind only (D-068)
+  const population = inPopulation() ? populationSource() : null;
+  const osaHistory = population?.id === 'osa_file';
+  const table = osaHistory ? 'save_population_snapshots' : 'save_rating_snapshots';
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name));
   if (!['save_key', 'game_date', 'player_id', 'position'].every((c) => present.has(c))) return out;
   const columns = [...new Set([...Object.values(SNAPSHOT_TOOLS).flatMap((t) => [t.current, t.potential]), ...Object.values(SNAPSHOT_HITTER_COLUMNS)])];
   const select = [
@@ -812,16 +1299,19 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
     present.has('level') ? 'level' : 'NULL AS level',
     present.has('team_id') ? 'team_id' : 'NULL AS team_id',
     present.has('age') ? 'age' : 'NULL AS age',
+    present.has('src') ? 'src' : 'NULL AS src',
     ...columns.map((c) => (present.has(c) ? `"${c}"` : `NULL AS "${c}"`)),
   ].join(', ');
   const scale = ratingScale();
   const viewer = viewerContext();
   // A snapshot in another known kind of ratings than today's export is a switch, never development: left out (D-061)
-  const { excluded } = modeFilter();
-  const modes = snapshotModes();
+  const { excluded } = osaHistory ? { excluded: new Set<string>() } : modeFilter();
+  const modes = osaHistory ? new Map<string, RatingMode>() : snapshotModes();
   const take = (rows: Array<Record<string, unknown>>) => {
     for (const row of rows) {
       if (excluded.has(String(row.game_date))) continue;
+      // A row of his from another source than today's (our scouts' or OSA's view) is a switch, never development (D-067)
+      if (!osaHistory && otherSource(Number(row.player_id), row.src)) continue;
       const gameDate = parseGameDate(row.game_date ?? null);
       const playerId = Number(row.player_id);
       if (!gameDate || !Number.isFinite(playerId)) continue;
@@ -842,16 +1332,17 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
         level: row.level === null || !Number.isFinite(level) ? null : level,
         teamId: row.team_id === null || row.team_id === undefined || !Number.isFinite(Number(row.team_id)) ? null : Number(row.team_id),
         age: row.age === null || !Number.isFinite(age) ? null : age,
-        ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer),
+        ability: buildAbility({ playerId, kind, current, potential, stamina: null, pitches: [] }, scale, viewer,
+          osaHistory ? 'league_osa' : row.src === 'our_scouts' || row.src === 'osa' ? row.src : 'export'),
         hitter: kind === 'hitter'
           ? hitterProfileFromRow(playerId, Object.fromEntries(Object.entries(SNAPSHOT_HITTER_COLUMNS).map(([exported, kept]) => [exported, row[kept]])), scale)
           : null,
-        ratingMode: modes.get(String(row.game_date)) ?? null,
+        ratingMode: osaHistory ? 'osa' : modes.get(String(row.game_date)) ?? null,
       });
       out.set(playerId, list);
     }
   };
-  const base = `SELECT ${select} FROM save_rating_snapshots WHERE save_key = ?`;
+  const base = `SELECT ${select} FROM ${table} WHERE save_key = ?${osaHistory ? ` AND kind = '${population!.id}'` : ''}`;
   if (playerIds === null) take(historyDb.prepare(base).all(currentHistoryKey()) as Array<Record<string, unknown>>);
   else {
     const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));

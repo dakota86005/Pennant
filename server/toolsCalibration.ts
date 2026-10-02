@@ -9,18 +9,22 @@
 
 import { calibrated } from './calibration.js';
 import { db, tableColumns, tableExists } from './db.js';
-import { adoptedCalibration } from './saveCalibrationStore.js';
+import { adoptedCalibrationOnSource } from './saveCalibrationStore.js';
+import { populationSource } from './scoutedEvidence.js';
 import { completedThrough } from './saveIdentity.js';
 import { MLB_CALIBRATION_SUBSYSTEM } from './mlbCalibrationFit.js';
 import { TOOLS_METHOD, type ToolsModel } from './mlbToolsFit.js';
 import { HITTER_TOOL_SLOPES, TOOLS_PRIOR, type ToolsParams } from './toolsModel.js';
 
-/** The adopted tools fit in force for a league, or null (none, or none through a season the league has completed). */
+/**
+ * The adopted tools fit in force for a league, or null (none, none through a season the league has completed, or one fitted on
+ * other ratings than today's, which is set aside: D-068, the owner's decision; `toolsFitSetAside` says why).
+ */
 export function toolsFitInForce(leagueId: number | null): { model: ToolsModel; basis: string } | null {
   if (leagueId === null) return null;
   try {
     const through = completedThrough(leagueId).season;
-    const adopted = adoptedCalibration<ToolsModel>(leagueId, MLB_CALIBRATION_SUBSYSTEM, 'tools', TOOLS_METHOD, { throughMax: through ?? -1 });
+    const { fit: adopted } = adoptedCalibrationOnSource<ToolsModel>(leagueId, MLB_CALIBRATION_SUBSYSTEM, 'tools', TOOLS_METHOD, { throughMax: through ?? -1 }, populationSource().id);
     return adopted?.model ? { model: adopted.model, basis: adopted.basis } : null;
   } catch (err) {
     // A store that cannot be read serves the starting values, and says why in the log (never silently)
@@ -43,10 +47,23 @@ export function toolsParamsOf(model: ToolsModel, basis: string): ToolsParams {
 /** The hitters' tools weight a tools model serves: its own where the blend part serves, else the starting 1. */
 export const hitterWeightOf = (model: ToolsModel): number => (model.blend.source === 'save' ? Math.max(1, model.blend.served) : 1);
 
-/** The tools params in force for a league: the league's own bat slopes where they serve, else the starting values. */
+/** Why the save's tools fit is not in force because it rests on other ratings than today's; null when it isn't set aside. */
+export function toolsFitSetAside(leagueId: number | null): string | null {
+  if (leagueId === null) return null;
+  try {
+    const through = completedThrough(leagueId).season;
+    return adoptedCalibrationOnSource(leagueId, MLB_CALIBRATION_SUBSYSTEM, 'tools', TOOLS_METHOD, { throughMax: through ?? -1 }, populationSource().id).setAside?.text ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The tools params in force for a league: the league's own bat slopes where they serve, else the starting values (said why). */
 export function toolsParamsFor(leagueId: number | null): ToolsParams {
   const fit = toolsFitInForce(leagueId);
-  return fit ? toolsParamsOf(fit.model, fit.basis) : TOOLS_PRIOR;
+  if (fit) return toolsParamsOf(fit.model, fit.basis);
+  const setAside = toolsFitSetAside(leagueId);
+  return setAside ? { ...TOOLS_PRIOR, stamp: { ...TOOLS_PRIOR.stamp, basis: `${TOOLS_PRIOR.stamp.basis} ${setAside}` } } : TOOLS_PRIOR;
 }
 
 /** The hitters' tools weight in force (`ResultsParams.toolsWeight.hitter`): the league's own where it serves, else the starting 1. */

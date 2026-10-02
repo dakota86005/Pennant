@@ -28,7 +28,7 @@ import { farmArrivalFor, farmConsequenceFor, type FarmArrival, type FarmConseque
  */
 export { openFarmSession, type FarmSession } from './farmOperations.js';
 import {
-  loadScoutedAbilities, loadScoutedHitterProfiles, scoutedFieldingPopulation, scoutedGloves, scoutedHitterPopulation, summarizeEvidence,
+  bothReadings, bothReadingsApply, inPopulationView, loadScoutedAbilities, ratingFillOf, loadScoutedHitterProfiles, scoutedFieldingPopulation, scoutedGloves, scoutedHitterPopulation, summarizeEvidence,
   type ScoutedHitterProfile,
 } from './scoutedEvidence.js';
 import {
@@ -428,6 +428,9 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
   const peers = league !== null && fielderPosition ? scoutedFieldingPopulation(league, role.position) : [];
   const defense = league !== null && fielderPosition && !opts.ignoreResults ? loadDefenseResults(playerIds, league, role.position, params) : new Map();
   const profiles = loadScoutedHitterProfiles(playerIds);
+  // His reading as the league's yardstick sees him (OSA's, D-068), so the basis can show both where they differ
+  // Only when the basis can show it: OSA's file rows are the yardstick and he is read from our scouts' (review H1, M3)
+  const osaProfiles = bothReadingsApply() ? inPopulationView(() => loadScoutedHitterProfiles(playerIds)) : new Map<number, ScoutedHitterProfile>();
   const pop = league !== null ? toolsPopulation(league, tools) : { bat: [], running: [], profileMin: null };
   const meanBat = pop.bat.length ? pop.bat.reduce((n, v) => n + v, 0) / pop.bat.length : 0;
   for (const id of playerIds) {
@@ -446,6 +449,10 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
     const notes: string[] = [];
     if (now && now.gs > 0) notes.push(`Started ${now.gs} games at ${role.label} this season${now.ip > 0 ? ` (${Math.round(now.ip)} innings, ${now.errors} errors)` : ''}.`);
     if (batRaw !== null) notes.push(`His visible tools imply ${(batRaw - meanBat >= 0 ? '+' : '-')}${Math.abs(Math.round((batRaw - meanBat) * 1000))} points of wOBA against the league average.`);
+    const osaProfile = osaProfiles.get(id);
+    const osaBat = osaProfile ? expectedWobaRaw(osaProfile.tools, tools) : null;
+    const both = bothReadings(toolsPct, osaBat !== null && pop.bat.length ? percentileAmong(pop.bat, osaBat, true) : null, 'percentile');
+    if (both) notes.push(`${both} (where his bat ranks among the league's hitters).`);
     out.set(id, {
       position: role.position,
       defense: {
@@ -651,4 +658,9 @@ export function farmNextByPosition(orgId: number): Map<number, FarmNext[]> {
     }));
   }
   return out;
+}
+
+/** Where a player's grades come from, when it needs saying (D-067): "OSA's view: our scouts haven't rated him"; null otherwise. */
+export function ratingsNoteOf(playerId: number): string | null {
+  return ratingFillOf(playerId)?.hint ?? null;
 }

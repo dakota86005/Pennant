@@ -59,6 +59,7 @@
   },
   "import": {
     "ratingMode": null,
+    "ourScouts": null,
     "leftOut": [],
     "upgradeNote": null
   },

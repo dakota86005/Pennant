@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { gloves } from './gloves.js';
+import { glovesFromRow } from './gloves.js';
 import { contactLeague, contactProfiles, situationalSplits } from './battedball.js';
 import { contractSummaryOf, controlAfterThisSeason, valueSummaryOf } from './contracts.js';
 import { freshnessCue, getDataStatus } from './dataStatus.js';
 import { playerValue, type PlayerValuation } from './playerValue.js';
 import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
-import { loadScoutedAbilities } from './scoutedEvidence.js';
+import { loadScoutedAbilities, ratingFillOf, scoutedRatingRow } from './scoutedEvidence.js';
 import { twoWayBatters, twoWayPitchers } from './twoway.js';
 
 export const playerRoutes = Router();
@@ -121,15 +121,10 @@ playerRoutes.get('/player/:id', (req, res) => {
     .get(id) as Record<string, unknown> | undefined;
   if (!p) return res.status(404).json({ error: 'Player not found' });
 
-  const batting = db.prepare(`SELECT * FROM players_batting WHERE player_id = ?`).get(id) as
-    | Record<string, number>
-    | undefined;
-  const pitching = db.prepare(`SELECT * FROM players_pitching WHERE player_id = ?`).get(id) as
-    | Record<string, number>
-    | undefined;
-  const fielding = db.prepare(`SELECT * FROM players_fielding WHERE player_id = ?`).get(id) as
-    | Record<string, number>
-    | undefined;
+  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
+  const batting = scoutedRatingRow('batting', id) as Record<string, number> | undefined;
+  const pitching = scoutedRatingRow('pitching', id) as Record<string, number> | undefined;
+  const fielding = scoutedRatingRow('fielding', id) as Record<string, number> | undefined;
   const rosterStatus = tableExists('players_roster_status')
     ? (db.prepare(`SELECT * FROM players_roster_status WHERE player_id = ?`).get(id) as
         | Record<string, number>
@@ -439,6 +434,8 @@ playerRoutes.get('/player/:id', (req, res) => {
       missing: { now: [...ability.missing.current], ceiling: [...ability.missing.potential] },
     },
     isPitcher,
+    // OSA's view filling in for our scouts (D-067): every grade below is OSA's, and the card says so; null otherwise
+    ratingsFill: ratingFillOf(id),
     battingRatings: batting
       ? {
           contact: [batting.batting_ratings_overall_contact, batting.batting_ratings_talent_contact],
@@ -467,7 +464,7 @@ playerRoutes.get('/player/:id', (req, res) => {
      * but never the per-position grades those add up to, which are what a
      * coach actually reads before moving somebody.
      */
-    positionRatings: gloves(id)?.positions ?? [],
+    positionRatings: glovesFromRow(fielding)?.positions ?? [],
     fieldingRatings: fielding
       ? {
           infieldRange: fielding.fielding_ratings_infield_range,

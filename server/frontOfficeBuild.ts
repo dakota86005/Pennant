@@ -16,7 +16,7 @@ import { getDataStatus } from './dataStatus.js';
 import { tableExists } from './db.js';
 import { computeFarmSystem } from './farmOperations.js';
 import { leagueRulesForOrganization } from './leagueRules.js';
-import { mlbOverview, mlbResponses } from './mlbOperations.js';
+import { mlbOverview, mlbResponses, ratingsNoteOf } from './mlbOperations.js';
 import { catalogClubs } from './org.js';
 import { computePayroll } from './payroll.js';
 import { departmentOffice, servedDepartments } from './presentation/catalog.js';
@@ -210,7 +210,8 @@ export function buildTrail(request: TrailRequest): ClaimTrail | null {
   if (!packet) return null;
   const { build, departments } = contextFor(request.orgId, request.importStamp, request.reportStamp);
   const ctx: DepartmentContext = { build, department: departments.find((d) => d.id === 'majorLeague')!, office: departmentOffice('majorLeague') };
-  return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null);
+  // A player whose grades are OSA's view filling in for our scouts says so in his basis (D-067)
+  return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null, ratingsNoteOf);
 }
 
 /** What one Major League Ops decision is asked for (N8): the need and the GM's choices so far. */

@@ -102,6 +102,14 @@ export function gloves(playerId: number): Gloves | null {
   const row = db.prepare(`SELECT * FROM players_fielding WHERE player_id = ?`).get(playerId) as
     | Record<string, unknown>
     | undefined;
+  return glovesFromRow(row);
+}
+
+/**
+ * The same profile from a fielding row already read: the evidence adapter hands it our scouts' row when their full
+ * reports are the evidence (D-067), so the visibility rule here applies to whichever row it is given.
+ */
+export function glovesFromRow(row: Record<string, unknown> | undefined): Gloves | null {
   if (!row) return null;
 
   const listedPosition = Number(row.position ?? 0);

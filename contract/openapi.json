@@ -2898,6 +2898,10 @@
                 "$ref": "#/components/schemas/RatingModeRecord",
                 "description": "Which kind of ratings the export carries, as the import read OOTP's export settings; null for an import from before N3.5."
               },
+              "ourScouts": {
+                "$ref": "#/components/schemas/OurScoutsRatings",
+                "description": "Our scouts' full reports, when the export carries them for our club and they are the scouted evidence (D-067): our club's id and how many players they rate; null otherwise (the main tables are the evidence, of `ratingMode`'s kind)."
+              },
               "leftOut": {
                 "type": "array",
                 "items": {
@@ -9764,6 +9768,22 @@
         },
         "description": "The major-league clubs (`GET /api/orgs`)."
       },
+      "OurScoutsRatings": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "number"
+          },
+          "players": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "teamId",
+          "players"
+        ],
+        "description": "Our scouts' full reports, when the export carries them: our club's id (`scouting_team_id`) and how many players they rate."
+      },
       "PhilosophyDimensionId": {
         "anyOf": [
           {
@@ -10579,7 +10599,8 @@
               "real",
               "osa",
               "none",
-              "unknown"
+              "unknown",
+              "scouted-complete"
             ]
           },
           {

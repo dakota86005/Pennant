@@ -13,7 +13,7 @@ import { noteSnapshotsWritten, stampSnapshotMode, takeSnapshot } from './history
 import { captureRosterStateSnapshot } from './rosterStateHistory.js';
 import { resetTransactionLogCache } from './dataStatus.js';
 import { captureMarketSnapshot } from './playerValueSnapshot.js';
-import type { RatingModeRecord } from './ratingMode.js';
+import { evidenceRecord, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 
 export interface SnapshotRequest {
   /** When the import finished (the market snapshot's key). */
@@ -24,7 +24,7 @@ export interface SnapshotRequest {
 }
 
 export interface SnapshotOutcome {
-  ratings: { gameDate: string; players: number } | null;
+  ratings: { gameDate: string; players: number; ourScouts?: boolean; evidenceMode?: RatingMode | null } | null;
   errors: string[];
 }
 
@@ -39,7 +39,8 @@ export async function takeImportSnapshots(request: SnapshotRequest, between: () 
     // to observe (D-018), whatever OOTP wrote in them
     if (request.ratingMode?.mode !== 'none') {
       ratings = takeSnapshot(); // development-tracking snapshot, keyed by in-game date
-      if (ratings) stampSnapshotMode(ratings.gameDate, request.ratingMode, request.importStartedAt);
+      // Read from our scouts' full reports, it is stamped as their kind, never the main tables' (D-067)
+      if (ratings) stampSnapshotMode(ratings.gameDate, evidenceRecord(request.ratingMode, ratings.evidenceMode ?? null), request.importStartedAt);
     }
   } catch (err) {
     errors.push(`rating snapshot: ${(err as Error).message}`);

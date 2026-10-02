@@ -27,6 +27,7 @@ import {
 } from './dataFreshness.js';
 import type { Integer } from './contract/primitives.js';
 import { currentRatingMode } from './history.js';
+import { ourScoutsRatings, type OurScoutsRatings } from './scoutedEvidence.js';
 import { historyNote } from './historyIdentity.js';
 import { leftOutOfServedImport, upgradeState, type LeftOutFile } from './importer.js';
 import type { RatingModeRecord } from './ratingMode.js';
@@ -72,6 +73,11 @@ export interface DataStatus {
   import: {
     /** Which kind of ratings the export carries, as the import read OOTP's export settings; null for an import from before N3.5. */
     ratingMode: RatingModeRecord | null;
+    /**
+     * Our scouts' full reports, when the export carries them for our club and they are the scouted evidence (D-067): our
+     * club's id and how many players they rate; null otherwise (the main tables are the evidence, of `ratingMode`'s kind).
+     */
+    ourScouts: OurScoutsRatings | null;
     /** Files the import left out (older than the rest of the export, or unreadable), and what their tables hold. */
     leftOut: LeftOutFile[];
     /**
@@ -397,6 +403,7 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
     freshness,
     import: {
       ratingMode: hasData ? currentRatingMode() : null,
+      ourScouts: hasData ? ourScoutsRatings() : null,
       leftOut: hasData ? leftOutOfServedImport() : [],
       upgradeNote: upgradeState.note,
     },

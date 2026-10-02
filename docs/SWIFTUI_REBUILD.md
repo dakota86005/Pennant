@@ -1472,6 +1472,23 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
   an ⓘ popover; the subtitle short enough for the title bar (the game date and a word or two) with the full one as
   `subtitleHint` (the Data Status toolbar button's help tag); the game date as served and written; the four source lines as rows (why the
   log is unavailable in the help tag); every date and place as a row, a missing one saying why; the action.
+  The ratings line says whose ratings the evidence reads (D-067): "Your scouts' view" with the help tag "Your scouts'
+  full reports, from the export's scouted ratings file" when the export carries our scouts' complete ratings, otherwise
+  the main tables' kind (D-061); `DataStatus.import.ourScouts` carries our club's id and how many players they rate.
+  A player our scouts haven't rated is read from OSA's view and says so (D-067, the owner's decision): the player card,
+  roster, pitching staff and draft rows carry `ratingsFill` (`{ mark: "OSA", hint: "OSA's view: our scouts haven't
+  rated him." }`, null otherwise) for a quiet mark with its hint, and an MLB need's evidence trail carries the sentence
+  in his basis ("His ratings"). The major league's served views (N8, D-065: position players, pitching staff, bench)
+  carry it per player too: every cell resting on his grades (estimate, bat, glove, running, tools, where he can play)
+  has the sentence appended to its hint, and his detail opens with it as a quiet line, so the Mac can draw the mark
+  beside them. With no row of ours, true ratings in the main tables and OSA's rows in the file, the ratings line reads
+  "OSA's view" for the whole export instead (D-067, review L6). A league comparison's basis shows both readings where
+  they differ ("Our scouts: 65 · OSA: 70"; a percentile "Our scouts: 65th percentile · OSA: 70th", D-068), only when
+  the yardstick is OSA's rows from the file. Drawing the mark is the client's.
+  For the farm (N10, not built here): its Development tracking must show the served `ratingSourceSwitches` (a player
+  whose ratings changed source between snapshots, a switch, never development), and the lines basis of the stakes tiers
+  should append the served `setAside` sentence of `CeilingLinesInForce` when the league's own lines rest on other
+  ratings than today's and the starting lines serve (D-068, the owner's decision).
 - The N3 gaps, served additively on reused routes: `ImportProgress.words` (the phase, the table named for a person, the
   progress line); `ServerStatus.importNote` and the import-finished event's `note` (why an import failed, as a sentence
   to act on with the raw message as its detail, was interrupted, or has no export folder); `POST /api/config` answers

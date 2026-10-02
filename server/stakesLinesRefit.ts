@@ -8,7 +8,7 @@
  */
 
 import { db, tableColumns, tableExists } from './db.js';
-import { loadScoutedAbilities } from './scoutedEvidence.js';
+import { inPopulationView, loadScoutedAbilities } from './scoutedEvidence.js';
 import { registerCalibration, type CalibrationBasis } from './saveCalibration.js';
 import { latestCalibrationAttempt } from './saveCalibrationStore.js';
 import {
@@ -32,7 +32,8 @@ export function leagueMajorLeaguers(leagueId: number): MajorLeaguer[] {
      JOIN team_roster r ON r.team_id = t.team_id AND r.player_id = p.player_id AND r.list_id = ?
      WHERE t.level = 1 AND t.league_id = ?${allstar}${retired}`
   ).all(ACTIVE_LIST, leagueId) as Array<{ id: number; position: number | null; club: number }>;
-  const abilities = loadScoutedAbilities(rows.map((r) => r.id));
+  // A league population: OSA's view when it is the yardstick (D-068)
+  const abilities = inPopulationView(() => loadScoutedAbilities(rows.map((r) => r.id)));
   const out: MajorLeaguer[] = [];
   for (const r of rows) {
     const a = abilities.for(r.id);
@@ -68,7 +69,7 @@ export function computeStakesLines(b: CalibrationBasis) {
 }
 
 registerCalibration({
-  subsystem: STAKES_SUBSYSTEM, component: STAKES_LINES_COMPONENT, method: STAKES_LINES_METHOD, trigger: 'each_import',
+  subsystem: STAKES_SUBSYSTEM, component: STAKES_LINES_COMPONENT, readsRatings: true, method: STAKES_LINES_METHOD, trigger: 'each_import',
   compute: (b) => computeStakesLines(b),
 });
 

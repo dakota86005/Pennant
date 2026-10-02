@@ -196,7 +196,9 @@ export folder --(exportFiles.ts: quiet 10 s, one burst, fingerprint)--> importer
   a philosophy input may live there (`tests/importCache.test.ts`). The served schema (tables and columns) is also
   remembered per read-only connection.
 - The export's rating mode (`ratingMode.ts`) is read from `<save>.lg/settings/db_dump_standard_csv.cfg` at each import
-  and recorded in `pennant_import`; see "Evidence and fog of war".
+  and recorded in `pennant_import`; see "Evidence and fog of war". The export's complete scouted ratings
+  (`players_scouted_ratings`) are imported like any file; when they rate players for our club they are the evidence
+  (D-067).
 
 ### Persistent local state
 
@@ -313,6 +315,39 @@ and serves the revealed glove at a player's listed position in bulk
 (`loadScoutedGlovesAtPosition`); Player Value's reader is its only caller in
 Player Value, and the pure ratings modules take its types only.
 
+- **Whose ratings (D-067):** when the export carries OOTP's "Additional complete
+  scouted ratings" (`players_scouted_ratings`, one row per player per scouting
+  organisation) from this export, with rows for the club the save marks as ours,
+  those rows are the evidence: every rating below is read from them
+  (`ourScoutsRatings`, `ratingFrom`), whatever the main ratings tables carry
+  (OSA's view, true ratings or the scouts' view); other clubs' rows are never
+  read. A player our scouts haven't rated is read from his OSA row
+  in the same file and said so (`UNRATED_BY_OUR_SCOUTS = 'osa'`, the owner's
+  decision), never from the main tables; each snapshot row keeps its source
+  (`src`), and a change of source is a switch, never development. With no row of
+  ours, true ratings in the main tables and OSA's rows in the file, OSA's view is the
+  evidence, said so for the whole export and stamped `osa` (review L6). Otherwise the main
+  tables are the evidence, labelled with their kind (D-061). The rating snapshot
+  reads the same rows and is stamped `scouted-complete`, a kind of its own; the
+  player card, roster grid, pitching staff and draft board read the same grades
+  (`scoutedRatingRow`, `ratingFrom`). Only `scoutedEvidence.ts` names the file
+  (`tests/evidenceBoundary.test.ts`), and nothing reads its star figures.
+- **League yardsticks and fits (D-068):** every league-wide population and every
+  per-save fit that reads ratings is built inside `inPopulationView` and reads OSA's
+  view (`LEAGUE_POPULATION_SOURCE = 'osa'`: the file's `scouting_team_id` 0 rows),
+  else our scouts' reports when the file carries them (the owner's decision), and
+  the main tables only with no usable file; OSA's history is kept in
+  `save_population_snapshots` (carried with a carry-over, D-064). A judgment of a
+  player stays on the evidence above (our scouts', OSA filling in per player, said
+  so); a league comparison's basis shows both readings where they differ, only when
+  the yardstick is OSA's file rows (`bothReadingsApply`). Each fit's record names its
+  `ratingSource`, and a change of source refits it and hides fits of the other
+  source from its predecessor lookups (`withRatingSource`). A fit is served only on
+  today's source (`adoptedCalibrationOnSource`; OSA in the main tables and in the
+  file are one): after a failed refit on a new source the labelled prior serves,
+  and the attempt is recorded so it isn't rerun until the export or source changes.
+  The adapter keeps its prepared statements, the file's columns and the rating
+  sources per served import, and names the columns it reads (never `SELECT *`).
 - **Approved:** the exported tool ratings (`*_ratings_overall_*` current,
   `*_ratings_talent_*` potential), stamina and pitch grades, and revealed
   fielding-position grades (`gloves.ts`: a current grade above zero is the only

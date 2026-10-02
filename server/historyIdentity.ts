@@ -44,7 +44,7 @@ import { isMainThread } from 'node:worker_threads';
 import { databaseGeneration, db as leagueDb, importRecord, LAST_IMPORT_PATH, tableColumns, tableExists } from './db.js';
 import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
 import { parseGameDate } from './dataFreshness.js';
-import { historyDb, SNAPSHOT_DATA_COLUMNS, snapshotGameDate } from './history.js';
+import { historyDb, POPULATION_DATA_COLUMNS, SNAPSHOT_DATA_COLUMNS, snapshotGameDate } from './history.js';
 import { locateSave } from './ootpSave.js';
 import { findSaves, saveId, type SaveInfo } from './paths.js';
 
@@ -648,6 +648,7 @@ function pruneCarryBackups(): void {
  */
 function copyInto(saveKey: string, carry: number, source: string, dates: readonly string[]): { rows: number; modeDates: string[] } {
   const columns = SNAPSHOT_DATA_COLUMNS.join(', ');
+  const populationColumns = POPULATION_DATA_COLUMNS.join(', ');
   let rows = 0;
   const modeDates: string[] = [];
   for (const date of dates) {
@@ -664,6 +665,17 @@ function copyInto(saveKey: string, carry: number, source: string, dates: readonl
        SELECT ?, game_date, mode, additional_scouted, source, import_started_at, recorded_at FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`
     ).run(saveKey, source, date).changes;
     if (mode > 0) modeDates.push(date);
+    // The league's population view at that date too (OSA's, D-068), kind by kind, recorded so the undo removes exactly it (review M4)
+    historyDb.prepare(
+      `INSERT OR IGNORE INTO history_carried_population_rows (carry_id, kind, game_date, player_id)
+       SELECT ?, s.kind, s.game_date, s.player_id FROM save_population_snapshots s WHERE s.save_key = ? AND s.game_date = ?
+         AND NOT EXISTS (SELECT 1 FROM save_population_snapshots t
+           WHERE t.save_key = ? AND t.kind = s.kind AND t.game_date = s.game_date AND t.player_id = s.player_id)`
+    ).run(carry, source, date, saveKey);
+    historyDb.prepare(
+      `INSERT OR IGNORE INTO save_population_snapshots (save_key, kind, ${populationColumns})
+       SELECT ?, kind, ${populationColumns} FROM save_population_snapshots WHERE save_key = ? AND game_date = ?`
+    ).run(saveKey, source, date);
   }
   return { rows, modeDates };
 }
@@ -686,6 +698,15 @@ export function releaseCarried(saveKey: string, date: string, playerIds: readonl
   for (const id of playerIds) release.run(date, id, saveKey);
 }
 
+/** The same for the league's population view of `kind` (D-068, review M4): the save's own rows there are no carry-over's. */
+export function releaseCarriedPopulation(saveKey: string, kind: string, date: string, playerIds: readonly number[]): void {
+  const release = historyDb.prepare(
+    `DELETE FROM history_carried_population_rows WHERE kind = ? AND game_date = ? AND player_id = ?
+       AND carry_id IN (SELECT id FROM history_carry_overs WHERE save_key = ? AND undone_at IS NULL)`
+  );
+  for (const id of playerIds) release.run(kind, date, id, saveKey);
+}
+
 /**
  * The GM's answer (D-064). `adopt` carries the named history over: after a backup, its dates before the carry limit are
  * COPIED into this save's history (this save's own rows win where both have one), the rows copied are recorded, and the
@@ -706,6 +727,12 @@ export function answerHistoryOffer(id: string, choice: 'adopt' | 'fresh' | 'undo
       historyDb.prepare(
         `DELETE FROM save_rating_snapshots WHERE save_key = ? AND EXISTS
            (SELECT 1 FROM history_carried_rows c WHERE c.carry_id = ? AND c.game_date = save_rating_snapshots.game_date AND c.player_id = save_rating_snapshots.player_id)`
+      ).run(saveKey, n);
+      // And the population rows it copied, kind by kind (review M4)
+      historyDb.prepare(
+        `DELETE FROM save_population_snapshots WHERE save_key = ? AND EXISTS
+           (SELECT 1 FROM history_carried_population_rows c WHERE c.carry_id = ? AND c.kind = save_population_snapshots.kind
+              AND c.game_date = save_population_snapshots.game_date AND c.player_id = save_population_snapshots.player_id)`
       ).run(saveKey, n);
       for (const date of JSON.parse(row.mode_dates) as string[]) {
         historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`).run(saveKey, date);
@@ -861,6 +888,11 @@ const CHUNK = 500;
  * left, and the decision recorded. Each date is one transaction with its record, so a crash part way through leaves
  * every date either done or not, and the next review carries on. A date brought over is final; one left unused is
  * looked at again only against another import; nothing is copied twice.
+ */
+/*
+ * The league's population view (`save_population_snapshots`, D-068) has no name-keyed copy: the earlier build never wrote one
+ * and this build writes it under the save's key only. So the review has no population rows to bring over (review M4); a
+ * carry-over between keys (`copyInto`) carries them.
  */
 export function reviewLegacyHistory(saveKey: string, save: ServedSave, names: () => ReadonlyMap<number, string> | null = lazyNames()): void {
   const stamp = servedImportStamp();

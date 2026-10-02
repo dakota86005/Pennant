@@ -2002,6 +2002,17 @@ Every item is the supervisor's call, approved by the owner 2026-09-25.
   - Arizona's findings are unchanged.
   - The ceiling lines measure equal to the starting lines, so no tier moves.
 
+**Amended 2026-10-02 (D-068: a fit that reads ratings rests on one ratings source; the owner's decisions).** A fit's run
+record names the ratings it was fitted on (`ratingSource`, `populationSource().id`). A fit is served only on the source it
+was fitted on (OSA in the main tables and OSA's rows in the export's scouted file count as one): after a change of
+source, the refit on the new source is served if it passes its gate, and otherwise the provisional prior, labelled
+("the earlier fit rests on another source and isn't used"), never the earlier fit. The failed attempt is recorded per
+key and source with the export's game date (`save_calibration_source_attempts`; Player Value's ratings fit keeps its own,
+`value_fit_source_attempts`), so the refit runs again only when the export or the source changes. Implementation: `saveCalibration.ts`
+(`computeCalibrationRefits`), `saveCalibrationStore.ts` (`adoptedCalibrationOnSource`, the attempt markers),
+`playerValue.ts` and `playerValueFitStore.ts` (`computeRatingsRefits`, `ratingsModelFor`), and the serving readers (`stakesLines.ts`,
+`toolsCalibration.ts`, `mlbCalibration.ts`).
+
 ## D-054 — Charting library
 
 **Status:** Accepted: owner approved adopting a charting dependency (2026-09-23); library choice per the evaluation.
@@ -2477,7 +2488,9 @@ overwrote part of the other's.
     later dates stay where they were, kept apart. The source is never changed or unbound. The rows copied are recorded,
     and a row or rating-kind stamp the save's own snapshot later writes is no longer the carry-over's, so "Undo
     carry-over" removes exactly what it copied and never the save's own ratings; after an undo the question can be asked
-    again. Before a carry-over a copy of `history.db` is made in `backups/history-before-carry-over-<time>.db` (after a
+    again. The league's population view at those dates (OSA's history, D-068: `save_population_snapshots`) is carried
+    with them, kind by kind, recorded (`history_carried_population_rows`) and undone the same way (review M4, 2026-10-02);
+    the name-keyed history an earlier build wrote has no population view, so the review of it has none to bring over. Before a carry-over a copy of `history.db` is made in `backups/history-before-carry-over-<time>.db` (after a
     cheap check for room; no room refuses it in words), unless the last such copy is newer than the last import (the
     carry-overs since can be undone); the newest three are kept, and the one-time copy made before earlier history was
     brought over is never removed.
@@ -2575,7 +2588,6 @@ for the scoped jargon exceptions named by its operation.
   club with no philosophy would get, and no window label is on the face. A need's badge takes the department's
   philosophy-free severity, as the desk does.
 
-
 ## D-066 — Farm & Development on the Mac: D-065 for the farm, its views built in a job of their own
 
 **Status:** Accepted at N10 of the SwiftUI rebuild (2026-10-01; numbered D-066 at the merge with N8, which holds D-065),
@@ -2625,3 +2637,166 @@ app included ("priority" is a verdict word no exception may allow). The builder'
 "recommendation"), "Review for a major-league chance", "Hold and keep watching", "Current level right" and "Consider a
 lower level"; philosophy's neutral preference reads "Fine by the club"; React's Prospects inbox and board are one view
 (choosing a row opens his meeting).
+
+## D-067 — The club's own scouts' complete ratings are the scouted evidence when the export carries them
+
+**Status:** Accepted (supervisor, 2026-10-02: the brief "read the club's own scouts' complete ratings"). The rule for a
+player our scouts haven't rated was **decided by the owner, 2026-10-02: OSA's view, said so** (over the builder's
+recommendation, "unknown to our scouts"). **Implementation:** `server/scoutedEvidence.ts` (`ourScoutsRatings`, `evidenceRatingMode`,
+`scoutedRatingRow`, `UNRATED_BY_OUR_SCOUTS`); the rating snapshot (`takeSnapshot`, `history.ts`) and its stamp; the
+`scouted-complete` kind (`ratingMode.ts`); the data status's ratings line. Refines D-002 and D-017 (what "the
+organisation's scouted ratings" are), D-018, D-061 (the kind of ratings) and D-064 (the stamps are the save's).
+
+OOTP's CSV export has an option "Additional complete scouted ratings". With it on, the export carries
+`players_scouted_ratings.csv` beside the main ratings tables: one row per player per scouting organisation, each with
+`scouting_team_id`, `scouting_coach_id`, `scouting_accuracy` and the full rating columns. The main tables carry
+whichever kind the other options choose (D-061): OSA's view, true ratings, the scouts' view or none. Until now Pennant
+never read the file, so on a save exported with "Show OSA player ratings" its scouted evidence was OSA's view, not the
+GM's own scouts'.
+
+What the owner's USBL save (OSA on, real off, none off, complete scouted on) establishes, read from its export alone:
+
+- 13,414 rows. `scouting_team_id` 33, the club the save marks as human-managed, has 5,049 rows: every player who is
+  not retired, one row each, by one scouting coach (`scouting_coach_id` 1471). `scouting_team_id` 0 is no club
+  (no `teams` row) and has no coach (`-1`); it rates the same 5,049 players and agrees with the main tables (exported in
+  OSA mode) on 99.7% of shared rating values, so it is read as OSA, the league's scouting service. The other ids
+  (1, 3, 4, ... 114) are the league's other nineteen major-league clubs, each with its own scouting coach, each rating
+  138 to 210 players (all among the 5,049; a handful their own): their scouts' views, which our club cannot see.
+- The file's rating columns are the main tables' (batting, pitching, running, fielding) on the same display scale (20
+  to 80 here), plus `pitching_ratings_babip` and OOTP's star figures (`overall`, `talent`, `overall_rating`,
+  `talent_rating`); our scouts differ from OSA on about 2% of values, by about 4.5 points on average where they differ.
+  `scouting_accuracy` is 5 on every row.
+- Not established, and left so: what `scouting_coach_id` changes beyond naming the scout (one per club here); what
+  the file holds under "Show real player ratings", "Show no player ratings" or the scouts'-view mode (only an OSA-mode
+  export was available, and no OOTP experiment is asked for); whether the scouts'-view main tables equal our rows in
+  that mode; what `scouting_accuracy` 5 means on OOTP's scale.
+
+The rule:
+
+- **Our scouts' rows are the evidence.** When the served import carries `players_scouted_ratings` from this export
+  (not a table kept from an earlier import), the club the save marks as human-managed resolves (D-017's viewer), and
+  the file has at least one row whose `scouting_team_id` is that club, those rows are the scouted evidence: every
+  rating `scoutedEvidence.ts` serves for a judgment of a player (tools, potential, stamina, pitches, splits, running,
+  fielding) is read from them, whatever the main tables carry (OSA, true ratings or the scouts' view), and the main
+  tables' ratings are not read as evidence at all. The other clubs' rows are never read. OSA's rows are read only for a
+  player our scouts haven't rated (below) and for the league's yardsticks and fits, which D-068 governs (they moved there
+  from this rule: the populations peers are ranked against are not judgments of a player).
+- **Otherwise the current behaviour stands** (D-061): the main tables, labelled with their kind. "Show no player
+  ratings" still withholds every rating, the file included: what OOTP writes into the file in that mode is not
+  established, and the GM's choice of no ratings is kept.
+- **One exception: true ratings in the main tables and OSA's view in the file** (review L6, 2026-10-02). When no row of
+  ours can be read (the club the save marks as ours doesn't resolve, or the file has none of its rows), the main tables
+  are true ratings ("Show real player ratings") and the file carries OSA's rows, judgments read OSA's view, not the true
+  ratings, and say so for the whole export: the ratings line and a claim's basis read "OSA's view", and the snapshot is
+  stamped as OSA's kind (`osa`), so it is never compared with a snapshot of true ratings. This follows the owner's
+  fog-of-war preference (D-002, D-017) and his OSA-fill decision below: when the export offers a scouted view, true
+  ratings are not the evidence. In any other mode the main tables are already a scouted view (or nothing) and stand.
+- **A player our scouts haven't rated is read from OSA's view, and said so** (`UNRATED_BY_OUR_SCOUTS = 'osa'`, the
+  policy line; the owner's decision). When our scouts' rows are the evidence and the file has no row of ours for him, his
+  OSA row in the same file (`scouting_team_id` 0) is used, never the main tables: so never true ratings, whatever the
+  export's mode. With no OSA row either he is unknown (D-018). Every rating served from the fill says so for that
+  player, in plain words ("OSA's view: our scouts haven't rated him"): the player card, the evidence summary and an MLB
+  need's evidence trail carry the sentence, and the roster, staff and draft rows carry a quiet mark ("OSA") with the
+  sentence as its hint (the major league's served views, D-065, carry the mark and its hint per player too). The
+  builder had recommended leaving him unknown (one source per population, a snapshot stamped per snapshot); the
+  per-player source below answers both concerns.
+- **A change of source is never development, per player.** Each snapshot row records where that player's ratings came
+  from (`src`: `our_scouts` or `osa`). Between two snapshots in which a player's source differs, his comparison is a
+  source switch, stated, never a change in his ratings: his rows from the other source are left out of his development
+  trend and observed history, and the rating-change list shows the switch and no changes for him (D-061's rule, applied
+  per player). A row with no recorded source is never evidence of a switch.
+- **A new kind of ratings, never mixed in history.** A rating snapshot read from our scouts' rows is stamped
+  `scouted-complete`, a kind of its own (D-061's switch rule applies unchanged: two known, different kinds are a switch,
+  never development). It is not equated with the scouts'-view main tables (`scouted`), since nothing establishes the two
+  are the same numbers. The name-keyed copy an earlier build reads (D-064) is stamped `unknown` for such a snapshot, a
+  kind that build already leaves out, so a rolled-back build never compares it.
+- **Served words.** The data status's ratings line reads "Your scouts' view" with the source in its help tag ("Your
+  scouts' full reports, from the export's scouted ratings file"); a claim's basis (`ratingSource`) says the same. The
+  import's record keeps the main tables' kind as D-061 records it. The player card, the roster grid, the pitching staff
+  and the draft board read their grades through the same rows (`scoutedRatingRow`, `ratingFrom`), so every page shows
+  what the evidence uses.
+
+The import indexes the file by `(scouting_team_id, player_id)` so our scouts' row is read directly; a league imported by
+an earlier build that holds the file gains the index through D-061's one-time upgrade at the next start.
+
+Not changed: OOTP's star figures in the file (`overall`, `talent`, `overall_rating`, `talent_rating`) are not read, as
+the main tables' Overall and Potential are not (D-017); the display scale is still read off the main tables (the same
+export, the same scale).
+
+## D-068 — League-wide yardsticks and fits read OSA's view; judgments of a player read our scouts'
+
+**Status:** Accepted (the owner's direction, 2026-10-02: "we should also determine for league custom algorithms - if we
+use scouted or OSA numbers. OSA might provide more consistency over time"; the rule below is the supervisor's proposal
+to him, built). **Amended 2026-10-02 by the owner's two decisions** after the independent review (below: "No OSA view"
+and "A failed refit after a change of source"). **Implementation:** `server/scoutedEvidence.ts` (`LEAGUE_POPULATION_SOURCE`, `populationSource`,
+`inPopulationView`, the population readers); the population snapshots (`save_population_snapshots`, `history.ts`); the
+calibration driver (`saveCalibration.ts`) and Player Value's ratings refit (`playerValue.ts`), which fit inside the
+population view and record its source; the league comparisons' basis (`destinationFit.ts`, `mlbEvidence.ts`).
+Refines D-053 (calibration belongs to the save) and D-067 (whose ratings).
+
+OSA is the league's shared scouting service: one view of every player, the same for every club, so a yardstick or a fit
+built on it does not drift with the club's own scouting staff (who change, and whose reports are uneven across the
+league). How OSA itself grades from season to season is OOTP's and isn't established from the export. OSA is visible to
+the club, so it is within fog of war (D-002, D-017).
+
+- **League-wide populations and fits use OSA** (`LEAGUE_POPULATION_SOURCE = 'osa'`, the policy line): every per-save fit
+  or refit that reads ratings (Player Value's ratings fit, the MLB tools fit, the MLB standards and bullpen measurement,
+  the stakes lines) and every league-wide population or yardstick built from ratings (the destination-fit populations
+  behind "Nth percentile of MLB relievers", the hitter-tools and fielding populations, the peer distributions the
+  standards are measured from). OSA's view is the export's complete scouted ratings' `scouting_team_id` 0 rows, from
+  this export (D-067's conditions), and its history is kept in its own snapshots (`save_population_snapshots`), since
+  the evidence snapshots hold our scouts' reports.
+- **Judgments about a player stay on our scouts' complete ratings** (D-067): Player Development, the staff's read, his
+  grades and his history, with OSA filling in for a player our scouts haven't rated, said so per player.
+- **Where his two readings differ inside a league comparison, the basis says both** ("Our scouts: 65 · OSA: 70", or
+  for a percentile "Our scouts: 65th percentile · OSA: 70th"): he is placed on our scouts' reading against a yardstick
+  in OSA's terms, and the basis shows the gap. Only when the yardstick really is OSA's view from the file
+  (`populationSource().id === 'osa_file'`) and the player is read from our scouts' reports: otherwise there is no second
+  reading, and nothing is labelled "OSA" that isn't (review H1).
+- **No OSA view in the export: our scouts' reports** (**the owner's decision, 2026-10-02**: "Your scouts' ratings").
+  When the file carries our scouts' rows but no OSA rows, league-wide populations and fits read our scouts' reports
+  (`populationSource().id` `our_scouts_file`), never the main tables: in a "real ratings" export the main tables are
+  true ratings, and a fit's history is already our scouts' (the evidence snapshots). Only with no usable file at all (no
+  row of ours and none of OSA's) do they read the main tables, as before D-067, labelled with their kind (D-061). Every
+  fit's run record and basis names its source.
+- **Never a silent switch.** Each fit's run record names its ratings source (`ratingSource`) and says it in its notes.
+  When the source changes between imports, the fit is refitted on the new source and recorded as such ("The ratings'
+  source changed ...: refitted, not compared with the earlier fit"), and no earlier fit of another source is used as its
+  predecessor (no hysteresis across the change). OSA in the main tables (`export:osa`) and OSA's rows in the file
+  (`osa_file`) count as one source, so that switch keeps its fit.
+- **A failed refit after a change of source: the labelled starting estimate** (**the owner's decision, 2026-10-02**).
+  When a fit's ratings source changes and the refit on the new source doesn't pass its gate, the earlier fit is not
+  served: it rests on other ratings. Pennant serves the provisional prior, labelled, and the basis says the earlier fit
+  rests on another source and isn't used. An earlier fit whose source wasn't recorded (made before D-068) is not assumed
+  to be on today's source: it is refitted once, and served only if that refit passes. The failed attempt is recorded
+  (`save_calibration_source_attempts`, and Player Value's `value_fit_source_attempts`: the key, the source and the
+  export's game date), so the refit is not run again
+  at every import and start-up; it is tried again when the inputs change (a new export, or another source). The gate
+  still governs adoption.
+- **History:** a population snapshot holds OSA's rows for every player, stamped with its kind per row. A fit reads only
+  snapshots of the current population kind; until OSA's history builds up, a fit that needs pairs of snapshots has
+  fewer and says so (its fallback prior, labelled, D-053).
+
+What reads ratings league-wide, and where it now stands (the builder's inventory, 2026-10-02):
+
+- *On the population view:* the destination-fit populations (`destinationFit.ts`, behind the "Nth percentile of MLB
+  starters / relievers" readings, role standing, the farm's skip-level gate); the hitter-tools population
+  (`scoutedHitterPopulation`: the bat percentile, the lineup's centre, the platoon norm); the fielding populations
+  (`scoutedFieldingPopulation`); the stakes lines' major leaguers (`stakesLinesRefit.ts`); the MLB tools fit and the
+  standards and bullpen measurement (`readsRatings` components of `saveCalibration.ts`, whose per-club sample is read
+  wholly in OSA's view); Player Value's ratings fit (mapping, cross-section, arrivals by potential, development pairs).
+- *Left on the evidence, as judgments of players:* a player's own grades, his projection, his history and trend; the
+  peer development percentile (`history.ts`, a cohort of the club's own snapshots, not the league's); the draft board's
+  order (the club's own read of the class).
+- *Not a population:* the display scale (`ratingScaleMax`, the same export's scale) and OOTP's own league averages
+  (`leagues.avg_rating_*`, informational).
+
+Measured on the owner's USBL save (OSA mode, our scouts rating every active player; one rating snapshot): the league
+composites' 10th, 50th and 90th percentiles are identical in both sources (hitters 41/48/56, pitchers 38/47/53), the
+hitter-tools means move by at most 0.2, the fielding medians not at all, our 40 active players' destination percentiles
+by 0.3 points on average (at most 1.2), the stakes lines and the tools fit not at all, and Player Value's ratings fit in
+about a quarter of its 13,702 numbers (median change 0%, the largest in thin arrival cells). On this save the choice
+changes little today; it matters as scouting staffs change and our scouts' coverage thins.
+
+Not established, and left so: whether OSA's rows in the file hold OSA's view under "Show real player ratings" (they are
+read as OSA's by their label, `scouting_team_id` 0; only an OSA-mode export was available to check them against).
