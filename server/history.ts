@@ -3,7 +3,8 @@ import { Router } from 'express';
 import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
-import { isModeSwitch, RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
+import { isModeSwitch, ourScoutsRecord, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
+import { evidenceRatingMode, ratingFrom } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
@@ -270,7 +271,8 @@ export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | n
         `INSERT OR REPLACE INTO rating_snapshot_modes
          (save_name, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(name, ...values);
+      // An earlier build doesn't know our scouts' full reports as a kind (D-067): it reads them as a kind it never compares
+      .run(name, values[0], record.mode === 'scouted-complete' ? 'unknown' : record.mode, ...values.slice(2));
   }).immediate();
 }
 
@@ -307,7 +309,8 @@ export interface RatingModeSwitch {
  * movement. Returns the dates left out, the switches and the unknown-kind dates, for the reasons a consumer shows.
  */
 export function modeFilter(): { excluded: Set<string>; switches: RatingModeSwitch[]; unknownKind: string[] } {
-  const current = currentRatingMode()?.mode ?? null;
+  // The kind the evidence is read in now: our scouts' full reports when the export carries them (D-067), else the export's
+  const current = evidenceRatingMode();
   const modes = snapshotModes();
   const excluded = new Set<string>();
   if (current && current !== 'unknown') for (const [date, mode] of modes) if (isModeSwitch(mode, current)) excluded.add(date);
@@ -336,7 +339,7 @@ export function modeSwitches(modes: Map<string, RatingMode> = snapshotModes()): 
     if (last && isModeSwitch(last.mode, mode)) {
       out.push({
         before: last.date, after: date, fromMode: last.mode, toMode: mode,
-        text: `The kind of ratings changed between ${last.date} and ${date}, from ${RATING_MODE_WORDS[last.mode].short.toLowerCase()} to ${RATING_MODE_WORDS[mode].short.toLowerCase()}: the change is a switch, not development.`,
+        text: `The kind of ratings changed between ${last.date} and ${date}, from ${ratingModeNamed(last.mode)} to ${ratingModeNamed(mode)}: the change is a switch, not development.`,
       });
     }
     last = { date, mode };
@@ -372,15 +375,19 @@ function leagueGameDate(): string | null {
 }
 
 /** Capture a ratings snapshot of every rostered player. Idempotent per game date. */
-export function takeSnapshot(): { gameDate: string; players: number } | null {
-  if (!tableExists('players') || !tableExists('players_batting')) return null;
+export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean } | null {
+  // The ratings the evidence reads: our scouts' full reports when the export carries them (D-067), else the main tables
+  const battingFrom = ratingFrom('batting');
+  const pitchingFrom = ratingFrom('pitching');
+  if (!tableExists('players') || !battingFrom) return null;
+  const ourScouts = evidenceRatingMode() === 'scouted-complete';
   const gameDate = leagueGameDate();
   if (!gameDate) return null;
   const resolved = currentHistoryKey();
   const saveName = rollbackName();
 
   // The split and running columns are read where the export has them; a missing one is stored as unknown (NULL), never guessed
-  const battingColumns = new Set(tableExists('players_batting') ? (leagueDb.prepare(`PRAGMA table_info(players_batting)`).all() as Array<{ name: string }>).map((c) => c.name) : []);
+  const battingColumns = battingFrom.columns;
   const optional = (column: string, as: string) => (battingColumns.has(column) ? `b.${column} AS ${as}` : `NULL AS ${as}`);
   const splitSelect = (['l', 'r'] as const).flatMap((side) => (['contact', 'gap', 'power', 'eye', 'strikeouts'] as const).map((tool, i) =>
     optional(`batting_ratings_vs${side}_${tool}`, `${side}${['con', 'gap', 'pow', 'eye', 'avk'][i]}`)));
@@ -402,8 +409,8 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
               ${[...splitSelect, ...runningSelect].join(', ')}
        FROM players p
        JOIN teams t ON t.team_id = p.team_id
-       LEFT JOIN players_batting b ON b.player_id = p.player_id
-       LEFT JOIN players_pitching pi ON pi.player_id = p.player_id
+       LEFT JOIN ${battingFrom.from} b ON b.player_id = p.player_id
+       LEFT JOIN ${pitchingFrom?.from ?? '(SELECT NULL AS player_id WHERE 0)'} pi ON pi.player_id = p.player_id
        WHERE p.retired = 0 AND p.team_id > 0`
     )
     .all() as Array<Record<string, number | string | null>>;
@@ -458,7 +465,7 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
   insertAll.immediate();
   if (!filed) return null;
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players`);
-  return { gameDate, players: rows.length };
+  return { gameDate, players: rows.length, ourScouts };
 }
 
 /**
@@ -471,7 +478,7 @@ export function baselineSnapshot(): { gameDate: string; players: number } | null
   const mode = currentRatingMode();
   if (!tableExists('players') || !servedLeagueCertain() || mode?.mode === 'none' || snapshotDates().length > 0) return null;
   const snapshot = takeSnapshot();
-  if (snapshot) stampSnapshotMode(snapshot.gameDate, mode, null);
+  if (snapshot) stampSnapshotMode(snapshot.gameDate, snapshot.ourScouts ? ourScoutsRecord(mode) : mode, null);
   return snapshot;
 }
 

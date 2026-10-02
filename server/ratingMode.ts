@@ -12,6 +12,11 @@
  *   none     "Show no player ratings" is on: the export carries no ratings, and every rating reads as unknown
  *   unknown  the file is missing or unreadable, a label is missing, or more than one of them is on
  *
+ * And one kind no export setting names (D-067): `scouted-complete`, our own scouts' complete reports, read from the
+ * export's `players_scouted_ratings` file when it carries rows for our club. The settings never produce it: it is the
+ * kind of the EVIDENCE (and of a snapshot taken from it), decided in `scoutedEvidence.ts`, while an import's record
+ * keeps the main tables' kind.
+ *
  * The app works on any of them (the owner's decision 9, 2026-09-26): the mode is noted, never enforced. What it changes
  * is what a rating is said to be (its source, in the basis) and how rating history is read: two snapshots taken in
  * different known modes are a switch, never development. An unreadable setting is `unknown`, never assumed to be the
@@ -20,7 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type RatingMode = 'scouted' | 'real' | 'osa' | 'none' | 'unknown';
+export type RatingMode = 'scouted' | 'real' | 'osa' | 'none' | 'unknown' | 'scouted-complete';
 
 /** The export's rating mode as the import recorded it, with how it was read. */
 export interface RatingModeRecord {
@@ -102,8 +107,11 @@ export function readRatingMode(lgPath: string | null, exportWrittenAtMs: number 
   return parseRatingMode(text);
 }
 
-/** The mode in the GM's words, for the data status and a rating's basis: a name, a help tag (75 characters at most), a sentence. */
-export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string; long: string }> = {
+/**
+ * The mode in the GM's words, for the data status and a rating's basis: a name, a help tag (75 characters at most), a
+ * sentence, and the name a switch between two kinds uses where two kinds share a short name.
+ */
+export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string; long: string; named?: string }> = {
   scouted: {
     short: 'Your scouts\' view',
     hint: 'OOTP\'s export shows the ratings as your scouts see them',
@@ -124,6 +132,12 @@ export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string
     hint: 'The export carries no ratings, so every rating is unknown',
     long: 'The export carries no ratings (OOTP\'s export setting "Show no player ratings" is on), so every rating is unknown.',
   },
+  'scouted-complete': {
+    short: 'Your scouts\' view',
+    hint: 'Your scouts\' full reports, from the export\'s scouted ratings file',
+    long: 'The ratings are your own scouts\' full reports (OOTP\'s export option "Additional complete scouted ratings").',
+    named: 'your scouts\' full reports',
+  },
   unknown: {
     short: 'Not known',
     hint: 'Pennant couldn\'t tell which kind of ratings the export carries',
@@ -134,4 +148,15 @@ export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string
 /** Whether two recorded modes are a switch: both known and different. An unrecorded or unknown mode is never evidence of one. */
 export function isModeSwitch(a: RatingMode | null | undefined, b: RatingMode | null | undefined): boolean {
   return !!a && !!b && a !== 'unknown' && b !== 'unknown' && a !== b;
+}
+
+/** A kind's name inside a sentence about a switch: its own name where two kinds share a short one. */
+export const ratingModeNamed = (mode: RatingMode): string => RATING_MODE_WORDS[mode].named ?? RATING_MODE_WORDS[mode].short.toLowerCase();
+
+/**
+ * The stamp of a snapshot read from our scouts' full reports (D-067): their kind, with what the export's settings said
+ * kept beside it. Never the main tables' kind: the two are not established to be the same numbers.
+ */
+export function ourScoutsRecord(record: RatingModeRecord | null): RatingModeRecord {
+  return { mode: 'scouted-complete', additionalScouted: record?.additionalScouted ?? null, source: record?.source ?? 'settings_missing', reason: null };
 }

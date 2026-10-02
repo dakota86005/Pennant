@@ -37,9 +37,9 @@
  *     weighted, position-aware Overall.
  */
 
-import { db, tableColumns, tableExists } from './db.js';
+import { databaseGeneration, db, importRecord, tableColumns, tableExists } from './db.js';
 import { ratingScaleMax } from './valuation.js';
-import { gloves, type Gloves, type PositionRating } from './gloves.js';
+import { gloves, glovesFromRow, type Gloves, type PositionRating } from './gloves.js';
 import { parseGameDate } from './dataFreshness.js';
 import { currentRatingMode, historyDb, modeFilter, snapshotModes } from './history.js';
 import { currentHistoryKey } from './historyIdentity.js';
@@ -97,9 +97,22 @@ export interface RatingSource {
 }
 
 export function ratingSource(): RatingSource {
+  if (ourScoutsRatings()) {
+    const words = RATING_MODE_WORDS['scouted-complete'];
+    return { mode: 'scouted-complete', short: words.short, text: words.long };
+  }
   const record = exportRatingMode();
   const words = RATING_MODE_WORDS[record.mode];
   return { mode: record.mode, short: words.short, text: record.mode === 'unknown' && record.reason ? `${words.long} ${record.reason}` : words.long };
+}
+
+/**
+ * The kind of ratings the evidence is read in now (D-067): our scouts' full reports when the export carries them for our
+ * club, otherwise the main tables' kind as the import recorded it; null for an import from before the kind was recorded
+ * (never evidence of a switch). Rating history compares only snapshots of this kind.
+ */
+export function evidenceRatingMode(): RatingMode | null {
+  return ourScoutsRatings() ? 'scouted-complete' : currentRatingMode()?.mode ?? null;
 }
 
 /** "Show no player ratings": the export carries none, so every rating reads as unknown (never a zero, never a default). */
@@ -127,6 +140,117 @@ export function viewerContext(): ViewerContext {
   if (rows.length === 1) return { viewerOrgId: rows[0].team_id, resolution: 'human_team' };
   if (rows.length > 1) return { viewerOrgId: null, resolution: 'ambiguous_human_teams' };
   return { viewerOrgId: null, resolution: 'unresolved' };
+}
+
+// ── Whose eyes: our scouts' full reports (D-067) ─────────────────────────
+
+/**
+ * What a player our scouts haven't rated is, when their full reports are the evidence (D-067): unknown to our scouts.
+ * Never OSA's view or true ratings in his place (D-018). This is the builder's recommendation, and the owner's to change;
+ * the alternative ("OSA's view, said so per player") would need a per-player source on every rating and snapshot row,
+ * and is not built, so the type admits only this value.
+ */
+export const UNRATED_BY_OUR_SCOUTS: 'unknown' = 'unknown';
+
+/** The export's complete scouted ratings: one row per player per scouting organisation (OOTP's "Additional complete scouted ratings"). */
+const OUR_SCOUTS_TABLE = 'players_scouted_ratings';
+
+/** Our scouts' full reports, when the export carries them: our club's id (`scouting_team_id`) and how many players they rate. */
+export interface OurScoutsRatings {
+  teamId: number;
+  players: number;
+}
+
+/** Whether the served import kept this table from an earlier import (its file not rewritten this time, D-061): then it is not this export's. */
+function keptFromEarlierImport(record: Record<string, unknown> | null): boolean {
+  if (!record) return false;
+  const stale = Array.isArray(record.stale) ? (record.stale as Array<{ table?: unknown }>) : [];
+  const tables = Array.isArray(record.tables) ? (record.tables as Array<{ table?: unknown; source?: unknown }>) : [];
+  return stale.some((t) => t.table === OUR_SCOUTS_TABLE) || tables.some((t) => t.table === OUR_SCOUTS_TABLE && t.source === 'carried');
+}
+
+function findOurScouts(record: Record<string, unknown> | null): OurScoutsRatings | null {
+  // "Show no player ratings" withholds every rating, this file's included: what OOTP writes in it then isn't established
+  if (ratingsWithheld() || !tableExists(OUR_SCOUTS_TABLE) || keptFromEarlierImport(record)) return null;
+  const columns = tableColumns(OUR_SCOUTS_TABLE);
+  if (!columns.includes('player_id') || !columns.includes('scouting_team_id')) return null;
+  // Whose scouts: the club the save marks as human-managed; more than one, or none, reads nobody's rows as ours
+  const teamId = viewerContext().viewerOrgId;
+  if (teamId === null || !Number.isInteger(teamId)) return null;
+  const row = db.prepare(
+    `SELECT COUNT(DISTINCT player_id) AS n FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ?`
+  ).get(teamId) as { n: number } | undefined;
+  const players = Number(row?.n ?? 0);
+  return players > 0 ? { teamId, players } : null;
+}
+
+let ourScoutsCache: { generation: number; conn: unknown; record: unknown; value: OurScoutsRatings | null } | null = null;
+
+/**
+ * Our scouts' full reports, when they are the evidence (D-067): the served import carries the export's complete scouted
+ * ratings from THIS export, our club resolves, and the file rates at least one player for it. Null otherwise, and then
+ * the main tables are the evidence as before (D-061). Cached per served import.
+ */
+export function ourScoutsRatings(): OurScoutsRatings | null {
+  const record = importRecord();
+  if (ourScoutsCache && ourScoutsCache.generation === databaseGeneration() && ourScoutsCache.conn === db && ourScoutsCache.record === record) {
+    return ourScoutsCache.value;
+  }
+  const value = findOurScouts(record);
+  ourScoutsCache = { generation: databaseGeneration(), conn: db, record, value };
+  return value;
+}
+
+export type RatingTable = 'batting' | 'pitching' | 'fielding';
+const MAIN_TABLE: Record<RatingTable, string> = { batting: 'players_batting', pitching: 'players_pitching', fielding: 'players_fielding' };
+
+/**
+ * Where a family of ratings is read from, as a table expression keyed by `player_id`, with its columns: our scouts'
+ * rows when they are the evidence (every family is in their one file), otherwise the main table; null when absent.
+ * A player our scouts haven't rated has no row in it, so he reads as unknown (`UNRATED_BY_OUR_SCOUTS`).
+ */
+export function ratingFrom(kind: RatingTable): { from: string; columns: Set<string> } | null {
+  const ours = ourScoutsRatings();
+  if (ours) {
+    return { from: `(SELECT * FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ${Number(ours.teamId)})`, columns: new Set(tableColumns(OUR_SCOUTS_TABLE)) };
+  }
+  const table = MAIN_TABLE[kind];
+  return tableExists(table) ? { from: `"${table}"`, columns: new Set(tableColumns(table)) } : null;
+}
+
+/** Whether our scouts' full reports rate this player (only asked when they are the evidence). */
+function ourScoutsRate(playerId: number): boolean {
+  const ours = ourScoutsRatings();
+  return !!ours && !!db.prepare(`SELECT 1 FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ? AND player_id = ? LIMIT 1`).get(ours.teamId, playerId);
+}
+
+/** Each family's rating columns, by name. */
+const FAMILY: Record<RatingTable, RegExp> = {
+  batting: /^(batting_ratings_|running_ratings_)/,
+  pitching: /^pitching_ratings_/,
+  fielding: /^fielding_rating/,
+};
+
+/**
+ * One player's row of a ratings table as the evidence sees it, for a page that shows the grades (the player card): the
+ * export's row, every rating column in it our scouts' when their reports are the evidence (unknown, null, where they
+ * haven't rated him; never the main table's grade), the rest of the row (handedness, experience) as exported.
+ */
+export function scoutedRatingRow(kind: RatingTable, playerId: number): Record<string, unknown> | undefined {
+  const table = MAIN_TABLE[kind];
+  const main = tableExists(table)
+    ? (db.prepare(`SELECT * FROM "${table}" WHERE player_id = ?`).get(playerId) as Record<string, unknown> | undefined)
+    : undefined;
+  const ours = ourScoutsRatings();
+  if (!ours) return main;
+  const scouts = db.prepare(`SELECT * FROM "${OUR_SCOUTS_TABLE}" WHERE scouting_team_id = ? AND player_id = ?`)
+    .get(ours.teamId, playerId) as Record<string, unknown> | undefined;
+  if (!main && !scouts) return undefined;
+  const family = FAMILY[kind];
+  const out: Record<string, unknown> = main ? { ...main } : { player_id: playerId, position: scouts?.position ?? null };
+  for (const column of Object.keys(out)) if (family.test(column)) out[column] = scouts ? scouts[column] ?? null : null;
+  if (scouts) for (const [column, value] of Object.entries(scouts)) if (family.test(column) && !(column in out)) out[column] = value;
+  return out;
 }
 
 // ── Scale ───────────────────────────────────────────────────────────────
@@ -390,8 +514,10 @@ export function loadScoutedAbilities(playerIds: Iterable<number>): ScoutedAbilit
   const scale = ratingScale();
   const viewer = viewerContext();
 
-  const batting = new Set(tableColumns('players_batting'));
-  const pitching = new Set(tableColumns('players_pitching'));
+  const battingFrom = ratingFrom('batting');
+  const pitchingFrom = ratingFrom('pitching');
+  const batting = battingFrom?.columns ?? new Set<string>();
+  const pitching = pitchingFrom?.columns ?? new Set<string>();
   const hasBatting = batting.has('player_id');
   const hasPitching = pitching.has('player_id');
 
@@ -411,8 +537,8 @@ export function loadScoutedAbilities(playerIds: Iterable<number>): ScoutedAbilit
   const statement = (count: number) => db.prepare(
     `SELECT p.player_id, p.position, ${select.join(', ')}
      FROM players p
-     ${hasBatting ? 'LEFT JOIN players_batting b ON b.player_id = p.player_id' : ''}
-     ${hasPitching ? 'LEFT JOIN players_pitching pp ON pp.player_id = p.player_id' : ''}
+     ${hasBatting ? `LEFT JOIN ${battingFrom!.from} b ON b.player_id = p.player_id` : ''}
+     ${hasPitching ? `LEFT JOIN ${pitchingFrom!.from} pp ON pp.player_id = p.player_id` : ''}
      WHERE p.player_id IN (${new Array(count).fill('?').join(', ')})`
   );
 
@@ -492,7 +618,10 @@ const scalePosition = (rating: PositionRating, scale: RatingScale): PositionRati
  */
 export function scoutedGloves(playerId: number): Gloves | null {
   if (ratingsWithheld()) return null;
-  const profile = gloves(playerId);
+  // Our scouts' reports: a player they haven't rated has no profile (unknown), never one read off another view
+  const profile = ourScoutsRatings()
+    ? (ourScoutsRate(playerId) ? glovesFromRow(scoutedRatingRow('fielding', playerId)) : null)
+    : gloves(playerId);
   if (!profile) return null;
   const scale = ratingScale();
   if (scale.native2080) return profile;
@@ -516,6 +645,7 @@ const hitterPopulationCache = new Map<number, ScoutedHitterProfile[]>();
 
 /** Cleared whenever a fresh export is imported. */
 export function clearFieldingPopulationCache(): void {
+  ourScoutsCache = null;
   fieldingPopulationCache.clear();
   hitterPopulationCache.clear();
 }
@@ -544,11 +674,12 @@ export function scoutedFieldingPopulation(leagueId: number, position: number): n
   if (hit) return hit;
   const out: number[] = [];
   const column = `fielding_rating_pos${position}`;
-  if (!ratingsWithheld() && position >= 1 && position <= 9 && tableExists('players_fielding') && tableExists('teams') && tableColumns('players_fielding').includes(column)) {
+  const fielding = ratingFrom('fielding');
+  if (!ratingsWithheld() && position >= 1 && position <= 9 && fielding && tableExists('teams') && fielding.columns.has(column)) {
     const scale = ratingScale();
     const rows = db.prepare(
       `SELECT f."${column}" AS grade
-       FROM players_fielding f
+       FROM ${fielding.from} f
        JOIN players p ON p.player_id = f.player_id
        JOIN teams t ON t.team_id = p.team_id
        WHERE t.league_id = ? AND t.level = 1 AND p.position = ? AND p.retired = 0 AND f."${column}" > 0${majorLeaguerOnly()}`
@@ -654,14 +785,15 @@ const hitterColumns = (): string[] => {
 export function loadScoutedHitterProfiles(playerIds: Iterable<number>): Map<number, ScoutedHitterProfile> {
   const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
   const out = new Map<number, ScoutedHitterProfile>();
-  if (ids.length === 0 || !tableExists('players_batting') || ratingsWithheld()) return out;
-  const present = new Set(tableColumns('players_batting'));
+  const batting = ratingFrom('batting');
+  if (ids.length === 0 || !batting || ratingsWithheld()) return out;
+  const present = batting.columns;
   const select = hitterColumns().map((c) => (present.has(c) ? `b."${c}" AS "${c}"` : `NULL AS "${c}"`));
   const scale = ratingScale();
   for (let at = 0; at < ids.length; at += CHUNK) {
     const chunk = ids.slice(at, at + CHUNK);
     const rows = db.prepare(
-      `SELECT b.player_id AS player_id, ${select.join(', ')} FROM players_batting b WHERE b.player_id IN (${chunk.map(() => '?').join(', ')})`
+      `SELECT b.player_id AS player_id, ${select.join(', ')} FROM ${batting.from} b WHERE b.player_id IN (${chunk.map(() => '?').join(', ')})`
     ).all(...chunk) as Array<Record<string, unknown>>;
     for (const row of rows) out.set(Number(row.player_id), hitterProfileFromRow(Number(row.player_id), row, scale));
   }
@@ -676,7 +808,7 @@ export function scoutedHitterPopulation(leagueId: number): ScoutedHitterProfile[
   const hit = hitterPopulationCache.get(leagueId);
   if (hit) return hit;
   let out: ScoutedHitterProfile[] = [];
-  if (tableExists('players') && tableExists('teams') && tableExists('players_batting')) {
+  if (tableExists('players') && tableExists('teams') && ratingFrom('batting')) {
     const ids = (db.prepare(
       `SELECT p.player_id AS id FROM players p JOIN teams t ON t.team_id = p.team_id
        WHERE t.league_id = ? AND t.level = 1 AND p.position > 1 AND p.retired = 0${majorLeaguerOnly()}`
@@ -710,8 +842,9 @@ export interface ScoutedGloveAtPosition {
 export function loadScoutedGlovesAtPosition(playerIds: Iterable<number>): Map<number, ScoutedGloveAtPosition> {
   const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
   const out = new Map<number, ScoutedGloveAtPosition>();
-  if (ids.length === 0 || !tableExists('players') || !tableExists('players_fielding') || ratingsWithheld()) return out;
-  const present = new Set(tableColumns('players_fielding'));
+  const fielding = ratingFrom('fielding');
+  if (ids.length === 0 || !tableExists('players') || !fielding || ratingsWithheld()) return out;
+  const present = fielding.columns;
   if (!present.has('player_id') || !tableColumns('players').includes('position')) return out;
   const select: string[] = [];
   for (let position = 2; position <= 9; position += 1) {
@@ -724,7 +857,7 @@ export function loadScoutedGlovesAtPosition(playerIds: Iterable<number>): Map<nu
     const chunk = ids.slice(at, at + CHUNK);
     const rows = db.prepare(
       `SELECT p.player_id AS player_id, p.position AS position, ${select.join(', ')}
-       FROM players p JOIN players_fielding f ON f.player_id = p.player_id
+       FROM players p JOIN ${fielding.from} f ON f.player_id = p.player_id
        WHERE p.player_id IN (${chunk.map(() => '?').join(', ')})`
     ).all(...chunk) as Array<Record<string, unknown>>;
     for (const row of rows) {

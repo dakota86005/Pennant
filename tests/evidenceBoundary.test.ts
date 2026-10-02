@@ -223,6 +223,16 @@ describe('the evidence boundary', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('our scouts\' full reports are read only through the adapter, and never their star figures (D-067)', () => {
+    // The file is named in one module; every other reader gets its rows from the adapter (ratingFrom, scoutedRatingRow)
+    const naming = serverSources().filter((file) => /players_scouted_ratings/.test(code(file)));
+    expect(naming).toEqual(['scoutedEvidence.ts']);
+    // OOTP's Overall and Potential stars and its accuracy figure in the file are not approved evidence (D-017)
+    for (const file of serverSources()) {
+      expect(code(file), file).not.toMatch(/\b(overall_rating|talent_rating|scouting_accuracy)\b/);
+    }
+  });
+
   it('requires evidence, not bare numbers, at the development entry points', () => {
     // Structural: the inputs that carry ratings are typed as ScoutedAbility
     expect(code('developmentFit.ts')).toMatch(/ability:\s*ScoutedAbility/);
