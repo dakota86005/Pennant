@@ -223,6 +223,36 @@ describe('the evidence boundary', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('our scouts\' full reports are read only through the adapter, and never their star figures (D-067)', () => {
+    // The file is named in one module; every other reader gets its rows from the adapter (ratingFrom, scoutedRatingRow)
+    const naming = serverSources().filter((file) => /players_scouted_ratings/.test(code(file)));
+    expect(naming).toEqual(['scoutedEvidence.ts']);
+    // OOTP's Overall and Potential stars and its accuracy figure in the file are not approved evidence (D-017)
+    for (const file of serverSources()) {
+      expect(code(file), file).not.toMatch(/\b(overall_rating|talent_rating|scouting_accuracy)\b/);
+    }
+    // ...nor its bare star columns, `overall` and `talent`: the adapter names the rating columns it reads, never `SELECT *` from
+    // the file, and never those two by name (review L7)
+    const adapter = code('scoutedEvidence.ts');
+    expect(adapter).not.toMatch(/SELECT\s+\*\s+FROM\s+"\$\{OUR_SCOUTS_TABLE\}"/);
+    expect(adapter).not.toMatch(/SELECT\s+\*\s+FROM\s+"?players_scouted_ratings/);
+    expect(adapter).not.toMatch(/[."'`](overall|talent)["'`]/);
+  });
+
+  it('league yardsticks and fits are built in the population view, and the policy is switched by no server module (D-068)', () => {
+    // The population builders and the refits ask for OSA's view through the adapter
+    expect(code('destinationFit.ts')).toMatch(/inPopulationView\(\(\) => computePopulationRows/);
+    expect(code('stakesLinesRefit.ts')).toMatch(/inPopulationView\(\(\) => loadScoutedAbilities/);
+    expect(code('saveCalibration.ts')).toMatch(/inPopulationView\(\(\) => c\.compute/);
+    expect(code('playerValue.ts')).toMatch(/run = inPopulationView\(/);
+    // OSA's own history is written and read in two places only, and carried over (copied and undone, D-064) in a third;
+    // the policy is a line, never flipped by the app
+    const naming = serverSources().filter((file) => /save_population_snapshots/.test(code(file))).sort();
+    expect(naming).toEqual(['history.ts', 'historyIdentity.ts', 'scoutedEvidence.ts']);
+    const flipping = serverSources().filter((file) => file !== 'scoutedEvidence.ts' && /withPopulationPolicy/.test(code(file)));
+    expect(flipping).toEqual([]);
+  });
+
   it('requires evidence, not bare numbers, at the development entry points', () => {
     // Structural: the inputs that carry ratings are typed as ScoutedAbility
     expect(code('developmentFit.ts')).toMatch(/ability:\s*ScoutedAbility/);

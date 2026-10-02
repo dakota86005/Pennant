@@ -39,13 +39,17 @@ const lines = (texts: readonly string[], label: string) =>
 /** A level's name as the league's pages write it (`LEVEL_NAMES`, handed in by the service: this module reads nothing). */
 export type LevelName = (level: number) => string | null;
 
-function candidateClaim(ctx: DepartmentContext, c: ResponseCandidate, levelName: LevelName) {
+/** Where a player's grades come from when it needs saying (D-067: "OSA's view: our scouts haven't rated him"); null otherwise. */
+export type RatingsNote = (playerId: number) => string | null;
+
+function candidateClaim(ctx: DepartmentContext, c: ResponseCandidate, levelName: LevelName, ratingsNote: RatingsNote) {
   const level = c.level === null ? null : levelName(c.level);
   const where = level ? `, in ${level}` : '';
   const because = [
     ...lines(c.why, 'Why he is here'),
     { label: 'The move', value: PATH_WORDS[c.pathKind] ?? 'a roster move' },
     ...lines(c.path.requirementsUnmet, 'First'),
+    ...lines([ratingsNote(c.playerId) ?? ''], 'His ratings'),
   ];
   return claim({
     text: `${c.name}${where}: ${PATH_WORDS[c.pathKind] ?? 'a roster move'}`,
@@ -71,6 +75,7 @@ export function needTrail(
   packet: Pick<ResponsePacket, 'groups' | 'notConsidered' | 'unknowns'>,
   overview: MajorLeagueInput['overview'],
   levelName: LevelName,
+  ratingsNote: RatingsNote = () => null,
 ): ClaimTrail {
   const { text, hint } = needText(need, overview);
   const found = packet.groups.reduce((n, g) => n + g.candidates.length, 0);
@@ -78,7 +83,7 @@ export function needTrail(
     .filter((g) => g.candidates.length > 0)
     .map((g) => ({
       title: cell(GROUP_WORDS[g.group] ?? 'Other responses'),
-      claims: g.candidates.map((c) => candidateClaim(ctx, c, levelName)),
+      claims: g.candidates.map((c) => candidateClaim(ctx, c, levelName, ratingsNote)),
       empty: null,
     }));
   if (sections.length === 0) {

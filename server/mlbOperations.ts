@@ -22,6 +22,8 @@ import { buildResponsePacket, type ResponsePacket, type ResponsePorts } from './
 import { activeMembers, loadClubView, type ClubView, type RoleRef } from './mlbRoster.js';
 import { mlbAssignmentAssessments } from './org.js';
 import { openFarmSession, type FarmSession } from './mlbEvidence.js';
+/** Where a candidate's grades come from, when it needs saying (D-067), for a need's evidence trail. */
+export { ratingsNoteOf } from './mlbEvidence.js';
 import { resolvePhilosophy } from './philosophy.js';
 import { deadlineRead } from './posture.js';
 import { readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';

@@ -7,6 +7,7 @@
 import type { Cell, Tone } from '../../contract/presentation.js';
 import type { MlbNeed } from '../../mlbNeeds.js';
 import type { RoleGroupReview } from '../../mlbReview.js';
+import { ratingFillOf } from '../../scoutedEvidence.js';
 import { basis, cell, claim } from '../claim.js';
 import { sourceOf } from '../frontOffice/desk.js';
 import {
@@ -207,6 +208,22 @@ function readClaim(v: OverviewContext, h: Holder) {
   });
 }
 
+/**
+ * A row whose grades are OSA's view filling in for our scouts (D-067): every cell that rests on his grades carries the
+ * sentence in its hint, and his detail opens with it as a quiet line, so the Mac can draw the mark ("OSA") beside them.
+ * Nothing changes for a player our scouts rate.
+ */
+function markFill(playerId: number, cells: Record<string, Cell>, ratingKeys: readonly string[], detail: MlbBlock[]): MlbBlock[] {
+  const note = ratingFillOf(playerId)?.hint ?? null;
+  if (!note) return detail;
+  for (const k of ratingKeys) {
+    const c = cells[k];
+    if (c) cells[k] = { ...c, hint: c.hint ? `${c.hint}. ${note}` : note };
+  }
+  const [first, ...rest] = detail;
+  return first ? [{ ...first, lines: [line(note, { quiet: true }), ...first.lines] }, ...rest] : [block(null, [line(note, { quiet: true })])];
+}
+
 function hitterDetail(v: OverviewContext, h: Holder, spot: { position: number; label: string; partner: { playerId: number; name: string; share: number } | null }): MlbBlock[] {
   const e = h.evidence;
   const est = h.estimate;
@@ -340,7 +357,8 @@ export function positionPlayersView(v: OverviewContext): MlbPositionPlayersView 
     };
     return tableRow(`spot-${sp.position}`, cells, sort, {
       player: player(v, r.playerId, r.name),
-      detail: h ? hitterDetail(v, h, sp) : [block(null, [line('The review has no read on him.', { quiet: true })])],
+      detail: markFill(r.playerId, cells, ['estimate', 'bat', 'glove', 'run'],
+        h ? hitterDetail(v, h, sp) : [block(null, [line('The review has no read on him.', { quiet: true })])]),
       actions: h ? hitterActions(h) : [],
       ...(h ? { claim: readClaim(v, h) } : {}),
     });
@@ -385,7 +403,8 @@ function armTable(v: OverviewContext, g: RoleGroupReview, relief: boolean): MlbT
       sort.usedAs = rankOf(TIER_ORDER, h.tier);
     }
     const actions = h.strength === 'strong' || h.strength === 'moderate' ? [action('Replacement options', decision(`mlb:role_holder_review:${h.playerId}`))] : [];
-    return tableRow(`arm-${h.playerId}`, cells, sort, { player: player(v, h.playerId, h.name), detail: armDetail(h), actions, claim: readClaim(v, h) });
+    const detail = markFill(h.playerId, cells, ['estimate', 'tools'], armDetail(h));
+    return tableRow(`arm-${h.playerId}`, cells, sort, { player: player(v, h.playerId, h.name), detail, actions, claim: readClaim(v, h) });
   });
   return { columns, rows, empty: rows.length ? null : cell('No arms to review.', { tone: 'unknown' }) };
 }
@@ -490,7 +509,7 @@ export function benchView(v: OverviewContext): MlbBenchView {
     ));
     return tableRow(`bench-${r.playerId}`, cells, sort, {
       player: player(v, r.playerId, r.name),
-      detail: [block('Where he can play', reads.length ? reads : [line('No visible grade at any position.', { quiet: true })])],
+      detail: markFill(r.playerId, cells, ['canPlay', 'bat'], [block('Where he can play', reads.length ? reads : [line('No visible grade at any position.', { quiet: true })])]),
     });
   });
   return {

@@ -11,7 +11,9 @@
 import { hitterToolsWeightFor, toolsParamsFor } from './toolsCalibration.js';
 import { TOOLS_METHOD, type ToolsModel } from './mlbToolsFit.js';
 import type { ToolsParams } from './toolsModel.js';
-import { adoptedCalibration, latestCalibrationAttempt, type CalibrationCheck, type StoredCalibration } from './saveCalibrationStore.js';
+import { adoptedCalibration, adoptedCalibrationOnSource, latestCalibrationAttempt, type CalibrationCheck, type StoredCalibration } from './saveCalibrationStore.js';
+import { populationSource } from './scoutedEvidence.js';
+import { sameRatingSource } from './ratingMode.js';
 import { onCalibrationRecorded } from './saveCalibration.js';
 import { completedThrough, leagueGameDate } from './saveIdentity.js';
 import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
@@ -90,12 +92,14 @@ const pct = (x: number | null | undefined) => (x === null || x === undefined ? '
 /** Why a group serves the starting values: each reason is one the line may give, and only when it is the true one. */
 export type StartingReason =
   | 'not_measured' | 'no_league' | 'games' | 'games_unknown' | 'clubs' | 'seasons' | 'no_zone_rating' | 'no_later_season' | 'check_failed'
-  | 'kept' | 'confirming' | 'returned' | 'no_splits' | 'relievers' | 'rarely_long' | 'next_import' | 'no_forward_ratings' | 'few_forward_ratings' | 'thin_forward' | 'kept_part';
+  | 'kept' | 'confirming' | 'returned' | 'no_splits' | 'relievers' | 'rarely_long' | 'next_import' | 'no_forward_ratings' | 'few_forward_ratings' | 'thin_forward' | 'kept_part'
+  | 'other_source';
 
 /** Each reason in a GM's words (the record's reasons are for the API). */
 export const REASON_TEXT: Record<StartingReason, string> = {
   not_measured: 'this league has not been measured yet',
   no_league: 'this club has no major league in the export',
+  other_source: 'this league\'s own were fitted on other ratings than today\'s, so they aren\'t used',
   games: 'it is too early in the season to tell who the regulars are',
   games_unknown: 'the export does not say how many games the clubs have played',
   clubs: 'too few clubs have a settled lineup to measure',
@@ -268,6 +272,9 @@ function describeDefense(s: StoredCalibration<DefenseModel>): string {
   return `From how steady each position's fielding runs were from one season to the next in this league (${s.record.window.seasons.join(', ')}), checked on the season after.`;
 }
 
+/** The yardsticks fitted on ratings (`readsRatings`): served only on today's ratings source (D-068). */
+const READS_RATINGS: ReadonlySet<YardstickKey> = new Set<YardstickKey>(['standards', 'tools']);
+
 const cache = new Map<string, RosterReviewCalibration>();
 onCalibrationRecorded(() => cache.clear());
 
@@ -296,11 +303,20 @@ function compute(leagueId: number | null): RosterReviewCalibration {
   } catch {
     // An export without the league's season: nothing can be served but the starting values
   }
+  const setAside: Partial<Record<YardstickKey, string>> = {};
   const read = <M>(component: YardstickKey, method: string) => {
     try {
       // Never through a season the league has not completed, nor a measurement from a later export than today's (a reverted save):
       // the latest usable one is found in the store itself. An unknown date today admits no dated measurement.
       const bound = { throughMax: through ?? -1, gameDateMax: today ?? 'not established' };
+      if (READS_RATINGS.has(component)) {
+        // A fit that reads ratings serves only on today's ratings source (D-068, the owner's decision): one on other ratings is set aside
+        const source = populationSource().id;
+        const on = adoptedCalibrationOnSource<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound, source);
+        if (on.setAside) setAside[component] = on.setAside.text;
+        const attempt = latestCalibrationAttempt<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound);
+        return { adopted: on.fit, latest: attempt && sameRatingSource(attempt.record.ratingSource, source) ? attempt : null };
+      }
       const adopted = adoptedCalibration<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound);
       const latest = latestCalibrationAttempt<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound);
       return { adopted, latest };
@@ -317,20 +333,25 @@ function compute(leagueId: number | null): RosterReviewCalibration {
   const defense = read<DefenseModel>('defense', DEFENSE_METHOD);
   const results = read<ResultsModel>('results', RESULTS_METHOD);
   const tools = read<ToolsModel>('tools', TOOLS_METHOD);
-  return assemble(leagueId, standards.adopted, aging.adopted, defense.adopted, results.adopted, platoon.adopted, [standards.latest, aging.latest, defense.latest, results.latest, platoon.latest, tools.latest], tools.adopted);
+  return assemble(leagueId, standards.adopted, aging.adopted, defense.adopted, results.adopted, platoon.adopted, [standards.latest, aging.latest, defense.latest, results.latest, platoon.latest, tools.latest], tools.adopted, setAside);
 }
 
-function group(key: YardstickKey, adopted: StoredCalibration | null, latest: StoredCalibration | null, describe: (s: never) => string, noLeague = false): YardstickGroup {
+function group(key: YardstickKey, adopted: StoredCalibration | null, latest: StoredCalibration | null, describe: (s: never) => string, noLeague = false, setAside: string | null = null): YardstickGroup {
   // A verdict that the starting values held up is adopted too: it serves them, and says they were checked on this league
   const own = servesOwn(key, adopted);
   const shown = own ? adopted : null;
-  // The verdict in force gives the reason (a later attempt that could not decide is the API's `lastAttempt`, never the reason)
-  const reason: StartingReason | null = own ? null : noLeague ? 'no_league' : adopted ? keptReason(key, adopted) : reasonOf(latest);
+  // The verdict in force gives the reason (a later attempt that could not decide is the API's `lastAttempt`, never the reason);
+  // a fit on other ratings than today's, set aside with no attempt on today's, says that (D-068)
+  const reason: StartingReason | null = own ? null : noLeague ? 'no_league' : adopted ? keptReason(key, adopted) : setAside && !latest ? 'other_source' : reasonOf(latest);
   const current = adopted ?? latest;
   const failedLater = latest && !latest.adopted && (!adopted || latest.basis !== adopted.basis) ? { basis: latest.basis, reason: latest.reason } : null;
   return {
     key, what: WHAT[key], source: own ? 'save' : 'starting',
-    text: own ? `${WHAT[key]}: ${describe(shown as never)}` : `${WHAT[key]}: the starting values, because ${REASON_TEXT[reason as StartingReason]}.`,
+    text: own
+      ? `${WHAT[key]}: ${describe(shown as never)}`
+      : reason === 'other_source' && setAside
+        ? `${WHAT[key]}: the starting values. ${setAside}`
+        : `${WHAT[key]}: the starting values, because ${REASON_TEXT[reason as StartingReason]}.${setAside ? ` ${setAside}` : ''}`,
     reason,
     method: current?.method ?? '',
     basis: adopted ? adopted.record.basis : null,
@@ -379,15 +400,16 @@ function assemble(
   leagueId: number | null, standards: StoredCalibration<StandardsModel> | null, aging: StoredCalibration<AgingModel> | null, defense: StoredCalibration<DefenseModel> | null,
   results: StoredCalibration<ResultsModel> | null, platoon: StoredCalibration<PlatoonModel> | null, latest: Array<StoredCalibration | null>,
   tools: StoredCalibration<ToolsModel> | null,
+  setAside: Partial<Record<YardstickKey, string>> = {},
 ): RosterReviewCalibration {
   const noLeague = leagueId === null;
   const groups = [
-    group('standards', standards, latest[0], describeStandards, noLeague),
+    group('standards', standards, latest[0], describeStandards, noLeague, setAside.standards ?? null),
     group('aging', aging, latest[1], describeAging, noLeague),
     group('defense', defense, latest[2], describeDefense, noLeague),
     group('results', results, latest[3], describeResults, noLeague),
     group('platoon', platoon, latest[4], describePlatoon, noLeague),
-    group('tools', tools, latest[5], describeTools, noLeague),
+    group('tools', tools, latest[5], describeTools, noLeague, setAside.tools ?? null),
     bullpenGroup(standards, latest[0], noLeague),
   ];
   const own = groups.filter((g) => g.source === 'save');

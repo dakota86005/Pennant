@@ -59,6 +59,8 @@ describe('an affiliate club reads its organization\'s slopes (review D3)', () =>
     const { IDS } = await import('./fixture');
     expect(majorLeagueOfClub(IDS.mlbTeam)).toBe(IDS.league);
     expect(majorLeagueOfClub(IDS.aaaTeam)).toBe(IDS.league);
-    expect(code('lineup.ts')).toMatch(/toolsParamsFor\(majorLeagueOfClub\(teamId\)\)/);
+    // The tools params and the card's centre both read the organization's major league (review L1)
+    expect(code('lineup.ts')).toMatch(/const majorLeague = majorLeagueOfClub\(teamId\);\s*const tools = toolsParamsFor\(majorLeague\)/);
+    expect(code('lineup.ts')).toMatch(/scoutedHitterPopulation\(majorLeague\)/);
   });
 });

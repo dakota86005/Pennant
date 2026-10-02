@@ -142,14 +142,15 @@ function sourceLines(s: DataStatus): Line[] {
     order: 0,
   };
 
-  // Which kind of ratings the export carries (D-061): the scouts' view, true ratings, OSA's, none, or not known
-  const mode = s.import?.ratingMode?.mode ?? 'unknown';
+  // Whose ratings the evidence reads: our scouts' full reports when the export carries them (D-067), otherwise the kind
+  // the export's main tables carry (D-061): the scouts' view, true ratings, OSA's, none, or not known
+  const mode = s.import?.ourScouts ? 'scouted-complete' : s.import?.ratingMode?.mode ?? 'unknown';
   const ratings: Line = {
     id: 'ratings',
     source: 'Ratings',
     state: RATING_MODE_WORDS[mode].short,
     tone: mode === 'unknown' || mode === 'none' ? 'caution' : 'neutral',
-    hint: s.import?.ratingMode ? RATING_MODE_WORDS[mode].hint : 'Imported before Pennant noted which kind of ratings it carries',
+    hint: s.import?.ourScouts || s.import?.ratingMode ? RATING_MODE_WORDS[mode].hint : 'Imported before Pennant noted which kind of ratings it carries',
     order: 0,
   };
 

@@ -33,7 +33,7 @@ import { clearStatCaches, computeBatting, computePitching, leagueBaseline } from
 import { clearResultsCaches } from './resultsEvidence.js';
 import { clearFarmResultsCaches } from './farmResults.js';
 import { clearFarmUsageCaches } from './farmUsage.js';
-import { clearFieldingPopulationCache, loadScoutedAbilities } from './scoutedEvidence.js';
+import { clearFieldingPopulationCache, loadScoutedAbilities, ratingFillOf, ratingFrom, type RatingTable } from './scoutedEvidence.js';
 import { ratingScaleMax, clearScaleCache } from './valuation.js';
 import { clearTwoWayCache } from './twoway.js';
 import { dashboardRoutes } from './dashboard.js';
@@ -1077,11 +1077,16 @@ api.get('/roster/:teamId', (req, res) => {
   const ratingsByPlayer = new Map<number, Record<string, unknown>>();
   for (const [table, specs] of byTable) {
     if (!tableColumns(table).includes('player_id')) continue;
-    const sel = specs.map((s) => `"${s.column}" AS "${s.key}"`).join(', ');
+    // A ratings table is read as the evidence reads it: our scouts' full reports when the export carries them (D-067);
+    // a grade their file lacks is unknown, never the main table's
+    const family = ({ players_batting: 'batting', players_pitching: 'pitching', players_fielding: 'fielding' } as Record<string, RatingTable>)[table];
+    const source = family ? ratingFrom(family) : null;
+    const from = source?.from ?? `"${table}"`;
+    const sel = specs.map((s) => (source && !source.columns.has(s.column) ? `NULL AS "${s.key}"` : `"${s.column}" AS "${s.key}"`)).join(', ');
     // Every ratings table was being read whole — every player in the save,
     // several times over — to fill in one roster
     const rows = db
-      .prepare(`SELECT player_id, ${sel} FROM "${table}" WHERE player_id IN (${rosterIds.map(() => '?').join(',')})`)
+      .prepare(`SELECT player_id, ${sel} FROM ${from} WHERE player_id IN (${rosterIds.map(() => '?').join(',')})`)
       .all(...rosterIds) as Array<Record<string, unknown> & { player_id: number }>;
     for (const row of rows) {
       const { player_id, ...rest } = row;
@@ -1257,6 +1262,8 @@ api.get('/roster/:teamId', (req, res) => {
       batsName: BATS[p.bats as number] ?? String(p.bats ?? '?'),
       throwsName: THROWS[p.throws as number] ?? String(p.throws ?? '?'),
       ratings: ratingsByPlayer.get(id) ?? {},
+      // OSA's view filling in for our scouts (D-067): a quiet mark and its sentence for the grades; null otherwise
+      ratingsFill: ratingFillOf(id),
       fielding: fieldingByPlayer.get(id) ?? null,
       scouted: (() => {
         const a = abilities.for(id);

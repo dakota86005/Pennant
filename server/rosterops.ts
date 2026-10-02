@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
+import { ratingFillOf, ratingFrom } from './scoutedEvidence.js';
 import { LEVEL_NAMES, seasonYear } from './valuation.js';
 import { positionNeeds } from './positionNeeds.js';
 import { leagueRulesForOrganization } from './leagueRules.js';
@@ -637,6 +638,9 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
     `p.draft_eligible = 1 AND COALESCE(p.draft_league_id, 0) IN (0, ?)`;
   const poolRule = eligibleByFlag > 0 ? flagRule : classRule;
 
+  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
+  const battingFrom = ratingFrom('batting')?.from ?? 'players_batting';
+  const pitchingFrom = ratingFrom('pitching')?.from ?? 'players_pitching';
   const rows = db
     .prepare(
       `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.age, p.position, p.role,
@@ -652,8 +656,8 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
               pi.pitching_ratings_talent_stuff AS stuP, pi.pitching_ratings_talent_movement AS movP,
               pi.pitching_ratings_talent_control AS ctlP
        FROM players p
-       LEFT JOIN players_batting b ON b.player_id = p.player_id
-       LEFT JOIN players_pitching pi ON pi.player_id = p.player_id
+       LEFT JOIN ${battingFrom} b ON b.player_id = p.player_id
+       LEFT JOIN ${pitchingFrom} pi ON pi.player_id = p.player_id
        /*
         * Still on the board, and for THIS league's draft, by whichever rule
         * this save answers to. The eligibility flag also stays set after a man
@@ -682,6 +686,8 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
         player_id: Number(r.player_id),
         name: String(r.name),
         age: Number(r.age ?? 0),
+        // OSA's view filling in for our scouts (D-067): a quiet mark and its sentence for the grades; null otherwise
+        ratingsFill: ratingFillOf(Number(r.player_id)),
         positionName: POSITION_NAMES[r.position as number] ?? '?',
         bats: HANDS[r.bats as number] ?? '?',
         throws: HANDS[r.throws as number] ?? '?',

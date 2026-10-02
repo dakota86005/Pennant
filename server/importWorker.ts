@@ -47,6 +47,9 @@ export function indexesFor(table: string, columns: Set<string>): Array<{ name: s
   for (const c of INDEXED_COLUMNS) if (columns.has(c)) out.push({ name: `idx_${table}_${c}`, columns: [c] });
   if (columns.has('year') && columns.has('split_id')) out.push({ name: `idx_${table}_year_split`, columns: ['year', 'split_id'] });
   else if (columns.has('year')) out.push({ name: `idx_${table}_year`, columns: ['year'] });
+  // One scouting organisation's view of a player (the export's complete scouted ratings, D-067): our scouts' row is read
+  // directly rather than among every club's rows for him
+  if (columns.has('scouting_team_id') && columns.has('player_id')) out.push({ name: `idx_${table}_scouting_team_player`, columns: ['scouting_team_id', 'player_id'] });
   return out;
 }
 

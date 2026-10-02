@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db';
 import { historyDb } from '../server/history';
 import { recordCalibration, type CalibrationRecord } from '../server/saveCalibrationStore';
+import { populationSource } from '../server/scoutedEvidence';
 import { clearRosterReviewCalibrationCache } from '../server/mlbCalibration';
 import { reviewPorts, yardsticksFor } from '../server/mlbOperations';
 import { clearResultsCaches, currentSeason } from '../server/resultsEvidence';
@@ -29,7 +30,7 @@ const RELIEVER = 9201;
 const RP = { kind: 'relief_pitcher', position: 1, label: 'relief pitcher' } as never;
 
 const record = (component: string, method: string, basis: CalibrationRecord['basis']): CalibrationRecord => ({
-  leagueId: LEAGUE, subsystem: 'mlb_operations', component, method, basis,
+  leagueId: LEAGUE, subsystem: 'mlb_operations', component, method, basis, ratingSource: populationSource().id,
   window: { seasons: [1985, 1991], skipped: [], sample: 5000, unit: 'cases' }, heldOut: [], priorWeight: { overall: 0.1, byPart: {} },
   gate: { passed: true, reason: 'test', failures: [] }, priorSource: 'test', notes: [],
 });

@@ -14,6 +14,8 @@ import type { MlbRow } from '../server/presentation/majorLeague/types.js';
 import { bannedInPayload, basisStrings, shownStrings } from './bannedJargon';
 import { healthy26, viewOf } from './mlbFixtures';
 import { buildSave, type BuiltSave } from './syntheticSave';
+import { db } from '../server/db.js';
+import { clearFieldingPopulationCache } from '../server/scoutedEvidence.js';
 
 /**
  * Major League Ops' views for the Mac app (BEHAVIOR_CASES.md "Pennant for Mac", `mlbViews.test.ts`, N8): what the
@@ -44,6 +46,45 @@ describe('Major League Ops\' views on the synthetic save, from the per-import ca
     expect(frontOfficeStats().builds).toBe(built);
     expect(report.department).toBe('majorLeague');
     await expect(majorLeagueView(save.org, 'nothing')).rejects.toThrow(/doesn't know that view/);
+  });
+
+  it('marks a player whose grades are OSA\'s view filling in for our scouts, in the hints and his detail, and nobody else (D-067)', async () => {
+    const plain = await majorLeagueView(save.org, 'positionPlayers') as { lineup: { rows: MlbRow[] } };
+    const target = plain.lineup.rows.find((r) => r.player)!.player!.playerId;
+    const RATING = /^(batting_ratings_|pitching_ratings_|fielding_rating|running_ratings_)/;
+    const columns = [...new Set(['players_batting', 'players_pitching', 'players_fielding']
+      .flatMap((t) => (db.prepare(`PRAGMA table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name))
+      .filter((c) => RATING.test(c)))];
+    db.exec(`CREATE TABLE players_scouted_ratings (player_id INTEGER, position INTEGER, scouting_team_id INTEGER, ${columns.map((c) => `${c} INTEGER`).join(', ')})`);
+    try {
+      // Our club's scouts (the human club, 1) rate everyone but him; OSA (0) rates everyone, on the same grades as the export
+      const ids = (db.prepare('SELECT player_id AS id, position FROM players').all() as Array<{ id: number; position: number }>);
+      const grade = (id: number, c: string): unknown => {
+        const table = c.startsWith('pitching_') ? 'players_pitching' : c.startsWith('fielding_') ? 'players_fielding' : 'players_batting';
+        return (db.prepare(`SELECT "${c}" AS v FROM ${table} WHERE player_id = ?`).get(id) as { v: unknown } | undefined)?.v ?? null;
+      };
+      const insert = db.prepare(`INSERT INTO players_scouted_ratings (player_id, position, scouting_team_id, ${columns.join(', ')}) VALUES (${new Array(columns.length + 3).fill('?').join(', ')})`);
+      db.transaction(() => {
+        for (const p of ids) {
+          const values = columns.map((c) => grade(p.id, c));
+          insert.run(p.id, p.position, 0, ...values);
+          if (p.id !== target) insert.run(p.id, p.position, 1, ...values);
+        }
+      })();
+      clearFieldingPopulationCache();
+      resetFrontOfficeCache();
+      const body = await majorLeagueView(save.org, 'positionPlayers') as { lineup: { rows: MlbRow[] } };
+      const row = body.lineup.rows.find((r) => r.player?.playerId === target)!;
+      expect(row.cells.bat.hint).toMatch(/OSA's view: our scouts haven't rated him\.$/);
+      expect((row.detail[0].lines[0].text as { display: string }).display).toBe('OSA\'s view: our scouts haven\'t rated him.');
+      const others = body.lineup.rows.filter((r) => r.player && r.player.playerId !== target);
+      expect(others.length).toBeGreaterThan(0);
+      for (const r of others) expect(JSON.stringify(r)).not.toMatch(/OSA's view/);
+    } finally {
+      db.exec('DROP TABLE IF EXISTS players_scouted_ratings');
+      clearFieldingPopulationCache();
+      resetFrontOfficeCache();
+    }
   });
 
   it('every view is authored, plain, and free of odds and posture, its basis included; no window label on its face', async () => {
