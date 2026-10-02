@@ -129,6 +129,10 @@ public final class MajorLeagueStore {
 
     // MARK: Decisions
 
+    /// The requests in flight, by question, with the key each was asked for: a view whose task is cancelled (its key
+    /// moved, the GM went Back) never cancels the server's answer, and a second ask for the same question waits on it.
+    private var inFlight: [DecisionQuery: (key: AppModel.StoreKey, task: Task<Void, Never>)] = [:]
+
     /// Reads one decision for the key, once per key and question (the server builds it on its first open: a moment).
     public func loadDecision(_ query: DecisionQuery, client: Client?, key: AppModel.StoreKey?) async {
         guard let client, let key else { return }
@@ -137,9 +141,24 @@ public final class MajorLeagueStore {
             decisionProblems = [:]
             decisionsKey = key
         }
-        guard decisions[query] == nil, !loadingDecisions.contains(query) else { return }
+        guard decisions[query] == nil else { return }
+        if let running = inFlight[query], running.key == key {
+            await running.task.value
+            return
+        }
+        let task = Task { await self.fetchDecision(query, client: client, key: key) }
+        inFlight[query] = (key, task)
+        await task.value
+    }
+
+    private func fetchDecision(_ query: DecisionQuery, client: Client, key: AppModel.StoreKey) async {
         loadingDecisions.insert(query)
-        defer { loadingDecisions.remove(query) }
+        defer {
+            if inFlight[query]?.key == key {
+                inFlight[query] = nil
+                loadingDecisions.remove(query)
+            }
+        }
         var served: Components.Schemas.MlbDecisionView?
         var problem: RequestProblem?
         do {
@@ -157,7 +176,7 @@ public final class MajorLeagueStore {
             problem = .from(error)
         }
         // The key moved while it was read: an earlier build's decision is never kept as the current one's
-        guard decisionsKey == key, !Task.isCancelled else { return }
+        guard decisionsKey == key else { return }
         if let served { decisions[query] = served }
         decisionProblems[query] = problem
         if let detail = problem?.detail { log("could not read a decision: \(detail)") }

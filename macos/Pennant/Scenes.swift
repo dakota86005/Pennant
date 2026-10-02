@@ -41,10 +41,11 @@ struct MainWindowScene: View {
             )
             #if DEBUG
             // A Debug build launched by a script for window screenshots can open with the ⌘K palette up
-            // (`-PennantDebugPalette <query>`) or with a route (`-PennantDebugRoute department.view`)
+            // (`-PennantDebugPalette <query>`) or with a route (`-PennantDebugRoute department.view`, or
+            // `department.view.key` with what the view has open: a decision's need)
             let defaults = UserDefaults.standard
-            if let route = defaults.string(forKey: "PennantDebugRoute")?.split(separator: ".").map(String.init), route.count == 2 {
-                restored.go(to: AppRoute(department: DeptID(rawValue: route[0]), view: route[1]))
+            if let route = defaults.string(forKey: "PennantDebugRoute")?.split(separator: ".", maxSplits: 2).map(String.init), route.count >= 2 {
+                restored.go(to: AppRoute(department: DeptID(rawValue: route[0]), view: route[1], key: route.count == 3 ? route[2] : nil))
             }
             if let query = defaults.string(forKey: "PennantDebugPalette") {
                 restored.paletteShown = true

@@ -537,7 +537,8 @@ export function decisionView(v: ViewContext, packet: ResponsePacket, ask: Decisi
   const plans = packet.plans ?? [];
   const lineupOnly = plans.length > 0 && plans.every((p) => p.id === 'platoon' || p.id === 'shift' || p.id === 'lineup_change');
   const kicker = `${labelOf(KIND_LABEL, n.kind)}${n.role ? ` · ${n.role.label}` : ''}`;
-  const unknownsShown = n.explanation ? packet.unknowns.slice(0, 1) : packet.unknowns;
+  // The packet's unknowns the problem's own lines don't already say (React showed both; one is enough)
+  const unknownsShown = (n.explanation ? packet.unknowns.slice(0, 1) : packet.unknowns).filter((u) => !n.unknowns.includes(u));
 
   const headline = claim({
     text: (r?.headline ?? n.title).trim() || kicker,

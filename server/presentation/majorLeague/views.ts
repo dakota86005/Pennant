@@ -4,7 +4,7 @@
  * The React pages' client-side words (`src/pages/mlb/`) moved here (D-056). Nothing is re-derived: every row is a
  * player the specialist read, in its own order, with the finding it served; an unknown is a sentence and sorts last.
  */
-import type { Cell } from '../../contract/presentation.js';
+import type { Cell, Tone } from '../../contract/presentation.js';
 import type { MlbNeed } from '../../mlbNeeds.js';
 import type { RoleGroupReview } from '../../mlbReview.js';
 import { basis, cell, claim } from '../claim.js';
@@ -183,6 +183,9 @@ export function overviewView(v: OverviewContext): MlbOverviewView {
 
 // ── position players ─────────────────────────────────────────────────────────
 
+/** A finding's tone: nothing to judge is unknown (never "fine"); otherwise the case's strength. */
+const findingTone = (h: Holder): Tone => (h.kind === 'cannot_judge' || h.kind === 'too_early' ? 'unknown' : STRENGTH_TONE[h.strength] ?? 'neutral');
+
 const standardLine = (h: Holder): string | null => (h.standard
   ? `${h.standard.label}: typical ${Math.round(h.standard.typical)}, unusually weak under ${Math.round(h.standard.floor)}, well under ${Math.round(h.standard.deepFloor)}.`
   : null);
@@ -191,7 +194,7 @@ const standardLine = (h: Holder): string | null => (h.standard
 function readClaim(v: OverviewContext, h: Holder) {
   const words = labelOf(FINDING_TEXT, h.kind);
   return reviewClaim(v, words, {
-    tone: STRENGTH_TONE[h.strength] ?? 'neutral',
+    tone: findingTone(h),
     hint: hintIf(h.reasons[0]),
     because: [...because('Why', h.reasons), ...because('What could explain it', h.explanations)],
     wouldChange: h.wouldChange,
@@ -290,7 +293,8 @@ export function positionPlayersView(v: OverviewContext): MlbPositionPlayersView 
   const rows: MlbRow[] = spots.map((sp, index) => {
     if (!sp.regular) {
       const who = sp.backups.length ? sp.backups.map((b) => `${b.name} (${share(b.share)})`).join(', ') : 'nobody has played it';
-      const quiet = cell('No regular', { tone: 'unknown' });
+      // Nobody to read: the spot's own row says so once; its other columns are empty of a player, not unknown values
+      const quiet = cell('—', { tone: 'unknown', hint: 'No regular here to read' });
       return tableRow(`spot-${sp.position}`, {
         spot: cell(sp.label), player: cell('Unsettled', { tone: 'unknown', hint: hintIf(`Played by ${who}`) }), bats: quiet, plays: quiet, estimate: quiet,
         bat: quiet, glove: quiet, run: quiet, platoon: quiet, read: cell('Unsettled', { tone: 'unknown' }),
@@ -315,7 +319,7 @@ export function positionPlayersView(v: OverviewContext): MlbPositionPlayersView 
       glove: gloveShown ? cell(ord(est?.defensePct) as string) : cell(sp.position === 10 ? 'Not used' : 'Not shown', { tone: 'unknown', hint: sp.position === 10 ? 'A designated hitter is his bat alone' : 'His glove at the position is not visible' }),
       run: numberCell(ord(est?.runningPct), 'No read'),
       platoon: h ? platoonChip(h.platoon) : notRead,
-      read: h ? cell(labelOf(FINDING_TEXT, h.kind), { tone: STRENGTH_TONE[h.strength] ?? 'neutral', hint: hintIf(h.reasons[0]) }) : notRead,
+      read: h ? cell(labelOf(FINDING_TEXT, h.kind), { tone: findingTone(h), hint: hintIf(h.reasons[0]) }) : notRead,
     };
     const sort: Record<string, number | string | null> = {
       spot: index,
@@ -358,14 +362,14 @@ function armTable(v: OverviewContext, g: RoleGroupReview, relief: boolean): MlbT
   const rows = g.holders.map((h, index) => {
     const results = h.estimate.resultsPct === null
       ? cell('No sample', { tone: 'unknown' })
-      : cell(`${ord(h.estimate.resultsPct)} (${share(h.evidence.reliability)} trusted)`, { hint: 'How much of his estimate his results carry' });
+      : cell(ord(h.estimate.resultsPct) as string, { hint: `His results carry ${share(h.evidence.reliability)} of the trust in his estimate` });
     const cells: Record<string, Cell> = {
       pitcher: cell(h.name),
       age: h.age === null ? cell('Not known', { tone: 'unknown' }) : cell(String(h.age)),
       estimate: numberCell(ord(h.estimate.value), 'Not known', { hint: relief && h.standard ? `Typical for the role: ${Math.round(h.standard.typical)}` : undefined }),
       tools: numberCell(ord(h.estimate.ratingsPct), 'Not known'),
       results,
-      read: cell(labelOf(FINDING_TEXT, h.kind), { tone: STRENGTH_TONE[h.strength] ?? 'neutral', hint: hintIf(h.reasons[0]) }),
+      read: cell(labelOf(FINDING_TEXT, h.kind), { tone: findingTone(h), hint: hintIf(h.reasons[0]) }),
     };
     const sort: Record<string, number | string | null> = {
       pitcher: h.name, age: h.age, estimate: h.estimate.value, tools: h.estimate.ratingsPct, results: h.estimate.resultsPct, read: index,

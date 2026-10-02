@@ -171,8 +171,8 @@
                 "tone": "unknown"
               },
               "results": {
-                "display": "50th (19% trusted)",
-                "hint": "How much of his estimate his results carry"
+                "display": "50th",
+                "hint": "His results carry 19% of the trust in his estimate"
               },
               "read": {
                 "display": "No concern",
@@ -328,7 +328,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               }
             },
@@ -342,7 +342,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -450,7 +450,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               }
             },
@@ -464,7 +464,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -572,7 +572,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               }
             },
@@ -586,7 +586,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -694,7 +694,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               }
             },
@@ -708,7 +708,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -882,7 +882,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -901,7 +901,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -1009,7 +1009,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -1028,7 +1028,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -1136,7 +1136,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -1155,7 +1155,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -1263,7 +1263,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -1282,7 +1282,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -1390,7 +1390,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -1409,7 +1409,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -1517,7 +1517,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -1536,7 +1536,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -1644,7 +1644,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -1663,7 +1663,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {
@@ -1771,7 +1771,7 @@
               },
               "read": {
                 "display": "Cannot judge",
-                "tone": "good",
+                "tone": "unknown",
                 "hint": "There is no visible rating and no qualifying results to judge him on."
               },
               "usedAs": {
@@ -1790,7 +1790,7 @@
             },
             "claim": {
               "text": "Cannot judge",
-              "tone": "good",
+              "tone": "unknown",
               "basis": {
                 "because": [
                   {

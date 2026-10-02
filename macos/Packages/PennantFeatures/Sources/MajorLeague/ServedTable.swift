@@ -60,6 +60,12 @@ struct ServedTable: View {
     static let rowHeight: CGFloat = 26
     static let headerHeight: CGFloat = 30
 
+    /// A column's starting width (the GM can resize it): a name wide, a number narrow, words between.
+    static func idealWidth(_ column: Components.Schemas.MlbColumn) -> CGFloat {
+        if ["player", "pitcher"].contains(column.id) { return 170 }
+        return column.numeric ? 64 : 104
+    }
+
     init(_ table: Components.Schemas.MlbTable, id: String, selection: Binding<ServedRow.ID?>) {
         self.table = table
         self.id = id
@@ -95,7 +101,7 @@ struct ServedTable: View {
                             .lineLimit(1)
                     }
                 }
-                .width(min: column.numeric ? 52 : 72, ideal: column.id == table.columns.first?.id || column.id == "player" ? 170 : column.numeric ? 72 : 120)
+                .width(min: column.numeric ? 48 : 64, ideal: Self.idealWidth(column))
                 .customizationID(column.id)
             }
         } rows: {

@@ -76,7 +76,8 @@ describe('Major League Ops\' views on the synthetic save, from the per-import ca
     const pp = await majorLeagueView(save.org, 'positionPlayers');
     const ps = await majorLeagueView(save.org, 'pitchingStaff');
     const rows = [...pp.lineup.rows, ...ps.sections.flatMap((s) => s.table.rows)];
-    for (const row of rows) {
+    // A row with a player: each unknown is said in words (a spot nobody holds has no player to read)
+    for (const row of rows.filter((r) => r.player)) {
       for (const [column, key] of Object.entries(row.sort)) {
         if (key === null) expect(row.cells[column].display, `${row.id}.${column}`).not.toMatch(/^[-—–0]?$/);
         expect(row.cells[column].display, `${row.id}.${column}`).not.toBe('0th');
