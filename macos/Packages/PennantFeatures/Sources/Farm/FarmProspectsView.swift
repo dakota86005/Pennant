@@ -82,11 +82,12 @@ struct ProspectsBoard: View {
                     }
                 }
                 .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+                .onReadablePage()
                 .accessibilityIdentifier("farm.prospects.table")
 
                 Group {
                     if let chosen, let card = view.meetings.first(where: { $0.playerId == chosen.playerId }) {
-                        ScrollView { ProspectCardView(card: card).padding(20) }
+                        ScrollView { ProspectCardView(card: card).padding(20) }.onReadablePage()
                     } else if let chosen {
                         ProspectRowDetail(row: chosen)
                     } else if let empty = view.meetingsEmpty {
@@ -99,6 +100,8 @@ struct ProspectsBoard: View {
                 .accessibilityIdentifier("farm.prospects.detail")
             }
         }
+        // The header's words on the same fixed page as the table's
+        .background(Color.readablePage)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Picker(selection: $filter) {

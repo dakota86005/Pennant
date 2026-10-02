@@ -96,6 +96,7 @@ struct DevelopmentBoard: View {
                     if rows.isEmpty { Text(verbatim: view.empty.display).foregroundStyle(.readableSecondary).padding(40) }
                 }
                 .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+                .onReadablePage()
                 .accessibilityIdentifier("farm.development.table")
 
                 Group {
@@ -107,6 +108,8 @@ struct DevelopmentBoard: View {
                 .accessibilityIdentifier("farm.development.detail")
             }
         }
+        // The header's words on the same fixed page as the table's
+        .background(Color.readablePage)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Picker(selection: Binding(get: { tab?.id ?? view.initialTab }, set: { tabStored = $0; order = [] })) {
@@ -168,7 +171,7 @@ struct DevelopmentDetailPane: View {
         let farm = model.farm
         Group {
             if let detail = farm.details[playerId] {
-                ScrollView { DevelopmentDetailContent(detail: detail).padding(20) }
+                ScrollView { DevelopmentDetailContent(detail: detail).padding(20) }.onReadablePage()
             } else if let problem = farm.problems["detail:\(playerId)"] {
                 ProblemLine(problem).padding(20)
             } else {

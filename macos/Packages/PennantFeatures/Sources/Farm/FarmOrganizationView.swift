@@ -93,6 +93,7 @@ struct OrganizationContent: View {
         }
         .frame(height: ShortTable.height(rows: rows.count))
         .scrollDisabled(true)
+        .onReadablePage()
         .accessibilityIdentifier("farm.organization.depth")
     }
 
@@ -113,6 +114,7 @@ struct OrganizationContent: View {
         }
         .frame(height: ShortTable.height(rows: rows.count))
         .scrollDisabled(true)
+        .onReadablePage()
         .accessibilityIdentifier("farm.organization.starters")
     }
 
@@ -138,6 +140,7 @@ struct OrganizationContent: View {
         }
         .frame(height: ShortTable.height(rows: rows.count))
         .scrollDisabled(true)
+        .onReadablePage()
         .accessibilityIdentifier("farm.organization.pastWindow")
     }
 
@@ -152,6 +155,7 @@ struct OrganizationContent: View {
         }
         .frame(height: ShortTable.height(rows: view.lines.count, rowHeight: 34))
         .scrollDisabled(true)
+        .onReadablePage()
         .accessibilityIdentifier("farm.organization.lines")
     }
 }

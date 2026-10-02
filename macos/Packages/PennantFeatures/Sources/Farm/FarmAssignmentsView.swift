@@ -104,8 +104,11 @@ struct AssignmentsTable: View {
                         .accessibilityIdentifier("farm.assignments.empty")
                 }
             }
+            .onReadablePage()
             .accessibilityIdentifier("farm.assignments.table")
         }
+        // The header's words on the same fixed page as the table's
+        .background(Color.readablePage)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 LevelPicker(levels: view.levels, selection: level)

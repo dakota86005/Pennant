@@ -338,8 +338,9 @@ extension Components.Schemas.FarmMovementRow: @retroactive Identifiable {}
 
 // MARK: A fold
 
-/// A titled fold, closed or open (a finding's evidence, the results behind a verdict, who decided what): its label a
-/// button with the system's disclosure chevron, its content laid out from the leading edge beneath it.
+/// A titled fold, closed or open as served (a finding's evidence, the results behind a verdict, who decided what): the
+/// native `DisclosureGroup`, which gives VoiceOver its title and whether it is open, with its content laid out from the
+/// leading edge beneath it.
 struct Fold<Label: View, Content: View>: View {
     @State private var open: Bool
     @ViewBuilder let label: () -> Label
@@ -352,26 +353,21 @@ struct Fold<Label: View, Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Button { withAnimation(.snappy) { open.toggle() } } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .rotationEffect(.degrees(open ? 90 : 0))
-                        .frame(width: 14)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(open ? Text("Close") : Text("Open"))
-                .accessibilityValue(open ? Text("Open") : Text("Closed"))
-                label()
-            }
-            if open {
-                content()
-                    .padding(.leading, 20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+        DisclosureGroup(isExpanded: $open) {
+            content().frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            label()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: Text on a fixed page
+
+extension View {
+    /// A table, list or scrolling pane's words on Pennant's fixed, checked page rather than the system's background
+    /// (macOS 26 draws some system backgrounds differently from 27), as the Morning Report's lists do.
+    func onReadablePage() -> some View {
+        scrollContentBackground(.hidden).background(Color.readablePage)
     }
 }

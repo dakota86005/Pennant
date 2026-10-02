@@ -85,6 +85,7 @@ struct DecisionIndex: View {
                         Text(verbatim: view.emptyInQuestion.display).foregroundStyle(.readableSecondary).multilineTextAlignment(.center).padding(40)
                     }
                 }
+                .onReadablePage()
                 .accessibilityIdentifier("farm.decision.index")
             }
         }
@@ -226,7 +227,7 @@ struct NumberedSection<Content: View>: View {
             Text(verbatim: String(number))
                 .font(.title3.weight(.bold)).monospacedDigit()
                 .frame(width: 28, height: 28)
-                .background(Color.secondary.opacity(0.15), in: .circle)
+                .background(Color.readableChipFill, in: .circle)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 8) {
                 Text(title).font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
@@ -346,7 +347,7 @@ struct CascadeChain: View {
                     }
                 }
                 .padding(12)
-                .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 10))
+                .background(Color.readableChipFill, in: .rect(cornerRadius: 10))
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("farm.cascade.open")
             }
@@ -367,8 +368,8 @@ struct CascadeStepRow: View {
                 Text(verbatim: String(step.index))
                     .font(.callout.weight(.bold)).monospacedDigit()
                     .frame(width: 24, height: 24)
-                    .background(Color.secondary.opacity(0.15), in: .circle)
-                Rectangle().fill(Color.secondary.opacity(0.4)).frame(width: 2).frame(maxHeight: .infinity)
+                    .background(Color.readableChipFill, in: .circle)
+                Rectangle().fill(Color.readableSecondary.opacity(0.45)).frame(width: 2).frame(maxHeight: .infinity)
             }
             .frame(width: 28)
             .accessibilityHidden(true)

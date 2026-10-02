@@ -55,12 +55,14 @@ struct AffiliatesSplit: View {
                     }
                 }
                 .listStyle(.inset)
+                .onReadablePage()
                 .accessibilityIdentifier("farm.affiliates.clubs")
                 if let empty = view.empty {
                     Text(verbatim: empty.display).foregroundStyle(.readableSecondary).padding()
                 }
             }
             .frame(minWidth: 200, idealWidth: 280, maxWidth: 380)
+            .background(Color.readablePage)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text("Organization"))
 
@@ -86,12 +88,15 @@ struct AffiliatesSplit: View {
                         .frame(maxWidth: 1000, alignment: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .onReadablePage()
+                    .accessibilityIdentifier("farm.affiliate.\(affiliate.teamId)")
                     .id(affiliate.teamId)
                 } else {
                     Text("Choose an affiliate").foregroundStyle(.readableSecondary).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.readablePage)
         }
     }
 }
@@ -108,12 +113,12 @@ struct ClubNode: View {
             // The rail: a line through every club, a node at each; the major-league club's node filled
             ZStack(alignment: .top) {
                 VStack(spacing: 0) {
-                    Rectangle().fill(first ? .clear : Color.secondary.opacity(0.45)).frame(width: 2, height: 10)
-                    Rectangle().fill(last ? .clear : Color.secondary.opacity(0.45)).frame(width: 2)
+                    Rectangle().fill(first ? .clear : Color.readableSecondary.opacity(0.45)).frame(width: 2, height: 10)
+                    Rectangle().fill(last ? .clear : Color.readableSecondary.opacity(0.45)).frame(width: 2)
                 }
                 Circle()
-                    .strokeBorder(Color.secondary, lineWidth: 2)
-                    .background(Circle().fill(club.majorLeague ? Color.secondary : Color.clear))
+                    .strokeBorder(Color.readableSecondary, lineWidth: 2)
+                    .background(Circle().fill(club.majorLeague ? Color.readableSecondary : Color.clear))
                     .frame(width: 12, height: 12)
                     .padding(.top, 5)
             }
@@ -214,6 +219,7 @@ struct AffiliateDetailContent: View {
         }
         .frame(height: ShortTable.height(rows: rows.count))
         .scrollDisabled(true)
+        .onReadablePage()
         .accessibilityIdentifier("farm.affiliate.cover")
     }
 
@@ -245,6 +251,7 @@ struct AffiliateDetailContent: View {
         }
         .frame(height: ShortTable.height(rows: rows.count, rowHeight: 34))
         .scrollDisabled(true)
+        .onReadablePage()
         .accessibilityIdentifier("farm.affiliate.concerns")
     }
 }

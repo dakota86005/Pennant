@@ -112,9 +112,6 @@
     "Close": {
       "extractionState": "manual"
     },
-    "Closed": {
-      "extractionState": "manual"
-    },
     "Club": {},
     "Club Reports": {
       "extractionState": "manual"

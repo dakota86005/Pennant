@@ -1025,6 +1025,15 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   the panes'). Every farm view now asks the window for no minimum (`FarmLoading`), with smaller pane and column
   minimums; the affiliate pane has a plain header, not the report's masthead. A department view with wide tables should
   do the same.
+- *After the review (2026-10-02):* the farm's key also counts this save's rating-snapshot writes, so the import's
+  snapshot (written by a post-import hook after the views may have warmed) is never missed; nobody is counted ahead of
+  or behind his peers while the history is building ("Not yet"); an alternative with no preference says why by its
+  judgment; Assignments' stakes cell opens a basis with every reason; "N of M players", the byline, an affiliate's level
+  line and a prospect's list line are served, not composed in Swift; the farm's tables, the affiliates list and the
+  detail panes sit on `readablePage` with the system's content background hidden, and the cascade's circles and its
+  open-hole box use fixed PennantDesign fills; a fold is the native `DisclosureGroup`. The tier `development_priority`
+  reads "Development-sensitive" (the owner's name). Held for N8's reusable table pattern: the narrow-window layout (the
+  `minWidth: 0` above clips rather than fits) and the Decision's long lines wrapping.
 
 ### 3.6 Signature interactions
 
