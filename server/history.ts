@@ -272,6 +272,7 @@ export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | n
       )
       .run(name, ...values);
   }).immediate();
+  noteSnapshotsWritten();
 }
 
 /** The recorded rating mode of each snapshot date of this save (dates as the snapshots store them); unrecorded dates are absent. */
@@ -371,6 +372,20 @@ function leagueGameDate(): string | null {
   }
 }
 
+/**
+ * How many times this thread has written rating snapshots or their modes (N10). A cache whose answer reads the save's
+ * rating history (the farm's Development tracking) keys on it: the import's snapshot is written by a post-import hook
+ * after the swap, so that cache may warm before it, and must not miss the newest snapshot for a whole import. A
+ * snapshot taken in a worker is counted here by the thread that waited on it (`snapshotsAfterImport`).
+ */
+let snapshotWrites = 0;
+export function snapshotWriteCount(): number {
+  return snapshotWrites;
+}
+export function noteSnapshotsWritten(): void {
+  snapshotWrites += 1;
+}
+
 /** Capture a ratings snapshot of every rostered player. Idempotent per game date. */
 export function takeSnapshot(): { gameDate: string; players: number } | null {
   if (!tableExists('players') || !tableExists('players_batting')) return null;
@@ -456,6 +471,7 @@ export function takeSnapshot(): { gameDate: string; players: number } | null {
     if (saveName !== null) dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
   });
   insertAll.immediate();
+  noteSnapshotsWritten();
   if (!filed) return null;
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players`);
   return { gameDate, players: rows.length };

@@ -11,7 +11,8 @@ import {
   NOT_ON_THE_FARM, farmAssignmentsNow, farmDecisionNow, farmDevelopmentNow, farmOrganizationNow, farmViewStats, resetFarmViews, warmFarmViews,
 } from '../server/farmViewService.js';
 import { FrontOfficeRefusal, invalidateFrontOffice, resetFrontOfficeCache } from '../server/frontOfficeService.js';
-import { developmentHistoryFor, historyDb } from '../server/history.js';
+import { developmentHistoryFor, historyDb, snapshotGameDate } from '../server/history.js';
+import { snapshotsAfterImport } from '../server/importSnapshots.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { cell } from '../server/presentation/claim.js';
 import { decisionView } from '../server/presentation/farm/decision.js';
@@ -297,6 +298,25 @@ describe('the club\'s farm views are built once per import and served from the c
     if (asked) {
       await farmDecisionNow(String(save.org), String(asked.playerId));
       expect(farmViewStats().decisionBuilds).toBe(1);
+    }
+  });
+
+  it('builds again when the import\'s snapshot lands after the farm warmed (the snapshots hook runs after the swap), with no reset', async () => {
+    // No resetFarmViews(): the cache stays as the warm-up left it, as it would right after an import's swap
+    await warmFarmViews(save.org);
+    const before = await farmDevelopmentNow(String(save.org));
+    const builds = farmViewStats().builds;
+    const gameDate = snapshotGameDate()!;
+    try {
+      // The snapshots hook, as the import runs it (in a worker where one starts, else on this thread)
+      const outcome = await snapshotsAfterImport({ importFinishedAt: null, importStartedAt: null, ratingMode: null });
+      expect(outcome.ratings?.gameDate).toBe(gameDate);
+      const after = await farmDevelopmentNow(String(save.org));
+      expect(farmViewStats().builds).toBe(builds + 1);
+      expect(after.figures[0].value?.n).toBe(Number(before.figures[0].value?.n ?? 0) + 1);
+    } finally {
+      historyDb.prepare('DELETE FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?').run(currentHistoryKey(), gameDate);
+      historyDb.prepare('DELETE FROM rating_snapshots WHERE game_date = ?').run(gameDate);
     }
   });
 

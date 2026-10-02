@@ -9,7 +9,7 @@
  * one at a time with a breath between them.
  */
 import { Worker } from 'node:worker_threads';
-import { stampSnapshotMode, takeSnapshot } from './history.js';
+import { noteSnapshotsWritten, stampSnapshotMode, takeSnapshot } from './history.js';
 import { captureRosterStateSnapshot } from './rosterStateHistory.js';
 import { resetTransactionLogCache } from './dataStatus.js';
 import { captureMarketSnapshot } from './playerValueSnapshot.js';
@@ -95,7 +95,10 @@ export function snapshotsInWorker(request: SnapshotRequest): Promise<SnapshotOut
 /** The snapshots, in a worker where one starts, else here with breaths between them. Never rejects. */
 export async function snapshotsAfterImport(request: SnapshotRequest): Promise<SnapshotOutcome> {
   try {
-    return await snapshotsInWorker(request);
+    const outcome = await snapshotsInWorker(request);
+    // Written on another thread: counted here, so this thread's caches that read the rating history build again
+    noteSnapshotsWritten();
+    return outcome;
   } catch (err) {
     console.warn('[history] snapshot worker unavailable, taking the snapshots on the server\'s thread:', (err as Error).message);
     try {

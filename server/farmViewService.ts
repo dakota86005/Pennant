@@ -4,7 +4,9 @@
  * behind a build.
  *
  * - **Keyed on what the answer depends on**, the Front Office's own key (`frontOfficeInputsKey`: the club, the import,
- *   the settings and configuration files, the live log, the calibration revision). A request whose key moved never gets
+ *   the settings and configuration files, the live log, the calibration revision) and where the save's rating history
+ *   stands (`snapshotWriteCount`): the snapshot is written by a post-import hook after the swap, so the farm may warm
+ *   before it, and the next request then builds again rather than missing the newest snapshot for a whole import. A request whose key moved never gets
  *   the old answer, and a build that read across an import's swap is handed to the requests waiting on it and not kept.
  *   This keeps D-047's promise: the organization is read once per build (one `FarmSession`), and nothing is served across
  *   an export, a philosophy setting or the live log.
@@ -16,6 +18,7 @@
 import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
 import { buildFarmDecision, buildFarmViews, type FarmViewsResult } from './farmViewsBuild.js';
 import { FrontOfficeRefusal, NO_DATA, frontOfficeInputsKey, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
+import { snapshotWriteCount } from './history.js';
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored } from './presentation/claim.js';
 import type {
@@ -56,6 +59,9 @@ export function resetFarmViews(): void {
 export const NOT_ON_THE_FARM = 'He isn\'t on one of the organization\'s minor-league clubs in this export.';
 export const NOT_TRACKED = 'There is no scouting history for him in this save.';
 
+/** The farm's key: the Front Office's inputs and where the save's rating history stands (Development tracking reads it). */
+const farmKey = (orgId: number): string => `${frontOfficeInputsKey(orgId)}|h${snapshotWriteCount()}`;
+
 /** The club's farm views for the current inputs: the kept ones, the ones being built, or a new build. */
 async function current(orgId: number): Promise<Kept> {
   if (!tableExists('players')) throw new FrontOfficeRefusal(NO_DATA, 404);
@@ -64,7 +70,7 @@ async function current(orgId: number): Promise<Kept> {
     await upgrade;
     return current(orgId);
   }
-  const key = frontOfficeInputsKey(orgId);
+  const key = farmKey(orgId);
   const hit = kept.get(key);
   if (hit) {
     stats.hits += 1;
@@ -86,7 +92,7 @@ async function current(orgId: number): Promise<Kept> {
         details: new Map(result.views.developmentDetails.map((d) => [d.playerId, d])),
       };
       // Kept only when nothing moved under it: no swap to another import, the same inputs
-      if (databaseGeneration() === startedGeneration && frontOfficeInputsKey(orgId) === key) {
+      if (databaseGeneration() === startedGeneration && farmKey(orgId) === key) {
         kept.delete(key);
         kept.set(key, entry);
         while (kept.size > MAX_BUILDS) kept.delete(kept.keys().next().value!);
