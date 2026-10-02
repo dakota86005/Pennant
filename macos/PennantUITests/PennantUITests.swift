@@ -897,8 +897,9 @@ final class PennantUITests: XCTestCase {
         quitCleanly(contrast)
     }
 
-    /// Farm & Development (N10): a farm item in the report opens where the farm answers it (a player's Decision, the
-    /// cascade drawn as steps that stop), an assignment's row opens its Decision on a double-click, and every farm view
+    /// Farm & Development (N10): a farm item in the report opens where the farm answers it (the synthetic league's first
+    /// is about its affiliate, Farm 1 F, so Affiliates opens on that club), an assignment's row opens its Decision on a
+    /// double-click with the cascade drawn as a chain that stops and its open hole as information, and every farm view
     /// draws and passes the audit, in light and dark.
     @MainActor
     func testFarmDeskToDecision() throws {
@@ -909,9 +910,8 @@ final class PennantUITests: XCTestCase {
         let open = element(app, "itemOpen")
         XCTAssertTrue(open.waitForExistence(timeout: 10), "no farm item opens where the farm answers it")
         open.click()
-        let decision = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'farm.decision.' AND NOT (identifier == 'farm.decision.head') AND NOT (identifier == 'farm.decision.index')")).firstMatch
-        let affiliate = element(app, "farm.affiliates.clubs")
-        XCTAssertTrue(decision.waitForExistence(timeout: 30) || affiliate.exists, "Open did not open the farm's answer")
+        XCTAssertTrue(element(app, "farm.affiliates.clubs").waitForExistence(timeout: 30), "Open did not open Affiliates")
+        XCTAssertTrue(element(app, "farm.affiliate.101").waitForExistence(timeout: 10), "Affiliates did not open on the item's club")
         keep(app.windows.firstMatch.screenshot(), named: "n10-farm-opened-from-report")
         sidebarAtTop(app)
         try audit(app, named: "accessibility-audit-n10-farm-opened")
@@ -927,7 +927,10 @@ final class PennantUITests: XCTestCase {
         try audit(app, named: "accessibility-audit-n10-farm-assignments")
         row.doubleClick()
         XCTAssertTrue(element(app, "farm.decision.head").waitForExistence(timeout: 30), "a double-click did not open the player's Decision")
-        XCTAssertTrue(element(app, "farm.cascade").waitForExistence(timeout: 10) || element(app, "farm.decision.head").exists)
+        // Every synthetic farm player's departure leaves his club a hole no one fills: the chain stops, and says so
+        XCTAssertTrue(element(app, "farm.cascade").waitForExistence(timeout: 10), "the Decision drew no cascade")
+        XCTAssertTrue(element(app, "farm.cascade.stop").exists, "the cascade states no stop")
+        XCTAssertTrue(element(app, "farm.cascade.open").exists, "the cascade's open hole is not shown as information")
         keep(app.windows.firstMatch.screenshot(), named: "n10-farm-decision")
         try audit(app, named: "accessibility-audit-n10-farm-decision")
         // Back returns to the table
