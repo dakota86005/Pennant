@@ -77,10 +77,11 @@ public final class MainWindowModel {
     public var canGoBack: Bool { history.canGoBack }
     public var canGoForward: Bool { history.canGoForward }
 
-    /// The sidebar's selection: the current route. Selecting a row goes there.
+    /// The sidebar's selection: the current route's view (a decision open in Decision selects Decision). Selecting a row
+    /// goes to that view, with nothing open.
     public var selection: AppRoute? {
-        get { route }
-        set { if let newValue { go(to: newValue) } }
+        get { route.viewOnly }
+        set { if let newValue, newValue != route { go(to: newValue) } }
     }
 
     /// Goes to a route this build knows; its department opens in the sidebar.

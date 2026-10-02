@@ -17,7 +17,7 @@ import { Yardsticks } from './mlb/Yardsticks';
  */
 
 const TABS: Array<{ view: Exclude<View, 'decision'>; label: string }> = [
-  { view: 'overview', label: 'Overview' }, { view: 'players', label: 'Position players' }, { view: 'pitching', label: 'Pitching staff' }, { view: 'bench', label: 'Bench and coverage' },
+  { view: 'overview', label: 'Overview' }, { view: 'players', label: 'Position players' }, { view: 'pitching', label: 'Pitching staff' }, { view: 'bench', label: 'Bench & Backups' },
 ];
 
 /** A view that fails to draw says so, in place, and leaves the rest of the app (and the module's tabs) standing. */

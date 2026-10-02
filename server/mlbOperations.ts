@@ -210,6 +210,10 @@ const ROLE_CHOICES: Record<string, RoleRef> = {
   catcher: { kind: 'catcher', label: 'catcher', position: 2 },
 };
 
+/** Whether a decision can be asked for this role (a need that names none) or this assignment context: what it offers. */
+export const isOfferedRole = (role: string): boolean => Object.prototype.hasOwnProperty.call(ROLE_CHOICES, role);
+export const isOfferedContext = (context: string): boolean => Object.prototype.hasOwnProperty.call(CONTEXT_PROFILES, context);
+
 export interface ResponseOptions {
   /** For a need that names no role. */
   role?: string;

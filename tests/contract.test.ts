@@ -303,7 +303,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   const realKeys = Object.fromEntries(KEY_VARS.map((k) => [k, process.env[k]]));
 
   beforeAll(async () => {
-    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true });
+    save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true, lineups: true });
     // A pretend Mac home with one OOTP save, so finding saves reads neither the real disk nor nothing at all
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-contract-home-'));
     const csv = path.join(home, 'Library/Application Support/Out of the Park Developments/OOTP Baseball 27/saved_games/Test League.lg/import_export/csv');
@@ -347,8 +347,14 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     // Another club's report (N7): the league's second club, not the one the app follows
     teamId: () => String(save.clubs[1]),
   };
-  /** A query a GET is captured with, where it takes one (N7: search needs something typed). */
-  const SAMPLE_QUERIES: Record<string, string> = { search: '?q=club' };
+  /**
+   * A query a GET is captured with, where it takes one (N7: search needs something typed; N8: a decision needs a need,
+   * the synthetic save's first one with an evidence trail).
+   */
+  const SAMPLE_QUERIES: Record<string, () => string> = {
+    search: () => '?q=club',
+    getMajorLeagueDecision: () => `?need=${encodeURIComponent(evidenceKey.replace(/^\d+\.majorLeague:need:/, ''))}`,
+  };
 
   it('has an item with an evidence trail on the synthetic save, for the claims route', async () => {
     const report = await departmentReport(save.org, 'majorLeague');
@@ -366,7 +372,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       if (!sample) throw new Error(`Give ${op.operationId}'s :${name} a sample value in SAMPLE_PARAMS`);
       return sample();
     });
-    const res = await fetch(`${base}${url}${SAMPLE_QUERIES[op.operationId] ?? ''}`);
+    const res = await fetch(`${base}${url}${SAMPLE_QUERIES[op.operationId]?.() ?? ''}`);
     expect(res.status, url).toBe(200);
     const body = await res.json();
     const validate = validator(op.response);
@@ -397,6 +403,24 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       expect(servedBasisProblems(body)).toEqual([]);
       fixture(`responses/getDepartmentReport-${dept}.json`, json(body));
     }
+  }, SLOW);
+
+  it('serves a what-if decision with its candidates in the contract\'s shape, plain (captured for the previews: real candidate rows)', async () => {
+    const validate = validator('MlbDecisionView');
+    const overview = await (await fetch(`${base}/api/v2/views/automatic/majorLeague/overview`)).json() as { whatIf: { players: Array<{ open: { key?: string } }> } };
+    let captured = false;
+    for (const choice of overview.whatIf.players) {
+      const res = await fetch(`${base}/api/v2/views/automatic/majorLeague/decision?need=${encodeURIComponent(choice.open.key ?? '')}`);
+      expect(res.status).toBe(200);
+      const body = await res.json() as { candidates: { groups: unknown[] } | null };
+      if (!body.candidates?.groups.length) continue;
+      expect(validate(body) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(body, 'getMajorLeagueDecision')).toEqual([]);
+      fixture('responses/getMajorLeagueDecision-what-if.json', json(body));
+      captured = true;
+      break;
+    }
+    expect(captured).toBe(true);
   }, SLOW);
 
   it('uses every scoped jargon exception in force, so a stale one is found', () => {

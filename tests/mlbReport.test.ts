@@ -60,7 +60,7 @@ describe('a returning player who would improve the group', () => {
     expect(p.steps[0]).toMatch(/moving SP5: option to the minors \(routine and reversible\)/);
     expect(p.moves).toHaveLength(1);
     expect(p.moves[0]).toMatchObject({ name: 'SP5', transaction: 'Option to the minors', class: 'routine and reversible' });
-    expect(p.consequences.join(' ')).toMatch(/starting pitcher coverage: 5 available against a floor of 5/);
+    expect(p.consequences.join(' ')).toMatch(/starting pitcher depth: 5 available against a minimum of 5/);
     expect(p.certainty).toBe('indeterminate');
     expect(p.certaintyNote).toMatch(/not established/i);
   });
@@ -69,9 +69,9 @@ describe('a returning player who would improve the group', () => {
     const p = r.pathways.find((x) => x.id === 'elsewhere')!;
     expect(p.moves.length).toBeGreaterThan(0);
     expect(p.moves.every((m) => m.role !== 'starting pitcher')).toBe(true);
-    expect(p.moves.some((m) => m.role === 'relief pitcher' && /against a floor of 7/.test(m.note))).toBe(true);
+    expect(p.moves.some((m) => m.role === 'relief pitcher' && /against a minimum of 7/.test(m.note))).toBe(true);
     // a role with no coverage standard is flagged as not assessed, never called safe
-    expect(p.moves.filter((m) => !/floor/.test(m.note)).every((m) => /not assessed/.test(m.note))).toBe(true);
+    expect(p.moves.filter((m) => !/minimum of/.test(m.note)).every((m) => /not assessed/.test(m.note))).toBe(true);
   });
 });
 

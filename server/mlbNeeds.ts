@@ -172,7 +172,7 @@ function roleNeeds(view: ClubView, origin: NeedOrigin, coverage: CoverageFloors)
       kind: 'role_below_standard',
       origin,
       role,
-      title: `${label.charAt(0).toUpperCase()}${label.slice(1)} coverage is below the minimum floor`,
+      title: `${label.charAt(0).toUpperCase()}${label.slice(1)} depth is below the minimum`,
       summary: `${available} healthy ${label}${available === 1 ? '' : 's'} on the active roster against a minimum floor of ${standard.count}.`,
       severity: !certain ? 'watch' : deficit >= 2 || available === 0 ? 'critical' : 'elevated',
       urgency: { label: 'Now', days: 0 },
@@ -181,7 +181,7 @@ function roleNeeds(view: ClubView, origin: NeedOrigin, coverage: CoverageFloors)
         : `Earliest return among the unavailable players in this role: ${causes.filter((c) => c.availability.daysLeft === earliest).map((c) => c.name).join(', ')} (${earliest} days, exported injury days left).`),
       causes: causes.map(causeOf),
       facts: [
-        { label: 'Coverage floor', value: `${standard.label}: ${coverage.source}` },
+        { label: 'Minimum', value: `${standard.label}: ${coverage.source}` },
         { label: 'Active in role', value: `${inRole.length} (${available} available)` },
         ...(view.counts.active !== null && view.limits.active !== null
           ? [{ label: 'Active roster', value: `${view.counts.active} of ${view.limits.active}` }] : []),
@@ -239,7 +239,7 @@ function returnCrunchNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
         origin,
         role: m.role,
         title: `${m.name} is due back${days <= 0 ? ' now' : ` in about ${plural(days, 'day')}`}; ${full.join(' and ')}`,
-        summary: `${m.name} (${m.role?.label ?? 'role unknown'}, ${m.availability.label ?? 'injured list'}) returns to a club where ${full.join(' and ')}. ${moves.charAt(0).toUpperCase()}${moves.slice(1)} must be cleared for him to be activated.`,
+        summary: `${m.name} (${m.role?.label ?? 'role unknown'}, ${m.availability.label ?? 'injured list'}) returns to a club where ${full.join(' and ')}. ${moves.charAt(0).toUpperCase()}${moves.slice(1)} has to be cleared for him to be activated.`,
         severity: 'watch' as const,
         urgency: { label: days <= 0 ? 'Now' : `In about ${plural(days, 'day')}`, days },
         horizon: horizonOf(days, 'Exported injury days left for the returning player.'),
@@ -248,7 +248,7 @@ function returnCrunchNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
           { label: 'Active roster', value: `${active ?? '?'} of ${limit ?? '?'}` },
           { label: '40-man', value: m.onFortyMan === true ? `On the 40-man (${fortyMan ?? '?'} of ${fortyLimit ?? '?'})` : m.onFortyMan === false ? `Not on the 40-man (60-day IL); the 40-man is ${fortyMan ?? '?'} of ${fortyLimit ?? '?'}` : 'Unknown' },
         ],
-        unknowns: ['The activation rules for the injured list have not been established (D-023), so whether he can be activated is not stated here.'],
+        unknowns: ['The activation rules for the injured list have not been established, so whether he can be activated is not stated here.'],
         returning: { playerId: m.playerId, name: m.name, daysLeft: m.availability.daysLeft, onFortyMan: m.onFortyMan },
       };
     });
@@ -302,7 +302,7 @@ export function whatIfNeed(
     origin: 'hypothetical',
     role,
     title: `If ${target.name} is out: an open ${role?.label ?? 'active-roster'} spot`,
-    summary: `Without ${target.name}${active !== null && limit !== null ? ` the active roster would be ${active} of ${limit}` : ''}. The remaining ${role?.label ?? 'players'} coverage stays at or above the minimum floor, so this is a spot to fill, not a role shortfall.`,
+    summary: `Without ${target.name}${active !== null && limit !== null ? ` the active roster would be ${active} of ${limit}` : ''}. The remaining ${role?.label ?? 'players'} depth stays at or above the minimum, so this is a spot to fill, not a role shortfall.`,
     severity: 'watch',
     urgency: { label: 'Scenario', days: null },
     horizon: assumed ?? { kind: 'unknown', days: null, basis: 'Assumed; no injury or duration is stated.' },

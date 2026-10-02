@@ -105,6 +105,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let after = UserDefaults.standard.double(forKey: "PennantDebugCaptureAfter")
             DispatchQueue.main.asyncAfter(deadline: .now() + (after > 0 ? after : 3)) { Self.captureMainWindow(to: path) }
         }
+        // The main window at a given size (`-PennantDebugWindowSize 1000x760`), for captures of a narrow window. Never
+        // larger than its screen's visible frame, and wholly on it: `setFrame` does not constrain a window to its screen,
+        // and on GitHub's runner (a 1024 × 768 screen) a 1280 × 820 window ran past the screen's edges, so its screenshot
+        // held only the part on the screen and every pixel read from it was taken from the wrong place (PR #54)
+        if let size = UserDefaults.standard.string(forKey: "PennantDebugWindowSize")?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                guard let window = NSApp.windows.filter({ $0.isVisible && $0.styleMask.contains(.titled) }).max(by: { $0.frame.width < $1.frame.width }) else { return }
+                var frame = CGRect(origin: window.frame.origin, size: CGSize(width: size[0], height: size[1]))
+                if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
+                    frame.size = CGSize(width: min(frame.width, visible.width), height: min(frame.height, visible.height))
+                    // AppKit's origin is the bottom-left corner: keep the top where it was, then move it wholly on the screen
+                    frame.origin.y = window.frame.maxY - frame.height
+                    frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+                    frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+                }
+                window.setFrame(frame, display: true)
+            }
+        }
         // Settings opened by itself (`-PennantDebugOpenSettings YES`), for its captures
         if UserDefaults.standard.bool(forKey: "PennantDebugOpenSettings") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }

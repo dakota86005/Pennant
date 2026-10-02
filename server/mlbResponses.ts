@@ -632,7 +632,7 @@ function assemble(
       limit: view.limits.active,
       note: raw.pathKind === 'role_change' ? null
         : need.origin === 'hypothetical' ? 'The assumed absence opens a spot.'
-        : spotOpen ? 'A spot is open.' : 'The active roster is full: another player must be moved first.',
+        : spotOpen ? 'A spot is open.' : 'The active roster is full: another player has to be moved first.',
     },
     fortyMan: { before: view.counts.fortyMan, change: raw.pathKind === 'add_to_forty_man' ? 1 : 0, limit: view.limits.fortyMan },
     vacatedRole: vacated,
@@ -860,7 +860,7 @@ function constraintClearing(
     return { ...shell, state, feasibility: null, classes: [], note: `${label}: ${count} of ${limit}. A spot is open, so nothing needs clearing.` };
   }
   if (state === 'unknown') {
-    return { ...shell, state, feasibility: null, classes: [], note: `${label}: the count or the limit is not available, so Pennant cannot say whether a spot must be cleared.` };
+    return { ...shell, state, feasibility: null, classes: [], note: `${label}: the count or the limit is not available, so Pennant cannot say whether a spot has to be cleared.` };
   }
 
   const active = activeMembers(view);

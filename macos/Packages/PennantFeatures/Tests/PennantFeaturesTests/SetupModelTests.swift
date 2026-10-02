@@ -1,9 +1,10 @@
+import AppKit
 import Foundation
 import HTTPTypes
 import OpenAPIRuntime
 import PennantAPI
 import PennantKit
-import Setup
+@testable import Setup
 import Shell
 import Testing
 
@@ -402,6 +403,25 @@ struct SetupModelTests {
         #expect(server.requests.filter { $0.operation == "setUpAutomatically" }.count == 1)
     }
 
+    @Test("a run that ends counts once, however fast its import landed, so the open window closes on it (N8: the flake)")
+    func completionCounts() async throws {
+        let model = makeModel {}
+        server.answer("setUpAutomatically", (200, try automaticJSON(started: true)))
+        // The import has already landed when the window first reads the status: a fifth of a second's import
+        server.answer("getStatus", (200, try json(status(finishedAt: "2040-07-01T12:00:00.000Z"))))
+        var first = try status(finishedAt: "2040-07-01T10:00:00.000Z")
+        first.configured = false
+        let opened = model.completions
+        await model.begin(status: first)
+        #expect(model.step == .done)
+        #expect(model.completions == opened + 1)
+        // The same news again changes nothing; a window opened on the finished model starts again, and is not closed
+        await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.completions == opened + 1)
+        #expect(model.reopen())
+        #expect(model.completions == opened + 1)
+    }
+
     @Test("a first run where the save's human manages several clubs asks only the club")
     func zeroQuestionsButTheClub() async throws {
         let model = makeModel()
@@ -562,5 +582,41 @@ struct SetupModelTests {
         async let second: Void = model.useFolder(status: now)
         _ = await (first, second)
         #expect(server.requests.filter { $0.operation == "resolveFolder" }.count == 1)
+    }
+}
+
+/// Setup's window closes itself, deterministically (the N8 review, M7): the window's own close, applied the moment the
+/// window is on screen, whether the close was asked before or after.
+@Suite("Setup's window closes itself")
+@MainActor
+struct SetupWindowCloseTests {
+    private func window() -> NSWindow {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 120), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        return window
+    }
+
+    @Test("asked while the window is on screen, it closes at once")
+    func closesOnScreen() {
+        let window = window()
+        let closer = WindowCloser.CloserView()
+        window.contentView = closer
+        window.orderFront(nil)
+        #expect(window.isVisible)
+        closer.requestClose()
+        #expect(!window.isVisible)
+    }
+
+    @Test("asked before the window is on screen, it closes the moment it is, with no timer")
+    func closesWhenShown() {
+        let window = window()
+        let closer = WindowCloser.CloserView()
+        closer.requestClose()
+        window.contentView = closer
+        #expect(!window.isVisible)
+        window.orderFront(nil)
+        // Ordering the window in changes its occlusion and updates it: the close follows from that, not from a wait
+        window.update()
+        #expect(!window.isVisible)
     }
 }

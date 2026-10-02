@@ -250,7 +250,7 @@ export function actBar(ctx: OrganizationContext | null): ActBar {
   const why: ActBar['why'] = { allowModerate: null, patient: null, older: null };
   if (read?.urgency === 'high') {
     allowModerate = true;
-    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'lowers', text: 'The window and the season both favor acting now, so a clear upgrade over a moderate concern is enough to recommend.' });
+    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'lowers', text: 'The window and the season both favor acting now, so a clear upgrade over a moderate concern is enough to act on.' });
     why.allowModerate = reasons[reasons.length - 1];
   }
   if (read?.urgency === 'low') {

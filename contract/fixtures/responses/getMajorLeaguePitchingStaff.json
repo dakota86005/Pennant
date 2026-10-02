@@ -1,0 +1,1940 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Pitching staff"
+  },
+  "lede": {
+    "text": "Each arm read against the standard for the job he is doing",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Each arm is read on his tools against major league pitchers of his kind and on his results (strikeouts, walks and home runs first; runs allowed keep a small share), blended by how much sample stands behind the results. A flag means he is unusually weak for the job he is doing: a long man is measured against long men, a closer against closers."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How Major League Ops reads its roster: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": {
+    "text": "Using starting yardsticks for now: this league has not been measured yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Where the lines come from",
+          "value": "The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, how much his recent seasons count, what a hitter's tools say and how much they hold his results back, how much a hitter's own record against left- and right-handers counts, and how long a reliever has to work to count as a long man."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "The line for each job: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How players age: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much the glove counts at each position: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much recent seasons count: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much a hitter's own split counts: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What a hitter's tools say, and how much they hold his results back: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Who counts as a long man: the starting value (a reliever who averages 1.6 or more innings an appearance), because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much his innings matter (closers, high- and low-leverage arms) is read on Pennant's fixed lines, on a scale where 1.0 is an average plate appearance in this league."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Starting values are the ones Pennant ships with."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "They are replaced by this league's own only after those have been checked against players and seasons they were not drawn from, and, for how players age, how much recent seasons count, what a hitter's tools say and how much a hitter's own split counts, only where this league's own did clearly better than the starting values there."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What the tools say can only be checked on seasons that came after the ratings were saved, which takes several seasons of imports."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new import refits them on the league's own seasons where it can."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+    },
+    "links": []
+  },
+  "sections": [
+    {
+      "title": {
+        "display": "Rotation"
+      },
+      "findings": [],
+      "findingsEmpty": null,
+      "table": {
+        "columns": [
+          {
+            "id": "pitcher",
+            "title": {
+              "display": "Pitcher"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "estimate",
+            "title": {
+              "display": "Estimate"
+            },
+            "numeric": true
+          },
+          {
+            "id": "tools",
+            "title": {
+              "display": "Tools"
+            },
+            "numeric": true
+          },
+          {
+            "id": "results",
+            "title": {
+              "display": "Results"
+            },
+            "numeric": true
+          },
+          {
+            "id": "read",
+            "title": {
+              "display": "Read"
+            },
+            "numeric": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "arm-1017",
+            "cells": {
+              "pitcher": {
+                "display": "P 1017"
+              },
+              "age": {
+                "display": "29"
+              },
+              "estimate": {
+                "display": "50",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "50",
+                "hint": "On the 0–100 scale; his results carry 19% of the trust in his estimate"
+              },
+              "read": {
+                "display": "No concern",
+                "tone": "good"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1017",
+              "age": 29,
+              "estimate": 50,
+              "tools": null,
+              "results": 50,
+              "read": 0
+            },
+            "claim": {
+              "text": "No concern",
+              "tone": "good",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "no visible tool rating; results 50 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
+                  },
+                  {
+                    "label": "Why",
+                    "value": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50 on the 0–100 scale, 19 above it."
+                  },
+                  {
+                    "label": "Why",
+                    "value": "Working estimate 50 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A larger sample of major-league results would firm up the read."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": []
+            },
+            "player": {
+              "playerId": 1017,
+              "name": "P 1017",
+              "open": {
+                "kind": "player",
+                "playerId": 1017,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "no visible tool rating; results 50 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50 on the 0–100 scale, 19 above it."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Working estimate 50 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "starters in a rotation: typical 53, unusually weak under 31, well under 28."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Averages 5.7 innings per start."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1013",
+            "cells": {
+              "pitcher": {
+                "display": "P 1013"
+              },
+              "age": {
+                "display": "28"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1013",
+              "age": 28,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 1
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1013,
+              "name": "P 1013",
+              "open": {
+                "kind": "player",
+                "playerId": 1013,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Averages 5.6 innings per start."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1014",
+            "cells": {
+              "pitcher": {
+                "display": "P 1014"
+              },
+              "age": {
+                "display": "30"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1014",
+              "age": 30,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 2
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1014,
+              "name": "P 1014",
+              "open": {
+                "kind": "player",
+                "playerId": 1014,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Averages 5.3 innings per start."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1015",
+            "cells": {
+              "pitcher": {
+                "display": "P 1015"
+              },
+              "age": {
+                "display": "23"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1015",
+              "age": 23,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 3
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1015,
+              "name": "P 1015",
+              "open": {
+                "kind": "player",
+                "playerId": 1015,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Averages 5.3 innings per start."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1016",
+            "cells": {
+              "pitcher": {
+                "display": "P 1016"
+              },
+              "age": {
+                "display": "25"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1016",
+              "age": 25,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 4
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1016,
+              "name": "P 1016",
+              "open": {
+                "kind": "player",
+                "playerId": 1016,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Averages 5.8 innings per start."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          }
+        ],
+        "empty": null
+      },
+      "note": null
+    },
+    {
+      "title": {
+        "display": "Bullpen"
+      },
+      "findings": [],
+      "findingsEmpty": {
+        "display": "No notes on how the pen is used: the arms are used about where the evidence puts them."
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "pitcher",
+            "title": {
+              "display": "Pitcher"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "usedAs",
+            "title": {
+              "display": "Used as"
+            },
+            "numeric": false
+          },
+          {
+            "id": "estimate",
+            "title": {
+              "display": "Estimate"
+            },
+            "numeric": true
+          },
+          {
+            "id": "tools",
+            "title": {
+              "display": "Tools"
+            },
+            "numeric": true
+          },
+          {
+            "id": "results",
+            "title": {
+              "display": "Results"
+            },
+            "numeric": true
+          },
+          {
+            "id": "read",
+            "title": {
+              "display": "Read"
+            },
+            "numeric": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "arm-1018",
+            "cells": {
+              "pitcher": {
+                "display": "P 1018"
+              },
+              "age": {
+                "display": "23"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1018",
+              "age": 23,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 0,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1018,
+              "name": "P 1018",
+              "open": {
+                "kind": "player",
+                "playerId": 1018,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1019",
+            "cells": {
+              "pitcher": {
+                "display": "P 1019"
+              },
+              "age": {
+                "display": "30"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1019",
+              "age": 30,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 1,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1019,
+              "name": "P 1019",
+              "open": {
+                "kind": "player",
+                "playerId": 1019,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1020",
+            "cells": {
+              "pitcher": {
+                "display": "P 1020"
+              },
+              "age": {
+                "display": "24"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1020",
+              "age": 24,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 2,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1020,
+              "name": "P 1020",
+              "open": {
+                "kind": "player",
+                "playerId": 1020,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1021",
+            "cells": {
+              "pitcher": {
+                "display": "P 1021"
+              },
+              "age": {
+                "display": "33"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1021",
+              "age": 33,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 3,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1021,
+              "name": "P 1021",
+              "open": {
+                "kind": "player",
+                "playerId": 1021,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1022",
+            "cells": {
+              "pitcher": {
+                "display": "P 1022"
+              },
+              "age": {
+                "display": "31"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1022",
+              "age": 31,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 4,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1022,
+              "name": "P 1022",
+              "open": {
+                "kind": "player",
+                "playerId": 1022,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1023",
+            "cells": {
+              "pitcher": {
+                "display": "P 1023"
+              },
+              "age": {
+                "display": "23"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1023",
+              "age": 23,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 5,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1023,
+              "name": "P 1023",
+              "open": {
+                "kind": "player",
+                "playerId": 1023,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1024",
+            "cells": {
+              "pitcher": {
+                "display": "P 1024"
+              },
+              "age": {
+                "display": "24"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1024",
+              "age": 24,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 6,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1024,
+              "name": "P 1024",
+              "open": {
+                "kind": "player",
+                "playerId": 1024,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "arm-1025",
+            "cells": {
+              "pitcher": {
+                "display": "P 1025"
+              },
+              "age": {
+                "display": "25"
+              },
+              "estimate": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "tools": {
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
+              },
+              "results": {
+                "display": "No sample",
+                "tone": "unknown"
+              },
+              "read": {
+                "display": "Cannot judge",
+                "tone": "unknown",
+                "hint": "There is no visible rating and no qualifying results to judge him on."
+              },
+              "usedAs": {
+                "display": "Not yet clear",
+                "hint": "The export carries no leverage for him."
+              }
+            },
+            "sort": {
+              "pitcher": "P 1025",
+              "age": 25,
+              "estimate": null,
+              "tools": null,
+              "results": null,
+              "read": 7,
+              "usedAs": null
+            },
+            "claim": {
+              "text": "Cannot judge",
+              "tone": "unknown",
+              "basis": {
+                "because": [
+                  {
+                    "label": "Why",
+                    "value": "There is no visible rating and no qualifying results to judge him on."
+                  }
+                ],
+                "source": {
+                  "department": "majorLeague",
+                  "specialist": "Major League Ops' roster review",
+                  "asOf": null,
+                  "gameDate": "2040-05-05"
+                },
+                "unknown": [],
+                "wouldChange": [
+                  "A visible tool rating, or a larger sample of major-league results."
+                ],
+                "lean": null,
+                "certainty": "provisional",
+                "called": "A starting number, not yet fitted on this save",
+                "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+              },
+              "links": [],
+              "hint": "There is no visible rating and no qualifying results to judge him on."
+            },
+            "player": {
+              "playerId": 1025,
+              "name": "P 1025",
+              "open": {
+                "kind": "player",
+                "playerId": 1025,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "The read"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "There is no visible rating and no qualifying results to judge him on."
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              },
+              {
+                "title": {
+                  "display": "What could explain it"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Nothing unusual."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "The export carries no leverage for him."
+                    },
+                    "quiet": true,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          }
+        ],
+        "empty": null
+      },
+      "note": {
+        "text": "A reliever's role is what his usage shows this season: the leverage of his innings, how long he throws, and saves and holds",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "How long he throws",
+              "value": "A long man is a reliever outside the high-leverage spots who averages 1.6 or more innings an appearance: Pennant's starting line, because this league has not been measured yet. It is replaced by this league's own once its relievers can be measured."
+            },
+            {
+              "label": "Not yet clear",
+              "value": "Too few appearances, or no exported leverage, is \"not yet clear\", never a guess."
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "Major League Ops' roster review",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+        },
+        "links": [],
+        "hint": "Too few appearances, or no exported leverage, is \"not yet clear\""
+      }
+    }
+  ],
+  "empty": null
+}

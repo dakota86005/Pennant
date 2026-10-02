@@ -61,6 +61,9 @@
     "Bench & Backups": {
       "extractionState": "manual"
     },
+    "Bench Jobs": {
+      "extractionState": "manual"
+    },
     "Bullpen": {
       "extractionState": "manual"
     },
@@ -118,6 +121,9 @@
       "extractionState": "manual"
     },
     "Detach": {
+      "extractionState": "manual"
+    },
+    "Details": {
       "extractionState": "manual"
     },
     "Development Tracking": {
@@ -190,6 +196,9 @@
       "extractionState": "manual"
     },
     "Go": {
+      "extractionState": "manual"
+    },
+    "Group": {
       "extractionState": "manual"
     },
     "Hide Inspector": {
@@ -303,6 +312,9 @@
       "extractionState": "manual"
     },
     "Open": {
+      "extractionState": "manual"
+    },
+    "Open Decision": {
       "extractionState": "manual"
     },
     "Open Report": {
@@ -424,6 +436,12 @@
     "Season Trends": {
       "extractionState": "manual"
     },
+    "Section": {
+      "extractionState": "manual"
+    },
+    "Select a row to see the staff's read.": {
+      "extractionState": "manual"
+    },
     "Server Log": {
       "extractionState": "manual"
     },
@@ -432,6 +450,12 @@
       "extractionState": "manual"
     },
     "Set Up Pennant…": {
+      "extractionState": "manual"
+    },
+    "Show Candidates": {
+      "extractionState": "manual"
+    },
+    "Show Decision": {
       "extractionState": "manual"
     },
     "Show Inspector": {
@@ -519,6 +543,9 @@
     "The server did not start in time": {},
     "The server is missing from this build": {},
     "The server keeps stopping": {},
+    "The Staff at a Glance": {
+      "extractionState": "manual"
+    },
     "Theme": {
       "extractionState": "manual"
     },
@@ -563,6 +590,9 @@
       "extractionState": "manual"
     },
     "What changed": {
+      "extractionState": "manual"
+    },
+    "What This Comparison Is": {
       "extractionState": "manual"
     },
     "What would change it": {

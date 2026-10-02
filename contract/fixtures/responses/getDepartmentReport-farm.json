@@ -244,6 +244,7 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": null,
         "count": 4,
         "attention": {
           "status": "open",
@@ -346,6 +347,7 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": null,
         "count": 4,
         "attention": {
           "status": "open",

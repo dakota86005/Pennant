@@ -1,0 +1,796 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Major League Ops"
+  },
+  "lede": {
+    "text": "What needs your attention, and the staff's read on the roster",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Nothing here ranks players or chooses a move: every finding is the specialist's that made it, and the decision is yours."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How Major League Ops reads its roster: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": {
+    "text": "Using starting yardsticks for now: this league has not been measured yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Where the lines come from",
+          "value": "The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, how much his recent seasons count, what a hitter's tools say and how much they hold his results back, how much a hitter's own record against left- and right-handers counts, and how long a reliever has to work to count as a long man."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "The line for each job: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How players age: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much the glove counts at each position: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much recent seasons count: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much a hitter's own split counts: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What a hitter's tools say, and how much they hold his results back: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Who counts as a long man: the starting value (a reliever who averages 1.6 or more innings an appearance), because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much his innings matter (closers, high- and low-leverage arms) is read on Pennant's fixed lines, on a scale where 1.0 is an average plate appearance in this league."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Starting values are the ones Pennant ships with."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "They are replaced by this league's own only after those have been checked against players and seasons they were not drawn from, and, for how players age, how much recent seasons count, what a hitter's tools say and how much a hitter's own split counts, only where this league's own did clearly better than the starting values there."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What the tools say can only be checked on seasons that came after the ratings were saved, which takes several seasons of imports."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new import refits them on the league's own seasons where it can."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+    },
+    "links": []
+  },
+  "freshness": {
+    "display": "Roster data: Partial — transaction log unavailable. Rights that depend on the transaction log are said to be not established.",
+    "tone": "caution"
+  },
+  "glances": [
+    {
+      "title": {
+        "display": "Position players"
+      },
+      "count": 0,
+      "countLabel": {
+        "display": "0 regulars flagged"
+      },
+      "lines": [
+        {
+          "display": "7 regulars reviewed · 0 flagged"
+        },
+        {
+          "display": "No platoon problems"
+        },
+        {
+          "display": "Unsettled: C, DH"
+        }
+      ],
+      "open": {
+        "kind": "view",
+        "department": "majorLeague",
+        "view": "positionPlayers"
+      }
+    },
+    {
+      "title": {
+        "display": "Pitching staff"
+      },
+      "count": 0,
+      "countLabel": {
+        "display": "0 arms flagged and notes on the pen"
+      },
+      "lines": [
+        {
+          "display": "5 starters · 0 flagged"
+        },
+        {
+          "display": "8 relievers · 0 flagged"
+        },
+        {
+          "display": "No notes on how the pen is used"
+        }
+      ],
+      "open": {
+        "kind": "view",
+        "department": "majorLeague",
+        "view": "pitchingStaff"
+      }
+    },
+    {
+      "title": {
+        "display": "Bench & Backups"
+      },
+      "count": 1,
+      "countLabel": {
+        "display": "1 position without a backup"
+      },
+      "lines": [
+        {
+          "display": "6 players on the bench"
+        },
+        {
+          "display": "No backup: middle infielder (second base or shortstop)"
+        },
+        {
+          "display": "No glove to put in late, runner, positional flexibility"
+        }
+      ],
+      "open": {
+        "kind": "view",
+        "department": "majorLeague",
+        "view": "benchBackups"
+      }
+    }
+  ],
+  "philosophy": {
+    "text": "Your philosophy shades the order and wording of this advice",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Read",
+          "value": "Your competitive window is 50 (balanced)."
+        },
+        {
+          "label": "Used",
+          "value": "competitiveWindow, riskTolerance, ageCurveSensitivity, upsidePreference, defenseEmphasis, rosterDepth, pitchingDepth, versatility"
+        },
+        {
+          "label": "Not used yet",
+          "value": "payrollFlexibility, costEfficiency, teamControl, prospectPreservation, promotionAggressiveness, positionalScarcity, starConcentration (contract and prospect-capital data are not part of the review)"
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops and your philosophy",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Changing your philosophy changes how urgently a flag is raised, which equivalent option leads and how high the bar for acting is."
+      ],
+      "lean": {
+        "neutral": "A club with no stated philosophy gets the same reads, rights and development findings.",
+        "why": [
+          "Neither the window nor the season presses: there is room to be patient."
+        ]
+      },
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How a philosophy leans on advice is a stated policy, never fitted"
+    },
+    "links": [],
+    "hint": "Never a scouting read, a right or a development finding"
+  },
+  "inbox": [
+    {
+      "title": {
+        "display": "Roster"
+      },
+      "collapsed": false,
+      "needs": [
+        {
+          "needId": "mlb:role_below_standard:catcher",
+          "badge": {
+            "display": "Needs attention",
+            "tone": "caution"
+          },
+          "kind": {
+            "display": "Roster floor"
+          },
+          "title": {
+            "display": "Catcher depth is below the minimum"
+          },
+          "summary": {
+            "display": "1 healthy catcher on the active roster against a minimum floor of 2."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "majorLeague",
+            "key": "mlb:role_below_standard:catcher"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "display": "Also worth a look (1)",
+        "hint": "Moderate cases, platoon flags and bench backups"
+      },
+      "collapsed": true,
+      "needs": [
+        {
+          "needId": "mlb:bench_coverage:middle_infield",
+          "badge": {
+            "display": "Bench backup",
+            "tone": "neutral"
+          },
+          "kind": {
+            "display": "Bench backups · second baseman"
+          },
+          "title": {
+            "display": "No bench player can cover second base or shortstop"
+          },
+          "summary": {
+            "display": "No bench player has a visible grade that supports playing second base or shortstop: if a regular there is hurt or rests, the position is covered by somebody out of place."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "majorLeague",
+            "key": "mlb:bench_coverage:middle_infield"
+          }
+        }
+      ]
+    }
+  ],
+  "inboxEmpty": null,
+  "whatIf": {
+    "title": {
+      "display": "Ask a what-if"
+    },
+    "prompt": {
+      "display": "If this player is unavailable…"
+    },
+    "note": {
+      "display": "A scenario to see how the club would respond if a player were out. It is a scenario, not a current problem."
+    },
+    "players": [
+      {
+        "player": {
+          "playerId": 1012,
+          "name": "P 1012",
+          "open": {
+            "kind": "player",
+            "playerId": 1012,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "catcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1012"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1002,
+          "name": "P 1002",
+          "open": {
+            "kind": "player",
+            "playerId": 1002,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "center fielder"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1002"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1005,
+          "name": "P 1005",
+          "open": {
+            "kind": "player",
+            "playerId": 1005,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "center fielder"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1005"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1008,
+          "name": "P 1008",
+          "open": {
+            "kind": "player",
+            "playerId": 1008,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "designated hitter"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1008"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1006,
+          "name": "P 1006",
+          "open": {
+            "kind": "player",
+            "playerId": 1006,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "first baseman"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1006"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1010,
+          "name": "P 1010",
+          "open": {
+            "kind": "player",
+            "playerId": 1010,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "first baseman"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1010"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1007,
+          "name": "P 1007",
+          "open": {
+            "kind": "player",
+            "playerId": 1007,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "left fielder"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1007"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1009,
+          "name": "P 1009",
+          "open": {
+            "kind": "player",
+            "playerId": 1009,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "left fielder"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1009"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1018,
+          "name": "P 1018",
+          "open": {
+            "kind": "player",
+            "playerId": 1018,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1018"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1019,
+          "name": "P 1019",
+          "open": {
+            "kind": "player",
+            "playerId": 1019,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1019"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1020,
+          "name": "P 1020",
+          "open": {
+            "kind": "player",
+            "playerId": 1020,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1020"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1021,
+          "name": "P 1021",
+          "open": {
+            "kind": "player",
+            "playerId": 1021,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1021"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1022,
+          "name": "P 1022",
+          "open": {
+            "kind": "player",
+            "playerId": 1022,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1022"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1023,
+          "name": "P 1023",
+          "open": {
+            "kind": "player",
+            "playerId": 1023,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1023"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1024,
+          "name": "P 1024",
+          "open": {
+            "kind": "player",
+            "playerId": 1024,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1024"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1025,
+          "name": "P 1025",
+          "open": {
+            "kind": "player",
+            "playerId": 1025,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "relief pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1025"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1001,
+          "name": "P 1001",
+          "open": {
+            "kind": "player",
+            "playerId": 1001,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "second baseman"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1001"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1003,
+          "name": "P 1003",
+          "open": {
+            "kind": "player",
+            "playerId": 1003,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "shortstop"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1003"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1013,
+          "name": "P 1013",
+          "open": {
+            "kind": "player",
+            "playerId": 1013,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "starting pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1013"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1014,
+          "name": "P 1014",
+          "open": {
+            "kind": "player",
+            "playerId": 1014,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "starting pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1014"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1015,
+          "name": "P 1015",
+          "open": {
+            "kind": "player",
+            "playerId": 1015,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "starting pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1015"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1016,
+          "name": "P 1016",
+          "open": {
+            "kind": "player",
+            "playerId": 1016,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "starting pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1016"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1017,
+          "name": "P 1017",
+          "open": {
+            "kind": "player",
+            "playerId": 1017,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "starting pitcher"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1017"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1000,
+          "name": "P 1000",
+          "open": {
+            "kind": "player",
+            "playerId": 1000,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "third baseman"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1000"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1004,
+          "name": "P 1004",
+          "open": {
+            "kind": "player",
+            "playerId": 1004,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "third baseman"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1004"
+        }
+      },
+      {
+        "player": {
+          "playerId": 1011,
+          "name": "P 1011",
+          "open": {
+            "kind": "player",
+            "playerId": 1011,
+            "teamId": 1
+          }
+        },
+        "role": {
+          "display": "third baseman"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:what_if:1011"
+        }
+      }
+    ]
+  },
+  "unknowns": []
+}

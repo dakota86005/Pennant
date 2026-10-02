@@ -1,0 +1,798 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Bench & Backups"
+  },
+  "lede": {
+    "text": "What the bench is for, and who can really play where",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "A bench is for something. Three positions need somebody who can really play them (catcher, middle infield, center field); the rest of what a bench does, a bat to send up, a glove for late innings, a runner, flexibility, is shown as jobs that someone does or nobody does. Being able to stand at a position is not being a backup for it: backups are read against the peers who actually play the position. Nothing here is a bench score."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How Major League Ops reads its roster: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": {
+    "text": "Using starting yardsticks for now: this league has not been measured yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Where the lines come from",
+          "value": "The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, how much his recent seasons count, what a hitter's tools say and how much they hold his results back, how much a hitter's own record against left- and right-handers counts, and how long a reliever has to work to count as a long man."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "The line for each job: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How players age: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much the glove counts at each position: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much recent seasons count: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much a hitter's own split counts: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What a hitter's tools say, and how much they hold his results back: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Who counts as a long man: the starting value (a reliever who averages 1.6 or more innings an appearance), because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much his innings matter (closers, high- and low-leverage arms) is read on Pennant's fixed lines, on a scale where 1.0 is an average plate appearance in this league."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Starting values are the ones Pennant ships with."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "They are replaced by this league's own only after those have been checked against players and seasons they were not drawn from, and, for how players age, how much recent seasons count, what a hitter's tools say and how much a hitter's own split counts, only where this league's own did clearly better than the starting values there."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What the tools say can only be checked on seasons that came after the ratings were saved, which takes several seasons of imports."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new import refits them on the league's own seasons where it can."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+    },
+    "links": []
+  },
+  "functions": [
+    {
+      "key": "catcher",
+      "title": {
+        "display": "Backs up catcher"
+      },
+      "strength": {
+        "display": "Backed up",
+        "tone": "good"
+      },
+      "text": {
+        "display": "P 1012 is a credible backup at catcher."
+      },
+      "by": [
+        {
+          "text": {
+            "display": "P 1012 · catcher: grade 41, better than 13% of those listed there"
+          },
+          "quiet": false,
+          "chips": [
+            {
+              "display": "credible backup",
+              "tone": "good"
+            }
+          ],
+          "players": [
+            {
+              "playerId": 1012,
+              "name": "P 1012",
+              "open": {
+                "kind": "player",
+                "playerId": 1012,
+                "teamId": 1
+              }
+            }
+          ]
+        }
+      ],
+      "action": null
+    },
+    {
+      "key": "middle_infield",
+      "title": {
+        "display": "Backs up second base or shortstop"
+      },
+      "strength": {
+        "display": "Nobody",
+        "tone": "bad"
+      },
+      "text": {
+        "display": "No bench player has a visible grade that supports playing second base or shortstop: if a regular there is hurt or rests, the position is covered by somebody out of place."
+      },
+      "by": [],
+      "action": {
+        "text": {
+          "display": "Who could back it up?"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:bench_coverage:middle_infield"
+        }
+      }
+    },
+    {
+      "key": "center_field",
+      "title": {
+        "display": "Backs up center field"
+      },
+      "strength": {
+        "display": "Backed up",
+        "tone": "good"
+      },
+      "text": {
+        "display": "P 1005 is regular quality at center field."
+      },
+      "by": [
+        {
+          "text": {
+            "display": "P 1005 · center field: grade 51, better than 50% of those listed there"
+          },
+          "quiet": false,
+          "chips": [
+            {
+              "display": "regular quality",
+              "tone": "good"
+            }
+          ],
+          "players": [
+            {
+              "playerId": 1005,
+              "name": "P 1005",
+              "open": {
+                "kind": "player",
+                "playerId": 1005,
+                "teamId": 1
+              }
+            }
+          ]
+        }
+      ],
+      "action": null
+    },
+    {
+      "key": "pinch_hit",
+      "title": {
+        "display": "A bat to send up"
+      },
+      "strength": {
+        "display": "Has someone",
+        "tone": "good"
+      },
+      "text": {
+        "display": "P 1005, P 1004 are a bat worth sending up."
+      },
+      "by": [
+        {
+          "text": {
+            "display": "P 1005 · pinch-hit bat"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 1005,
+              "name": "P 1005",
+              "open": {
+                "kind": "player",
+                "playerId": 1005,
+                "teamId": 1
+              }
+            }
+          ]
+        },
+        {
+          "text": {
+            "display": "P 1004 · pinch-hit bat"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 1004,
+              "name": "P 1004",
+              "open": {
+                "kind": "player",
+                "playerId": 1004,
+                "teamId": 1
+              }
+            }
+          ]
+        }
+      ],
+      "action": null
+    },
+    {
+      "key": "defensive",
+      "title": {
+        "display": "A glove to put in late"
+      },
+      "strength": {
+        "display": "Nobody",
+        "tone": "bad"
+      },
+      "text": {
+        "display": "Nobody on the bench is a clear defensive upgrade at a position."
+      },
+      "by": [],
+      "action": null
+    },
+    {
+      "key": "runner",
+      "title": {
+        "display": "A runner"
+      },
+      "strength": {
+        "display": "Nobody",
+        "tone": "bad"
+      },
+      "text": {
+        "display": "Nobody on the bench is a running threat."
+      },
+      "by": [],
+      "action": null
+    },
+    {
+      "key": "flexibility",
+      "title": {
+        "display": "Positional flexibility"
+      },
+      "strength": {
+        "display": "Nobody",
+        "tone": "bad"
+      },
+      "text": {
+        "display": "Nobody on the bench can credibly play 3 or more positions."
+      },
+      "by": [],
+      "action": null
+    }
+  ],
+  "bench": {
+    "columns": [
+      {
+        "id": "player",
+        "title": {
+          "display": "Player"
+        },
+        "numeric": false
+      },
+      {
+        "id": "bats",
+        "title": {
+          "display": "Bats"
+        },
+        "numeric": false
+      },
+      {
+        "id": "for",
+        "title": {
+          "display": "For"
+        },
+        "numeric": false
+      },
+      {
+        "id": "canPlay",
+        "title": {
+          "display": "Can play"
+        },
+        "numeric": false
+      },
+      {
+        "id": "also",
+        "title": {
+          "display": "Also"
+        },
+        "numeric": false
+      },
+      {
+        "id": "bat",
+        "title": {
+          "display": "Bat"
+        },
+        "numeric": true
+      },
+      {
+        "id": "pa",
+        "title": {
+          "display": "PA"
+        },
+        "numeric": true
+      }
+    ],
+    "rows": [
+      {
+        "id": "bench-1005",
+        "cells": {
+          "player": {
+            "display": "P 1005"
+          },
+          "bats": {
+            "display": "S"
+          },
+          "for": {
+            "display": "outfielder · shares CF"
+          },
+          "canPlay": {
+            "display": "CF"
+          },
+          "also": {
+            "display": "pinch-hit bat"
+          },
+          "bat": {
+            "display": "99",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
+          },
+          "pa": {
+            "display": "110"
+          }
+        },
+        "sort": {
+          "player": "P 1005",
+          "bats": "S",
+          "for": "outfielder",
+          "canPlay": "CF",
+          "also": "pinch-hit bat",
+          "bat": 99,
+          "pa": 110
+        },
+        "player": {
+          "playerId": 1005,
+          "name": "P 1005",
+          "open": {
+            "kind": "player",
+            "playerId": 1005,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Where he can play"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "CF: regular quality, better than 50% of those listed there"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "CF",
+                    "tone": "good"
+                  }
+                ],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "bench-1004",
+        "cells": {
+          "player": {
+            "display": "P 1004"
+          },
+          "bats": {
+            "display": "L"
+          },
+          "for": {
+            "display": "utility infielder · shares 3B"
+          },
+          "canPlay": {
+            "display": "3B (emergency)"
+          },
+          "also": {
+            "display": "pinch-hit bat"
+          },
+          "bat": {
+            "display": "76",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
+          },
+          "pa": {
+            "display": "98"
+          }
+        },
+        "sort": {
+          "player": "P 1004",
+          "bats": "L",
+          "for": "utility infielder",
+          "canPlay": "3B (emergency)",
+          "also": "pinch-hit bat",
+          "bat": 76,
+          "pa": 98
+        },
+        "player": {
+          "playerId": 1004,
+          "name": "P 1004",
+          "open": {
+            "kind": "player",
+            "playerId": 1004,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Where he can play"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "3B: emergency only, better than 7% of those listed there"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "3B",
+                    "tone": "bad"
+                  }
+                ],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "bench-1009",
+        "cells": {
+          "player": {
+            "display": "P 1009"
+          },
+          "bats": {
+            "display": "R"
+          },
+          "for": {
+            "display": "outfielder"
+          },
+          "canPlay": {
+            "display": "LF (emergency)"
+          },
+          "also": {
+            "display": "Nothing else"
+          },
+          "bat": {
+            "display": "38",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
+          },
+          "pa": {
+            "display": "54"
+          }
+        },
+        "sort": {
+          "player": "P 1009",
+          "bats": "R",
+          "for": "outfielder",
+          "canPlay": "LF (emergency)",
+          "also": null,
+          "bat": 37.5,
+          "pa": 54
+        },
+        "player": {
+          "playerId": 1009,
+          "name": "P 1009",
+          "open": {
+            "kind": "player",
+            "playerId": 1009,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Where he can play"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "LF: emergency only, better than 5% of those listed there"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "LF",
+                    "tone": "bad"
+                  }
+                ],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "bench-1010",
+        "cells": {
+          "player": {
+            "display": "P 1010"
+          },
+          "bats": {
+            "display": "R"
+          },
+          "for": {
+            "display": "corner bat"
+          },
+          "canPlay": {
+            "display": "1B (emergency)"
+          },
+          "also": {
+            "display": "Nothing else"
+          },
+          "bat": {
+            "display": "57",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
+          },
+          "pa": {
+            "display": "50"
+          }
+        },
+        "sort": {
+          "player": "P 1010",
+          "bats": "R",
+          "for": "corner bat",
+          "canPlay": "1B (emergency)",
+          "also": null,
+          "bat": 56.7,
+          "pa": 50
+        },
+        "player": {
+          "playerId": 1010,
+          "name": "P 1010",
+          "open": {
+            "kind": "player",
+            "playerId": 1010,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Where he can play"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "1B: emergency only, better than 6% of those listed there"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "1B",
+                    "tone": "bad"
+                  }
+                ],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "bench-1011",
+        "cells": {
+          "player": {
+            "display": "P 1011"
+          },
+          "bats": {
+            "display": "R"
+          },
+          "for": {
+            "display": "utility infielder"
+          },
+          "canPlay": {
+            "display": "3B"
+          },
+          "also": {
+            "display": "Nothing else"
+          },
+          "bat": {
+            "display": "16",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
+          },
+          "pa": {
+            "display": "44"
+          }
+        },
+        "sort": {
+          "player": "P 1011",
+          "bats": "R",
+          "for": "utility infielder",
+          "canPlay": "3B",
+          "also": null,
+          "bat": 16.3,
+          "pa": 44
+        },
+        "player": {
+          "playerId": 1011,
+          "name": "P 1011",
+          "open": {
+            "kind": "player",
+            "playerId": 1011,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Where he can play"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "3B: regular quality, better than 64% of those listed there"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "3B",
+                    "tone": "good"
+                  }
+                ],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "bench-1012",
+        "cells": {
+          "player": {
+            "display": "P 1012"
+          },
+          "bats": {
+            "display": "L"
+          },
+          "for": {
+            "display": "backup catcher"
+          },
+          "canPlay": {
+            "display": "C"
+          },
+          "also": {
+            "display": "Nothing else"
+          },
+          "bat": {
+            "display": "28",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
+          },
+          "pa": {
+            "display": "41"
+          }
+        },
+        "sort": {
+          "player": "P 1012",
+          "bats": "L",
+          "for": "backup catcher",
+          "canPlay": "C",
+          "also": null,
+          "bat": 27.9,
+          "pa": 41
+        },
+        "player": {
+          "playerId": 1012,
+          "name": "P 1012",
+          "open": {
+            "kind": "player",
+            "playerId": 1012,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Where he can play"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "C: credible backup, better than 13% of those listed there"
+                },
+                "quiet": false,
+                "chips": [
+                  {
+                    "display": "C",
+                    "tone": "good"
+                  }
+                ],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      }
+    ],
+    "empty": null
+  },
+  "findings": [],
+  "hands": {
+    "display": "Bench hands: 2 left, 3 right, 1 switch."
+  },
+  "empty": null
+}

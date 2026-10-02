@@ -19,17 +19,25 @@ public struct DeptID: RawRepresentable, Codable, Hashable, Sendable, Expressible
     }
 }
 
-/// Where a main window is: a department and one of its views (SWIFTUI_REBUILD.md section 6). Saved per window
-/// (`@SceneStorage`), so it is `Codable`.
+/// Where a main window is: a department, one of its views, and what the view has open (SWIFTUI_REBUILD.md section 6).
+/// Saved per window (`@SceneStorage`), so it is `Codable`.
 public struct AppRoute: Codable, Hashable, Sendable {
     public var department: DeptID
     /// The view's id inside its department (`report`, `positionPlayers`, …).
     public var view: String
+    /// What the view has open, as the server named it (N8: a decision's need, a decision target's `key`); nil for the
+    /// view itself. Part of the route, so Back and Forward step through what was opened, and a route saved without it
+    /// (an earlier build's) still decodes.
+    public var key: String?
 
-    public init(department: DeptID, view: String) {
+    public init(department: DeptID, view: String, key: String? = nil) {
         self.department = department
         self.view = view
+        self.key = key
     }
+
+    /// The view itself, with nothing open (what the sidebar selects).
+    public var viewOnly: AppRoute { AppRoute(department: department, view: view) }
 }
 
 extension UTType {

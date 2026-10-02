@@ -294,7 +294,7 @@ public enum DesignFixtures {
         PaletteEntry(id: "frontOffice.morningReport", group: "Front Office", symbol: "sun.horizon", title: "Morning Report", line: "Front Office", keywords: ["today", "desk"], shortcut: "⌘1"),
         PaletteEntry(id: "frontOffice.report", group: "Front Office", symbol: "list.bullet.clipboard", title: "Report", line: "Front Office · the whole desk"),
         PaletteEntry(id: "majorLeague.report", group: "Major League Ops", symbol: "list.bullet.clipboard", title: "Report", line: "Major League Ops", shortcut: "⌘2"),
-        PaletteEntry(id: "majorLeague.benchCoverage", group: "Major League Ops", symbol: "chair", title: "Bench & Backups", line: "Major League Ops", keywords: ["bench", "backups", "catcher"]),
+        PaletteEntry(id: "majorLeague.benchBackups", group: "Major League Ops", symbol: "chair", title: "Bench & Backups", line: "Major League Ops", keywords: ["bench", "backups", "catcher"]),
         PaletteEntry(id: "command.refresh", group: "Commands", symbol: "arrow.clockwise", title: "Refresh Data", line: "Import the export again", shortcut: "⌘R"),
         PaletteEntry(id: "command.inspector", group: "Commands", symbol: "sidebar.trailing", title: "Show Inspector", shortcut: "⌥⌘I"),
     ]

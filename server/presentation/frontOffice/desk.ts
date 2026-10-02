@@ -7,7 +7,7 @@
  * (D-001). An item's severity comes from `severity.ts` and is never raised; a department that could not be read is
  * `unavailable` and never all clear; a department with no report yet says so.
  */
-import type { Cell, Claim, DeptId } from '../../contract/presentation.js';
+import type { Cell, Claim, DeptId, Target } from '../../contract/presentation.js';
 import type { GameDate } from '../../dataFreshness.js';
 import type { CatalogDepartment } from '../catalog.js';
 import { basis, cell, claim, target } from '../claim.js';
@@ -106,6 +106,8 @@ export interface ItemInput {
   headline: Claim;
   detail?: Cell | null;
   evidence?: string | null;
+  /** The view that opens the item in full (a Major League Ops need's decision); null by default. */
+  open?: Target | null;
   /** How many of the department's own items the row stands for (the grouping rule); 1 by default. */
   count?: number;
 }
@@ -173,6 +175,7 @@ export function item(ctx: DepartmentContext, input: ItemInput): FoItem {
       : cell(s.dueInDays <= 0 ? 'Due today' : `${plural(s.dueInDays, 'day')} left`, { tone: s.neutral === 'critical' ? 'bad' : 'neutral' }),
     dueInDays: s.dueInDays,
     evidence: input.evidence ?? null,
+    open: input.open ?? null,
     count: input.count ?? 1,
     attention: openAttention(),
   };

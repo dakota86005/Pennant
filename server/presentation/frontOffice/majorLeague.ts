@@ -110,6 +110,8 @@ function needItem(ctx: DepartmentContext, need: MlbNeed, overview: MajorLeagueIn
     headline,
     detail: out.length ? cell(`Out: ${out.map((c) => c.name).join(', ')}`) : null,
     evidence: `${ctx.build.orgId}.majorLeague:need:${need.id}`,
+    // The need's decision (N8): the problem, the staff's call and every way to respond, in the Major League Ops workspace
+    open: target({ kind: 'decision', department: 'majorLeague', key: need.id }),
   });
 }
 

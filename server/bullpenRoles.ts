@@ -19,6 +19,7 @@
  */
 
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
+import { onScale } from './roleStanding.js';
 
 export const BULLPEN_CALIBRATION: CalibrationStamp = policy(
   'The leverage cut-offs are policy on the league\'s own leverage scale (1.0 is an average plate appearance there; rescaled only when the league\'s mean is off 1.0 by more than the tolerance). The long-man line is measured on the league\'s own relievers where its checks pass (docs/CALIBRATION.md section 14), else the starting value. The deployment gap, the minimum appearances and the multi-inning line are policy.'
@@ -161,10 +162,10 @@ export function deploymentFindings(arms: Array<{ playerId: number; name: string;
       used: { playerId: worse.playerId, name: worse.name, tier: worse.tier, estimate: worse.estimate },
       better: { playerId: better.playerId, name: better.name, tier: better.tier, estimate: better.estimate },
       gap,
-      current: `${worse.name} (working estimate ${Math.round(worse.estimate)}th percentile) is used as a ${TIER_WORD[worse.tier]}; ${better.name} (${Math.round(better.estimate)}th) works as a ${TIER_WORD[better.tier]}.`,
+      current: `${worse.name} (working estimate ${onScale(worse.estimate)}) is used as a ${TIER_WORD[worse.tier]}; ${better.name} (${onScale(better.estimate)}) works as a ${TIER_WORD[better.tier]}.`,
       supported: `The evidence puts ${better.name} ahead of ${worse.name} by ${Math.round(gap)} points, so the better arm belongs in the higher-leverage role.`,
       why: `A ${TIER_WORD[worse.tier]}'s innings come in tighter games than a ${TIER_WORD[better.tier]}'s (a closer averages about 2.0 leverage, a low-leverage arm under 1.0), so the weaker arm is pitching the innings that matter most.`,
-      text: `${worse.name} is used as a ${TIER_WORD[worse.tier]} (working estimate ${Math.round(worse.estimate)}th percentile) while ${better.name} (${Math.round(better.estimate)}th) works as a ${TIER_WORD[better.tier]}: the better arm is in the lower-leverage role. That is a usage decision for the manager, not a roster move.`,
+      text: `${worse.name} is used as a ${TIER_WORD[worse.tier]} (working estimate ${onScale(worse.estimate)}) while ${better.name} (${onScale(better.estimate)}) works as a ${TIER_WORD[better.tier]}: the better arm is in the lower-leverage role. That is a usage decision for the manager, not a roster move.`,
     });
   }
   return findings.sort((a, b) => b.gap - a.gap || a.used.name.localeCompare(b.used.name));
@@ -202,11 +203,11 @@ export function penFindings(arms: PenArm[], lines: BullpenLines): PenFinding[] {
   if (best && best.estimate < CREDIBLE_HIGH_LEVERAGE && graded.length >= MIN_READ_ARMS) {
     out.push({
       kind: 'no_credible_high_leverage',
-      current: `The best arm in the pen is ${best.name} (working estimate ${Math.round(best.estimate)}th percentile of MLB relievers), used as a ${TIER_WORD[best.tier]}.`,
-      supported: `No reliever reaches the ${CREDIBLE_HIGH_LEVERAGE}th percentile, about the level of an ordinary major-league reliever.`,
+      current: `The best arm in the pen is ${best.name} (working estimate ${onScale(best.estimate)} against MLB relievers), used as a ${TIER_WORD[best.tier]}.`,
+      supported: `No reliever's working estimate reaches ${onScale(CREDIBLE_HIGH_LEVERAGE)} against MLB relievers, about the level of an ordinary major-league reliever.`,
       why: 'The highest-leverage innings are worth about twice a middle inning (a closer averages about 2.0 leverage, a middle reliever about 1.0), and nobody here is better than ordinary to pitch them.',
       players: [brief(best)],
-      text: `No reliever in the pen is a credible high-leverage arm: the best, ${best.name}, is at the ${Math.round(best.estimate)}th percentile of MLB relievers.`,
+      text: `No reliever in the pen is a credible high-leverage arm: the best, ${best.name}, is ${onScale(best.estimate)} against MLB relievers.`,
     });
   }
 
@@ -258,9 +259,9 @@ export function starterConflicts(
   return ahead.slice(0, 2).map((r) => ({
     kind: 'starter_conflict' as const,
     current: `${r.name} is used as a ${TIER_WORD[r.tier]}; ${weakestStarter.name} is in the rotation.`,
-    supported: `${r.name}'s visible tools as a starter are at the ${Math.round(r.toolsAsStarter)}th percentile of MLB starters, against ${Math.round(weakestStarter.tools as number)}th for ${weakestStarter.name}, and his stamina supports starting.`,
+    supported: `${r.name}'s visible tools as a starter are ${Math.round(r.toolsAsStarter)} against MLB starters, against ${onScale(weakestStarter.tools as number)} for ${weakestStarter.name}, and his stamina supports starting.`,
     why: 'A rotation turn is about six innings; the difference between the two arms is spread across all of them, where a reliever\'s is spread over one. His results as a starter do not exist, so this is his tools only.',
     players: [{ playerId: r.playerId, name: r.name, tier: r.tier, estimate: r.estimate }],
-    text: `${r.name} (a ${TIER_WORD[r.tier]}) has better visible tools for the rotation than ${weakestStarter.name} (${Math.round(r.toolsAsStarter)}th against ${Math.round(weakestStarter.tools as number)}th): a role decision for the manager, on tools alone.`,
+    text: `${r.name} (a ${TIER_WORD[r.tier]}) has better visible tools for the rotation than ${weakestStarter.name} (${Math.round(r.toolsAsStarter)} against ${onScale(weakestStarter.tools as number)}): a role decision for the manager, on tools alone.`,
   }));
 }

@@ -50,7 +50,14 @@ public final class SetupModel {
         case request(RequestProblem)
     }
 
-    public private(set) var step: Step = .findSave
+    public private(set) var step: Step = .findSave {
+        // Each run that ends counts once, however quickly it ended (the window closes on the count, N8)
+        didSet { if step == .done, oldValue != .done { completions += 1 } }
+    }
+    /// How many runs have ended (the club saved or taken from the save). The Setup window closes when this moves while
+    /// it is open, whether or not its view saw the step change: a zero-question first run whose import finished in a
+    /// fifth of a second could end before the view's change handler ran, and the window stayed open.
+    public private(set) var completions = 0
     /// `GET /api/v2/saves`: the saves found, most recently played first, the one that clearly stands out with its reason,
     /// or why none does, and how to switch the export on when the save played last has none.
     public private(set) var discovery: Components.Schemas.SaveDiscovery?

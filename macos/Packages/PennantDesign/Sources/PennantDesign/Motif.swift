@@ -563,10 +563,10 @@ public struct StaffColumn: View {
         HStack(spacing: 8) {
             Text(verbatim: p.role).font(.caption2.weight(.bold)).foregroundStyle(.readableSecondary).frame(width: 26, alignment: .leading)
             Text(verbatim: p.name).font(.callout.weight(.medium)).lineLimit(1)
-            if p.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color) }
+            if p.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(.readableCaution) }
             Spacer(minLength: 4)
             if let note = p.note {
-                Text(verbatim: note).font(.caption2).foregroundStyle(Tone.caution.color).lineLimit(1)
+                Text(verbatim: note).font(.caption2).foregroundStyle(.readableCaution).lineLimit(1)
             }
             Text(verbatim: p.line).font(.caption).monospacedDigit().foregroundStyle(.readableSecondary)
             RangeBar(range: p.value, label: p.hint, scale: scale, height: 5).frame(width: 54)
