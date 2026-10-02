@@ -16,8 +16,9 @@ import { buildCatalog, type Catalog } from './presentation/catalog.js';
 import { assertAuthored } from './presentation/claim.js';
 import { dataStatusView, type DataStatusView } from './presentation/dataStatusWords.js';
 import {
-  FrontOfficeRefusal, UNKNOWN_CLUB, claimTrail, rebuildFrontOfficeLater, resolveOrg,
+  FrontOfficeRefusal, UNKNOWN_CLUB, claimTrail, majorLeagueDecision, majorLeagueView, rebuildFrontOfficeLater, resolveOrg,
 } from './frontOfficeService.js';
+import type { MlbBenchView, MlbDecisionView, MlbOverviewView, MlbPitchingStaffView, MlbPositionPlayersView } from './presentation/majorLeague/types.js';
 import { DeskRefusal, departmentReportNow, deskViewNow, frontOfficeSummaryNow, setDeskStatus } from './frontOfficeAttention.js';
 import { LeagueRefusal, clubReportNow, followNow, followingView, searchNow, unfollowNow, wireView } from './aroundTheLeague.js';
 import type { ClaimTrail, DepartmentReport, DeskChange, DeskView, FrontOfficeSummary } from './presentation/frontOffice/types.js';
@@ -86,9 +87,12 @@ v2Routes.get('/views/:org/farm/affiliates', frontOffice<FarmAffiliatesView>((req
 /** Every minor leaguer's assignment, in the farm's stated order. */
 v2Routes.get('/views/:org/farm/assignments', frontOffice<FarmAssignmentsView>((req) => farmAssignmentsNow(String(req.params.org))));
 
-/** One player's assignment, in the order a GM decides, with what follows if he moves. */
-v2Routes.get('/views/:org/farm/decision/:playerId', frontOffice<FarmDecisionView>((req) =>
-  farmDecisionNow(String(req.params.org), String(req.params.playerId))));
+/**
+ * One player's assignment, in the order a GM decides, with what follows if he moves (`?player=<id>`, the decision
+ * target's key, as Major League Ops' decision takes `?need=`).
+ */
+v2Routes.get('/views/:org/farm/decision', frontOffice<FarmDecisionView>((req) =>
+  farmDecisionNow(String(req.params.org), typeof req.query.player === 'string' ? req.query.player : '')));
 
 /** Player Development's calls: the development meetings and the board. */
 v2Routes.get('/views/:org/farm/prospects', frontOffice<FarmProspectsView>((req) => farmProspectsNow(String(req.params.org))));
@@ -126,6 +130,38 @@ v2Routes.get('/search', frontOffice<SearchAnswer>(async (req) => searchNow(req.q
 
 /** The evidence trail behind an item, on demand (an MLB need's responses). */
 v2Routes.get('/claims/:key', frontOffice<ClaimTrail>((req) => claimTrail(String(req.params.key))));
+
+/**
+ * Major League Ops' views (N8, SWIFTUI_REBUILD.md section 4.2's per-view endpoint): each a payload of its own under
+ * `/views/:org/majorLeague/<view>`, served from the club's build (worded with the department's report, warmed after
+ * every import).
+ */
+v2Routes.get('/views/:org/majorLeague/overview', frontOffice<MlbOverviewView>((req) =>
+  majorLeagueView(resolveOrg(String(req.params.org)), 'overview')));
+v2Routes.get('/views/:org/majorLeague/positionPlayers', frontOffice<MlbPositionPlayersView>((req) =>
+  majorLeagueView(resolveOrg(String(req.params.org)), 'positionPlayers')));
+v2Routes.get('/views/:org/majorLeague/pitchingStaff', frontOffice<MlbPitchingStaffView>((req) =>
+  majorLeagueView(resolveOrg(String(req.params.org)), 'pitchingStaff')));
+v2Routes.get('/views/:org/majorLeague/benchBackups', frontOffice<MlbBenchView>((req) =>
+  majorLeagueView(resolveOrg(String(req.params.org)), 'benchBackups')));
+
+/** A whole number from a query value, or undefined (a what-if's days). */
+const wholeQuery = (value: unknown): number | undefined => {
+  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+  return Number.isInteger(n) && n >= 0 ? n : undefined;
+};
+const textQuery = (value: unknown): string | undefined => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
+
+/**
+ * One need's decision (`?need=<id>`, with the GM's choices `role`, `context` and `days`, each sent back as a choice
+ * served it): built on its first open, kept until the next import.
+ */
+v2Routes.get('/views/:org/majorLeague/decision', frontOffice<MlbDecisionView>((req) => majorLeagueDecision(resolveOrg(String(req.params.org)), {
+  need: textQuery(req.query.need) ?? '',
+  role: textQuery(req.query.role),
+  context: textQuery(req.query.context),
+  days: wholeQuery(req.query.days),
+})));
 
 /** The club a theme route is about (a team id, or `automatic`), with its colours as the export has them. */
 function themedClub(param: string) {

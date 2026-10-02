@@ -6,17 +6,17 @@ import SwiftUI
 
 /// Farm & Development ▸ Affiliates (N10): the organization drawn as served, from the major-league club down, each club a
 /// node with its two readings (can it field a team, are its players developing; never one state, D-045); the chosen
-/// affiliate read in full beside it. A desk item or a link about an affiliate opens it here (the route's subject).
+/// affiliate read in full beside it. A desk item or a link about an affiliate opens it here (the route's key).
 public struct FarmAffiliatesView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.routeSubject) private var subject
+    @Environment(\.currentRoute) private var currentRoute
 
     public init() {}
 
     public var body: some View {
         let farm = model.farm
         FarmLoading(payload: farm.affiliates, problem: farm.affiliates == nil ? farm.problems["affiliates"] : nil) { view in
-            AffiliatesSplit(view: view, initial: subject.flatMap(Int.init), updating: farm.isStale("affiliates", for: model.storeKey))
+            AffiliatesSplit(view: view, initial: currentRoute?.key.flatMap(Int.init), updating: farm.isStale("affiliates", for: model.storeKey))
         }
         .loadsFarm()
     }

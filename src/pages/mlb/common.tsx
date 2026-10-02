@@ -11,7 +11,8 @@ export const Chip = ({ cls, title, children }: { cls: string; title?: string; ch
   <span className={`rights-chip ${cls}`} title={title}>{children}</span>
 );
 
-export const STANCE_TEXT: Record<string, string> = { act: 'Recommend', explore: 'Worth pursuing', monitor: 'Monitor', hold: 'Hold' };
+/** The staff's call as the staff's view, never an order (the owner's wording, 2026-10-02; D-065). */
+export const STANCE_TEXT: Record<string, string> = { act: 'Staff\'s view: act', explore: 'Staff\'s view: worth pursuing', monitor: 'Staff\'s view: keep watching', hold: 'Staff\'s view: hold' };
 export const STANCE_CLASS: Record<string, string> = { act: 'eligible', explore: 'indeterminate', monitor: '', hold: '' };
 export const PREFERENCE: Record<string, string> = { preferred: 'Org prefers', acceptable: 'Acceptable', disfavored: 'Org disfavors', no_preference: 'No preference' };
 export const DEV: Record<string, string> = {

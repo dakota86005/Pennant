@@ -733,8 +733,8 @@ is batting, not fielding; a player injured past a week is not cover and competes
 for nothing; a pool Player Development has not evaluated leaves a cascade
 indeterminate rather than closed. The organization is read once per request
 (`FarmSession`) and never cached across requests. The Mac app's farm views
-(D-065) keep a worded build on the Front Office's key (the import, the
-settings, the live log), so nothing is served across an export or a setting;
+(D-066) keep a worded build on the Front Office's key and the save's rating-snapshot writes (the import, the
+settings, the live log, the history), so nothing is served across an export or a setting;
 the session itself lives for that one build. The superseded solvers, their
 routes and the three older farm pages are gone: there is one farm implementation.
 

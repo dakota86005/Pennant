@@ -105,8 +105,14 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
     const club = a.target.kind === 'affiliate' ? view.affiliates.find((x) => x.teamId === (a.target as { teamId: number }).teamId)?.label ?? null : null;
     // A reason adds to the line only for a player's assignment or roster spot; a finding's first evidence restates it
     const detail = a.kind === 'assignment' || a.kind === 'retention' ? a.detail.trim() : '';
-    // Each item opens where the farm answers it (N10): a player's Decision, the affiliate on Affiliates, the Organization
+    // The headline names who it is about; the item opens where the farm answers it (N10, with N8's served `open`): a
+    // player's Decision, the affiliate on Affiliates, the Organization
     const link = a.target.kind === 'player'
+      ? target({ kind: 'player', playerId: a.target.playerId })
+      : a.target.kind === 'affiliate'
+        ? target({ kind: 'club', teamId: a.target.teamId })
+        : target({ kind: 'view', department: 'farm', view: 'organization' });
+    const open = a.target.kind === 'player'
       ? target({ kind: 'decision', department: 'farm', key: String(a.target.playerId) })
       : a.target.kind === 'affiliate'
         ? target({ kind: 'view', department: 'farm', view: 'affiliates', key: String(a.target.teamId) })
@@ -135,6 +141,7 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
       shading: [],
       headline,
       detail: detail ? cell(detail) : null,
+      open,
       count: members.length,
     });
   });

@@ -59,7 +59,7 @@ describe('a replacement is compared with the player under review, lens by lens',
 
   it('the read says both lenses agree on the holder and names who would improve on him', () => {
     const t = p.report!.read.text;
-    expect(t).toMatch(/Both lenses agree: his tools \(20th\) and his results/);
+    expect(t).toMatch(/Both lenses agree: his tools \(20 on the 0–100 scale\) and his results/);
     expect(t).toMatch(/Reno Better \(\+\d+\) is a clear upgrade/);
     expect(t).toMatch(/Reno ToolsOnly.*an upgrade on paper, but his read is not firm/);
   });
@@ -142,7 +142,7 @@ describe('the staff recommendation follows a stated rubric', () => {
   it('ACT: a strong case, a clear firm upgrade whose path is open and defensible, and a plan that puts nobody at risk', () => {
     const r = packet().report!.recommendation!;
     expect(r).toMatchObject({ stance: 'act', confidence: 'high' });
-    expect(r.headline).toMatch(/Recommend the change: Send SP5 down and bring in Reno Better/);
+    expect(r.headline).toMatch(/^Staff's view: the change is worth making now: Send SP5 down and bring in Reno Better/);
     expect(r.because.join(' ')).toMatch(/Both lenses agree.*clear upgrade.*puts nobody at risk/s);
     expect(r.basis).toMatch(/It is advice, not a decision/);
   });
@@ -152,7 +152,7 @@ describe('the staff recommendation follows a stated rubric', () => {
     const r = open.report!.recommendation!;
     expect(r.stance).toBe('explore');
     expect(r.toSettle.join(' ')).toMatch(/Player Development cannot yet establish|read on Reno ToolsOnly rests on one lens/);
-    expect(r.wouldChange.join(' ')).toMatch(/Settling the item above would move this to a recommendation/);
+    expect(r.wouldChange.join(' ')).toMatch(/Settling the item above would make this a firm call/);
   });
 
   it('EXPLORE: nothing ready today, but a held-up upgrade is named with what holds him up', () => {
@@ -160,13 +160,13 @@ describe('the staff recommendation follows a stated rubric', () => {
     const r = blocked.report!.recommendation!;
     expect(r.stance).toBe('explore');
     expect(r.confidence).toBe('low');
-    expect(r.headline).toMatch(/Nothing is ready today, but Reno Better would be a clear upgrade/);
+    expect(r.headline).toMatch(/^Staff's view: nothing is ready today, but Reno Better would be a clear upgrade/);
   });
 
   it('HOLD: nothing internal improves on him', () => {
     const none = packet((s) => s, { development: {} }, [{ id: 502, name: 'Reno Worse', position: 1, role: 11, level: 2, forty: true, active: false }]);
     expect(none.report!.recommendation).toMatchObject({ stance: 'hold' });
-    expect(none.report!.recommendation!.headline).toMatch(/Nothing internal improves on SP5/);
+    expect(none.report!.recommendation!.headline).toMatch(/^Staff's view: nothing internal improves on SP5/);
   });
 
   it('MONITOR: the best internal option is only a marginal upgrade', () => {

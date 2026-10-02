@@ -57,8 +57,8 @@ export interface FlagExplanation {
 }
 
 const RULE_TEXT: Record<HolderReview['concern']['rule'], (r: HolderReview) => string> = {
-  below_deep_floor: (r) => `His working estimate (${Math.round(r.estimate.value ?? 0)}) is well below what ${r.standard?.label ?? 'the job'} takes: under the ${Math.round(r.standard?.deepFloor ?? 0)} line the lowest twentieth of the league's holders of the role fall below.`,
-  below_role_floor: (r) => `His working estimate (${Math.round(r.estimate.value ?? 0)}) is unusually weak for ${r.standard?.label ?? 'the job'}: under the ${Math.round(r.standard?.floor ?? 0)} line the lowest tenth of the league's holders fall below.`,
+  below_deep_floor: (r) => `His working estimate (${Math.round(r.estimate.value ?? 0)}) is well below what ${r.standard?.label ?? 'the job'} takes: under the ${Math.round(r.standard?.deepFloor ?? 0)} line the lowest twentieth of the league's regulars in the role fall below.`,
+  below_role_floor: (r) => `His working estimate (${Math.round(r.estimate.value ?? 0)}) is unusually weak for ${r.standard?.label ?? 'the job'}: under the ${Math.round(r.standard?.floor ?? 0)} line the lowest tenth of the league's regulars in the role fall below.`,
   below_absolute: (r) => `His working estimate (${Math.round(r.estimate.value ?? 0)}) is under the absolute line of 35 (no standard for his role was available).`,
   weakest_in_group: (r) => `He is the weakest in his group and well below its median (no standard for his role was available).`,
   none: (r) => (r.estimate.value === null ? 'There is nothing to judge him on.' : 'He is not below the line for his role.'),

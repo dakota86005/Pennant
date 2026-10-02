@@ -16,7 +16,11 @@
         },
         {
           "label": "Not considered",
-          "value": "12 players: Active players whose visible evidence does not support the role"
+          "value": "7 players: Regulars at other positions (moving one opens a new hole)"
+        },
+        {
+          "label": "Not considered",
+          "value": "5 players: Active players whose visible evidence does not support the role"
         }
       ],
       "source": {

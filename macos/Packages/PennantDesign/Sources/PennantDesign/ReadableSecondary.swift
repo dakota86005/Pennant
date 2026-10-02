@@ -68,6 +68,16 @@ public extension NSColor {
         }
     }
 
+    /// A caution's words ("Need", a pitcher's note): a dark orange in light, a light orange in dark, checked on the page,
+    /// a chip and the window's background (`ThemeTests`): 7:1 or better in both, so Increase Contrast needs no shade of its own. The system orange reads near 2:1 on white, so it stays for
+    /// symbols, dots and strokes only, never for text.
+    nonisolated static let readableCautionText = NSColor(name: "PennantReadableCautionText") { appearance in
+        switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
+        case .darkAqua?, .accessibilityHighContrastDarkAqua?: NSColor(srgbRed: 1.0, green: 0.74, blue: 0.40, alpha: 1)
+        default: NSColor(srgbRed: 0.50, green: 0.22, blue: 0.0, alpha: 1)
+        }
+    }
+
     /// A control's tint where the system draws white words on it (a swipe action): a dark grey in both appearances.
     nonisolated static let readableActionTint = NSColor(name: "PennantReadableActionTint") { appearance in
         switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
@@ -86,6 +96,8 @@ public extension ShapeStyle where Self == Color {
     /// A heading chip's fill and its words (`NSColor.readableHeadingFill`, `.readableHeadingText`).
     static var readableHeadingFill: Color { Color(nsColor: .readableHeadingFill) }
     static var readableHeadingText: Color { Color(nsColor: .readableHeadingText) }
+    /// A caution's words (`NSColor.readableCautionText`); the system orange stays for symbols.
+    static var readableCaution: Color { Color(nsColor: .readableCautionText) }
     /// A tint under the system's white words (`NSColor.readableActionTint`).
     static var readableActionTint: Color { Color(nsColor: .readableActionTint) }
 }

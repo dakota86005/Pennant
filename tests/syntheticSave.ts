@@ -66,6 +66,13 @@ export interface SaveSpec {
    * saves have no games, as before.
    */
   teamSeason?: boolean;
+  /**
+   * Each position player's innings at his listed position this season (`players_career_fielding_stats`), so the lineup
+   * as usage shows it is settled where the regulars' positions differ: a regular plays most of his club's innings there,
+   * a bench player a few. Draws no random number, so every other row is as without it. Off by default (N8 review: a
+   * snapshot with real lineup rows).
+   */
+  lineups?: boolean;
 }
 
 export interface BuiltSave {
@@ -327,6 +334,10 @@ export function buildSave(spec: SaveSpec): BuiltSave {
         insert('players_career_pitching_stats', { player_id: id, year: s, team_id: team, league_id: league, level_id: level, split_id: 1, bf: opp, outs: Math.round(opp * 0.72), g: games, gs: role === 'starter' ? games : 0, war: Math.round(war * 10) / 10 });
       } else {
         insert('players_career_batting_stats', { player_id: id, year: s, team_id: team, league_id: league, level_id: level, split_id: 1, pa: opp, ab: Math.round(opp * 0.9), war: Math.round(war * 10) / 10 });
+        if (spec.lineups && s === Y && level === 1 && (role === 'regular' || role === 'bench')) {
+          const part = role === 'regular' ? 0.92 : 0.12;
+          insert('players_career_fielding_stats', { player_id: id, year: s, level_id: level, split_id: 1, position, g: Math.round(g * share), gs: Math.round(g * share * part), ip: Math.round(g * share * 9 * part) });
+        }
         insert('players_career_batting_stats', { player_id: id, year: s, team_id: team, league_id: league, level_id: level, split_id: 2, pa: Math.round(opp * 0.28), ab: 0, war: null });
         insert('players_career_batting_stats', { player_id: id, year: s, team_id: team, league_id: league, level_id: level, split_id: 3, pa: Math.round(opp * 0.72), ab: 0, war: null });
       }

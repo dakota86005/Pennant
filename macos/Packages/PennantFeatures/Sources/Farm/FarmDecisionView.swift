@@ -5,17 +5,17 @@ import PennantKit
 import SwiftUI
 
 /// Farm & Development ▸ Decision (N10): one player's assignment in the order a GM decides, every word served. Opened on a
-/// player (the route's subject: a desk item, a row, a name); opened on its own, it lists the assignments in question to
+/// player (the route's key: a desk item, a row, a name); opened on its own, it lists the assignments in question to
 /// choose from. The cascade is drawn as numbered steps on a rail that ends at its served stop; a hole it leaves open is
 /// information in the content's own colours, never an error. Nothing here is a transaction.
 public struct FarmDecisionView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.routeSubject) private var subject
+    @Environment(\.currentRoute) private var currentRoute
 
     public init() {}
 
     public var body: some View {
-        if let id = subject.flatMap(Int.init) {
+        if let id = currentRoute?.key.flatMap(Int.init) {
             DecisionForPlayer(playerId: id)
         } else {
             DecisionIndex()

@@ -25,16 +25,27 @@ public protocol RouteOpening: AnyObject {
 extension EnvironmentValues {
     /// The window's route opener (set by the Shell); nil where no window hosts the view, and nothing opens.
     @Entry public var routeOpener: (any RouteOpening)? = nil
+    /// The route the window shows (set by the Shell), so a view reads what it has open (a decision's key); nil outside
+    /// a window.
+    @Entry public var currentRoute: AppRoute? = nil
 }
 
-/// A served target as a route in this build, when it names a department's view.
+/// A served target as a route in this build, when it names a department's view, or a decision (N8: the department's
+/// Decision view with the served key open). A view's served key goes with it (the farm's affiliates open with a team
+/// key, the N8 review's M8).
 public func route(_ target: Components.Schemas.Target?) -> AppRoute? {
     guard let target, let department = target.department else { return nil }
-    let dept = DeptID(rawValue: department.rawValue)
-    // A decision opens its department's Decision view on its key (N10: the farm's, a player's id)
-    if target.kind.value1 == .decision, let key = target.key { return AppRoute(department: dept, view: "decision", subject: key) }
+    if target.kind.value1 == .decision, let key = target.key {
+        return AppRoute(department: DeptID(rawValue: department.rawValue), view: "decision", key: key)
+    }
     guard let view = target.view else { return nil }
-    return AppRoute(department: dept, view: view, subject: target.key)
+    return AppRoute(department: DeptID(rawValue: department.rawValue), view: view, key: target.key)
+}
+
+/// The words for opening a served target, by its kind: "Open Decision" for a decision, "Open" for anything else (a
+/// department's view, an affiliate). The button, the context menu and the VoiceOver action say the same (M8).
+public func openLabel(_ target: Components.Schemas.Target?) -> LocalizedStringKey {
+    target?.kind.value1 == .decision ? "Open Decision" : "Open"
 }
 
 /// A served claim as one line: its tone's symbol, its text, its help tag, and its basis one click away.
@@ -86,14 +97,6 @@ public struct DeskItemRow: View {
 
     private var undoManager: UndoManager? { handedUndoManager ?? windowUndoManager }
 
-    /// The item's first served link this build opens in the window (its department's view or decision), when it has one.
-    private var openable: AppRoute? {
-        for link in item.headline.links {
-            if let r = route(link), opener?.canOpen(r) ?? false { return r }
-        }
-        return nil
-    }
-
     public var body: some View {
         let choices = model.frontOffice.summary?.desk.deferChoices ?? []
         DeskRow(item, showsDepartment: showsDepartment, compact: compact) {
@@ -103,27 +106,20 @@ public struct DeskItemRow: View {
                 }
                 if let evidence = item.evidence {
                     TrailButton(evidence: evidence, compact: compact)
-                } else if let open = openable {
-                    // Where the department answers it, in this window (N10: a farm player's Decision, an affiliate)
-                    Button { opener?.open(open) } label: {
-                        if compact {
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary)
-                                .accessibilityLabel(Text("Open"))
-                        } else {
-                            Text("Open")
-                        }
-                    }
-                    .buttonStyle(compact ? AnyButtonStyle(.plain) : AnyButtonStyle(.bordered))
-                    .controlSize(.small)
-                    .help(Text("Open"))
-                    .accessibilityIdentifier("itemOpen")
+                }
+                if !compact, let decision = route(item.open), opener?.canOpen(decision) == true {
+                    Button(openLabel(item.open)) { opener?.open(decision) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help(Text(openLabel(item.open)))
+                        .accessibilityIdentifier(item.open?.kind.value1 == .decision ? "item.decision" : "item.open")
                 }
             }
         }
         .contentShape(.rect)
         .contextMenu {
-            if let open = openable {
-                Button("Open", systemImage: "arrow.up.forward.square") { opener?.open(open) }
+            if let decision = route(item.open), opener?.canOpen(decision) == true {
+                Button(openLabel(item.open), systemImage: item.open?.kind.value1 == .decision ? "checkmark.seal" : "arrow.forward.circle") { opener?.open(decision) }
                 Divider()
             }
             DeskItemMenu(status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true })
@@ -135,6 +131,11 @@ public struct DeskItemRow: View {
         .focusedValue(\.deskItem, FocusedDeskItem(
             key: item.key, status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true }
         ))
+        .accessibilityActions {
+            if let decision = route(item.open), opener?.canOpen(decision) == true {
+                Button(openLabel(item.open)) { opener?.open(decision) }
+            }
+        }
         .accessibilityAction(named: Text("Mark Reviewed")) { perform(.reviewed) }
         .accessibilityAction(named: Text("Mark Handled in OOTP")) { perform(.handled) }
         .accessibilityActions {
@@ -266,12 +267,15 @@ public struct DepartmentCardView: View {
 /// A department's report in the one anatomy (SWIFTUI_REBUILD.md section 3.5), set like a magazine: the masthead
 /// carries its served name, its summary as the deck and its key figures as the box score; below, what to decide, what
 /// it is watching, what changed and what it can't see. The staff memo appears when the server serves one (N7).
-public struct DepartmentReportView: View {
+public struct DepartmentReportView<After: View>: View {
     @Environment(AppModel.self) private var model
     let department: DeptID
+    /// What the department adds beneath its report (N8: Major League Ops' staff at a glance and the what-if).
+    let after: () -> After
 
-    public init(department: DeptID) {
+    public init(department: DeptID, @ViewBuilder after: @escaping () -> After) {
         self.department = department
+        self.after = after
     }
 
     public var body: some View {
@@ -297,6 +301,7 @@ public struct DepartmentReportView: View {
                                 || (store.reportProblems[department.rawValue] == nil && model.storeKey.map { !store.reportIsCurrent(department.rawValue, for: $0) } ?? false),
                             showsHeader: false
                         )
+                        after()
                     }
                     .padding(.horizontal, 28).padding(.vertical, 24)
                     .frame(maxWidth: 1100, alignment: .leading)
@@ -310,6 +315,12 @@ public struct DepartmentReportView: View {
         }
         // The statuses of its items change without a new key (the GM's own change, the desk-changed event)
         .task(id: ReportTaskKey(key: model.storeKey, attention: store.attentionRevision)) { await model.loadReport(department) }
+    }
+}
+
+extension DepartmentReportView where After == EmptyView {
+    public init(department: DeptID) {
+        self.init(department: department, after: { EmptyView() })
     }
 }
 

@@ -278,7 +278,7 @@ function spotRequirement(
   }
   return count < limit
     ? { kind, status: 'met', message: `${noun}: ${count} of ${limit}; a spot is open.` }
-    : { kind, status: 'unmet', message: `${noun} is full (${count} of ${limit}); a spot must be opened first.` };
+    : { kind, status: 'unmet', message: `${noun} is full (${count} of ${limit}); a spot has to be opened first.` };
 }
 
 // ── option years (a state-derived fact, independent of where he is now) ─────
@@ -367,7 +367,7 @@ function evaluateOption(ctx: RightsContext): ActionRights {
   if (exhausted && thisSeason === 0) {
     blocks.push(reason(
       'out_of_options',
-      'All three option years are used; he must clear irrevocable waivers before he can be demoted (OOTP: "out of option years and must clear waivers").',
+      'All three option years are used; he has to clear irrevocable waivers before he can be demoted (OOTP says he is "out of option years" and has to clear waivers).',
       'observed_and_documented', 'players_roster_status.options_used'
     ));
   }
@@ -409,12 +409,12 @@ function evaluateRecall(ctx: RightsContext): ActionRights {
   }
   if (s.dfa.designated.value === true) {
     return result(a, 'ineligible', 'Designated for assignment', {
-      reasons: [reason('designated_for_assignment', 'He is in DFA limbo and must be assigned, traded, released or restored first.', 'export_state', 'players_roster_status.designated_for_assignment')],
+      reasons: [reason('designated_for_assignment', 'He is in DFA limbo and has to be assigned, traded, released or restored first.', 'export_state', 'players_roster_status.designated_for_assignment')],
     });
   }
   if (s.fortyMan.value === false) {
     return result(a, 'ineligible', 'Not on the 40-man', {
-      reasons: [reason('not_on_forty_man', 'A player who is not on the 40-man cannot be recalled; his contract must first be added to it.', 'export_state', 'players_roster_status.is_on_secondary')],
+      reasons: [reason('not_on_forty_man', 'A player who is not on the 40-man cannot be recalled; his contract has to be added to it first.', 'export_state', 'players_roster_status.is_on_secondary')],
     });
   }
   const il = requireFields(a, 'Recall status unknown', [
@@ -463,7 +463,7 @@ function evaluateRecall(ctx: RightsContext): ActionRights {
   return result(a, 'eligible', requirement.status === 'unmet' ? 'Recall eligible — active roster full' : 'Recall eligible', {
     reasons: [reason(
       'optioned_and_recallable',
-      'He is on the 40-man, optioned, and not on an injured list, in DFA, or on rehab. OOTP enforced no minimum time in the minors: same-day and next-day recalls were accepted.',
+      'He is on the 40-man, optioned, and not on an injured list, in DFA, or on rehab. OOTP enforced no minimum time in the minors: same-day and next-day recalls went through.',
       'observed', 'assignmentContext.optioned'
     )],
     requirements: [requirement],
@@ -578,7 +578,7 @@ function evaluateOutright(ctx: RightsContext): ActionRights {
     return result(a, 'ineligible', 'May refuse assignment', {
       reasons: [reason(
         'may_refuse_assignment',
-        `With ${years} years of service he can refuse assignment to the minors; he must then be released, traded or restored.`,
+        `With ${years} years of service he can refuse assignment to the minors; he then has to be released, traded or restored.`,
         'observed_and_documented', 'players_roster_status.mlb_service_years'
       )],
       facts,
@@ -628,7 +628,7 @@ function evaluatePromoteToActive(ctx: RightsContext): ActionRights | null {
   if (gate) return { ...gate, action: a, label };
   if (s.dfa.designated.value === true) {
     return result(a, 'ineligible', 'Designated for assignment', {
-      reasons: [reason('designated_for_assignment', 'He is in DFA limbo and must be assigned, traded, released or restored first.', 'export_state', 'players_roster_status.designated_for_assignment')],
+      reasons: [reason('designated_for_assignment', 'He is in DFA limbo and has to be assigned, traded, released or restored first.', 'export_state', 'players_roster_status.designated_for_assignment')],
     });
   }
   if (onIl(ctx)) {
@@ -782,7 +782,7 @@ function evaluatePlaceOnSixtyDayIl(ctx: RightsContext): ActionRights {
         ? [reason('at_or_below_observed_refusal', `OOTP refused this move once, for a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury; he has ${daysLeft}.`, 'observed', 'docs/RIGHTS_RESEARCH.md 4.8')]
         : []),
     ],
-    missing: [{ code: 'rule_not_established', message: `How long an injury must be for OOTP to allow the 60-day list has not been measured (only a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury was tried, and refused). He has ${daysLeft} day(s) left.` }],
+    missing: [{ code: 'rule_not_established', message: `How long an injury has to be for OOTP to allow the 60-day list has not been measured (only a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury was tried, and refused). He has ${daysLeft} day(s) left.` }],
     facts,
     limitation: 'Activating him later needs a 40-man spot again (see activateFromInjuredList).',
   });

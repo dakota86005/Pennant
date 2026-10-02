@@ -32,7 +32,7 @@ import { policy, provisional, type CalibrationStamp } from './calibration.js';
 import { reliability } from './resultsMetrics.js';
 import type { RoleStandard } from './roleStandards.js';
 import type { ToolContribution } from './toolsModel.js';
-import { MEANINGFUL_GAP, ordinal } from './roleStanding.js';
+import { MEANINGFUL_GAP, onScale } from './roleStanding.js';
 
 export const REVIEW_CALIBRATION: CalibrationStamp = policy(
   'The concern thresholds (how low is a concern, how large a gap is a divergence) are policy judgments, not fitted; the pitcher results mix and the running blend are calibrated or derived; the aging curve and the glove weights are the save\'s own once they pass their checks, else provisional fallback priors (see each declaration).'
@@ -452,18 +452,18 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     const explanations: string[] = [];
     const wouldChange: string[] = [];
     const lens = [
-      h.ratingsPct !== null ? `tools ${ordinal(h.ratingsPct)} percentile${!std && ratingsMedian !== null ? ` (group median ${ordinal(ratingsMedian)})` : ''}` : 'no visible tool rating',
-      est.resultsPct !== null ? `results ${ordinal(est.resultsPct)} (${r0(h.sample)} ${h.sampleUnit} of weighted sample, trusted ${r0(h.reliability * 100)}% as his level${!std && resultsMedian !== null ? `; group median ${ordinal(resultsMedian)}` : ''})` : 'no qualifying results',
+      h.ratingsPct !== null ? `tools ${onScale(h.ratingsPct)}${!std && ratingsMedian !== null ? ` (group median ${onScale(ratingsMedian)})` : ''}` : 'no visible tool rating',
+      est.resultsPct !== null ? `results ${onScale(est.resultsPct)} (${r0(h.sample)} ${h.sampleUnit} of weighted sample, trusted ${r0(h.reliability * 100)}% as his level${!std && resultsMedian !== null ? `; group median ${onScale(resultsMedian)}` : ''})` : 'no qualifying results',
     ];
     reasons.push(`${lens.join('; ')}.`);
     if (!opts.pitcher && est.batValue !== undefined && est.batValue !== null && ((est.weightOnDefense ?? 0) > 0 || (est.weightOnRunning ?? 0) > 0)) {
-      const parts = [`bat ${ordinal(est.batValue)}`];
+      const parts = [`bat ${onScale(est.batValue)}`];
       if ((est.weightOnDefense ?? 0) > 0 && est.defensePct !== null && est.defensePct !== undefined) {
         const d = h.defense;
-        const detail = d?.visible && d.resultsPct != null ? ` (visible grade ${ordinal(d.pct ?? 0)}, results ${ordinal(d.resultsPct)} over ${r0(d.resultsInnings ?? 0)} innings)` : d?.resultsPct != null ? ` (results only, ${r0(d.resultsInnings ?? 0)} innings)` : '';
-        parts.push(`glove ${ordinal(est.defensePct)} at his position${detail}, ${Math.round((est.weightOnDefense ?? 0) * 100)}% of the estimate`);
+        const detail = d?.visible && d.resultsPct != null ? ` (visible grade ${onScale(d.pct ?? 0)}, results ${onScale(d.resultsPct)} over ${r0(d.resultsInnings ?? 0)} innings)` : d?.resultsPct != null ? ` (results only, ${r0(d.resultsInnings ?? 0)} innings)` : '';
+        parts.push(`glove ${onScale(est.defensePct)} at his position${detail}, ${Math.round((est.weightOnDefense ?? 0) * 100)}% of the estimate`);
       }
-      if ((est.weightOnRunning ?? 0) > 0 && est.runningPct !== null && est.runningPct !== undefined) parts.push(`running ${ordinal(est.runningPct)}, ${Math.round((est.weightOnRunning ?? 0) * 100)}%`);
+      if ((est.weightOnRunning ?? 0) > 0 && est.runningPct !== null && est.runningPct !== undefined) parts.push(`running ${onScale(est.runningPct)}, ${Math.round((est.weightOnRunning ?? 0) * 100)}%`);
       reasons.push(`${parts.join('; ')}.`);
     }
     if (std && margin !== null) {
@@ -471,25 +471,25 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       const typicalText = std.source === 'save'
         ? `For ${std.label} in this league the typical working estimate is about ${r0(std.typical)}`
         : `For ${std.label} a typical working estimate is about ${r0(std.typical)} (Pennant's starting yardstick)`;
-      reasons.push(`${typicalText}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
+      reasons.push(`${typicalText}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${onScale(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
     }
-    if (groupMedian !== null) reasons.push(`Working estimate ${ordinal(value)} percentile of MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);
+    if (groupMedian !== null) reasons.push(`Working estimate ${onScale(value)} against MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);
 
     // competing explanations, stated whichever way the read goes
     if (opts.pitcher && h.skillsPct !== null && h.runsPct !== null && h.skillsPct - h.runsPct >= CONCERN.luckGap) {
-      explanations.push(`His runs allowed (${ordinal(h.runsPct)}) are well behind his strikeouts, walks and home runs (${ordinal(h.skillsPct)}): sequencing, defense or ballpark may be costing him, and that tends to correct.`);
+      explanations.push(`His runs allowed (${onScale(h.runsPct)}) are well behind his strikeouts, walks and home runs (${onScale(h.skillsPct)}): sequencing, defense or ballpark may be costing him, and that tends to correct.`);
     }
     if (opts.pitcher && h.skillsPct !== null && h.runsPct !== null && h.runsPct - h.skillsPct >= CONCERN.luckGap) {
-      explanations.push(`His runs allowed (${ordinal(h.runsPct)}) are ahead of his peripherals (${ordinal(h.skillsPct)}): he may be getting help that will not last.`);
+      explanations.push(`His runs allowed (${onScale(h.runsPct)}) are ahead of his peripherals (${onScale(h.skillsPct)}): he may be getting help that will not last.`);
     }
     if (h.ratingsPct !== null && est.resultsPct !== null && est.resultsPct - h.ratingsPct >= CONCERN.divergenceGap) {
-      explanations.push(`His results (${ordinal(est.resultsPct)}) are well ahead of his visible tools (${ordinal(h.ratingsPct)}): he is outproducing what the tools suggest, which either reflects something the ratings miss or will regress.`);
+      explanations.push(`His results (${onScale(est.resultsPct)}) are well ahead of his visible tools (${onScale(h.ratingsPct)}): he is outproducing what the tools suggest, which either reflects something the ratings miss or will regress.`);
     }
     if (h.ratingsPct !== null && est.resultsPct !== null && h.ratingsPct - est.resultsPct >= CONCERN.divergenceGap) {
-      explanations.push(`His results (${ordinal(est.resultsPct)}) are well behind his visible tools (${ordinal(h.ratingsPct)}): he is underperforming what the tools suggest, which may correct.`);
+      explanations.push(`His results (${onScale(est.resultsPct)}) are well behind his visible tools (${onScale(h.ratingsPct)}): he is underperforming what the tools suggest, which may correct.`);
     }
     if (h.currentSample !== null && h.currentSample < (opts.pitcher ? 100 : 100)) {
-      explanations.push(`This season is ${r0(h.currentSample)} ${h.sampleUnit} old: too early to read the year on its own, so the read leans on prior seasons.`);
+      explanations.push(`This season is ${r0(h.currentSample)} ${h.sampleUnit} old: too early to read the year on its own, so the read leans on earlier seasons.`);
     }
     if (h.age !== null && h.age >= CONCERN.agingAge) {
       const signed = expectedAnnualChange(h.age, opts.pitcher, aging);
@@ -512,9 +512,9 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       if (!d || !d.visible || d.pct === null) {
         explanations.push(`His defense at ${POSITION_NAME[h.position] ?? 'the position'} is not visible, so the estimate is his bat alone and may miss what he gives with the glove.`);
       } else if (est.batValue !== undefined && est.batValue !== null && d.pct - est.batValue >= CONCERN.divergenceGap) {
-        explanations.push(`His glove (${ordinal(d.pct)} percentile at ${POSITION_NAME[h.position]}) is well ahead of his bat (${ordinal(est.batValue)}): the position, not the bat, is what he is worth.`);
+        explanations.push(`His glove (${onScale(d.pct)} at ${POSITION_NAME[h.position]}) is well ahead of his bat (${onScale(est.batValue)}): the position, not the bat, is what he is worth.`);
       } else if (est.batValue !== undefined && est.batValue !== null && est.batValue - d.pct >= CONCERN.divergenceGap) {
-        explanations.push(`His bat (${ordinal(est.batValue)}) is well ahead of his glove (${ordinal(d.pct)} percentile at ${POSITION_NAME[h.position]}): a defensive risk that the bat has to carry.`);
+        explanations.push(`His bat (${onScale(est.batValue)}) is well ahead of his glove (${onScale(d.pct)} at ${POSITION_NAME[h.position]}): a defensive risk that the bat has to carry.`);
       }
     }
     wouldChange.push(
@@ -578,9 +578,9 @@ export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSu
   else verdict = 'downgrade';
 
   const reasons = [
-    `${candidate.name}: working estimate ${ordinal(c.value)} percentile${c.basis === 'ratings_only' ? ' on tools alone' : c.basis === 'results_only' ? ' on results alone' : ''}; ${incumbent.name}: ${ordinal(i.value)} (${delta >= 0 ? '+' : ''}${r0(delta)}).`,
-    ...(toolsDelta !== null ? [`Tools: ${ordinal(c.ratingsPct as number)} against ${ordinal(i.ratingsPct as number)}.`] : []),
-    ...(resultsDelta !== null ? [`Results: ${ordinal(c.resultsPct as number)} against ${ordinal(i.resultsPct as number)}.`] : c.resultsPct === null ? [`${candidate.name} has no qualifying major-league results, so this rests on his tools.`] : []),
+    `${candidate.name}: working estimate ${r0(c.value)}${c.basis === 'ratings_only' ? ' on tools alone' : c.basis === 'results_only' ? ' on results alone' : ''}; ${incumbent.name}: ${onScale(i.value)} (${delta >= 0 ? '+' : ''}${r0(delta)}).`,
+    ...(toolsDelta !== null ? [`Tools: ${r0(c.ratingsPct as number)} against ${onScale(i.ratingsPct as number)}.`] : []),
+    ...(resultsDelta !== null ? [`Results: ${r0(c.resultsPct as number)} against ${onScale(i.resultsPct as number)}.`] : c.resultsPct === null ? [`${candidate.name} has no qualifying major-league results, so this rests on his tools.`] : []),
     ...unseen.map((s) => `${s.name}'s glove at ${POSITION_NAME[s.position as number] ?? 'the position'} is not visible, and that position is about ${Math.round((defenseWeights[s.position as number] ?? 0) * 100)}% glove: that side of the comparison is his bat alone.`),
     ...(verdict === 'upgrade_uncertain' ? [`The gain is real on paper but the read on ${candidate.name} rests on ${certainty === 'thin' ? 'incomplete tools' : unseen.length ? 'a bat with no glove to weigh against it' : 'one lens'}, so it is not firm.`] : []),
   ];

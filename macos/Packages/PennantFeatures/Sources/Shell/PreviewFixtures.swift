@@ -190,6 +190,21 @@ nonisolated public enum PreviewFixtures {
         .preview(wire: decode(Components.Schemas.Wire.self, "getWire"), clubs: decode(Components.Schemas.ClubReport.self, "getClubReport").map { [$0] } ?? [])
     }
 
+    /// Major League Ops' captured views and the captured decision (`getMajorLeague*`, N8).
+    @MainActor
+    public static var majorLeague: MajorLeagueStore {
+        let decision = decode(Components.Schemas.MlbDecisionView.self, "getMajorLeagueDecision")
+        // A what-if's decision, which has candidates (real rows for the candidates' tables)
+        let whatIf = decode(Components.Schemas.MlbDecisionView.self, "getMajorLeagueDecision-what-if")
+        return .preview(
+            overview: decode(Components.Schemas.MlbOverviewView.self, "getMajorLeagueOverview"),
+            positionPlayers: decode(Components.Schemas.MlbPositionPlayersView.self, "getMajorLeaguePositionPlayers"),
+            pitchingStaff: decode(Components.Schemas.MlbPitchingStaffView.self, "getMajorLeaguePitchingStaff"),
+            bench: decode(Components.Schemas.MlbBenchView.self, "getMajorLeagueBench"),
+            decisions: [decision, whatIf].compactMap { $0 }.reduce(into: [:]) { $0[MajorLeagueStore.DecisionQuery(need: $1.needId)] = $1 }
+        )
+    }
+
     /// The captured search answer for "club".
     public static var search: Components.Schemas.SearchAnswer? {
         decode(Components.Schemas.SearchAnswer.self, "search")
@@ -275,7 +290,8 @@ nonisolated public enum PreviewFixtures {
             savePlayedElsewhere: savePlayedElsewhere,
             following: configured ? (following ?? Self.following()) : nil,
             league: configured ? league : nil,
-            farm: configured ? farm : nil
+            farm: configured ? farm : nil,
+            majorLeague: configured ? majorLeague : nil
         )
     }
 

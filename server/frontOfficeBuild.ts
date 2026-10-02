@@ -22,9 +22,13 @@ import { computePayroll } from './payroll.js';
 import { departmentOffice, servedDepartments } from './presentation/catalog.js';
 import { needTrail } from './presentation/frontOffice/claims.js';
 import { assemble, type BuildContext, type DepartmentAnswer, type DepartmentContext } from './presentation/frontOffice/desk.js';
+import type { FarmDecisionRequest, FarmViewsRequest } from './farmViewsBuild.js';
 import { farmMaterial } from './presentation/frontOffice/farm.js';
 import { financeMaterial } from './presentation/frontOffice/finance.js';
 import { majorLeagueMaterial, type MajorLeagueInput } from './presentation/frontOffice/majorLeague.js';
+import { decisionView, type DecisionAsk } from './presentation/majorLeague/decision.js';
+import type { MlbDecisionView } from './presentation/majorLeague/types.js';
+import { majorLeagueViews, type MajorLeagueViews } from './presentation/majorLeague/views.js';
 import { medicalMaterial } from './presentation/frontOffice/medical.js';
 import { morningUnavailable, morningWords } from './presentation/frontOffice/morning.js';
 import type { MorningParts } from './presentation/frontOffice/morningTypes.js';
@@ -42,6 +46,11 @@ export interface BuildResult {
   reports: Array<[DeptId, DepartmentReport]>;
   /** What Major League Ops answered, kept for the evidence trails (null when it could not be read). */
   majorLeague: MajorLeagueInput['overview'] | null;
+  /**
+   * Major League Ops' standing views for the Mac app (N8), worded from the same overview in the same build, so they are
+   * warmed with the report after every import; null when the department could not be read.
+   */
+  majorLeagueViews: MajorLeagueViews | null;
   /** How long each department took to read and word, in milliseconds. */
   ms: Record<string, number>;
   /** The season as this import leaves it (standings, the club's games), for the snapshots (N7); null when unread. */
@@ -111,12 +120,24 @@ export async function buildFrontOffice(request: BuildRequest): Promise<BuildResu
 
   await tick();
   let majorLeague: MajorLeagueInput['overview'] | null = null;
+  let majorLeagueOverview: ReturnType<typeof mlbOverview> | null = null;
   answers.majorLeague = timed('majorLeague', () => readDepartment(() => {
     const overview = mlbOverview(orgId);
     const material = majorLeagueMaterial(ctxOf('majorLeague'), { overview, fortyMan: computeRosterCrunchIssues(orgId) });
     majorLeague = { needs: overview.needs, roster: overview.roster, unknowns: overview.unknowns, yardsticks: overview.yardsticks };
+    majorLeagueOverview = overview;
     return [material];
   }, UNREADABLE.majorLeague));
+  // The department's views (N8), worded from the same overview: a view that cannot be worded is left out and said
+  let majorLeagueViewsBuilt: MajorLeagueViews | null = null;
+  if (majorLeagueOverview) {
+    const overview = majorLeagueOverview;
+    try {
+      majorLeagueViewsBuilt = timed('majorLeagueViews', () => majorLeagueViews({ ctx: ctxOf('majorLeague'), overview }));
+    } catch (err) {
+      console.error('[front office] Major League Ops\' views could not be worded:', err);
+    }
+  }
 
   await tick();
   answers.farm = timed('farm', () => readDepartment(() => [farmMaterial(ctxOf('farm'), computeFarmSystem(orgId))], UNREADABLE.farm));
@@ -167,7 +188,7 @@ export async function buildFrontOffice(request: BuildRequest): Promise<BuildResu
   }
 
   const { summary, reports } = timed('words', () => assemble(build, departments, departmentOffice, answers, morning));
-  return { summary, reports: [...reports.entries()], majorLeague, ms, season };
+  return { summary, reports: [...reports.entries()], majorLeague, majorLeagueViews: majorLeagueViewsBuilt, ms, season };
 }
 
 /** What one evidence trail is asked for. */
@@ -190,6 +211,29 @@ export function buildTrail(request: TrailRequest): ClaimTrail | null {
   const { build, departments } = contextFor(request.orgId, request.importStamp, request.reportStamp);
   const ctx: DepartmentContext = { build, department: departments.find((d) => d.id === 'majorLeague')!, office: departmentOffice('majorLeague') };
   return needTrail(ctx, request.key, need, packet, request.overview, (level) => LEVEL_NAMES[level] ?? null);
+}
+
+/** What one Major League Ops decision is asked for (N8): the need and the GM's choices so far. */
+export interface DecisionRequest {
+  orgId: number;
+  importStamp: string | null;
+  reportStamp: string;
+  ask: DecisionAsk;
+  /** The yardsticks the build's review used (the decision's lines are called the same way). */
+  yardsticks: MajorLeagueInput['overview']['yardsticks'];
+}
+
+/**
+ * One need's decision, worded: Major League Ops' response packet for the need and the GM's choices (a role for an open
+ * spot, the assignment to judge, a what-if's days); null when the need is not open in the current export.
+ */
+export function buildDecision(request: DecisionRequest): MlbDecisionView | null {
+  const { ask } = request;
+  const packet = mlbResponses(request.orgId, ask.need, { role: ask.role, context: ask.context, days: ask.days ?? null });
+  if (!packet) return null;
+  const { build, departments } = contextFor(request.orgId, request.importStamp, request.reportStamp);
+  const ctx: DepartmentContext = { build, department: departments.find((d) => d.id === 'majorLeague')!, office: departmentOffice('majorLeague') };
+  return decisionView({ ctx, overview: { yardsticks: request.yardsticks } }, packet, ask);
 }
 
 /** What one club report is asked for (N7, D-059). */
@@ -224,3 +268,16 @@ export function buildClubReport(request: ClubRequest): { report: ClubReport; ms:
   const report = clubReportWords(build, material, ours, abbr);
   return { report, ms: Math.round((performance.now() - started) * 10) / 10 };
 }
+
+/**
+ * Every job the Front Office's worker runs (`frontOfficeWorker.ts`), as one list: the service posts them and the worker
+ * runs them, so a kind can't be added to one side and missed on the other. The farm's two (N10) are Farm & Development's
+ * views and one player's decision read on the click (`farmViewsBuild.ts`); Major League Ops' decision (N8) is `decision`.
+ */
+export type WorkerJob =
+  | { kind: 'build'; request: BuildRequest }
+  | { kind: 'trail'; request: TrailRequest }
+  | { kind: 'club'; request: ClubRequest }
+  | { kind: 'decision'; request: DecisionRequest }
+  | { kind: 'farmViews'; request: FarmViewsRequest }
+  | { kind: 'farmDecision'; request: FarmDecisionRequest };

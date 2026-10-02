@@ -29,7 +29,7 @@ paths:
 # Pennant for Mac (the SwiftUI rebuild): working reminder
 
 This is a router, not the doctrine. The canonical detail is in `docs/SWIFTUI_REBUILD.md` and `docs/DECISIONS.md`
-D-055 to D-062 (with D-001, D-008, D-018, D-020, D-041, D-049 and D-052's amendment of 2026-09-25). Where this file
+D-055 to D-066 (with D-001, D-008, D-018, D-020, D-041, D-049 and D-052's amendment of 2026-09-25). Where this file
 and those documents differ, they win. The presentation cases are in `docs/BEHAVIOR_CASES.md` "Pennant for Mac".
 
 - **The server decides and writes; Swift renders.** Swift code holds no baseball threshold, computes no ranking,
@@ -100,8 +100,11 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
   (the audit). SWIFTUI_REBUILD.md section 3.4, "As built at N6 (Stage B2)".
 - Verify with `macos/scripts/test.sh` plus the server baseline; visual checks come from XCUITest and
   snapshot PNGs (`build/macos-snapshots/`), not from asking the owner to look.
-- **A department's views (N10, Farm & Development):** one served payload per view under `/api/v2/views/:org/<dept>/…`,
-  built with the club's Front Office on its key (in its worker) and kept; a native `Table` sorts by served keys through
-  `ServedColumnSort` (unknown last, served order until a header is clicked) and a column with no served key gets no
-  `sortUsing` (the stakes, D-050); a view that opens on one thing reads `\.routeSubject` (`AppRoute.subject`, a served
-  target's `key`). SWIFTUI_REBUILD.md section 3.5, "As built at N10"; D-065.
+- **A department's views (N8 Major League Ops, N10 Farm & Development):** one served payload per view under
+  `/api/v2/views/:org/<dept>/…`, kept per import; a decision takes its target's `key` as a query (`?need=`,
+  `?player=`) and a desk item opens through its served `open`. A native `Table` sorts by served keys (unknown last,
+  served order until a header is clicked) and a column with no served key gets no `sortUsing` (the stakes, D-050). A
+  view with a table is a `TablePane` (the head at its height, the table filling the rest and scrolling itself, what goes
+  with the chosen row beneath it in its own scroll area), never a table inside a page's scroll view; the window's
+  columns take no minimum from their content (`.noContentMinimum()`). A view that opens on one thing reads
+  `\.currentRoute`'s `key`. SWIFTUI_REBUILD.md section 3.5, "As built at N8" and "As built at N10"; D-065, D-066.

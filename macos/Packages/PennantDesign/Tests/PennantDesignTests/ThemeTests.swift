@@ -140,6 +140,12 @@ struct ThemeTests {
                     #expect(ratio >= needed, "\(name.rawValue): \(ratio)")
                 }
             }
+            // A caution's words ("Need") on the page, a chip and the window's background (the roster plate's), never
+            // the system orange
+            for fill in [NSColor.readablePage, .readableChipFill, .windowBackgroundColor] {
+                let ratio = contrast(.readableCautionText, on: fill, in: name)
+                #expect(ratio >= needed, "caution \(name.rawValue): \(ratio)")
+            }
             // The heading chip's words on its fill, which no system accent touches
             let heading = contrast(.readableHeadingText, on: .readableHeadingFill, in: name)
             #expect(heading >= needed, "heading \(name.rawValue): \(heading)")

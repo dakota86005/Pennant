@@ -25,7 +25,7 @@
   "memo": null,
   "status": "ready",
   "summary": {
-    "text": "Ten to decide.",
+    "text": "Ten to decide; one to watch.",
     "tone": "bad",
     "basis": {
       "because": [
@@ -35,7 +35,7 @@
         },
         {
           "label": "To watch",
-          "value": "0"
+          "value": "1"
         }
       ],
       "source": {
@@ -189,10 +189,8 @@
           },
           "links": [
             {
-              "kind": "view",
-              "department": "farm",
-              "view": "affiliates",
-              "key": "101"
+              "kind": "club",
+              "teamId": 101
             }
           ]
         },
@@ -200,6 +198,12 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        },
         "count": 1,
         "attention": {
           "status": "open",
@@ -295,10 +299,8 @@
           },
           "links": [
             {
-              "kind": "view",
-              "department": "farm",
-              "view": "affiliates",
-              "key": "101"
+              "kind": "club",
+              "teamId": 101
             }
           ],
           "hint": "5 findings, one row: each is in the breakdown"
@@ -307,6 +309,12 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        },
         "count": 5,
         "attention": {
           "status": "open",
@@ -390,10 +398,8 @@
           },
           "links": [
             {
-              "kind": "view",
-              "department": "farm",
-              "view": "affiliates",
-              "key": "101"
+              "kind": "club",
+              "teamId": 101
             }
           ]
         },
@@ -401,6 +407,12 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        },
         "count": 1,
         "attention": {
           "status": "open",
@@ -484,10 +496,8 @@
           },
           "links": [
             {
-              "kind": "view",
-              "department": "farm",
-              "view": "affiliates",
-              "key": "101"
+              "kind": "club",
+              "teamId": 101
             }
           ]
         },
@@ -495,6 +505,12 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        },
         "count": 1,
         "attention": {
           "status": "open",
@@ -578,10 +594,8 @@
           },
           "links": [
             {
-              "kind": "view",
-              "department": "farm",
-              "view": "affiliates",
-              "key": "101"
+              "kind": "club",
+              "teamId": 101
             }
           ]
         },
@@ -589,6 +603,12 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        },
         "count": 1,
         "attention": {
           "status": "open",
@@ -672,10 +692,8 @@
           },
           "links": [
             {
-              "kind": "view",
-              "department": "farm",
-              "view": "affiliates",
-              "key": "101"
+              "kind": "club",
+              "teamId": 101
             }
           ]
         },
@@ -683,6 +701,12 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        },
         "count": 1,
         "attention": {
           "status": "open",
@@ -785,6 +809,11 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "organization"
+        },
         "count": 4,
         "attention": {
           "status": "open",
@@ -846,7 +875,7 @@
           "basis": {
             "because": [
               {
-                "label": "Coverage floor",
+                "label": "Minimum",
                 "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
               },
               {
@@ -884,6 +913,11 @@
         "due": null,
         "dueInDays": null,
         "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher",
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:role_below_standard:catcher"
+        },
         "count": 1,
         "attention": {
           "status": "open",
@@ -967,10 +1001,8 @@
           },
           "links": [
             {
-              "kind": "view",
-              "department": "farm",
-              "view": "affiliates",
-              "key": "101"
+              "kind": "club",
+              "teamId": 101
             }
           ],
           "hint": "2 findings, one row: each is in the breakdown"
@@ -979,6 +1011,12 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        },
         "count": 2,
         "attention": {
           "status": "open",
@@ -1081,6 +1119,11 @@
         "due": null,
         "dueInDays": null,
         "evidence": null,
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "organization"
+        },
         "count": 4,
         "attention": {
           "status": "open",
@@ -1101,10 +1144,105 @@
     "title": {
       "display": "Watching"
     },
-    "items": [],
-    "empty": {
-      "display": "Nothing to watch"
-    }
+    "items": [
+      {
+        "key": "majorLeague:need:mlb:bench_coverage:middle_infield",
+        "department": "majorLeague",
+        "raisedBy": {
+          "display": "Raised by Rafael Dunn, bench coach",
+          "hint": "From the club's staff in the save"
+        },
+        "severity": "noted",
+        "neutralSeverity": "noted",
+        "urgency": {
+          "text": "Noted",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Major League Ops said",
+                "value": "Noted"
+              },
+              {
+                "label": "With no philosophy and no season",
+                "value": "Noted"
+              },
+              {
+                "label": "On the desk",
+                "value": "Noted"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "The desk",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+          },
+          "links": []
+        },
+        "headline": {
+          "text": "No backup on the bench for second baseman",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "Bench",
+                "value": "P 1005 (outfielder), P 1004 (utility infielder), P 1009 (outfielder), P 1010 (corner bat), P 1011 (utility infielder), P 1012 (backup catcher)"
+              },
+              {
+                "label": "When",
+                "value": "Review"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Major League Ops' roster review",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [
+              "This is a question of backups, not of performance: it says nobody on the bench is visibly able to play the position, and it is a flag for your attention."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "Pennant's first-pass minimum for each role: a stated floor, not a league rule or an ideal roster."
+          },
+          "links": [],
+          "hint": "Nobody on the bench can visibly play the position"
+        },
+        "detail": null,
+        "due": null,
+        "dueInDays": null,
+        "evidence": "1.majorLeague:need:mlb:bench_coverage:middle_infield",
+        "open": {
+          "kind": "decision",
+          "department": "majorLeague",
+          "key": "mlb:bench_coverage:middle_infield"
+        },
+        "count": 1,
+        "attention": {
+          "status": "open",
+          "line": {
+            "display": "Open"
+          },
+          "until": null,
+          "deferralEnded": false,
+          "note": null,
+          "stillShown": null,
+          "since": null
+        }
+      }
+    ],
+    "empty": null
   },
   "unknowns": {
     "title": {

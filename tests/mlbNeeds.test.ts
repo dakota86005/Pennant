@@ -26,7 +26,7 @@ describe('need detection is derived from current state', () => {
     expect(need.role?.kind).toBe('starting_pitcher');
     expect(need.causes).toEqual([expect.objectContaining({ name: 'Burnes', status: 'IL-60', daysLeft: 93, assumed: false })]);
     expect(need.horizon).toMatchObject({ kind: 'long_term', days: 93 });
-    expect(need.facts.some((f) => f.label === 'Coverage floor' && /not a league rule/.test(f.value))).toBe(true);
+    expect(need.facts.some((f) => f.label === 'Minimum' && /not a league rule/.test(f.value))).toBe(true);
   });
 
   it('separates a three-day problem from a season-ending one', () => {
@@ -141,7 +141,7 @@ describe('coverage floors are minimums, and they are data', () => {
     const needs = detectNeeds(view, 'observed', six);
     expect(needs).toHaveLength(1);
     expect(needs[0].summary).toMatch(/5 healthy starting pitchers.*minimum floor of 6/);
-    expect(needs[0].facts.find((f) => f.label === 'Coverage floor')?.value).toMatch(/six healthy starting pitchers/);
+    expect(needs[0].facts.find((f) => f.label === 'Minimum')?.value).toMatch(/six healthy starting pitchers/);
     // and the what-if respects the floors it is handed
     expect(whatIfNeed(view, 100, six)?.kind).toBe('role_below_standard');
   });

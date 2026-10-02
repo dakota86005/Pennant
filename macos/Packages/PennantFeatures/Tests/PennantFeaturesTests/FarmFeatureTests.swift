@@ -24,34 +24,31 @@ struct FarmFeatureTests {
     }
 
     @Test("a served decision opens the department's Decision on its key; a view's key is what it opens on")
-    func routesCarryTheirSubject() throws {
+    func routesCarryTheirKey() throws {
         let decision = Components.Schemas.Target(kind: .init(value1: .decision), department: .init(value1: .farm), key: "1104")
-        #expect(route(decision) == AppRoute(department: "farm", view: "decision", subject: "1104"))
+        #expect(route(decision) == AppRoute(department: "farm", view: "decision", key: "1104"))
         let affiliate = Components.Schemas.Target(kind: .init(value1: .view), department: .init(value1: .farm), view: "affiliates", key: "7")
-        #expect(route(affiliate) == AppRoute(department: "farm", view: "affiliates", subject: "7"))
+        #expect(route(affiliate) == AppRoute(department: "farm", view: "affiliates", key: "7"))
         let plain = Components.Schemas.Target(kind: .init(value1: .view), department: .init(value1: .farm), view: "organization")
         #expect(route(plain) == AppRoute(department: "farm", view: "organization"))
         // The registry knows the view whatever it opens on
-        #expect(registry.contains(AppRoute(department: "farm", view: "decision", subject: "1104")))
+        #expect(registry.contains(AppRoute(department: "farm", view: "decision", key: "1104")))
     }
 
-    @Test("the sidebar's row stays chosen while the view opens on a player, and choosing it again changes nothing")
+    @Test("the sidebar selects the view a player's decision is open in; choosing its row shows the view with nothing open")
     func sidebarSelection() {
         let window = MainWindowModel(registry: registry)
-        window.go(to: AppRoute(department: "farm", view: "decision", subject: "1104"))
+        window.go(to: AppRoute(department: "farm", view: "decision", key: "1104"))
         #expect(window.selection == AppRoute(department: "farm", view: "decision"))
+        #expect(window.route.key == "1104")
+        // N8's convention: a row goes to its view with nothing open, and Back returns to the player
         window.selection = AppRoute(department: "farm", view: "decision")
-        #expect(window.route.subject == "1104")
+        #expect(window.route == AppRoute(department: "farm", view: "decision"))
+        window.goBack()
+        #expect(window.route.key == "1104")
         window.selection = AppRoute(department: "farm", view: "assignments")
         #expect(window.route == AppRoute(department: "farm", view: "assignments"))
         #expect(window.canGoBack)
-    }
-
-    @Test("a route saved by an earlier build, with no subject, still decodes")
-    func earlierRouteDecodes() throws {
-        let saved = Data(#"{"department":"farm","view":"report"}"#.utf8)
-        let route = try JSONDecoder().decode(AppRoute.self, from: saved)
-        #expect(route == AppRoute(department: "farm", view: "report"))
     }
 
     @Test("a column sorts by the served key with the unknown last both ways; with no sort the served order stands")
@@ -87,13 +84,22 @@ struct FarmFeatureTests {
         #expect(Tone(chain.stop.tone) != .bad)
     }
 
-    @Test("a farm item on the desk opens where the farm answers it")
+    @Test("a farm item on the desk opens where the farm answers it, through its served open, labelled by its kind")
     func deskItemOpensDecision() throws {
         let report = try #require(PreviewFixtures.decode(Components.Schemas.DepartmentReport.self, "getDepartmentReport-farm"))
         let items = report.toDecide.items + report.watching.items
-        let routes = items.compactMap { item in item.headline.links.lazy.compactMap { route($0) }.first }
-        #expect(!routes.isEmpty)
-        for r in routes { #expect(registry.contains(r)) }
+        #expect(!items.isEmpty)
+        for item in items {
+            let r = try #require(route(item.open), "\(item.key) opens nothing")
+            #expect(r.department == "farm")
+            #expect(registry.contains(r))
+            if item.open?.kind.value1 == .decision {
+                #expect(r.view == "decision" && r.key != nil)
+                #expect(openLabel(item.open) == "Open Decision")
+            } else {
+                #expect(openLabel(item.open) == "Open")
+            }
+        }
     }
 
     @Test("the store says a payload is updating only when a newer key is asked")

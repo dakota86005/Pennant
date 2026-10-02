@@ -255,7 +255,7 @@ public struct PositionPlate: View {
                     Text(verbatim: position.holder).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.tail)
                         .layoutPriority(-1)
                     if listed { Text("Listed").font(.system(size: 9, weight: .semibold)).foregroundStyle(.readableSecondary).lineLimit(1).fixedSize() }
-                    if position.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(Tone.caution.color).lineLimit(1).fixedSize() }
+                    if position.need { Text("Need").font(.system(size: 9, weight: .bold)).foregroundStyle(.readableCaution).lineLimit(1).fixedSize() }
                     Spacer(minLength: 0)
                     ControlPips(position.control).fixedSize()
                         .help(Text(verbatim: position.controlHint ?? position.control.text))
@@ -374,7 +374,7 @@ public struct RosterLegend: View {
             HStack(spacing: 14) {
                 LegendEntry(legend.range, symbol: "rectangle.lefthalf.filled")
                 LegendEntry(legend.control, symbol: "square.grid.3x1.below.line.grid.1x2")
-                LegendEntry(legend.need, symbol: "circle.circle").foregroundStyle(Tone.caution.color)
+                LegendEntry(legend.need, symbol: "circle.circle", symbolTint: Tone.caution.color)
                 LegendEntry(legend.more, symbol: "cursorarrow.click")
             }
             ForEach(notes) { note in

@@ -1,0 +1,1063 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Decision"
+  },
+  "lede": {
+    "text": "A scenario you posed, followed through",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Pennant lists options and their consequences in the order a GM weighs them. It does not rank the players or make the move: that decision is yours."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How Major League Ops reads its roster: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": {
+    "text": "Using starting yardsticks for now: this league has not been measured yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Where the lines come from",
+          "value": "The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, how much his recent seasons count, what a hitter's tools say and how much they hold his results back, how much a hitter's own record against left- and right-handers counts, and how long a reliever has to work to count as a long man."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "The line for each job: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How players age: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much the glove counts at each position: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much recent seasons count: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much a hitter's own split counts: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What a hitter's tools say, and how much they hold his results back: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Who counts as a long man: the starting value (a reliever who averages 1.6 or more innings an appearance), because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much his innings matter (closers, high- and low-leverage arms) is read on Pennant's fixed lines, on a scale where 1.0 is an average plate appearance in this league."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Starting values are the ones Pennant ships with."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "They are replaced by this league's own only after those have been checked against players and seasons they were not drawn from, and, for how players age, how much recent seasons count, what a hitter's tools say and how much a hitter's own split counts, only where this league's own did clearly better than the starting values there."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What the tools say can only be checked on seasons that came after the ratings were saved, which takes several seasons of imports."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new import refits them on the league's own seasons where it can."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+    },
+    "links": []
+  },
+  "needId": "mlb:what_if:1002",
+  "scenario": true,
+  "kicker": {
+    "display": "Open spot · center fielder"
+  },
+  "headline": {
+    "text": "If P 1002 is out: an open center fielder spot",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Active roster",
+          "value": "25 of 26"
+        },
+        {
+          "label": "When",
+          "value": "Scenario"
+        },
+        {
+          "label": "The situation",
+          "value": "Without P 1002 the active roster would be 25 of 26. The remaining center fielder depth stays at or above the minimum, so this is a spot to fill, not a role shortfall."
+        },
+        {
+          "label": "The situation",
+          "value": "P 1002: assumed unavailable (your scenario)."
+        },
+        {
+          "label": "The situation",
+          "value": "Expected duration: not known, so it is not assumed."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' responses",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "This is a scenario you asked about, not a current problem: nothing says he will be unavailable."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "badges": [
+    {
+      "display": "What-if",
+      "tone": "neutral"
+    },
+    {
+      "display": "Scenario"
+    },
+    {
+      "display": "Duration not established"
+    }
+  ],
+  "notes": [],
+  "duration": {
+    "title": {
+      "display": "How long would he be out?"
+    },
+    "note": null,
+    "choices": [
+      {
+        "text": {
+          "display": "Duration not stated"
+        },
+        "selected": true,
+        "query": {
+          "need": "mlb:what_if:1002"
+        }
+      },
+      {
+        "text": {
+          "display": "About a week"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:what_if:1002",
+          "days": 6
+        }
+      },
+      {
+        "text": {
+          "display": "Two weeks"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:what_if:1002",
+          "days": 14
+        }
+      },
+      {
+        "text": {
+          "display": "About six weeks"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:what_if:1002",
+          "days": 40
+        }
+      },
+      {
+        "text": {
+          "display": "Rest of the season"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:what_if:1002",
+          "days": 120
+        }
+      }
+    ]
+  },
+  "problem": {
+    "title": {
+      "display": "Why Pennant says this"
+    },
+    "player": null,
+    "chips": [],
+    "claims": [],
+    "lines": [
+      {
+        "text": {
+          "display": "Without P 1002 the active roster would be 25 of 26. The remaining center fielder depth stays at or above the minimum, so this is a spot to fill, not a role shortfall."
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "P 1002: assumed unavailable (your scenario)"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1002,
+            "name": "P 1002",
+            "open": {
+              "kind": "player",
+              "playerId": 1002,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "Active roster: 25 of 26"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Assumed; no injury or duration is stated."
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "This is a scenario you asked about, not a current problem: nothing says he will be unavailable."
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      }
+    ],
+    "collapsed": false
+  },
+  "why": null,
+  "picture": {
+    "title": {
+      "display": "The evidence: the center fielder picture"
+    },
+    "note": null,
+    "people": [
+      {
+        "player": {
+          "playerId": 1005,
+          "name": "P 1005",
+          "open": {
+            "kind": "player",
+            "playerId": 1005,
+            "teamId": 1
+          }
+        },
+        "status": {
+          "display": "23 · Current"
+        },
+        "subject": false,
+        "lenses": [
+          {
+            "label": {
+              "display": "Estimate"
+            },
+            "value": 76.75842396777443,
+            "display": {
+              "display": "77",
+              "hint": "On a 0–100 scale against major league peers; 50 is typical"
+            }
+          },
+          {
+            "label": {
+              "display": "Tools"
+            },
+            "value": 99,
+            "display": {
+              "display": "99",
+              "hint": "On a 0–100 scale against major league peers; 50 is typical"
+            }
+          },
+          {
+            "label": {
+              "display": "Results"
+            },
+            "value": null,
+            "display": {
+              "display": "No evidence",
+              "tone": "unknown"
+            }
+          }
+        ],
+        "lines": [
+          {
+            "text": {
+              "display": "This season: AVG not known · OBP not known · SLG not known · HR not known (110 PA)"
+            },
+            "quiet": false,
+            "chips": [],
+            "players": []
+          },
+          {
+            "text": {
+              "display": "Started 28 games at center fielder this season (248 innings, 0 errors)."
+            },
+            "quiet": true,
+            "chips": [],
+            "players": []
+          },
+          {
+            "text": {
+              "display": "His visible tools imply +97 points of wOBA against the league average."
+            },
+            "quiet": true,
+            "chips": [],
+            "players": []
+          }
+        ]
+      }
+    ],
+    "basisNote": {
+      "display": "Two lenses, always shown: the organization-visible tool ratings against MLB peers of the same kind (Player Development's composite read) and what the player has done (league-relative, recency-weighted results placed among peers). The working estimate blends them, giving results more weight the more sample stands behind them; a player with no results is read on tools alone. It is a way to compare two players, not a value, a projection or a decision."
+    }
+  },
+  "read": {
+    "title": {
+      "display": "The staff read"
+    },
+    "player": null,
+    "chips": [],
+    "claims": [],
+    "lines": [
+      {
+        "text": {
+          "display": "No internal player clears Player Development and Player Rights for this center fielder spot yet; the candidates who do not are listed below with why."
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      }
+    ],
+    "collapsed": false
+  },
+  "call": null,
+  "assignment": {
+    "title": {
+      "display": "Player Development is judging: temporary depth and a durable assignment"
+    },
+    "note": {
+      "display": "How long he would be needed is not known, so it is not assumed. Player Development judged both temporary depth and a durable assignment; where the answer differs, the duration decides, and it says so. A temporary assignment can be defensible where a durable role is not. Pennant does not assume how long a player would be needed: where the answer depends on it, it says so. What is defensible is Player Development's call, not this page's."
+    },
+    "choices": [
+      {
+        "text": {
+          "display": "Duration unknown: judge both"
+        },
+        "selected": true,
+        "query": {
+          "need": "mlb:what_if:1002"
+        }
+      },
+      {
+        "text": {
+          "display": "Bench role"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:what_if:1002",
+          "context": "bench_role"
+        }
+      },
+      {
+        "text": {
+          "display": "Temporary major-league depth"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:what_if:1002",
+          "context": "temporary_depth"
+        }
+      },
+      {
+        "text": {
+          "display": "Durable major-league role"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:what_if:1002",
+          "context": "durable_role"
+        }
+      }
+    ]
+  },
+  "responses": null,
+  "roleChoice": null,
+  "candidates": {
+    "title": {
+      "display": "Every candidate, with the evidence behind each verdict"
+    },
+    "count": 1,
+    "groups": [
+      {
+        "title": {
+          "display": "Evaluation incomplete: Player Development cannot establish defensibility"
+        },
+        "collapsed": false,
+        "table": {
+          "columns": [
+            {
+              "id": "player",
+              "title": {
+                "display": "Player"
+              },
+              "numeric": false
+            },
+            {
+              "id": "age",
+              "title": {
+                "display": "Age"
+              },
+              "numeric": true
+            },
+            {
+              "id": "response",
+              "title": {
+                "display": "Response"
+              },
+              "numeric": false
+            },
+            {
+              "id": "development",
+              "title": {
+                "display": "Development"
+              },
+              "numeric": false
+            },
+            {
+              "id": "transaction",
+              "title": {
+                "display": "Transaction"
+              },
+              "numeric": false
+            },
+            {
+              "id": "fit",
+              "title": {
+                "display": "MLB fit"
+              },
+              "numeric": false
+            },
+            {
+              "id": "organization",
+              "title": {
+                "display": "Organization"
+              },
+              "numeric": false
+            }
+          ],
+          "rows": [
+            {
+              "id": "candidate-recall-1108",
+              "cells": {
+                "player": {
+                  "display": "P 1108"
+                },
+                "age": {
+                  "display": "22"
+                },
+                "response": {
+                  "display": "Recall (40-man)"
+                },
+                "development": {
+                  "display": "Incomplete",
+                  "tone": "unknown"
+                },
+                "transaction": {
+                  "display": "Not established",
+                  "tone": "unknown"
+                },
+                "fit": {
+                  "display": "Not established",
+                  "tone": "unknown"
+                },
+                "organization": {
+                  "display": "No preference"
+                }
+              },
+              "sort": {
+                "player": "P 1108",
+                "age": 22,
+                "response": 1,
+                "development": null,
+                "transaction": null,
+                "fit": null,
+                "organization": 2
+              },
+              "player": {
+                "playerId": 1108,
+                "name": "P 1108",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1108,
+                  "teamId": 1
+                }
+              },
+              "detail": [
+                {
+                  "title": {
+                    "display": "Why he is here"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "40-man center fielder, level 2."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Player Development cannot establish temporary depth or a durable MLB assignment. This is missing evidence, not a question of duration."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Player Development has not assessed him as durable major-league role."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Not an actionable solution until the evaluation can be completed; he stays visible for review."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Listed center fielder."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Development: judged for each duration"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "Player Development cannot establish temporary depth or a durable MLB assignment. This is missing evidence, not a question of duration."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Temporary major-league depth: Incomplete"
+                      },
+                      "quiet": true,
+                      "chips": [
+                        {
+                          "display": "Incomplete",
+                          "tone": "unknown"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Durable major-league role: not assessed"
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Player Development has not assessed him as durable major-league role."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Developmental stakes: protected prospect · Triple-A and major league career 44 PA, 0 IP"
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Visible ceiling of a major-league regular: a potential of 54 is at the median of major-league hitters (50, Pennant's starting line) or above it."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "At 22 most of his development is still ahead of him."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Developmental stakes: protected prospect, which is what that ceiling sets with most of his development still ahead of him."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Missing: Player Development has not assessed him as durable major-league role."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Fit at the major league level"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "Not established"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Visible tool ratings: complete; not assessed: Contact, Gap Power, Power, Eye, Avoid K"
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Season line (44 PA, level 2)"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "AVG not known · OBP not known · SLG not known · HR not known"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Transaction path"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "1. Recall status unknown — assignment cause not established"
+                      },
+                      "quiet": false,
+                      "chips": [
+                        {
+                          "display": "Not established",
+                          "tone": "unknown"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Missing: The transaction log is unavailable, so an option cannot be told apart from a rehab assignment."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Missing: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Roster effect"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "Active roster: 26 of 26 (+1) (The assumed absence opens a spot.)"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "40-man: 32 of 40 (no change)"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Minor-league consequence"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "Farm 1 F (AAA) stays as it is, by Minor League Operations' own reading."
+                      },
+                      "quiet": false,
+                      "chips": [
+                        {
+                          "display": "short",
+                          "tone": "bad"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "No defensible move follows, and Farm 1 F is left short at CF."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "CF cover: 1 graded → 0 graded"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Active roster: 6 players (3 P) → 5 players (3 P)"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Left open: Farm 1 F is left short at CF: 0 remain at CF, 2 short of the 2 it needs."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers C."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers 1B."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers 3B."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only one man covers SS; a day off or an injury leaves the club without it."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers LF."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers CF."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers RF."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "The club can fill only two of the eight fielding positions at once."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only two position players: short of what the club needs to rest a lineup."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only three pitchers: short of what the club needs to cover a schedule."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "No pitcher is taking this club's starts; the rotation needs five."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only three relief arms: short of the seven a schedule takes."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nothing establishes whether he is on a rehab assignment or was optioned. He is counted here; if he is on rehab this overstates what his leaving costs."
+                      },
+                      "quiet": true,
+                      "chips": [
+                        {
+                          "display": "Roster note",
+                          "tone": "caution"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "5 other player(s) on this club (P 1104, P 1105, P 1106, …) may be on rehab; they are counted, so its depth may be overstated."
+                      },
+                      "quiet": true,
+                      "chips": [
+                        {
+                          "display": "Roster note",
+                          "tone": "caution"
+                        }
+                      ],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Contract and control"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "MLB service: 0 yr 0 d"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Contract: Minor-league contract"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Options: 0 of 3 used, 3 left"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Organizational preference"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "Philosophy expresses preference only among alternatives that are valid on every stage above; it cannot authorize, block, or resolve an unknown."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                }
+              ],
+              "actions": []
+            }
+          ],
+          "empty": null
+        }
+      }
+    ],
+    "notConsidered": [
+      {
+        "display": "Not considered (6): Regulars at other positions (moving one opens a new hole)"
+      },
+      {
+        "display": "Not considered (5): Active players whose visible evidence does not support the role"
+      }
+    ],
+    "empty": null
+  },
+  "mechanics": null,
+  "footnote": {
+    "display": "Pennant lists options and their consequences. It does not rank them or make the move: that decision is yours as GM. This is a scenario you posed, not a current problem."
+  }
+}

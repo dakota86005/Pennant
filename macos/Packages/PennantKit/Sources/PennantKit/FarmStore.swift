@@ -118,7 +118,7 @@ public final class FarmStore {
     public func loadDecision(_ playerId: Int, client: Client?, key: AppModel.StoreKey?) async {
         let org = key.map(FrontOfficeStore.org) ?? "automatic"
         await read("decision:\(playerId)", client: client, key: key, operation: "getFarmDecision") { client in
-            switch try await client.getFarmDecision(path: .init(org: org, playerId: String(playerId))) {
+            switch try await client.getFarmDecision(path: .init(org: org), query: .init(player: String(playerId))) {
             case .ok(let answer): return .success(try answer.body.json)
             case .notFound(let refused): return .failure(.served(try refused.body.json.error))
             case .undocumented(let code, let payload):

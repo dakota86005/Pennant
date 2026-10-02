@@ -97,7 +97,7 @@ describe('a chain of moves and what follows', () => {
   it('a move that takes a group below its floor says so in the problems', () => {
     const c = evaluateScenario(club(), [{ kind: 'option', playerId: 100 }], floors, estimateOf);
     expect(c.groups[0].belowFloorAfter).toBe(true);
-    expect(c.problems.join(' ')).toMatch(/starting pitcher coverage would be 4 against a floor of 5/);
+    expect(c.problems.join(' ')).toMatch(/starting pitcher depth would be 4 against a minimum of 5/);
   });
 
   it('the 40-man is tracked separately: adding a non-40-man player while it is full', () => {

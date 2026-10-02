@@ -230,12 +230,14 @@ final class RoutedTransport: ClientTransport, @unchecked Sendable {
     func send(_ request: HTTPRequest, body: HTTPBody?, baseURL _: URL, operationID _: String) async throws
         -> (HTTPResponse, HTTPBody?)
     {
-        let path = request.path ?? ""
+        let asked = request.path ?? ""
+        // A path with a query is answered by its path alone (the query is in `paths` to check)
+        let path = asked.split(separator: "?", maxSplits: 1).first.map(String.init) ?? asked
         let keyed = "\(request.method.rawValue) \(path)"
         var sent: Data?
         if let body { sent = try await Data(collecting: body, upTo: 1 << 20) }
         let (override, delay) = lock.withLock {
-            _paths.append(path)
+            _paths.append(asked)
             if let sent { _bodies[keyed] = sent }
             return (_overrides[keyed] ?? _overrides[path], _delays[keyed] ?? _delays[path])
         }

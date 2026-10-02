@@ -3,7 +3,7 @@ import PennantKit
 import SwiftUI
 
 /// Farm & Development (SWIFTUI_REBUILD.md section 3.5; N10): the served report, then the farm's views, each a served
-/// payload (`/api/v2/views/:org/farm/…`) drawn natively. Decision opens on a player (the route's subject).
+/// payload (`/api/v2/views/:org/farm/…`) drawn natively. Decision opens on a player (the route's key).
 public enum FarmDepartment: DepartmentModule {
     public static let id: DeptID = "farm"
     public static let title: LocalizedStringResource = "Farm & Development"

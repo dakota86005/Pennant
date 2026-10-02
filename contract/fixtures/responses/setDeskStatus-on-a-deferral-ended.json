@@ -131,10 +131,8 @@
             },
             "links": [
               {
-                "kind": "view",
-                "department": "farm",
-                "view": "affiliates",
-                "key": "101"
+                "kind": "club",
+                "teamId": 101
               }
             ],
             "hint": "5 findings, one row: each is in the breakdown"
@@ -143,6 +141,12 @@
           "due": null,
           "dueInDays": null,
           "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
           "count": 5,
           "attention": {
             "status": "open",
@@ -226,10 +230,8 @@
             },
             "links": [
               {
-                "kind": "view",
-                "department": "farm",
-                "view": "affiliates",
-                "key": "101"
+                "kind": "club",
+                "teamId": 101
               }
             ]
           },
@@ -237,6 +239,12 @@
           "due": null,
           "dueInDays": null,
           "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
           "count": 1,
           "attention": {
             "status": "open",
@@ -320,10 +328,8 @@
             },
             "links": [
               {
-                "kind": "view",
-                "department": "farm",
-                "view": "affiliates",
-                "key": "101"
+                "kind": "club",
+                "teamId": 101
               }
             ]
           },
@@ -331,6 +337,12 @@
           "due": null,
           "dueInDays": null,
           "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
           "count": 1,
           "attention": {
             "status": "open",
@@ -414,10 +426,8 @@
             },
             "links": [
               {
-                "kind": "view",
-                "department": "farm",
-                "view": "affiliates",
-                "key": "101"
+                "kind": "club",
+                "teamId": 101
               }
             ]
           },
@@ -425,6 +435,12 @@
           "due": null,
           "dueInDays": null,
           "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
           "count": 1,
           "attention": {
             "status": "open",
@@ -508,10 +524,8 @@
             },
             "links": [
               {
-                "kind": "view",
-                "department": "farm",
-                "view": "affiliates",
-                "key": "101"
+                "kind": "club",
+                "teamId": 101
               }
             ]
           },
@@ -519,6 +533,12 @@
           "due": null,
           "dueInDays": null,
           "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
           "count": 1,
           "attention": {
             "status": "open",
@@ -580,7 +600,7 @@
             "basis": {
               "because": [
                 {
-                  "label": "Coverage floor",
+                  "label": "Minimum",
                   "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
                 },
                 {
@@ -618,6 +638,11 @@
           "due": null,
           "dueInDays": null,
           "evidence": "1.majorLeague:need:mlb:role_below_standard:catcher",
+          "open": {
+            "kind": "decision",
+            "department": "majorLeague",
+            "key": "mlb:role_below_standard:catcher"
+          },
           "count": 1,
           "attention": {
             "status": "open",
@@ -727,10 +752,8 @@
               },
               "links": [
                 {
-                  "kind": "view",
-                  "department": "farm",
-                  "view": "affiliates",
-                  "key": "101"
+                  "kind": "club",
+                  "teamId": 101
                 }
               ]
             },
@@ -738,6 +761,12 @@
             "due": null,
             "dueInDays": null,
             "evidence": null,
+            "open": {
+              "kind": "view",
+              "department": "farm",
+              "view": "affiliates",
+              "key": "101"
+            },
             "count": 1,
             "attention": {
               "note": "Ask again after the break",

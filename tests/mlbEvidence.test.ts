@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { crossRoleSupport, farmConsequence, performanceLine, topAffiliateTeamId } from '../server/mlbEvidence';
 import { computeMinorLeagueRosterHealth } from '../server/minorLeagueRoster';
+import { db } from '../server/db';
 import { IDS } from './fixture';
 
 /*
@@ -39,6 +40,28 @@ describe('MLB Operations evidence adapters', () => {
   it('reads a season line as an objective fact and returns null rather than guessing', () => {
     expect(performanceLine(-1, 2, false)).toBeNull();
     expect(performanceLine(IDS.starter, null, true)).toBeNull();
+  });
+
+  it('says a rate with a blank component "not known", never .000 or 0.00 (D-018; N8 review, M5)', () => {
+    const id = 9_801;
+    const bat = db.prepare(`INSERT INTO players_career_batting_stats (player_id, year, team_id, league_id, level_id, split_id, pa, ab, h, d, t, hr, bb, hp, sf)
+      VALUES (?, 2040, 1, 100, 7, 1, ?, ?, ?, 2, 0, ?, 5, 0, 1)`);
+    bat.run(id, 60, 54, 12, 1);
+    bat.run(id, 40, 36, null, null); // a second stint whose hits and home runs the export left blank
+    const pitch = db.prepare(`INSERT INTO players_career_pitching_stats (player_id, year, team_id, league_id, level_id, split_id, outs, er, k, bb, g, gs)
+      VALUES (?, 2040, 1, 100, 7, 1, 60, NULL, 20, 6, 8, 0)`);
+    pitch.run(id + 1);
+    try {
+      const hitter = performanceLine(id, 7, false)!;
+      expect(hitter.sample).toBe(100);
+      expect(Object.fromEntries(hitter.lines.map((l) => [l.label, l.value]))).toEqual({ AVG: 'not known', OBP: 'not known', SLG: 'not known', HR: 'not known' });
+      const arm = performanceLine(id + 1, 7, true)!;
+      expect(arm.lines.find((l) => l.label === 'ERA')!.value).toBe('not known');
+      expect(arm.lines.find((l) => l.label === 'K')!.value).toBe('20');
+    } finally {
+      db.prepare('DELETE FROM players_career_batting_stats WHERE player_id = ?').run(id);
+      db.prepare('DELETE FROM players_career_pitching_stats WHERE player_id = ?').run(id + 1);
+    }
   });
 
   it('cross-role support from visible evidence: no grade means not a candidate, not an unknown', () => {

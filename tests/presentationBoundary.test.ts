@@ -270,7 +270,10 @@ describe('the presentation boundary', () => {
     // N10: the farm's views are kept on the Front Office's inputs and built in its worker, a served view like the others
     expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
     expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
-    expect(importers('farmViewsBuild').sort()).toEqual(['farmViewService.ts', 'frontOfficeWorker.ts']);
+    // frontOfficeBuild.ts names the farm's two jobs in the worker's one list of jobs (`WorkerJob`), by type only
+    expect(importers('farmViewsBuild').sort()).toEqual(['farmViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
+    expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
+    expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
     expect(importers('frontOfficeAttention').sort()).toEqual(['api.ts', 'v2Routes.ts']);
     expect(importers('aroundTheLeague').sort()).toEqual(['frontOfficeAttention.ts', 'v2Routes.ts']);
     expect(importers('frontOfficeBuild').sort()).toEqual(['frontOfficeService.ts', 'frontOfficeWorker.ts']);

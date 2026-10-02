@@ -21,14 +21,14 @@ struct FarmSnapshotTests {
         try FileManager.default.createDirectory(at: Self.folder, withIntermediateDirectories: true)
     }
 
-    private func hosted(_ view: some View, subject: String? = nil) -> some View {
+    private func hosted(_ view: some View, key: String? = nil) -> some View {
         let model = PreviewFixtures.ready()
         let window = MainWindowModel(registry: DepartmentRegistry(allDepartments))
         return view
             .environment(model)
             .environment(AppRouting())
             .environment(\.routeOpener, window)
-            .environment(\.routeSubject, subject)
+            .environment(\.currentRoute, key.map { AppRoute(department: "farm", view: "decision", key: $0) })
     }
 
     @Test("Organization", arguments: [false, true])
@@ -49,7 +49,7 @@ struct FarmSnapshotTests {
     @Test("A decision whose chain has steps and leaves a hole", arguments: [false, true])
     func decisionCascade(dark: Bool) throws {
         let cascade = try #require(PreviewFixtures.farmFixture(Components.Schemas.FarmDecisionView.self, "decision-cascade"))
-        try draw(hosted(FarmDecisionView(), subject: String(cascade.playerId)), size: CGSize(width: 1100, height: 3000), dark: dark, name: "farm-decision-cascade")
+        try draw(hosted(FarmDecisionView(), key: String(cascade.playerId)), size: CGSize(width: 1100, height: 3000), dark: dark, name: "farm-decision-cascade")
     }
 
     @Test("Decision opened on its own: the assignments in question", arguments: [false, true])

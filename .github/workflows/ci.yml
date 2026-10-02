@@ -143,7 +143,7 @@ jobs:
             echo "### Mac app XCUITests: $line"
             echo
             echo "The screenshots, audits and logs are in the xcuitest-screenshots artifact."
-            timing=$(cat build/macos-test/screenshots/launch-timing* 2>/dev/null)
+            timing=$(cat build/macos-test/screenshots/launch-timing* 2>/dev/null || true)
             if [ -n "$timing" ]; then echo; echo '```'; echo "$timing"; echo '```'; fi
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the screenshots, the audits, the launch timing and the logs
