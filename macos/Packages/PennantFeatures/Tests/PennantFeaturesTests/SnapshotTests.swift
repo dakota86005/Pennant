@@ -1,6 +1,7 @@
 import AppKit
 @testable import FeatureCore
 @testable import FrontOffice
+@testable import MajorLeague
 import League
 import Foundation
 import PennantAPI
@@ -223,6 +224,40 @@ struct SnapshotTests {
     }
 
     /// In the synthetic club's own colours and in the repository's example pack.
+    // MARK: Major League Ops (N8)
+
+    nonisolated static let majorLeagueRoutes: [String] = [
+        "report", "positionPlayers", "pitchingStaff", "benchBackups", "decision", "decision.mlb:role_below_standard:catcher",
+    ]
+
+    @Test("each Major League Ops view in the window, as served", arguments: majorLeagueRoutes, [false, true])
+    func majorLeague(view: String, dark: Bool) throws {
+        let model = PreviewFixtures.ready()
+        let window = MainWindowModel(registry: registry, expanded: ["majorLeague"])
+        let parts = view.split(separator: ".", maxSplits: 1).map(String.init)
+        window.go(to: AppRoute(department: "majorLeague", view: parts[0], key: parts.count == 2 ? parts[1] : nil))
+        try drawMainWindow(model: model, window: window, dark: dark, name: "n8-\(view.replacingOccurrences(of: ":", with: "_"))")
+    }
+
+    @Test("Major League Ops' decision at full length, and a row's detail", arguments: [false, true])
+    func majorLeagueDecisionFull(dark: Bool) throws {
+        let model = PreviewFixtures.ready()
+        let decision = try #require(model.majorLeague.decisions.values.first)
+        try draw(DecisionContent(decision: decision, refreshing: false, choose: { _ in }).environment(model).environment(\.theme, model.theme),
+                 size: CGSize(width: 1000, height: 2400), dark: dark, name: "n8-decision-full")
+        let row = try #require(model.majorLeague.bench?.bench.rows.first)
+        try draw(RowDetail(row: row).padding(20).environment(model).environment(\.theme, model.theme),
+                 size: CGSize(width: 900, height: 260), dark: dark, name: "n8-row-detail")
+    }
+
+    @Test("Major League Ops in a narrow window", arguments: [false, true])
+    func majorLeagueNarrow(dark: Bool) throws {
+        let model = PreviewFixtures.ready()
+        let window = MainWindowModel(registry: registry, inspectorPresented: true, expanded: ["majorLeague"])
+        window.go(to: AppRoute(department: "majorLeague", view: "benchBackups"))
+        try drawMainWindow(model: model, window: window, look: dark ? .dark : .light, name: "n8-narrow-bench", size: CGSize(width: 1000, height: 760))
+    }
+
     @Test("the Morning Report's shell: masthead, glass and the floating control, in each theme and appearance",
           arguments: [nil, "sunset-series"] as [String?], Look.allCases)
     func shell(theme: String?, look: Look) throws {

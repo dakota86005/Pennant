@@ -81,7 +81,7 @@ public final class MainWindowModel {
     /// goes to that view, with nothing open.
     public var selection: AppRoute? {
         get { route.viewOnly }
-        set { if let newValue, newValue != route.viewOnly || route.key == nil { go(to: newValue) } }
+        set { if let newValue, newValue != route { go(to: newValue) } }
     }
 
     /// Goes to a route this build knows; its department opens in the sidebar.

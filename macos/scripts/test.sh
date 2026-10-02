@@ -143,6 +143,8 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testFollowByDrag configured '{"theme":"light"}'
   prepare_ui_test testSearchToClubWindow configured '{"theme":"light"}'
   prepare_ui_test testClubWindow configured '{"theme":"light"}'
+  # Major League Ops (N8): the report's companion, the tables, a row's detail and context menu, a decision
+  prepare_ui_test testMajorLeagueViews configured '{"theme":"light"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
   if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi

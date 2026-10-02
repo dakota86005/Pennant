@@ -168,6 +168,19 @@ nonisolated public enum PreviewFixtures {
         .preview(wire: decode(Components.Schemas.Wire.self, "getWire"), clubs: decode(Components.Schemas.ClubReport.self, "getClubReport").map { [$0] } ?? [])
     }
 
+    /// Major League Ops' captured views and the captured decision (`getMajorLeague*`, N8).
+    @MainActor
+    public static var majorLeague: MajorLeagueStore {
+        let decision = decode(Components.Schemas.MlbDecisionView.self, "getMajorLeagueDecision")
+        return .preview(
+            overview: decode(Components.Schemas.MlbOverviewView.self, "getMajorLeagueOverview"),
+            positionPlayers: decode(Components.Schemas.MlbPositionPlayersView.self, "getMajorLeaguePositionPlayers"),
+            pitchingStaff: decode(Components.Schemas.MlbPitchingStaffView.self, "getMajorLeaguePitchingStaff"),
+            bench: decode(Components.Schemas.MlbBenchView.self, "getMajorLeagueBench"),
+            decisions: decision.map { [MajorLeagueStore.DecisionQuery(need: $0.needId): $0] } ?? [:]
+        )
+    }
+
     /// The captured search answer for "club".
     public static var search: Components.Schemas.SearchAnswer? {
         decode(Components.Schemas.SearchAnswer.self, "search")
@@ -252,7 +265,8 @@ nonisolated public enum PreviewFixtures {
             ratingHistory: ratingHistory ?? (configured ? Self.ratingHistory("") : nil),
             savePlayedElsewhere: savePlayedElsewhere,
             following: configured ? (following ?? Self.following()) : nil,
-            league: configured ? league : nil
+            league: configured ? league : nil,
+            majorLeague: configured ? majorLeague : nil
         )
     }
 

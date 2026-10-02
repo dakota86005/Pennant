@@ -47,6 +47,7 @@ struct MainWindowScene: View {
             if let route = defaults.string(forKey: "PennantDebugRoute")?.split(separator: ".", maxSplits: 2).map(String.init), route.count >= 2 {
                 restored.go(to: AppRoute(department: DeptID(rawValue: route[0]), view: route[1], key: route.count == 3 ? route[2] : nil))
             }
+            if defaults.bool(forKey: "PennantDebugInspector") { restored.inspectorPresented = true }
             if let query = defaults.string(forKey: "PennantDebugPalette") {
                 restored.paletteShown = true
                 restored.paletteQuery = query

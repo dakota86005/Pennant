@@ -402,6 +402,25 @@ struct SetupModelTests {
         #expect(server.requests.filter { $0.operation == "setUpAutomatically" }.count == 1)
     }
 
+    @Test("a run that ends counts once, however fast its import landed, so the open window closes on it (N8: the flake)")
+    func completionCounts() async throws {
+        let model = makeModel {}
+        server.answer("setUpAutomatically", (200, try automaticJSON(started: true)))
+        // The import has already landed when the window first reads the status: a fifth of a second's import
+        server.answer("getStatus", (200, try json(status(finishedAt: "2040-07-01T12:00:00.000Z"))))
+        var first = try status(finishedAt: "2040-07-01T10:00:00.000Z")
+        first.configured = false
+        let opened = model.completions
+        await model.begin(status: first)
+        #expect(model.step == .done)
+        #expect(model.completions == opened + 1)
+        // The same news again changes nothing; a window opened on the finished model starts again, and is not closed
+        await model.observe(try status(finishedAt: "2040-07-01T12:00:00.000Z"))
+        #expect(model.completions == opened + 1)
+        #expect(model.reopen())
+        #expect(model.completions == opened + 1)
+    }
+
     @Test("a first run where the save's human manages several clubs asks only the club")
     func zeroQuestionsButTheClub() async throws {
         let model = makeModel()

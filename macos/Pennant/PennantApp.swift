@@ -105,6 +105,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let after = UserDefaults.standard.double(forKey: "PennantDebugCaptureAfter")
             DispatchQueue.main.asyncAfter(deadline: .now() + (after > 0 ? after : 3)) { Self.captureMainWindow(to: path) }
         }
+        // The main window at a given size (`-PennantDebugWindowSize 1000x760`), for captures of a narrow window
+        if let size = UserDefaults.standard.string(forKey: "PennantDebugWindowSize")?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                guard let window = NSApp.windows.filter({ $0.isVisible && $0.styleMask.contains(.titled) }).max(by: { $0.frame.width < $1.frame.width }) else { return }
+                window.setFrame(CGRect(origin: window.frame.origin, size: CGSize(width: size[0], height: size[1])), display: true)
+            }
+        }
         // Settings opened by itself (`-PennantDebugOpenSettings YES`), for its captures
         if UserDefaults.standard.bool(forKey: "PennantDebugOpenSettings") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }

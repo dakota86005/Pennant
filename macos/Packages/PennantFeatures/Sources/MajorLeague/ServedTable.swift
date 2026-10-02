@@ -85,9 +85,14 @@ struct ServedTable: View {
                 Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
             }
         } else {
-            nativeTable
-                .frame(height: Self.headerHeight + Self.rowHeight * CGFloat(table.rows.count) + 6)
-                .accessibilityIdentifier("table.\(id)")
+            let height = Self.headerHeight + Self.rowHeight * CGFloat(table.rows.count) + 6
+            // The table takes the width it is given and reports none of its own: an AppKit table's size wants fed back
+            // into the split view's minimum looped its layout on a narrow window with the inspector open
+            GeometryReader { proxy in
+                nativeTable.frame(width: proxy.size.width, height: height)
+            }
+            .frame(height: height)
+            .accessibilityIdentifier("table.\(id)")
         }
     }
 
@@ -101,7 +106,9 @@ struct ServedTable: View {
                             .lineLimit(1)
                     }
                 }
-                .width(min: column.numeric ? 48 : 64, ideal: Self.idealWidth(column))
+                // A small minimum: the table never asks the window for more room than it has (column minimums summed past the
+                // content's width made the split view's layout loop on a narrow window); it scrolls sideways instead
+                .width(min: 28, ideal: Self.idealWidth(column))
                 .customizationID(column.id)
             }
         } rows: {

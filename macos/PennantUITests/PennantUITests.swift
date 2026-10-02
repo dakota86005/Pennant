@@ -748,6 +748,65 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Major League Ops (N8): the report with the staff at a glance; a glance opens Position players (a native table);
+    /// Bench & Backups' table selects a row and draws its served detail, and its context menu offers the player's
+    /// actions; the report's need opens its decision, whose served choice asks again; Back returns. Audited on each view.
+    @MainActor
+    func testMajorLeagueViews() throws {
+        let app = launch()
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
+        let glance = element(app, "glance.positionPlayers")
+        XCTAssertTrue(glance.waitForExistence(timeout: 30), "the staff at a glance did not load")
+        element(app, "detail.majorLeague.report").scroll(byDeltaX: 0, deltaY: 5000)
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-report")
+        glance.click()
+        let lineup = element(app, "table.lineup")
+        XCTAssertTrue(lineup.waitForExistence(timeout: 20), "Position players' table did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "n8-position-players")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-position-players")
+        // Back to the report, then on to the bench
+        app.typeKey("[", modifierFlags: .command)
+        let benchGlance = element(app, "glance.benchBackups")
+        XCTAssertTrue(benchGlance.waitForExistence(timeout: 20), "Back did not return to the report")
+        benchGlance.click()
+        let bench = element(app, "table.bench")
+        XCTAssertTrue(bench.waitForExistence(timeout: 20), "the bench's table did not load")
+        let row = bench.tables.firstMatch.tableRows.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the bench's table has no row")
+        row.click()
+        XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "selecting a row did not draw its served detail")
+        row.rightClick()
+        XCTAssertTrue(contextMenuItem(app, "Copy Name").waitForExistence(timeout: 5), "the row's context menu has no Copy Name")
+        app.typeKey(.escape, modifierFlags: [])
+        keep(app.windows.firstMatch.screenshot(), named: "n8-bench-row-selected")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-bench")
+        // The report's need opens its decision
+        app.typeKey("2", modifierFlags: .command)
+        let open = element(app, "item.decision")
+        XCTAssertTrue(open.waitForExistence(timeout: 20), "the report's need offers no decision")
+        open.click()
+        XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision did not load")
+        let choices = element(app, "choices.assignment")
+        if choices.waitForExistence(timeout: 5) {
+            let segment = choices.radioButtons.element(boundBy: 1)
+            if segment.exists {
+                segment.click()
+                XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision for the served choice did not load")
+            }
+        }
+        keep(app.windows.firstMatch.screenshot(), named: "n8-decision")
+        sidebarAtTop(app)
+        try audit(app, named: "accessibility-audit-n8-decision")
+        app.typeKey("[", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 10), "Back did not return from the decision")
+        quitCleanly(app)
+    }
+
     /// Following by drag (D-058): a club's name dragged from around the league onto the sidebar's Following section is
     /// followed (the server's answer redraws the section), and ⌘Z unfollows it again.
     @MainActor
