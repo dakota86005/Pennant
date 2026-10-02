@@ -245,9 +245,10 @@ describe('the evidence boundary', () => {
     expect(code('stakesLinesRefit.ts')).toMatch(/inPopulationView\(\(\) => loadScoutedAbilities/);
     expect(code('saveCalibration.ts')).toMatch(/inPopulationView\(\(\) => c\.compute/);
     expect(code('playerValue.ts')).toMatch(/run = inPopulationView\(/);
-    // OSA's own history is written and read in two places only; the policy is a line, never flipped by the app
+    // OSA's own history is written and read in two places only, and carried over (copied and undone, D-064) in a third;
+    // the policy is a line, never flipped by the app
     const naming = serverSources().filter((file) => /save_population_snapshots/.test(code(file))).sort();
-    expect(naming).toEqual(['history.ts', 'scoutedEvidence.ts']);
+    expect(naming).toEqual(['history.ts', 'historyIdentity.ts', 'scoutedEvidence.ts']);
     const flipping = serverSources().filter((file) => file !== 'scoutedEvidence.ts' && /withPopulationPolicy/.test(code(file)));
     expect(flipping).toEqual([]);
   });

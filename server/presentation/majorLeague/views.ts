@@ -7,7 +7,7 @@
 import type { Cell, Tone } from '../../contract/presentation.js';
 import type { MlbNeed } from '../../mlbNeeds.js';
 import type { RoleGroupReview } from '../../mlbReview.js';
-import { ratingsNoteOf } from '../../mlbEvidence.js';
+import { ratingFillOf } from '../../scoutedEvidence.js';
 import { basis, cell, claim } from '../claim.js';
 import { sourceOf } from '../frontOffice/desk.js';
 import {
@@ -214,7 +214,7 @@ function readClaim(v: OverviewContext, h: Holder) {
  * Nothing changes for a player our scouts rate.
  */
 function markFill(playerId: number, cells: Record<string, Cell>, ratingKeys: readonly string[], detail: MlbBlock[]): MlbBlock[] {
-  const note = ratingsNoteOf(playerId);
+  const note = ratingFillOf(playerId)?.hint ?? null;
   if (!note) return detail;
   for (const k of ratingKeys) {
     const c = cells[k];
