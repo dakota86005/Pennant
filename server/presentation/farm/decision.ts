@@ -228,6 +228,11 @@ export function decisionView(
     ...(p.rates.era !== null ? [factRow('results:era', 'ERA', `${p.rates.era.toFixed(2)} against the league's ${p.leagueContext.era.toFixed(2)}`)] : []),
   ];
 
+  // Philosophy orders only defensible choices, afterwards (D-019): with no preference, the row says why by its judgment
+  const noPreferenceWords = (judgment: string): string =>
+    judgment === 'defensible' ? 'No preference stated'
+      : judgment === 'indefensible' ? 'No preference: not defensible'
+        : 'No preference until it can be judged';
   const alternatives: FarmAlternativeRow[] = review.alternatives.map((alt, i) => {
     const j = judgmentWord(alt.judgment);
     const pref = preferenceWord(alt.preference);
@@ -237,7 +242,7 @@ export function decisionView(
         {
           assignment: cell(`${moveWord(alt.kind)} to ${alt.levelName}`),
           development: cell(j.text, { tone: j.tone }),
-          philosophy: pref ? cell(pref) : cell('No preference: not defensible', { tone: 'neutral' }),
+          philosophy: pref ? cell(pref) : cell(noPreferenceWords(alt.judgment), { tone: 'neutral' }),
           play: cell(plain(alt.destinationOpportunity?.detail ?? '') || 'Not established', alt.destinationOpportunity ? {} : { tone: 'unknown' }),
         },
         { assignment: alt.level, development: alt.judgment, philosophy: alt.preference, play: alt.destinationOpportunity ? (alt.destinationOpportunity.open ? 0 : 1) : null },

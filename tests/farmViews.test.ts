@@ -177,6 +177,17 @@ describe('a decision\'s cascade is a chain that stops (D-045)', () => {
     expect(view.consequence!.cascade!.unresolvedNote).toBeNull();
   });
 
+  it('says why an alternative has no preference by Player Development\'s judgment of it', () => {
+    const alternatives = (['defensible', 'indeterminate', 'indefensible'] as const).map((judgment) => ({
+      kind: 'promotion' as const, direction: 'promotion' as const, level: 2, levelName: 'Triple-A', teams: [], judgment, preference: null,
+      blockers: [], missingEvidence: [], destinationOpportunity: null,
+    }));
+    const view = decisionView(ctx, system, { ...review(), alternatives }, consequence({}));
+    expect(view.alternatives.map((a) => a.cells.philosophy.display)).toEqual([
+      'No preference stated', 'No preference until it can be judged', 'No preference: not defensible',
+    ]);
+  });
+
   it('says why a consequence could not be read, rather than leaving the section empty', () => {
     const view = decisionView(ctx, system, review(), { problem: 'What follows if he moves couldn\'t be read this time.' });
     expect(view.consequence).toBeNull();
