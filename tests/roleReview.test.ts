@@ -45,7 +45,7 @@ describe('a holder in his group', () => {
   it('both lenses weak and the weakest of the group: a strong, agreeing case', () => {
     const r = byId(review(rotation()), 5);
     expect(r).toMatchObject({ kind: 'ratings_and_results_weak', strength: 'strong', isWeakest: true, rank: 5, groupSize: 5 });
-    expect(r.reasons.join(' ')).toMatch(/tools 35th percentile.*results 2\dth.*the weakest of 5/);
+    expect(r.reasons.join(' ')).toMatch(/tools 35th.*results 2\dth.*the weakest of 5/);
     expect(r.calibration).toBe(REVIEW_CALIBRATION);
   });
 

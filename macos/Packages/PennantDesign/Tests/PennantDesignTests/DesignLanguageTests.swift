@@ -27,8 +27,8 @@ struct DesignLanguageTests {
     func paletteMatching() {
         let entries = DesignFixtures.paletteEntries
         #expect(PaletteEntry.matching("", in: entries).count == entries.count)
-        #expect(PaletteEntry.matching("bench", in: entries).map(\.id) == ["majorLeague.benchCoverage"])
-        #expect(PaletteEntry.matching("catch", in: entries).map(\.id) == ["majorLeague.benchCoverage"])
+        #expect(PaletteEntry.matching("bench", in: entries).map(\.id) == ["majorLeague.benchBackups"])
+        #expect(PaletteEntry.matching("catch", in: entries).map(\.id) == ["majorLeague.benchBackups"])
         #expect(PaletteEntry.matching("major rep", in: entries).map(\.id) == ["majorLeague.report"])
         #expect(PaletteEntry.matching("xyz", in: entries).isEmpty)
     }

@@ -65,7 +65,7 @@ export function ordinal(n: number): string {
   return `${r}${suffix}`;
 }
 
-const pct = (n: number) => `${ordinal(n)} percentile`;
+const pct = (n: number) => `better than ${Math.round(n)}%`;
 
 export function evaluateRoleStanding(subject: StandingPlayer, incumbents: StandingPlayer[]): RoleStanding {
   const others = incumbents.filter((i) => i.playerId !== subject.playerId);
@@ -100,7 +100,7 @@ export function evaluateRoleStanding(subject: StandingPlayer, incumbents: Standi
   else verdict = 'comparable';
 
   const reasons = [
-    `His visible tools are at the ${pct(subject.composite)} of MLB peers; ${weakest.name}, the weakest assessed current player, is at the ${pct(weakest.composite)}.`,
+    `His visible tools are ${pct(subject.composite)} of MLB peers; ${weakest.name}, the weakest assessed current player, is ${pct(weakest.composite)}.`,
     verdict === 'strengthens'
       ? `That is ${Math.round(gap)} points clear of ${weakest.name} (a gap of ${MEANINGFUL_GAP} counts as clearly ahead), so he would improve the group.`
       : verdict === 'behind'

@@ -138,7 +138,7 @@ const DEPARTMENTS: ReadonlyArray<{ id: DeptId; name: string; seat: StaffSeat | n
   ] },
   { id: 'majorLeague', name: 'Major League Ops', seat: 'bench_coach', office: 'the major league staff', views: [
     ['report', 'Report'], ['positionPlayers', 'Position Players'], ['pitchingStaff', 'Pitching Staff'],
-    ['benchCoverage', 'Bench & Backups'], ['decision', 'Decision'], ['lineup', 'Lineup'],
+    ['benchBackups', 'Bench & Backups'], ['decision', 'Decision'], ['lineup', 'Lineup'],
     ['pitchingAvailability', 'Pitching Availability'], ['scheduleGamePlans', 'Schedule & Game Plans'],
     ['depthChart', 'Depth Chart'], ['fortyManOptions', '40-Man & Options'], ['rosters', 'Rosters'], ['seasonTrends', 'Season Trends'],
   ] },

@@ -142,7 +142,7 @@ describe('the staff recommendation follows a stated rubric', () => {
   it('ACT: a strong case, a clear firm upgrade whose path is open and defensible, and a plan that puts nobody at risk', () => {
     const r = packet().report!.recommendation!;
     expect(r).toMatchObject({ stance: 'act', confidence: 'high' });
-    expect(r.headline).toMatch(/Recommend the change: Send SP5 down and bring in Reno Better/);
+    expect(r.headline).toMatch(/Make the change: Send SP5 down and bring in Reno Better/);
     expect(r.because.join(' ')).toMatch(/Both lenses agree.*clear upgrade.*puts nobody at risk/s);
     expect(r.basis).toMatch(/It is advice, not a decision/);
   });
@@ -152,7 +152,7 @@ describe('the staff recommendation follows a stated rubric', () => {
     const r = open.report!.recommendation!;
     expect(r.stance).toBe('explore');
     expect(r.toSettle.join(' ')).toMatch(/Player Development cannot yet establish|read on Reno ToolsOnly rests on one lens/);
-    expect(r.wouldChange.join(' ')).toMatch(/Settling the item above would move this to a recommendation/);
+    expect(r.wouldChange.join(' ')).toMatch(/Settling the item above would make this a firm call/);
   });
 
   it('EXPLORE: nothing ready today, but a held-up upgrade is named with what holds him up', () => {

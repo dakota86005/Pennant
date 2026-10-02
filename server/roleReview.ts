@@ -452,7 +452,7 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
     const explanations: string[] = [];
     const wouldChange: string[] = [];
     const lens = [
-      h.ratingsPct !== null ? `tools ${ordinal(h.ratingsPct)} percentile${!std && ratingsMedian !== null ? ` (group median ${ordinal(ratingsMedian)})` : ''}` : 'no visible tool rating',
+      h.ratingsPct !== null ? `tools ${ordinal(h.ratingsPct)}${!std && ratingsMedian !== null ? ` (group median ${ordinal(ratingsMedian)})` : ''}` : 'no visible tool rating',
       est.resultsPct !== null ? `results ${ordinal(est.resultsPct)} (${r0(h.sample)} ${h.sampleUnit} of weighted sample, trusted ${r0(h.reliability * 100)}% as his level${!std && resultsMedian !== null ? `; group median ${ordinal(resultsMedian)}` : ''})` : 'no qualifying results',
     ];
     reasons.push(`${lens.join('; ')}.`);
@@ -473,7 +473,7 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
         : `For ${std.label} a typical working estimate is about ${r0(std.typical)} (Pennant's starting yardstick)`;
       reasons.push(`${typicalText}; below ${r0(std.floor)} is unusually weak and below ${r0(std.deepFloor)} well below what the job takes. He is at ${ordinal(value)}, ${margin < 0 ? `${r0(-margin)} under the first line` : `${r0(margin)} above it`}.`);
     }
-    if (groupMedian !== null) reasons.push(`Working estimate ${ordinal(value)} percentile of MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);
+    if (groupMedian !== null) reasons.push(`Working estimate better than ${r0(value)}% of MLB ${opts.role}s${est.basis === 'ratings_and_results' ? ` (${r0(est.weightOnResults * 100)}% results, ${r0((1 - est.weightOnResults) * 100)}% tools)` : est.basis === 'ratings_only' ? ' (tools only: no results to weigh)' : ' (results only: no visible tools)'}; ${isWeakest ? 'the weakest' : `number ${rank}`} of ${known.length} in the group.`);
 
     // competing explanations, stated whichever way the read goes
     if (opts.pitcher && h.skillsPct !== null && h.runsPct !== null && h.skillsPct - h.runsPct >= CONCERN.luckGap) {
@@ -489,7 +489,7 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       explanations.push(`His results (${ordinal(est.resultsPct)}) are well behind his visible tools (${ordinal(h.ratingsPct)}): he is underperforming what the tools suggest, which may correct.`);
     }
     if (h.currentSample !== null && h.currentSample < (opts.pitcher ? 100 : 100)) {
-      explanations.push(`This season is ${r0(h.currentSample)} ${h.sampleUnit} old: too early to read the year on its own, so the read leans on prior seasons.`);
+      explanations.push(`This season is ${r0(h.currentSample)} ${h.sampleUnit} old: too early to read the year on its own, so the read leans on earlier seasons.`);
     }
     if (h.age !== null && h.age >= CONCERN.agingAge) {
       const signed = expectedAnnualChange(h.age, opts.pitcher, aging);
@@ -512,9 +512,9 @@ export function reviewGroup(holders: ReviewSubject[], opts: { pitcher: boolean; 
       if (!d || !d.visible || d.pct === null) {
         explanations.push(`His defense at ${POSITION_NAME[h.position] ?? 'the position'} is not visible, so the estimate is his bat alone and may miss what he gives with the glove.`);
       } else if (est.batValue !== undefined && est.batValue !== null && d.pct - est.batValue >= CONCERN.divergenceGap) {
-        explanations.push(`His glove (${ordinal(d.pct)} percentile at ${POSITION_NAME[h.position]}) is well ahead of his bat (${ordinal(est.batValue)}): the position, not the bat, is what he is worth.`);
+        explanations.push(`His glove (${ordinal(d.pct)} at ${POSITION_NAME[h.position]}) is well ahead of his bat (${ordinal(est.batValue)}): the position, not the bat, is what he is worth.`);
       } else if (est.batValue !== undefined && est.batValue !== null && est.batValue - d.pct >= CONCERN.divergenceGap) {
-        explanations.push(`His bat (${ordinal(est.batValue)}) is well ahead of his glove (${ordinal(d.pct)} percentile at ${POSITION_NAME[h.position]}): a defensive risk that the bat has to carry.`);
+        explanations.push(`His bat (${ordinal(est.batValue)}) is well ahead of his glove (${ordinal(d.pct)} at ${POSITION_NAME[h.position]}): a defensive risk that the bat has to carry.`);
       }
     }
     wouldChange.push(
@@ -578,7 +578,7 @@ export function compareReplacement(candidate: ReviewSubject, incumbent: ReviewSu
   else verdict = 'downgrade';
 
   const reasons = [
-    `${candidate.name}: working estimate ${ordinal(c.value)} percentile${c.basis === 'ratings_only' ? ' on tools alone' : c.basis === 'results_only' ? ' on results alone' : ''}; ${incumbent.name}: ${ordinal(i.value)} (${delta >= 0 ? '+' : ''}${r0(delta)}).`,
+    `${candidate.name}: working estimate ${ordinal(c.value)}${c.basis === 'ratings_only' ? ' on tools alone' : c.basis === 'results_only' ? ' on results alone' : ''}; ${incumbent.name}: ${ordinal(i.value)} (${delta >= 0 ? '+' : ''}${r0(delta)}).`,
     ...(toolsDelta !== null ? [`Tools: ${ordinal(c.ratingsPct as number)} against ${ordinal(i.ratingsPct as number)}.`] : []),
     ...(resultsDelta !== null ? [`Results: ${ordinal(c.resultsPct as number)} against ${ordinal(i.resultsPct as number)}.`] : c.resultsPct === null ? [`${candidate.name} has no qualifying major-league results, so this rests on his tools.`] : []),
     ...unseen.map((s) => `${s.name}'s glove at ${POSITION_NAME[s.position as number] ?? 'the position'} is not visible, and that position is about ${Math.round((defenseWeights[s.position as number] ?? 0) * 100)}% glove: that side of the comparison is his bat alone.`),

@@ -347,8 +347,14 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     // Another club's report (N7): the league's second club, not the one the app follows
     teamId: () => String(save.clubs[1]),
   };
-  /** A query a GET is captured with, where it takes one (N7: search needs something typed). */
-  const SAMPLE_QUERIES: Record<string, string> = { search: '?q=club' };
+  /**
+   * A query a GET is captured with, where it takes one (N7: search needs something typed; N8: a decision needs a need,
+   * the synthetic save's first one with an evidence trail).
+   */
+  const SAMPLE_QUERIES: Record<string, () => string> = {
+    search: () => '?q=club',
+    getMajorLeagueDecision: () => `?need=${encodeURIComponent(evidenceKey.replace(/^\d+\.majorLeague:need:/, ''))}`,
+  };
 
   it('has an item with an evidence trail on the synthetic save, for the claims route', async () => {
     const report = await departmentReport(save.org, 'majorLeague');
@@ -366,7 +372,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       if (!sample) throw new Error(`Give ${op.operationId}'s :${name} a sample value in SAMPLE_PARAMS`);
       return sample();
     });
-    const res = await fetch(`${base}${url}${SAMPLE_QUERIES[op.operationId] ?? ''}`);
+    const res = await fetch(`${base}${url}${SAMPLE_QUERIES[op.operationId]?.() ?? ''}`);
     expect(res.status, url).toBe(200);
     const body = await res.json();
     const validate = validator(op.response);

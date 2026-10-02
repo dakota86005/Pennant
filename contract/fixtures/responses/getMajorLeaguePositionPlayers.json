@@ -1,0 +1,904 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Position players"
+  },
+  "lede": {
+    "text": "Each regular read against the standard for the job he is doing",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Each regular is read on two lenses, his tools against major league peers and his results (league-relative, park-adjusted, several seasons, weighted by sample), blended into a working estimate: his bat, his glove at the position he plays and a little for running. A flag means he is unusually weak for the job he is doing, with what regulars at his position typically are shown beside him. It is a reason to look, not a move."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How Major League Ops reads its roster: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": {
+    "text": "Using starting yardsticks for now: this league has not been measured yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Where the lines come from",
+          "value": "The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, how much his recent seasons count, what a hitter's tools say and how much they hold his results back, how much a hitter's own record against left- and right-handers counts, and how long a reliever has to work to count as a long man."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "The line for each job: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How players age: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much the glove counts at each position: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much recent seasons count: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much a hitter's own split counts: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What a hitter's tools say, and how much they hold his results back: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Who counts as a long man: the starting value (a reliever who averages 1.6 or more innings an appearance), because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much his innings matter (closers, high- and low-leverage arms) is read on Pennant's fixed lines, on a scale where 1.0 is an average plate appearance in this league."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Starting values are the ones Pennant ships with."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "They are replaced by this league's own only after those have been checked against players and seasons they were not drawn from, and, for how players age, how much recent seasons count, what a hitter's tools say and how much a hitter's own split counts, only where this league's own did clearly better than the starting values there."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What the tools say can only be checked on seasons that came after the ratings were saved, which takes several seasons of imports."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new import refits them on the league's own seasons where it can."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+    },
+    "links": []
+  },
+  "lineup": {
+    "columns": [
+      {
+        "id": "spot",
+        "title": {
+          "display": "Spot"
+        },
+        "numeric": false
+      },
+      {
+        "id": "player",
+        "title": {
+          "display": "Regular"
+        },
+        "numeric": false
+      },
+      {
+        "id": "bats",
+        "title": {
+          "display": "Bats"
+        },
+        "numeric": false
+      },
+      {
+        "id": "plays",
+        "title": {
+          "display": "Plays"
+        },
+        "numeric": true
+      },
+      {
+        "id": "estimate",
+        "title": {
+          "display": "Estimate"
+        },
+        "numeric": true
+      },
+      {
+        "id": "bat",
+        "title": {
+          "display": "Bat"
+        },
+        "numeric": true
+      },
+      {
+        "id": "glove",
+        "title": {
+          "display": "Glove"
+        },
+        "numeric": true
+      },
+      {
+        "id": "run",
+        "title": {
+          "display": "Run"
+        },
+        "numeric": true
+      },
+      {
+        "id": "platoon",
+        "title": {
+          "display": "Platoon"
+        },
+        "numeric": false
+      },
+      {
+        "id": "read",
+        "title": {
+          "display": "Read"
+        },
+        "numeric": false
+      }
+    ],
+    "rows": [
+      {
+        "id": "spot-2",
+        "cells": {
+          "spot": {
+            "display": "catcher"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 0,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-3",
+        "cells": {
+          "spot": {
+            "display": "first base"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 1,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-4",
+        "cells": {
+          "spot": {
+            "display": "second base"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 2,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-5",
+        "cells": {
+          "spot": {
+            "display": "third base"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 3,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-6",
+        "cells": {
+          "spot": {
+            "display": "shortstop"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 4,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-7",
+        "cells": {
+          "spot": {
+            "display": "left field"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 5,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-8",
+        "cells": {
+          "spot": {
+            "display": "center field"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 6,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-9",
+        "cells": {
+          "spot": {
+            "display": "right field"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 7,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "spot-10",
+        "cells": {
+          "spot": {
+            "display": "designated hitter"
+          },
+          "player": {
+            "display": "Unsettled",
+            "tone": "unknown",
+            "hint": "Played by nobody has played it"
+          },
+          "bats": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "plays": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "estimate": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "bat": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "glove": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "run": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "platoon": {
+            "display": "No regular",
+            "tone": "unknown"
+          },
+          "read": {
+            "display": "Unsettled",
+            "tone": "unknown"
+          }
+        },
+        "sort": {
+          "spot": 8,
+          "player": null,
+          "bats": null,
+          "plays": null,
+          "estimate": null,
+          "bat": null,
+          "glove": null,
+          "run": null,
+          "platoon": null,
+          "read": null
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Unsettled"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Nobody is the regular here: nobody has played it."
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      }
+    ],
+    "empty": null
+  },
+  "basisNote": {
+    "display": "From this season's innings at each position and games started (30 team games): a regular has played at least 40% of the innings there. A position nobody has that share of is unsettled."
+  }
+}

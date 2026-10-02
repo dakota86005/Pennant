@@ -168,9 +168,9 @@ function benchNeeds(groups: RoleGroupReview[]): MlbNeed[] {
       title: `No bench player can cover ${g.positions.map((p) => POSITION_LABELS[p]).join(' or ')}`,
       summary: g.text,
       severity: 'watch', urgency: { label: 'Review', days: null },
-      horizon: { kind: 'unknown', days: null, basis: 'A coverage gap has no end date; it lasts until a backup is on the bench.' },
+      horizon: { kind: 'unknown', days: null, basis: 'A missing backup has no end date; it lasts until a backup is on the bench.' },
       causes: [], facts: [{ label: 'Bench', value: bench.rows.length ? bench.rows.map((r) => `${r.name} (${r.role})`).join(', ') : 'Empty' }],
-      unknowns: ['This is a coverage question, not a performance one: it says nobody on the bench is visibly able to play the position, and it is a flag for your attention.'],
+      unknowns: ['This is a question of backups, not of performance: it says nobody on the bench is visibly able to play the position, and it is a flag for your attention.'],
       returning: null,
     }];
   });
@@ -281,9 +281,9 @@ export function needFromReview(m: RosterMember, r: HolderReview, groupRole: stri
     horizon: { kind: 'unknown', days: null, basis: 'How long a replacement would be needed is not known, so it is not assumed: a stopgap and a lasting change are different assignments.' },
     causes: [{ playerId: m.playerId, name: m.name, role: m.role?.label ?? null, status: m.availability.label ?? 'Active', daysLeft: null, assumed: false }],
     facts: [
-      { label: 'Working estimate', value: r.estimate.value === null ? 'Unknown' : `${ordinal(r.estimate.value)} percentile of MLB ${groupRole}s` },
-      ...(r.estimate.ratingsPct !== null ? [{ label: 'Tools', value: `${ordinal(r.estimate.ratingsPct)} percentile` }] : []),
-      ...(r.estimate.resultsPct !== null ? [{ label: 'Results', value: `${ordinal(r.estimate.resultsPct)} percentile (${Math.round(r.evidence.sample)} ${r.evidence.sampleUnit}, trusted ${Math.round(r.evidence.reliability * 100)}%)` }] : []),
+      { label: 'Working estimate', value: r.estimate.value === null ? 'Unknown' : `better than ${Math.round(r.estimate.value)}% of MLB ${groupRole}s` },
+      ...(r.estimate.ratingsPct !== null ? [{ label: 'Tools', value: `better than ${Math.round(r.estimate.ratingsPct)}% of MLB peers` }] : []),
+      ...(r.estimate.resultsPct !== null ? [{ label: 'Results', value: `better than ${Math.round(r.estimate.resultsPct)}% of MLB peers (${Math.round(r.evidence.sample)} ${r.evidence.sampleUnit}, trusted ${Math.round(r.evidence.reliability * 100)}%)` }] : []),
       ...r.usage.map((u) => ({ label: 'Usage', value: u })),
     ],
     unknowns: [

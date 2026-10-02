@@ -28,13 +28,18 @@ import { DATA_DIR } from './config.js';
 import type { DeptId } from './contract/presentation.js';
 import { currentSaveLocation } from './dataStatus.js';
 import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
-import { buildClubReport, buildFrontOffice, buildTrail, type BuildRequest, type BuildResult, type ClubRequest, type TrailRequest } from './frontOfficeBuild.js';
+import {
+  buildClubReport, buildDecision, buildFrontOffice, buildTrail, type BuildRequest, type BuildResult, type ClubRequest, type DecisionRequest, type TrailRequest,
+} from './frontOfficeBuild.js';
 import { catalogClubs } from './org.js';
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored } from './presentation/claim.js';
 import { REPORTING } from './presentation/frontOffice/desk.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
 import type { ClubReport } from './presentation/frontOffice/leagueTypes.js';
+import type { DecisionAsk } from './presentation/majorLeague/decision.js';
+import type { MlbDecisionView } from './presentation/majorLeague/types.js';
+import type { MajorLeagueViews } from './presentation/majorLeague/views.js';
 import { onCalibrationRecorded } from './saveCalibration.js';
 import { publish } from './serverEvents.js';
 import { currentOrganization } from './viewingOrganization.js';
@@ -49,12 +54,14 @@ interface Built {
   summary: FrontOfficeSummary;
   reports: Map<DeptId, DepartmentReport>;
   majorLeague: BuildResult['majorLeague'];
+  /** Major League Ops' standing views (N8), worded in the same build. */
+  majorLeagueViews: BuildResult['majorLeagueViews'];
   ms: Record<string, number>;
   season: BuildResult['season'];
 }
 
 /** A kept build as the rest of the server reads it (N7: the GM's attention is put on it when served). */
-export type FrontOfficeBuilt = Readonly<Omit<Built, 'majorLeague'>>;
+export type FrontOfficeBuilt = Readonly<Omit<Built, 'majorLeague' | 'majorLeagueViews'>>;
 
 const keptListeners = new Set<(built: FrontOfficeBuilt) => void>();
 
@@ -73,12 +80,16 @@ const builds = new Map<string, Built>();
 const building = new Map<string, Promise<Built>>();
 const trails = new Map<string, ClaimTrail>();
 const trailsBuilding = new Map<string, Promise<ClaimTrail | null>>();
+/** Major League Ops' decisions (N8), kept per build, need and choice like the trails; the oldest dropped first. */
+const MAX_DECISIONS = 32;
+const decisions = new Map<string, MlbDecisionView>();
+const decisionsBuilding = new Map<string, Promise<MlbDecisionView | null>>();
 /** Other clubs' reports (N7, D-059), kept per club and inputs like the Front Office; the oldest dropped first. */
 const MAX_CLUB_REPORTS = 12;
 const clubReports = new Map<string, { report: ClubReport; ms: number }>();
 const clubReportsBuilding = new Map<string, Promise<{ report: ClubReport; ms: number }>>();
 let revision = 0;
-const stats = { builds: 0, hits: 0, trailBuilds: 0, trailHits: 0, workerRuns: 0, inlineRuns: 0, clubBuilds: 0, clubHits: 0 };
+const stats = { builds: 0, hits: 0, trailBuilds: 0, trailHits: 0, workerRuns: 0, inlineRuns: 0, clubBuilds: 0, clubHits: 0, decisionBuilds: 0, decisionHits: 0 };
 
 /** Counts, for the tests' "served from the cache" guard. */
 export function frontOfficeStats(): Readonly<typeof stats & { cached: number; trailsCached: number }> {
@@ -94,6 +105,8 @@ export function invalidateFrontOffice(): void {
   clubReportsBuilding.clear();
   trails.clear();
   trailsBuilding.clear();
+  decisions.clear();
+  decisionsBuilding.clear();
 }
 
 /** How many times the cache was forgotten (for the tests: a carry-over of rating history rebuilds the Front Office). */
@@ -104,7 +117,7 @@ export function frontOfficeRevision(): number {
 /** For the tests: empty cache and zero counts. */
 export function resetFrontOfficeCache(): void {
   invalidateFrontOffice();
-  Object.assign(stats, { builds: 0, hits: 0, trailBuilds: 0, trailHits: 0, workerRuns: 0, inlineRuns: 0, clubBuilds: 0, clubHits: 0 });
+  Object.assign(stats, { builds: 0, hits: 0, trailBuilds: 0, trailHits: 0, workerRuns: 0, inlineRuns: 0, clubBuilds: 0, clubHits: 0, decisionBuilds: 0, decisionHits: 0 });
 }
 
 const statKey = (file: string | null | undefined): string => {
@@ -186,7 +199,11 @@ function workerAvailable(): boolean {
 }
 let workerBroken = false;
 
-type Job = { kind: 'build'; request: BuildRequest } | { kind: 'trail'; request: TrailRequest } | { kind: 'club'; request: ClubRequest };
+type Job =
+  | { kind: 'build'; request: BuildRequest }
+  | { kind: 'trail'; request: TrailRequest }
+  | { kind: 'club'; request: ClubRequest }
+  | { kind: 'decision'; request: DecisionRequest };
 
 function inWorker<T>(job: Job): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -209,7 +226,7 @@ function inWorker<T>(job: Job): Promise<T> {
 
 /** Takes in what the worker built: its payloads' claims are checked again and registered (`adoptAuthored`). */
 function adopt<T>(job: Job, result: T): T {
-  if (job.kind === 'trail') return result === null ? result : adoptAuthored(result);
+  if (job.kind === 'trail' || job.kind === 'decision') return result === null ? result : adoptAuthored(result);
   if (job.kind === 'club') {
     adoptAuthored((result as unknown as { report: ClubReport }).report);
     return result;
@@ -217,6 +234,7 @@ function adopt<T>(job: Job, result: T): T {
   const built = result as unknown as BuildResult;
   adoptAuthored(built.summary);
   adoptAuthored(built.reports);
+  if (built.majorLeagueViews) adoptAuthored(built.majorLeagueViews);
   return result;
 }
 
@@ -237,6 +255,7 @@ async function run<T>(job: Job): Promise<T> {
   stats.inlineRuns += 1;
   await new Promise((resolve) => setImmediate(resolve));
   if (job.kind === 'club') return buildClubReport(job.request) as T;
+  if (job.kind === 'decision') return buildDecision(job.request) as T;
   return (job.kind === 'build' ? await buildFrontOffice(job.request) : buildTrail(job.request)) as T;
 }
 
@@ -268,7 +287,8 @@ async function current(orgId: number): Promise<Built> {
     .then((result) => {
       stats.builds += 1;
       const built: Built = {
-        key, stamp, orgId, importStamp, summary: result.summary, reports: new Map(result.reports), majorLeague: result.majorLeague, ms: result.ms,
+        key, stamp, orgId, importStamp, summary: result.summary, reports: new Map(result.reports), majorLeague: result.majorLeague,
+        majorLeagueViews: result.majorLeagueViews ?? null, ms: result.ms,
         season: result.season ?? null,
       };
       // Kept only when nothing moved under it: no invalidation, no swap to another import, the same inputs
@@ -395,6 +415,66 @@ export async function claimTrail(key: string): Promise<ClaimTrail> {
   const trail = await pending;
   if (!trail) throw new FrontOfficeRefusal(UNKNOWN_CLAIM, 404);
   return trail;
+}
+
+export const UNKNOWN_VIEW = 'Pennant doesn\'t know that view.';
+export const VIEW_UNREADABLE = 'Major League Ops couldn\'t be read this time, so this view has nothing to show.';
+export const UNKNOWN_DECISION = 'That need isn\'t open in the current export. It may have been resolved, or the export changed.';
+
+/** Major League Ops' standing views (N8), by id: served from the club's build, never built on their own. */
+export type MajorLeagueViewId = keyof MajorLeagueViews;
+const MAJOR_LEAGUE_VIEWS = new Set<string>(['overview', 'positionPlayers', 'pitchingStaff', 'benchBackups']);
+
+/**
+ * One of Major League Ops' standing views for the Mac app (N8): worded in the club's Front Office build (the same
+ * overview as the report, warmed after every import), so a warm read is a map lookup. An unknown view is refused before
+ * anything is built; a department that could not be read is said in a sentence.
+ */
+export async function majorLeagueView<V extends MajorLeagueViewId>(orgId: number, viewId: V | string): Promise<MajorLeagueViews[V]> {
+  if (!MAJOR_LEAGUE_VIEWS.has(viewId)) throw new FrontOfficeRefusal(UNKNOWN_VIEW, 404);
+  const built = await current(orgId);
+  if (!built.majorLeagueViews) throw new FrontOfficeRefusal(VIEW_UNREADABLE, 404);
+  return built.majorLeagueViews[viewId as V];
+}
+
+/** The decision's cache key: the build, the need and the GM's choices. */
+const decisionKey = (built: Built, ask: DecisionAsk): string =>
+  `${built.key}#${ask.need}|${ask.role ?? ''}|${ask.context ?? ''}|${ask.days ?? ''}`;
+
+/**
+ * One Major League Ops decision (N8): the need's response packet for the GM's choices, built in the worker on its
+ * first open (the only deep evidence a click computes) and kept with the club's build, like the trails, until the next
+ * import. A need no longer open is refused in a sentence.
+ */
+export async function majorLeagueDecision(orgId: number, ask: DecisionAsk): Promise<MlbDecisionView> {
+  if (!ask.need.trim()) throw new FrontOfficeRefusal(UNKNOWN_DECISION, 404);
+  const built = await current(orgId);
+  if (!built.majorLeague) throw new FrontOfficeRefusal(VIEW_UNREADABLE, 404);
+  const cacheKey = decisionKey(built, ask);
+  const hit = decisions.get(cacheKey);
+  if (hit) {
+    stats.decisionHits += 1;
+    return hit;
+  }
+  let pending = decisionsBuilding.get(cacheKey);
+  if (!pending) {
+    const startedRevision = revision;
+    pending = run<MlbDecisionView | null>({
+      kind: 'decision',
+      request: { orgId, importStamp: built.summary.importStamp, reportStamp: built.stamp, ask, yardsticks: built.majorLeague.yardsticks },
+    }).then((view) => {
+      stats.decisionBuilds += 1;
+      if (view && revision === startedRevision && builds.get(built.key) === built) {
+        decisions.set(cacheKey, view);
+        while (decisions.size > MAX_DECISIONS) decisions.delete(decisions.keys().next().value!);
+      }
+      return view;
+    }).finally(() => decisionsBuilding.delete(cacheKey));
+    decisionsBuilding.set(cacheKey, pending);
+  }
+  const view = await pending;
+  if (!view) throw new FrontOfficeRefusal(UNKNOWN_DECISION, 404);
+  return view;
 }
 
 /**

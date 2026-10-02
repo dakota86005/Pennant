@@ -136,7 +136,7 @@ describe('a bench and an unavailable candidate', () => {
     const fn = b.functions.find((f) => f.key === 'center_field')!;
     expect(fn.strength).toBe('thin');
     expect(fn.by[0]).toMatchObject({ name: 'Infielder', quality: 'emergency' });
-    expect(fn.by[0].note).toMatch(/percentile of those listed there/);
+    expect(fn.by[0].note).toMatch(/better than \d+% of those listed there/);
   });
 
   it('an unavailable candidate states, as data, that he is unavailable, why and for how long', () => {

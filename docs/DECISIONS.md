@@ -865,7 +865,7 @@ One page had accumulated the inbox, the scouting book, every candidate and every
 attention sat under all of it. The module is now five views behind one navigation entry, addressable by URL hash so a decision
 can be linked to and returned to: **Overview** (what needs my attention: an operational inbox, a one-line reading of the club,
 summary cards, no tables of players), **Position players** and **Pitching staff** (the scouting book: each player against the
-standard for his job, expandable to what a scout would say), **Bench and coverage** (functions, not a score) and **Decision**
+standard for his job, expandable to what a scout would say), **Bench & Backups** (named "Bench and coverage" until the owner renamed it on 2026-10-01; functions, not a score) and **Decision**
 (one need opened, in the order a GM decides: the problem, why it was flagged and on what evidence, the staff's recommendation,
 the ways to respond followed through to their consequences, and only then the candidates and roster mechanics behind them).
 Information becomes more detailed as the GM drills down; nothing was deleted.

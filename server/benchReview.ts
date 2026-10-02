@@ -184,7 +184,7 @@ export function reviewBench(players: BenchPlayer[]): BenchReview {
     const strength: FunctionStrength = by.length === 0 ? 'none' : best === 'emergency' ? 'thin' : best === 'unknown' ? 'unknown' : 'covered';
     const fnBy = by.map(({ row, read }) => ({
       playerId: row.playerId, name: row.name, quality: read.quality,
-      note: `${POSITION_LABELS[read.position]}: ${read.grade !== null ? `grade ${read.grade}` : 'playable'}${read.pct !== null ? `, ${Math.round(read.pct)}th percentile of those listed there` : ''}`,
+      note: `${POSITION_LABELS[read.position]}: ${read.grade !== null ? `grade ${read.grade}` : 'playable'}${read.pct !== null ? `, better than ${Math.round(read.pct)}% of those listed there` : ''}`,
     }));
     const label = `Cover ${positionsWord(need.positions)}`;
     if (strength === 'none') {

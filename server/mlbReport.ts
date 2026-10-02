@@ -190,7 +190,7 @@ const displayOrder = (rows: RoleRow[]): RoleRow[] =>
   [...rows].sort((a, b) => (a.relation === b.relation ? 0 : a.relation === 'subject' ? 1 : -1)
     || (b.estimate ?? -1) - (a.estimate ?? -1) || a.name.localeCompare(b.name));
 
-const BASIS = "Two lenses, always shown: the organization-visible tool ratings against MLB peers of the same kind (Player Development's composite percentile) and what the player has done (league-relative, recency-weighted results as a percentile among peers). The working estimate blends them, giving results more weight the more sample stands behind them; a player with no results is read on tools alone. It is a way to compare two players, not a value, a projection or a decision.";
+const BASIS = "Two lenses, always shown: the organization-visible tool ratings against MLB peers of the same kind (Player Development's composite read) and what the player has done (league-relative, recency-weighted results placed among peers). The working estimate blends them, giving results more weight the more sample stands behind them; a player with no results is read on tools alone. It is a way to compare two players, not a value, a projection or a decision.";
 
 function activeOptions(clearing: ClearingPacket | null, constraint: 'active_roster' | 'forty_man'): ClearingOption[] {
   return clearing?.constraints.find((c) => c.constraint === constraint)?.classes.flatMap((c) => c.options) ?? [];
@@ -211,7 +211,7 @@ const farmLine = (o: ClearingOption): string | null => {
 };
 
 const roleEffectLine = (o: ClearingOption): string | null =>
-  o.roleEffect ? `${o.roleEffect.role} coverage: ${o.roleEffect.availableAfter} available against a floor of ${o.roleEffect.floor}${o.roleEffect.belowFloor ? ' (below it)' : ''}.` : null;
+  o.roleEffect ? `${o.roleEffect.role} depth: ${o.roleEffect.availableAfter} available against a minimum of ${o.roleEffect.floor}${o.roleEffect.belowFloor ? ' (below it)' : ''}.` : null;
 
 // ── an injured player returns ───────────────────────────────────────────────
 
@@ -249,9 +249,9 @@ function returnReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, clear
   let verdictText: string;
   if (!standing) verdictText = `${subject.name} has no established role, so Pennant cannot place him against the current group.`;
   else if (standing.verdict === 'strengthens' && standing.displaces) {
-    verdictText = `${subject.name} would improve the ${role?.label} group. On the working estimate he is ${standing.rank === 1 ? 'the best' : `number ${standing.rank}`} of ${standing.assessed + 1} (${ordinal(subjectRow.estimate ?? 0)} percentile of MLB peers), ${Math.round(standing.gapToWeakest ?? 0)} points clear of ${standing.displaces.name} (${ordinal(standing.displaces.composite)}), the weakest current ${role?.label}. ${standing.displaces.name} is the natural one to make room for him.`;
+    verdictText = `${subject.name} would improve the ${role?.label} group. On the working estimate he is ${standing.rank === 1 ? 'the best' : `number ${standing.rank}`} of ${standing.assessed + 1} (better than ${Math.round(subjectRow.estimate ?? 0)}% of MLB peers), ${Math.round(standing.gapToWeakest ?? 0)} points clear of ${standing.displaces.name} (${ordinal(standing.displaces.composite)}), the weakest current ${role?.label}. ${standing.displaces.name} is the natural one to make room for him.`;
   } else if (standing.verdict === 'comparable') {
-    verdictText = `${subject.name} is comparable to the back of the ${role?.label} group, not a clear upgrade: ${ordinal(subjectRow.estimate ?? 0)} percentile against ${standing.weakest?.name}'s ${ordinal(standing.weakest?.composite ?? 0)}. The reason to bring him back is depth and fit, not ability.`;
+    verdictText = `${subject.name} is comparable to the back of the ${role?.label} group, not a clear upgrade: better than ${Math.round(subjectRow.estimate ?? 0)}% of MLB peers against ${standing.weakest?.name}'s ${Math.round(standing.weakest?.composite ?? 0)}%. The reason to bring him back is depth and fit, not ability.`;
   } else if (standing.verdict === 'behind') {
     verdictText = `${subject.name} would not improve the ${role?.label} group: he is ${Math.round(-(standing.gapToWeakest ?? 0))} points below ${standing.weakest?.name}, the weakest current ${role?.label} (${ordinal(subjectRow.estimate ?? 0)} percentile against ${ordinal(standing.weakest?.composite ?? 0)}). Any case for activating him is depth, health or the return itself.`;
   } else verdictText = `Player Development cannot place ${subject.name} against the current ${role?.label} group. ${standing.reasons[0]}`;
@@ -280,7 +280,7 @@ function returnReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, clear
       id: 'displace',
       title: `Put ${subject.name} in the ${role.label} group in place of ${displaced.name}`,
       why: [
-        gain ? `${subject.name} is clearly ahead of ${displaced.name} on the working estimate (${ordinal(subjectRow.estimate ?? 0)} against ${ordinal(displaced.composite)} percentile).` : '',
+        gain ? `${subject.name} is clearly ahead of ${displaced.name} on the working estimate (${ordinal(subjectRow.estimate ?? 0)} against ${ordinal(displaced.composite)}).` : '',
         ...(lineText(subjectRow.performance) ? [`${subject.name} this season: ${lineText(subjectRow.performance)}.`] : []),
         ...(lineText(incumbentRows.find((r) => r.playerId === displaced.playerId)?.performance ?? null) ? [`${displaced.name} this season: ${lineText(incumbentRows.find((r) => r.playerId === displaced.playerId)?.performance ?? null)}.`] : []),
         ...results,
@@ -311,8 +311,8 @@ function returnReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, clear
         title: `Keep the ${role.label} group as it is and clear the spot elsewhere`,
         why: [
           surplus.length > 0
-            ? `${plural(surplus.length, 'player')} in other roles can be moved without taking that role below its coverage floor.`
-            : 'No other role has a coverage floor to check, so the effect of moving these players is not assessed.',
+            ? `${plural(surplus.length, 'player')} in other roles can be moved without taking that role below its minimum.`
+            : 'No other role has a minimum to check, so the effect of moving these players is not assessed.',
           ...(standing && standing.verdict !== 'strengthens' ? [`He does not clearly improve the ${role.label} group, so displacing a current ${role.label} is not where the gain is.`] : []),
         ],
         steps: [
@@ -320,10 +320,10 @@ function returnReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, clear
           'Clear the active spot with one of the moves below, each an option that keeps the player on the 40-man.',
           activateStep,
         ],
-        moves: shown.map((o) => moveOf(o, roleEffectLine(o) ?? 'No coverage standard for this role: the effect on the roster is not assessed.')),
+        moves: shown.map((o) => moveOf(o, roleEffectLine(o) ?? 'No minimum is set for this role: the effect on the roster is not assessed.')),
         moreMoves: Math.max(0, total - shown.length),
         consequences: [
-          `Coverage for ${[...new Set(surplus.map((o) => o.role?.label))].filter(Boolean).join(', ') || 'these roles'} stays at or above its floor.`,
+          `Depth for ${[...new Set(surplus.map((o) => o.role?.label))].filter(Boolean).join(', ') || 'these roles'} stays at or above its minimum.`,
           'Each move is an option: it uses an option year if one is not already charged this season (see the options below).',
         ],
         certainty, certaintyNote,
@@ -409,7 +409,7 @@ function fillReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, candida
   } else {
     // The role is short, so each candidate fills an open slot rather than displacing anyone; the comparison says what kind of ${role} he would be.
     const parts = [
-      up.length ? `${up.join(', ')} ${up.length === 1 ? 'is' : 'are'} clearly better than the weakest current ${role.label}${weakestInc ? ` (${weakestInc.name}, ${ordinal(weakestInc.composite)} percentile)` : ''}` : '',
+      up.length ? `${up.join(', ')} ${up.length === 1 ? 'is' : 'are'} clearly better than the weakest current ${role.label}${weakestInc ? ` (${weakestInc.name}, ${ordinal(weakestInc.composite)})` : ''}` : '',
       flat.length ? `${flat.join(', ')} ${flat.length === 1 ? 'is' : 'are'} in line with the back of the group` : '',
       down.length ? `${down.join(', ')} would be the weakest ${role.label}${down.length === 1 ? '' : 's'} on the club by visible ratings` : '',
       unknown.length ? `${unknown.join(', ')} cannot be placed (no visible rating)` : '',
@@ -473,7 +473,7 @@ const COMPARISON_ORDER: Record<ReplacementComparison['verdict'], number> = {
   clear_upgrade: 0, upgrade_uncertain: 1, marginal: 2, sidegrade: 3, cannot_judge: 4, downgrade: 5,
 };
 
-const RECOMMENDATION_BASIS = 'The staff recommendation follows a stated rubric: ACT when the case against the holder is strong, a replacement is a clear and firm upgrade, his path is open and defensible, and a plan exists that puts nobody at risk; EXPLORE when a real upgrade exists but something must be settled first, or the only way is disruptive; MONITOR when the case is moderate or the gain marginal; HOLD when nothing internal improves on him. It is advice, not a decision.';
+const RECOMMENDATION_BASIS = 'The staff\'s call follows a stated rubric: ACT when the case against the holder is strong, a replacement is a clear and firm upgrade, his path is open and defensible, and a plan exists that puts nobody at risk; EXPLORE when a real upgrade exists but something has to be settled first, or the only way is disruptive; MONITOR when the case is moderate or the gain marginal; HOLD when nothing internal improves on him. It is advice, not a decision.';
 
 /** The recommendation for a flagged holder, as the staff would give it to this club: the rubric applied with the organization's bar (D-036), beside what a club without one would hear. */
 function recommendationFor(
@@ -518,13 +518,13 @@ function coreRecommendation(
     return {
       shading,
       stance: 'act',
-      headline: `Recommend the change: ${cleanPlan.title}.`,
+      headline: `Make the change: ${cleanPlan.title}.`,
       because: [
-        `Both lenses agree on ${subject.name}: he is at the back of the group (${review.estimate.value === null ? '?' : Math.round(review.estimate.value)}th percentile working estimate).${moderateAllowed ? ' It is a moderate case, but the club cannot afford to wait.' : ''}`,
+        `Both lenses agree on ${subject.name}: he is at the back of the group (${review.estimate.value === null ? 'no working estimate' : `working estimate better than ${Math.round(review.estimate.value)}% of MLB peers`}).${moderateAllowed ? ' It is a moderate case, but the club cannot afford to wait.' : ''}`,
         `${lead.name} is a clear upgrade${delta(lead)} on an adequate read, and Player Development and Player Rights raise no objection.`,
         `The plan puts nobody at risk: ${cleanPlan.summary}`,
         ...(cmp?.candidateEstimate != null && review.groupMedian !== null && cmp.candidateEstimate < review.groupMedian
-          ? [`Be clear about what it buys: ${lead.name} would still be at the ${ordinal(cmp.candidateEstimate)} percentile, below the group median (${ordinal(review.groupMedian)}). It fixes the weakest spot; it does not make it a strong one.`]
+          ? [`Be clear about what it buys: ${lead.name} would still be better than only ${Math.round(cmp.candidateEstimate ?? 0)}% of MLB peers, below the group median (${ordinal(review.groupMedian)}). It fixes the weakest spot; it does not make it a strong one.`]
           : []),
       ],
       toSettle: [], wouldChange,
@@ -550,7 +550,7 @@ function coreRecommendation(
         `${subject.name} is a ${review.strength} case (${review.kind === 'ratings_and_results_weak' ? 'tools and results agree' : 'weak estimate'}).`,
         `${lead.name} is the most ready internal option.`,
       ],
-      toSettle: settle, wouldChange: [...wouldChange, 'Settling the item above would move this to a recommendation.'],
+      toSettle: settle, wouldChange: [...wouldChange, 'Settling the item above would make this a firm call.'],
       confidence: strong ? 'moderate' : 'low', basis,
     };
   }
@@ -586,7 +586,7 @@ function coreRecommendation(
     return {
       shading,
       stance: 'monitor',
-      headline: `Keep watching ${subject.name}: ${review.strength === 'moderate' ? (bar?.patient ? 'the case is real but neither the window nor the season presses' : 'the case is real but not strong') : !reliable ? 'the sample behind his results is still small' : 'the best internal option is only a marginal upgrade'}.`,
+      headline: `Keep watching ${subject.name}: ${review.strength === 'moderate' ? (bar?.patient ? 'the case is real, and your club\'s situation lets it wait' : 'the case is real but not strong') : !reliable ? 'the sample behind his results is still small' : 'the best internal option is only a marginal upgrade'}.`,
       because: review.reasons.slice(0, 2), toSettle: [], wouldChange, confidence: 'low', basis,
     };
   }
@@ -641,7 +641,7 @@ function replaceReport(
   const est = review.estimate;
 
   const situation = [
-    `${subject.name} (${subject.age ?? '?'}, ${role.label}) is ${review.isWeakest ? `the weakest of ${review.groupSize} ${review.group}s` : `number ${review.rank} of ${review.groupSize} ${review.group}s`} by working estimate (${ord(est.value)} percentile of MLB ${review.group}s).`,
+    `${subject.name} (${subject.age ?? '?'}, ${role.label}) is ${review.isWeakest ? `the weakest of ${review.groupSize} ${review.group}s` : `number ${review.rank} of ${review.groupSize} ${review.group}s`} by working estimate (${est.value === null ? 'none yet' : `better than ${Math.round(est.value)}% of MLB ${review.group}s`}).`,
     ...review.reasons,
     ...review.usage,
   ];
@@ -713,7 +713,7 @@ const KIND_READ: Record<string, string> = {
 
 // ── a platoon partner for a regular ─────────────────────────────────────────
 
-const COMPLEMENT_BASIS = 'The staff recommendation follows a stated rubric: a platoon partner is recommended (ACT) when the regular has a platoon problem his ratings and record support, a partner already on the bench is clearly better against the weak hand, and nothing has to be transacted; worth pursuing (EXPLORE) when the partner needs a roster move or something is unsettled, or the club is not pressed; MONITOR when nobody clearly complements him. It is advice, not a decision.';
+const COMPLEMENT_BASIS = 'The staff\'s call follows a stated rubric: a platoon partner is the call (ACT) when the regular has a platoon problem his ratings and record support, a partner already on the bench is clearly better against the weak hand, and nothing has to be transacted; worth pursuing (EXPLORE) when the partner needs a roster move or something is unsettled, or the club is not pressed; MONITOR when nobody clearly complements him. It is advice, not a decision.';
 
 function complementReport(
   need: MlbNeed, view: ClubView, ports: ResponsePorts, candidates: ResponseCandidate[], plans: Plan[], lead: ResponseCandidate | null
@@ -759,12 +759,12 @@ function complementReport(
   let recommendation: Recommendation;
   if (lead && benchLead && plan?.certainty === 'open' && strongBasis && !bar?.patient) {
     recommendation = {
-      stance: 'act', headline: `Recommend the platoon: ${plan.title}.`,
+      stance: 'act', headline: `Set up the platoon: ${plan.title}.`,
       because: [`${subject.name}'s platoon problem rests on his visible ratings${regular.basis === 'ratings_and_splits' ? ' and his record' : ''}.`, plan.summary, 'It needs no transaction: a partner already on the bench, and Player Rights has nothing to refuse.'],
       toSettle: [], wouldChange: ['The regular\'s ratings against that hand changing, or the partner losing playing time to injury.'], confidence: 'moderate', basis: COMPLEMENT_BASIS, shading,
     };
   } else if (lead && plan) {
-    if (bar?.patient && bar.why.patient) shading.push({ ...bar.why.patient, text: 'Neither the window nor the season presses, so a platoon is worth pursuing rather than recommending outright.' });
+    if (bar?.patient && bar.why.patient) shading.push({ ...bar.why.patient, text: 'Neither the window nor the season presses, so a platoon is worth pursuing rather than setting up outright.' });
     recommendation = {
       stance: 'explore', headline: `Worth pursuing: ${plan.title}.`,
       because: [`${subject.name} has a platoon problem (${regular.basis.replace(/_/g, ' ')}).`, plan.summary],
@@ -773,7 +773,7 @@ function complementReport(
         ...(benchLead && !strongBasis ? ['The read rests on his record alone, which says little beyond the league norm: his visible platoon ratings are not fully available.'] : []),
         ...lead.path.unknowns.slice(0, 2),
       ],
-      wouldChange: ['Settling the item above would move this to a recommendation.'], confidence: 'low', basis: COMPLEMENT_BASIS, shading,
+      wouldChange: ['Settling the item above would make this a firm call.'], confidence: 'low', basis: COMPLEMENT_BASIS, shading,
     };
   } else {
     recommendation = {

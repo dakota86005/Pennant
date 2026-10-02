@@ -1,0 +1,406 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Decision"
+  },
+  "lede": {
+    "text": "One need, opened: the problem, the staff's call, every way to respond",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Pennant lists options and their consequences in the order a GM weighs them. It does not rank the players or make the move: that decision is yours."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How Major League Ops reads its roster: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": {
+    "text": "Using starting yardsticks for now: this league has not been measured yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Where the lines come from",
+          "value": "The roster review judges each player against yardsticks: what a regular at his job typically looks like, how players his age tend to change, how much the glove counts at his position, how much his recent seasons count, what a hitter's tools say and how much they hold his results back, how much a hitter's own record against left- and right-handers counts, and how long a reliever has to work to count as a long man."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "The line for each job: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How players age: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much the glove counts at each position: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much recent seasons count: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much a hitter's own split counts: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What a hitter's tools say, and how much they hold his results back: the starting values, because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Who counts as a long man: the starting value (a reliever who averages 1.6 or more innings an appearance), because this league has not been measured yet."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "How much his innings matter (closers, high- and low-leverage arms) is read on Pennant's fixed lines, on a scale where 1.0 is an average plate appearance in this league."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "Starting values are the ones Pennant ships with."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "They are replaced by this league's own only after those have been checked against players and seasons they were not drawn from, and, for how players age, how much recent seasons count, what a hitter's tools say and how much a hitter's own split counts, only where this league's own did clearly better than the starting values there."
+        },
+        {
+          "label": "Where the lines come from",
+          "value": "What the tools say can only be checked on seasons that came after the ratings were saved, which takes several seasons of imports."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' roster review",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new import refits them on the league's own seasons where it can."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+    },
+    "links": []
+  },
+  "needId": "mlb:role_below_standard:catcher",
+  "scenario": false,
+  "kicker": {
+    "display": "Roster floor · catcher"
+  },
+  "headline": {
+    "text": "Catcher depth is below the minimum",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Minimum",
+          "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
+        },
+        {
+          "label": "Active in role",
+          "value": "1 (1 available)"
+        },
+        {
+          "label": "Active roster",
+          "value": "26 of 26"
+        },
+        {
+          "label": "When",
+          "value": "Now"
+        },
+        {
+          "label": "The situation",
+          "value": "1 healthy catcher on the active roster against a minimum floor of 2."
+        },
+        {
+          "label": "The situation",
+          "value": "Expected duration: not known, so it is not assumed."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "Major League Ops' responses",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "No injured or unavailable player in this role explains the shortfall; Pennant cannot say how the roster came to be this way.",
+        "No internal player was found who could take this role."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "Using starting yardsticks for now: this league has not been measured yet"
+    },
+    "links": []
+  },
+  "badges": [
+    {
+      "display": "Needs attention",
+      "tone": "caution"
+    },
+    {
+      "display": "Now"
+    },
+    {
+      "display": "Duration not established"
+    }
+  ],
+  "notes": [
+    {
+      "display": "No injured or unavailable player in this role explains the shortfall; Pennant cannot say how the roster came to be this way.",
+      "tone": "unknown"
+    },
+    {
+      "display": "No internal player was found who could take this role.",
+      "tone": "unknown"
+    }
+  ],
+  "duration": null,
+  "problem": {
+    "title": {
+      "display": "Why Pennant says this"
+    },
+    "player": null,
+    "chips": [],
+    "claims": [],
+    "lines": [
+      {
+        "text": {
+          "display": "1 healthy catcher on the active roster against a minimum floor of 2."
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Minimum: two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Active in role: 1 (1 available)"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Active roster: 26 of 26"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "No exported return date."
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "No injured or unavailable player in this role explains the shortfall; Pennant cannot say how the roster came to be this way."
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      }
+    ],
+    "collapsed": false
+  },
+  "why": null,
+  "picture": {
+    "title": {
+      "display": "The evidence: the catcher picture"
+    },
+    "note": {
+      "display": "1 healthy on the active roster against a minimum of 2."
+    },
+    "people": [
+      {
+        "player": {
+          "playerId": 1012,
+          "name": "P 1012",
+          "open": {
+            "kind": "player",
+            "playerId": 1012,
+            "teamId": 1
+          }
+        },
+        "status": {
+          "display": "28 · Current"
+        },
+        "subject": false,
+        "lenses": [
+          {
+            "label": {
+              "display": "Estimate"
+            },
+            "value": 21.586000000000002,
+            "display": {
+              "display": "22nd"
+            }
+          },
+          {
+            "label": {
+              "display": "Tools"
+            },
+            "value": 27.9,
+            "display": {
+              "display": "28th"
+            }
+          },
+          {
+            "label": {
+              "display": "Results"
+            },
+            "value": null,
+            "display": {
+              "display": "No evidence",
+              "tone": "unknown"
+            }
+          }
+        ],
+        "lines": [
+          {
+            "text": {
+              "display": "This season: AVG .000 · OBP .000 · SLG .000 · HR not known (41 PA)"
+            },
+            "quiet": false,
+            "chips": [],
+            "players": []
+          },
+          {
+            "text": {
+              "display": "His visible tools imply -29 points of wOBA against the league average."
+            },
+            "quiet": true,
+            "chips": [],
+            "players": []
+          }
+        ]
+      }
+    ],
+    "basisNote": {
+      "display": "Two lenses, always shown: the organization-visible tool ratings against MLB peers of the same kind (Player Development's composite read) and what the player has done (league-relative, recency-weighted results placed among peers). The working estimate blends them, giving results more weight the more sample stands behind them; a player with no results is read on tools alone. It is a way to compare two players, not a value, a projection or a decision."
+    }
+  },
+  "read": {
+    "title": {
+      "display": "The staff read"
+    },
+    "player": null,
+    "chips": [],
+    "claims": [],
+    "lines": [
+      {
+        "text": {
+          "display": "No internal player clears Player Development and Player Rights for this catcher spot yet; the candidates who do not are listed below with why."
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      }
+    ],
+    "collapsed": false
+  },
+  "call": null,
+  "assignment": {
+    "title": {
+      "display": "Player Development is judging: temporary depth and a durable assignment"
+    },
+    "note": {
+      "display": "How long he would be needed is not known, so it is not assumed. Player Development judged both temporary depth and a durable assignment; where the answer differs, the duration decides, and it says so. A temporary assignment can be defensible where a durable role is not. Pennant does not assume how long a player would be needed: where the answer depends on it, it says so. What is defensible is Player Development's call, not this page's."
+    },
+    "choices": [
+      {
+        "text": {
+          "display": "Duration unknown: judge both"
+        },
+        "selected": true,
+        "query": {
+          "need": "mlb:role_below_standard:catcher"
+        }
+      },
+      {
+        "text": {
+          "display": "Bench role"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:role_below_standard:catcher",
+          "context": "bench_role"
+        }
+      },
+      {
+        "text": {
+          "display": "Temporary major-league depth"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:role_below_standard:catcher",
+          "context": "temporary_depth"
+        }
+      },
+      {
+        "text": {
+          "display": "Durable major-league role"
+        },
+        "selected": false,
+        "query": {
+          "need": "mlb:role_below_standard:catcher",
+          "context": "durable_role"
+        }
+      }
+    ]
+  },
+  "responses": null,
+  "roleChoice": null,
+  "candidates": {
+    "title": {
+      "display": "Every candidate, with the evidence behind each verdict"
+    },
+    "count": 0,
+    "groups": [],
+    "notConsidered": [
+      {
+        "display": "Not considered (12): Active players whose visible evidence does not support the role"
+      }
+    ],
+    "empty": {
+      "display": "No player in the organization was found who could take this role."
+    }
+  },
+  "mechanics": null,
+  "footnote": {
+    "display": "Pennant lists options and their consequences. It does not rank them or make the move: that decision is yours as GM."
+  }
+}

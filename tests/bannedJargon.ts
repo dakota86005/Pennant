@@ -107,6 +107,12 @@ export const SURFACES: Readonly<Record<string, (path: string, params: Readonly<R
     return part ? { department: 'catalog', view: part } : null;
   },
   getDataStatusWords: () => ({ department: 'frontOffice', view: 'dataStatus' }),
+  // Major League Ops' views (N8): one operation per view
+  getMajorLeagueOverview: () => ({ department: 'majorLeague', view: 'report' }),
+  getMajorLeaguePositionPlayers: () => ({ department: 'majorLeague', view: 'positionPlayers' }),
+  getMajorLeaguePitchingStaff: () => ({ department: 'majorLeague', view: 'pitchingStaff' }),
+  getMajorLeagueBench: () => ({ department: 'majorLeague', view: 'benchBackups' }),
+  getMajorLeagueDecision: () => ({ department: 'majorLeague', view: 'decision' }),
 };
 
 /** Where a shown string stands and which field it is, for the exceptions. */

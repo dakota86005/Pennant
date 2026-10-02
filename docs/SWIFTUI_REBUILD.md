@@ -955,7 +955,7 @@ The department's views sit beneath it in the sidebar.
 | Department (head from the save) | Views |
 |---|---|
 | **Front Office** (GM) | Morning Report · Report (the whole desk, added at N4) · Storylines (AI) · GM Briefing (AI) |
-| **Major League Ops** (bench coach) | Report · Position players · Pitching staff · Bench & backups (named "Bench & coverage" until N3: "coverage" is on the banned-jargon list, meant for interval coverage; the owner decides the name) · Decision · Lineup · Pitching availability · Schedule & game plans · Depth chart · 40-man & options · Rosters · Season trends |
+| **Major League Ops** (bench coach) | Report · Position players · Pitching staff · Bench & Backups (the owner's name, 2026-10-01; "coverage" stays on the banned-jargon list, meant for interval coverage) · Decision · Lineup · Pitching availability · Schedule & game plans · Depth chart · 40-man & options · Rosters · Season trends |
 | **Farm & Development** (minor league staff) | Report · Organization · Affiliates · Assignments · Prospects · Development tracking · Decision |
 | **Scouting** (scouting director) | Draft board · Player search |
 | **Trades** (assistant GM) | Trade desk (offers, builder, analysis, league fits) |
@@ -1683,8 +1683,9 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
 - The app target is thin: `Registry.swift` assembles the registry from the nine modules (checked in Debug), the scenes,
   `@SceneStorage`, and `PennantCommands`.
 - The packages' views look their labels up in the app's bundle, so the app's one String Catalog holds every structural
-  label, and `tests/stringCatalog.test.ts` fails when a label in the Swift sources is missing from it. Section 3.5's
-  "Bench & coverage" is "Bench & Backups": "coverage" is on the banned-jargon list (the owner decides the name). The
+  label, and `tests/stringCatalog.test.ts` fails when a label in the Swift sources is missing from it. The bench
+  view is "Bench & Backups" (the owner's name, 2026-10-01; registry id `benchBackups` since N8): "coverage" is on the
+  banned-jargon list. The
   sidebar is 270 to 380 pt wide (ideal 280) so every view title fits at the default text size (`SidebarWidthTests`).
   `RequestProblem` (PennantKit) and `ProblemLine` (FeatureCore) turn a failed request into the server's sentence or a
   structural line, the raw error going to the log.

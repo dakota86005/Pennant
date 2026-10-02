@@ -122,6 +122,9 @@ export function crossRoleSupport(playerId: number, role: RoleRef): CrossRoleSupp
     : { supported: 'no', evidence: [`Visible current grade ${rating.current} at ${role.label} is below the playable line of ${PLAYABLE_RATING}.`] };
 }
 
+/** A counting stat as the export has it; a blank column reads "not known", never "null" or a zero (D-018). */
+const countText = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? 'not known' : String(n));
+
 export interface PerformanceLine {
   kind: 'batting' | 'pitching';
   year: number;
@@ -157,8 +160,8 @@ export function performanceLine(playerId: number, level: number | null, isPitche
       kind: 'pitching', year: row.year, level, sample: Math.round(ip * 10) / 10, sampleUnit: 'IP',
       lines: [
         { label: 'ERA', value: fixed((row.er / ip) * 9, 2) },
-        { label: 'K', value: String(row.k) }, { label: 'BB', value: String(row.bb) },
-        { label: 'G/GS', value: `${row.g}/${row.gs}` },
+        { label: 'K', value: countText(row.k) }, { label: 'BB', value: countText(row.bb) },
+        { label: 'G/GS', value: `${countText(row.g)}/${countText(row.gs)}` },
       ],
     };
   }
@@ -181,7 +184,7 @@ export function performanceLine(playerId: number, level: number | null, isPitche
       { label: 'AVG', value: fixed(row.ab > 0 ? row.h / row.ab : null, 3, true) },
       { label: 'OBP', value: fixed(obpDen > 0 ? (row.h + row.bb + row.hp) / obpDen : null, 3, true) },
       { label: 'SLG', value: fixed(row.ab > 0 ? tb / row.ab : null, 3, true) },
-      { label: 'HR', value: String(row.hr) },
+      { label: 'HR', value: countText(row.hr) },
     ],
   };
 }

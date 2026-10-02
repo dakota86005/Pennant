@@ -740,7 +740,7 @@ of 159 invariants, and a UI audit. Full record: [MLB_OPERATIONS_HARDENING.md](ML
 - **The bench** is functions and cover quality (D-042); **the pen** is read as a whole (no credible high-leverage arm, no length, a crowded
   role, and a reliever who would start better than the weakest starter, on tools alone); **platoon** says what drives it.
 - **Three kinds of constant** (D-041): calibrated, provisional, policy. A policy constant is decided, never fitted.
-- **The module is five views** (D-043): Overview (the inbox), Position players, Pitching staff, Bench and coverage, and Decision. The path is
+- **The module is five views** (D-043): Overview (the inbox), Position players, Pitching staff, Bench & Backups (the owner's name since 2026-10-01; "Bench and coverage" before), and Decision. The path is
   attention, issue, evidence, alternatives, consequences, the GM's decision. Deep links are URL hashes (`#/mlb/decision/<need id>`).
 - **Not built, by design:** contracts, trades, free agents, external acquisitions, long-term payroll planning; no OOTP experiment was asked
   for and every unresolved semantic stays `indeterminate`.

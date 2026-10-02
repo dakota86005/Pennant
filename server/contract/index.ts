@@ -116,3 +116,10 @@ export type {
   TeamSeason, ProfileGroup, ProfileGroupHeading, ProfileGroups, ProfileStrip, ProfileLegend, RecentPlace, ProfileDimension, ClubProfile, WinsValue, PlayerRef, ReadinessState, FarmNextMan, FarmBar,
   ControlKind, ControlClock, ControlTerm, HolderRule, RosterNode, StaffPitcher, ValueScale, RosterMap,
 } from '../presentation/frontOffice/morningTypes.js';
+// Major League Ops' views (N8): `GET /api/v2/views/:org/majorLeague/<view>`
+export type {
+  MlbPlayer, MlbLine, MlbBlock, MlbAction, MlbColumn, MlbRow, MlbTable, MlbViewHead, MlbGlance, MlbNeedEntry, MlbNeedGroup, MlbWhatIfChoice,
+  MlbOverviewView, MlbPositionPlayersView, MlbStaffSection, MlbPitchingStaffView, MlbBenchFunction, MlbBenchView, MlbDecisionQuery, MlbChoice,
+  MlbChoices, MlbGauge, MlbWhy, MlbLens, MlbPerson, MlbPicture, MlbCall, MlbPlan, MlbResponses, MlbCandidateGroup, MlbCandidates, MlbConstraint,
+  MlbMechanics, MlbDecisionView,
+} from '../presentation/majorLeague/types.js';

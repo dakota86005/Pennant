@@ -377,7 +377,7 @@ export function buildComplementPlans(deps: { view: ClubView; subject: RosterMemb
   const adv = lead.complement.fit.advantage;
   const bench = lead.pathKind === 'role_change';
   const gloveCost = lead.complement.glove.candidate !== null && lead.complement.glove.regular !== null && lead.complement.glove.candidate < lead.complement.glove.regular
-    ? [`His glove at ${place} is behind ${subject.name}'s (${Math.round(lead.complement.glove.candidate)}th against ${Math.round(lead.complement.glove.regular)}th percentile), so some of the bat's gain is given back in the field.`] : [];
+    ? [`His glove at ${place} is behind ${subject.name}'s (${Math.round(lead.complement.glove.candidate)}th against ${Math.round(lead.complement.glove.regular)}th), so some of the bat's gain is given back in the field.`] : [];
   const transaction = lead.path.chain.length ? lead.path.chain.filter((l) => l.kind === 'transaction').map((l) => l.label).join(' then ') : lead.path.steps.map((st) => st.label).join(' then ');
   const steps: PlanStep[] = bench
     ? [

@@ -15,7 +15,7 @@ public enum MajorLeagueDepartment: DepartmentModule {
         },
         .placeholder(id: "positionPlayers", title: "Position Players", symbol: "person.3", keywords: ["hitters", "batters"]),
         .placeholder(id: "pitchingStaff", title: "Pitching Staff", symbol: "figure.baseball", keywords: ["pitchers", "rotation", "bullpen"]),
-        .placeholder(id: "benchCoverage", title: "Bench & Backups", symbol: "chair", keywords: ["bench", "backups"]),
+        .placeholder(id: "benchBackups", title: "Bench & Backups", symbol: "chair", keywords: ["bench", "backups"]),
         .placeholder(id: "decision", title: "Decision", symbol: "checkmark.seal", keywords: ["moves", "roster"]),
         .placeholder(id: "lineup", title: "Lineup", symbol: "list.number", keywords: ["batting order"]),
         .placeholder(id: "pitchingAvailability", title: "Pitching Availability", symbol: "calendar.badge.clock", keywords: ["rest", "bullpen"]),

@@ -5,13 +5,18 @@
  * checks every claim again) and decides whether to keep it.
  */
 import { parentPort, workerData } from 'node:worker_threads';
-import { buildClubReport, buildFrontOffice, buildTrail, type BuildRequest, type ClubRequest, type TrailRequest } from './frontOfficeBuild.js';
+import { buildClubReport, buildDecision, buildFrontOffice, buildTrail, type BuildRequest, type ClubRequest, type DecisionRequest, type TrailRequest } from './frontOfficeBuild.js';
 
-type Job = { kind: 'build'; request: BuildRequest } | { kind: 'trail'; request: TrailRequest } | { kind: 'club'; request: ClubRequest };
+type Job =
+  | { kind: 'build'; request: BuildRequest }
+  | { kind: 'trail'; request: TrailRequest }
+  | { kind: 'club'; request: ClubRequest }
+  | { kind: 'decision'; request: DecisionRequest };
 
 async function run(job: Job): Promise<unknown> {
   if (job.kind === 'build') return buildFrontOffice(job.request);
   if (job.kind === 'club') return buildClubReport(job.request);
+  if (job.kind === 'decision') return buildDecision(job.request);
   return buildTrail(job.request);
 }
 
