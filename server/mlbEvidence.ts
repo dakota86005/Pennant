@@ -136,10 +136,17 @@ export interface PerformanceLine {
 }
 
 const fixed = (n: number | null, digits: number, strip = false): string => {
-  if (n === null || !Number.isFinite(n)) return '—';
+  if (n === null || !Number.isFinite(n)) return 'not known';
   const text = n.toFixed(digits);
   return strip ? text.replace(/^0(?=\.)/, '') : text;
 };
+
+/** Each column summed, with how many of its rows are blank (`<col>_blank`), so a blank is never read as a zero. */
+const summed = (cols: readonly string[]): string => cols.map((c) => `SUM(${c}) AS ${c}, SUM(${c} IS NULL) AS ${c}_blank`).join(', ');
+
+/** A summed column's value, or null when any row behind it is blank (SQL's SUM would skip it, and JS reads null as 0). */
+const knownOf = (row: Record<string, number | null>) => (col: string): number | null =>
+  row[`${col}_blank`] === 0 && row[col] !== null && Number.isFinite(row[col]) ? (row[col] as number) : null;
 
 /** The player's most recent season line at the level he is at — objective, context-free. */
 export function performanceLine(playerId: number, level: number | null, isPitcher: boolean): PerformanceLine | null {
@@ -148,43 +155,50 @@ export function performanceLine(playerId: number, level: number | null, isPitche
     const need = ['player_id', 'year', 'level_id', 'split_id', 'outs', 'er', 'k', 'bb', 'gs', 'g'];
     if (!tableExists('players_career_pitching_stats') || !need.every((c) => tableColumns('players_career_pitching_stats').includes(c))) return null;
     const row = db.prepare(`
-      SELECT year, SUM(outs) AS outs, SUM(er) AS er, SUM(k) AS k, SUM(bb) AS bb, SUM(gs) AS gs, SUM(g) AS g
+      SELECT year, ${summed(['outs', 'er', 'k', 'bb', 'gs', 'g'])}
       FROM players_career_pitching_stats
       WHERE player_id = ? AND split_id = 1 AND level_id = ?
         AND year = (SELECT MAX(year) FROM players_career_pitching_stats WHERE player_id = ? AND split_id = 1 AND level_id = ?)
       GROUP BY year
-    `).get(playerId, level, playerId, level) as Record<string, number> | undefined;
-    if (!row || !(row.outs > 0)) return null;
-    const ip = row.outs / 3;
+    `).get(playerId, level, playerId, level) as Record<string, number | null> | undefined;
+    const v = row ? knownOf(row) : null;
+    const outs = v?.('outs') ?? null;
+    if (!row || !v || outs === null || !(outs > 0)) return null;
+    const ip = outs / 3;
+    const er = v('er');
     return {
-      kind: 'pitching', year: row.year, level, sample: Math.round(ip * 10) / 10, sampleUnit: 'IP',
+      kind: 'pitching', year: row.year as number, level, sample: Math.round(ip * 10) / 10, sampleUnit: 'IP',
       lines: [
-        { label: 'ERA', value: fixed((row.er / ip) * 9, 2) },
-        { label: 'K', value: countText(row.k) }, { label: 'BB', value: countText(row.bb) },
-        { label: 'G/GS', value: `${countText(row.g)}/${countText(row.gs)}` },
+        { label: 'ERA', value: fixed(er === null ? null : (er / ip) * 9, 2) },
+        { label: 'K', value: countText(v('k')) }, { label: 'BB', value: countText(v('bb')) },
+        { label: 'G/GS', value: `${countText(v('g'))}/${countText(v('gs'))}` },
       ],
     };
   }
   const need = ['player_id', 'year', 'level_id', 'split_id', 'pa', 'ab', 'h', 'd', 't', 'hr', 'bb', 'hp', 'sf'];
   if (!tableExists('players_career_batting_stats') || !need.every((c) => tableColumns('players_career_batting_stats').includes(c))) return null;
   const row = db.prepare(`
-    SELECT year, SUM(pa) AS pa, SUM(ab) AS ab, SUM(h) AS h, SUM(d) AS d, SUM(t) AS t, SUM(hr) AS hr,
-           SUM(bb) AS bb, SUM(hp) AS hp, SUM(sf) AS sf
+    SELECT year, ${summed(['pa', 'ab', 'h', 'd', 't', 'hr', 'bb', 'hp', 'sf'])}
     FROM players_career_batting_stats
     WHERE player_id = ? AND split_id = 1 AND level_id = ?
       AND year = (SELECT MAX(year) FROM players_career_batting_stats WHERE player_id = ? AND split_id = 1 AND level_id = ?)
     GROUP BY year
-  `).get(playerId, level, playerId, level) as Record<string, number> | undefined;
-  if (!row || !(row.pa > 0)) return null;
-  const tb = row.h + row.d + 2 * row.t + 3 * row.hr;
-  const obpDen = row.ab + row.bb + row.hp + row.sf;
+  `).get(playerId, level, playerId, level) as Record<string, number | null> | undefined;
+  const v = row ? knownOf(row) : null;
+  const pa = v?.('pa') ?? null;
+  if (!row || !v || pa === null || !(pa > 0)) return null;
+  const [ab, h, d, t, hr, bb, hp, sf] = (['ab', 'h', 'd', 't', 'hr', 'bb', 'hp', 'sf'] as const).map(v);
+  // A rate is known only when every component is: one blank column makes it "not known", never a zero (D-018)
+  const all = (...xs: Array<number | null>): boolean => xs.every((x) => x !== null);
+  const tb = all(h, d, t, hr) ? h! + d! + 2 * t! + 3 * hr! : null;
+  const obpDen = all(ab, bb, hp, sf) ? ab! + bb! + hp! + sf! : null;
   return {
-    kind: 'batting', year: row.year, level, sample: row.pa, sampleUnit: 'PA',
+    kind: 'batting', year: row.year as number, level, sample: pa, sampleUnit: 'PA',
     lines: [
-      { label: 'AVG', value: fixed(row.ab > 0 ? row.h / row.ab : null, 3, true) },
-      { label: 'OBP', value: fixed(obpDen > 0 ? (row.h + row.bb + row.hp) / obpDen : null, 3, true) },
-      { label: 'SLG', value: fixed(row.ab > 0 ? tb / row.ab : null, 3, true) },
-      { label: 'HR', value: countText(row.hr) },
+      { label: 'AVG', value: fixed(all(ab, h) && ab! > 0 ? h! / ab! : null, 3, true) },
+      { label: 'OBP', value: fixed(all(h, bb, hp) && obpDen !== null && obpDen > 0 ? (h! + bb! + hp!) / obpDen : null, 3, true) },
+      { label: 'SLG', value: fixed(tb !== null && ab !== null && ab > 0 ? tb / ab : null, 3, true) },
+      { label: 'HR', value: countText(hr) },
     ],
   };
 }

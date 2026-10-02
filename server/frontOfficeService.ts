@@ -37,7 +37,9 @@ import { adoptAuthored } from './presentation/claim.js';
 import { REPORTING } from './presentation/frontOffice/desk.js';
 import type { ClaimTrail, DepartmentReport, FrontOfficeSummary } from './presentation/frontOffice/types.js';
 import type { ClubReport } from './presentation/frontOffice/leagueTypes.js';
+import { isOfferedContext, isOfferedRole } from './mlbOperations.js';
 import type { DecisionAsk } from './presentation/majorLeague/decision.js';
+import { DURATIONS } from './presentation/majorLeague/words.js';
 import type { MlbDecisionView } from './presentation/majorLeague/types.js';
 import type { MajorLeagueViews } from './presentation/majorLeague/views.js';
 import { onCalibrationRecorded } from './saveCalibration.js';
@@ -438,9 +440,26 @@ export async function majorLeagueView<V extends MajorLeagueViewId>(orgId: number
   return built.majorLeagueViews[viewId as V];
 }
 
-/** The decision's cache key: the build, the need and the GM's choices. */
-const decisionKey = (built: Built, ask: DecisionAsk): string =>
-  `${built.key}#${ask.need}|${ask.role ?? ''}|${ask.context ?? ''}|${ask.days ?? ''}`;
+export const UNKNOWN_DURATION = 'Pennant doesn\'t offer that duration for a decision.';
+
+/**
+ * The GM's choices as the decision can use them (the N8 review): a role or context Major League Ops doesn't offer is
+ * dropped, as the packet would ignore it, so it can neither change the answer nor key a cache entry of its own; a
+ * duration that isn't one of the served choices is refused, so the cache can't be grown without bound.
+ */
+export function normalizedAsk(ask: DecisionAsk): DecisionAsk {
+  const days = ask.days ?? null;
+  if (days !== null && !DURATIONS.some(([d]) => d === days)) throw new FrontOfficeRefusal(UNKNOWN_DURATION, 404);
+  const role = ask.role && isOfferedRole(ask.role) ? ask.role : undefined;
+  const context = ask.context && isOfferedContext(ask.context) ? ask.context : undefined;
+  return { need: ask.need.trim(), ...(role ? { role } : {}), ...(context ? { context } : {}), ...(days !== null ? { days } : {}) };
+}
+
+/** The decision's cache key: the build, the need and the GM's choices, normalized first. */
+export const decisionKey = (builtKey: string, ask: DecisionAsk): string => {
+  const n = normalizedAsk(ask);
+  return `${builtKey}#${n.need}|${n.role ?? ''}|${n.context ?? ''}|${n.days ?? ''}`;
+};
 
 /**
  * One Major League Ops decision (N8): the need's response packet for the GM's choices, built in the worker on its
@@ -453,9 +472,10 @@ export async function majorLeagueDecision(orgId: number, ask: DecisionAsk): Prom
 }
 
 /** A decision on a given build (the request's current one, or the one a warm-up kept). */
-async function decisionOn(built: Built, orgId: number, ask: DecisionAsk): Promise<MlbDecisionView> {
+async function decisionOn(built: Built, orgId: number, given: DecisionAsk): Promise<MlbDecisionView> {
   if (!built.majorLeague) throw new FrontOfficeRefusal(VIEW_UNREADABLE, 404);
-  const cacheKey = decisionKey(built, ask);
+  const ask = normalizedAsk(given);
+  const cacheKey = decisionKey(built.key, ask);
   const hit = decisions.get(cacheKey);
   if (hit) {
     stats.decisionHits += 1;

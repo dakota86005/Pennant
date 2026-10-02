@@ -89,7 +89,9 @@ describe('GOLDEN bullpen: what the pen as a whole is missing', () => {
     const weak = base().map((a) => ({ ...a, estimate: (a.estimate as number) - 25 }));
     const f = penFindings(weak, BULLPEN_PRIOR).find((x) => x.kind === 'no_credible_high_leverage')!;
     expect(f).toBeDefined();
-    expect(f.supported).toMatch(new RegExp(`better than ${CREDIBLE_HIGH_LEVERAGE}% of MLB relievers`));
+    // A working estimate is a place on the 0 to 100 scale, never a percentile ("better than 50%") or an ordinal (N8 review, M3)
+    expect(f.supported).toMatch(new RegExp(`reaches ${CREDIBLE_HIGH_LEVERAGE} on the 0–100 scale against MLB relievers`));
+    for (const t of [f.supported, f.current, f.text]) expect(t).not.toMatch(/better than \d+%|\b\d+(?:st|nd|rd|th)\b/);
     expect(f.why).toMatch(/leverage/);
   });
 

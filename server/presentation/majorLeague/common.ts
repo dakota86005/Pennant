@@ -34,7 +34,7 @@ export function player(v: ViewContext, playerId: number, name: string): MlbPlaye
 /** A line of words, with its chips and the players it names. */
 export function line(text: string, opts: { quiet?: boolean; chips?: Cell[]; players?: MlbPlayer[]; tone?: Tone; hint?: string } = {}): MlbLine {
   return {
-    // The stakes tier named as these views name it ("development first"), whoever wrote the sentence
+    // The stakes tier named as these views name it ("development-sensitive"), whoever wrote the sentence
     text: cell(stakesWords(text.trim()), { ...(opts.tone ? { tone: opts.tone } : {}), ...(opts.hint ? { hint: opts.hint } : {}) }),
     quiet: opts.quiet ?? false,
     chips: opts.chips ?? [],

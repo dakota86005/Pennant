@@ -4,8 +4,8 @@
  * a GM reads, with the tone the app pairs with a symbol; a code this build does not know falls back to plain words from
  * the code itself, never to a blank.
  *
- * Plain language (AGENTS.md "Writing for the GM"): a percentile is said as a place among peers ("62nd"), never as the
- * method; "not established" stands for the evidence vocabulary's code; the staff's call is advice, never a verdict word.
+ * Plain language (AGENTS.md "Writing for the GM"): a place on the 0 to 100 scale is said as one ("62 on the 0–100 scale"),
+ * never as an ordinal or the method; "not established" stands for the evidence vocabulary's code; the staff's call is advice, never a verdict word.
  */
 import type { Cell, Tone } from '../../contract/presentation.js';
 import { cell } from '../claim.js';
@@ -17,13 +17,30 @@ export const codeWords = (code: string): string => code.replace(/_/g, ' ').trim(
 export const labelOf = (map: Readonly<Record<string, string>>, code: string | null | undefined): string =>
   (code && map[code]) || codeWords(code ?? '');
 
-/** "62nd" (a place among peers on a 0 to 100 scale); null when unknown. */
-export function ord(n: number | null | undefined): string | null {
+/**
+ * A place on the 0 to 100 scale against peers, bare ("62"), for a table cell or a lens whose label names the measure;
+ * null when unknown. A working estimate is a blend of tools and results on that scale, not a percentile, so it is never
+ * said as "62nd" or "better than 62%" (the review of 2026-10-02, M3 and M4).
+ */
+export function scaleNumber(n: number | null | undefined): string | null {
   if (n === null || n === undefined || !Number.isFinite(n)) return null;
-  const r = Math.round(n);
-  const v = r % 100;
-  return `${r}${v >= 11 && v <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][r % 10] ?? 'th')}`;
+  return String(Math.round(n));
 }
+
+/** The same place in a sentence: "62 on the 0–100 scale"; null when unknown. */
+export function onScale(n: number | null | undefined): string | null {
+  const v = scaleNumber(n);
+  return v === null ? null : `${v} on the 0–100 scale`;
+}
+
+/** A true share of peers (a percentile among them): "better than 62% of those listed there"; null when unknown. */
+export function betterThan(n: number | null | undefined, peers: string): string | null {
+  const v = scaleNumber(n);
+  return v === null ? null : `better than ${v}% of ${peers}`;
+}
+
+/** The hint a scale's cell carries. */
+export const SCALE_HINT = 'On a 0–100 scale against major league peers; 50 is typical';
 
 /** "+12" or "−4", rounded. */
 export const signed = (n: number): string => `${n >= 0 ? '+' : '−'}${Math.abs(Math.round(n))}`;
@@ -50,9 +67,12 @@ export const chip = (text: string, tone: Tone, hint?: string): Cell => cell(text
 
 // ── the staff's call ────────────────────────────────────────────────────────
 
-/** The staff's stance, as advice (the move is the GM's, D-001). */
+/**
+ * The staff's stance, as the staff's view and never an order (the move is the GM's, D-001): the owner's wording of
+ * 2026-10-02 (D-065).
+ */
 export const STANCE_TEXT: Readonly<Record<string, string>> = {
-  act: 'Make the move', explore: 'Worth pursuing', monitor: 'Keep watching', hold: 'Hold',
+  act: 'Staff\'s view: act', explore: 'Staff\'s view: worth pursuing', monitor: 'Staff\'s view: keep watching', hold: 'Staff\'s view: hold',
 };
 export const STANCE_TONE: Readonly<Record<string, Tone>> = { act: 'good', explore: 'caution', monitor: 'neutral', hold: 'neutral' };
 export const CONFIDENCE_TEXT: Readonly<Record<string, string>> = { high: 'High confidence', moderate: 'Moderate confidence', low: 'Low confidence' };
@@ -185,7 +205,9 @@ export const PLATOON_BASIS: Readonly<Record<string, string>> = {
 
 // ── the bench ──────────────────────────────────────────────────────────────
 
-export const FUNCTION_STRENGTH: Readonly<Record<string, string>> = { covered: 'Covered', thin: 'Thin', none: 'Nobody', unknown: 'Not established' };
+/** How well a bench job is done, in plain words that avoid "cover" (N8 review): a backup position is "Backed up", another job "Has someone". */
+export const FUNCTION_STRENGTH: Readonly<Record<string, string>> = { covered: 'Backed up', thin: 'Thin', none: 'Nobody', unknown: 'Not established' };
+export const SOFT_FUNCTION_STRENGTH: Readonly<Record<string, string>> = { covered: 'Has someone', thin: 'Thin', none: 'Nobody', unknown: 'Not established' };
 export const FUNCTION_TONE: Readonly<Record<string, Tone>> = { covered: 'good', thin: 'bad', none: 'bad', unknown: 'unknown' };
 export const TAG_TEXT: Readonly<Record<string, string>> = {
   pinch_hitter: 'pinch-hit bat', defensive_replacement: 'defensive replacement', pinch_runner: 'runner', platoon_partner: 'platoon partner', flexible: 'flexible',
@@ -215,15 +237,17 @@ export const ROLE_CHOICES: ReadonlyArray<[string, string]> = [['starting_pitcher
 
 /**
  * Developmental stakes' tiers in the words these views use (D-050: a consequence, never a rank). The tier Player
- * Development calls "development priority" reads "development first" here: "priority" is on the verdict list for every
- * shown string, and the tier is a consequence, not an instruction.
+ * Development calls "development priority" reads "development-sensitive" here, the owner's name for it (2026-10-02):
+ * "priority" is on the verdict list for every shown string, and the tier is a consequence, not an instruction. The farm
+ * adopts the same name.
  */
 export const STAKES_TIER: Readonly<Record<string, string>> = {
-  core_prospect: 'core prospect', protected_prospect: 'protected prospect', development_priority: 'development first', normal: 'ordinary',
+  core_prospect: 'core prospect', protected_prospect: 'protected prospect', development_priority: 'development-sensitive', normal: 'ordinary',
   organizational_depth: 'organizational depth',
 };
 /** A stakes sentence with the tier's name as these views say it. */
-export const stakesWords = (text: string): string => text.replace(/\bdevelopment priority\b/g, 'development first');
+export const stakesWords = (text: string): string =>
+  text.replace(/\b([Dd])evelopment priority\b/g, (_m, d: string) => `${d}evelopment-sensitive`);
 
 /** Player Development's fit at the major league level (`DestinationFitClassification`), in words. */
 export const FIT_TEXT: Readonly<Record<string, string>> = {
@@ -242,3 +266,28 @@ export const GROUP_TEXT: Readonly<Record<string, string>> = {
   evaluation_incomplete: 'Player Development can\'t say yet', indeterminate: 'Whether the move is allowed isn\'t known',
   blocked_by_development: 'Player Development doesn\'t support it', blocked_by_rights: 'Not a move the rules allow', unavailable: 'Not available',
 };
+
+// ── sort keys ───────────────────────────────────────────────────────────────
+
+/**
+ * A code's place for sorting a column (N8 review, M6): an ordinal number, so a sort means something ("defensible"
+ * before "not defensible", a closer before a long man) rather than the alphabet of codes, and null for what is not
+ * known (indeterminate, unassessed, not read), so an unknown always sorts last and is never placed as if it were a
+ * reading. An order is display only: it ranks no player and decides nothing.
+ */
+export const rankOf = (order: Readonly<Record<string, number>>, code: string | null | undefined): number | null =>
+  code != null && order[code] !== undefined ? order[code] : null;
+export const DEV_ORDER: Readonly<Record<string, number>> = { defensible: 0, context_dependent: 1, indefensible: 2, not_applicable: 3 };
+export const PATH_ORDER: Readonly<Record<string, number>> = { open: 0, open_with_requirements: 1, blocked: 2 };
+export const FIT_ORDER: Readonly<Record<string, number>> = { strong: 0, viable: 1, borderline: 2, poor: 3 };
+export const PREFERENCE_ORDER: Readonly<Record<string, number>> = { preferred: 0, acceptable: 1, no_preference: 2, disfavored: 3 };
+/** A response by how far the player has to come: a role change, a recall, an addition to the 40-man. */
+export const RESPONSE_ORDER: Readonly<Record<string, number>> = { role_change: 0, recall: 1, add_to_forty_man: 2 };
+/** How a reliever is used, highest leverage first. */
+export const TIER_ORDER: Readonly<Record<string, number>> = { closer: 0, high_leverage: 1, middle: 2, low_leverage: 3, long: 4 };
+/** A read's finding, the strongest concern first. */
+export const FINDING_ORDER: Readonly<Record<string, number>> = {
+  ratings_and_results_weak: 0, weak_estimate: 1, tools_weak_results_fine: 2, results_weak_tools_fine: 3, no_concern: 4,
+};
+/** The platoon read: a problem first, then no issue; not enough to read is not known. */
+export const PLATOON_ORDER: Readonly<Record<string, number>> = { problem: 0, no_issue: 1 };

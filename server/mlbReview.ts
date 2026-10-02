@@ -16,7 +16,7 @@ import type { MlbNeed } from './mlbNeeds.js';
 import { buildLineupPicture, POSITION_LABELS, type HitterUsageInput, type LineupPicture } from './lineupPicture.js';
 import { activeMembers, roleOf, type ClubView, type RoleKind, type RoleRef, type RosterMember } from './mlbRoster.js';
 import { evaluatePlatoon, type PlatoonInput, type PlatoonRead } from './platoon.js';
-import { ordinal } from './roleStanding.js';
+import { onScale } from './roleStanding.js';
 import { estimateOf, reviewGroup, type HolderReview, type LensEvidence, type ReviewCalibration, type ReviewSubject } from './roleReview.js';
 import { flagShading, readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
 import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
@@ -266,7 +266,7 @@ export function needFromReview(m: RosterMember, r: HolderReview, groupRole: stri
     ? `${r.concern.rule === 'below_deep_floor' ? 'well below' : 'below'} the line for ${r.standard.label}`
     : r.isWeakest ? `the weakest ${groupRole} on the club` : `${r.belowMedian !== null && r.belowMedian > 0 ? `${Math.round(r.belowMedian)} points below the ${groupRole} median` : `number ${r.rank} of ${r.groupSize}`}`;
   const explanation = explainFlag(r, context);
-  const lenses = `Tools ${r.estimate.ratingsPct === null ? 'unknown' : ordinal(r.estimate.ratingsPct)}, results ${r.estimate.resultsPct === null ? 'no sample' : `${ordinal(r.estimate.resultsPct)} (${Math.round(r.evidence.sample)} ${r.evidence.sampleUnit}, trusted ${Math.round(r.evidence.reliability * 100)}%)`}.`;
+  const lenses = `Tools ${r.estimate.ratingsPct === null ? 'unknown' : onScale(r.estimate.ratingsPct)}, results ${r.estimate.resultsPct === null ? 'no sample' : `${onScale(r.estimate.resultsPct)} (${Math.round(r.evidence.sample)} ${r.evidence.sampleUnit}, trusted ${Math.round(r.evidence.reliability * 100)}%)`}.`;
   return {
     id: `mlb:role_holder_review:${m.playerId}`,
     kind: 'role_holder_review',
@@ -281,9 +281,9 @@ export function needFromReview(m: RosterMember, r: HolderReview, groupRole: stri
     horizon: { kind: 'unknown', days: null, basis: 'How long a replacement would be needed is not known, so it is not assumed: a stopgap and a lasting change are different assignments.' },
     causes: [{ playerId: m.playerId, name: m.name, role: m.role?.label ?? null, status: m.availability.label ?? 'Active', daysLeft: null, assumed: false }],
     facts: [
-      { label: 'Working estimate', value: r.estimate.value === null ? 'Unknown' : `better than ${Math.round(r.estimate.value)}% of MLB ${groupRole}s` },
-      ...(r.estimate.ratingsPct !== null ? [{ label: 'Tools', value: `better than ${Math.round(r.estimate.ratingsPct)}% of MLB peers` }] : []),
-      ...(r.estimate.resultsPct !== null ? [{ label: 'Results', value: `better than ${Math.round(r.estimate.resultsPct)}% of MLB peers (${Math.round(r.evidence.sample)} ${r.evidence.sampleUnit}, trusted ${Math.round(r.evidence.reliability * 100)}%)` }] : []),
+      { label: 'Working estimate', value: r.estimate.value === null ? 'Unknown' : `${onScale(r.estimate.value)} against MLB ${groupRole}s` },
+      ...(r.estimate.ratingsPct !== null ? [{ label: 'Tools', value: `${onScale(r.estimate.ratingsPct)} against MLB peers` }] : []),
+      ...(r.estimate.resultsPct !== null ? [{ label: 'Results', value: `${onScale(r.estimate.resultsPct)} against MLB peers (${Math.round(r.evidence.sample)} ${r.evidence.sampleUnit}, trusted ${Math.round(r.evidence.reliability * 100)}%)` }] : []),
       ...r.usage.map((u) => ({ label: 'Usage', value: u })),
     ],
     unknowns: [

@@ -105,10 +105,10 @@
     {
       "key": "catcher",
       "title": {
-        "display": "Cover catcher"
+        "display": "Backs up catcher"
       },
       "strength": {
-        "display": "Covered",
+        "display": "Backed up",
         "tone": "good"
       },
       "text": {
@@ -144,10 +144,10 @@
     {
       "key": "middle_infield",
       "title": {
-        "display": "Cover second base or shortstop"
+        "display": "Backs up second base or shortstop"
       },
       "strength": {
-        "display": "Covered",
+        "display": "Backed up",
         "tone": "good"
       },
       "text": {
@@ -206,10 +206,10 @@
     {
       "key": "center_field",
       "title": {
-        "display": "Cover center field"
+        "display": "Backs up center field"
       },
       "strength": {
-        "display": "Covered",
+        "display": "Backed up",
         "tone": "good"
       },
       "text": {
@@ -271,7 +271,7 @@
         "display": "A bat to send up"
       },
       "strength": {
-        "display": "Covered",
+        "display": "Has someone",
         "tone": "good"
       },
       "text": {
@@ -359,7 +359,7 @@
         "display": "A glove to put in late"
       },
       "strength": {
-        "display": "Covered",
+        "display": "Has someone",
         "tone": "good"
       },
       "text": {
@@ -544,7 +544,8 @@
             "display": "pinch-hit bat"
           },
           "bat": {
-            "display": "66th"
+            "display": "66",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "124"
@@ -579,7 +580,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "3B: credible backup, 21st among those listed there"
+                  "display": "3B: credible backup, better than 21% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -615,7 +616,8 @@
             "display": "pinch-hit bat, defensive replacement"
           },
           "bat": {
-            "display": "78th"
+            "display": "78",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "120"
@@ -650,7 +652,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "SS: regular quality, 75th among those listed there"
+                  "display": "SS: regular quality, better than 75% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -686,7 +688,8 @@
             "display": "Nothing else"
           },
           "bat": {
-            "display": "34th"
+            "display": "34",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "120"
@@ -721,7 +724,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "1B: credible backup, 19th among those listed there"
+                  "display": "1B: credible backup, better than 19% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -757,7 +760,8 @@
             "display": "defensive replacement"
           },
           "bat": {
-            "display": "51st"
+            "display": "51",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "115"
@@ -792,7 +796,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "RF: regular quality, 100th among those listed there"
+                  "display": "RF: regular quality, better than 100% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -828,7 +832,8 @@
             "display": "pinch-hit bat, defensive replacement"
           },
           "bat": {
-            "display": "72nd"
+            "display": "72",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "114"
@@ -863,7 +868,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "LF: regular quality, 85th among those listed there"
+                  "display": "LF: regular quality, better than 85% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -899,7 +904,8 @@
             "display": "pinch-hit bat, defensive replacement"
           },
           "bat": {
-            "display": "84th"
+            "display": "84",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "113"
@@ -934,7 +940,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "CF: regular quality, 92nd among those listed there"
+                  "display": "CF: regular quality, better than 92% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -970,7 +976,8 @@
             "display": "pinch-hit bat"
           },
           "bat": {
-            "display": "99th"
+            "display": "99",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "110"
@@ -1005,7 +1012,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "CF: regular quality, 50th among those listed there"
+                  "display": "CF: regular quality, better than 50% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -1041,7 +1048,8 @@
             "display": "pinch-hit bat"
           },
           "bat": {
-            "display": "74th"
+            "display": "74",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "99"
@@ -1076,7 +1084,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "2B: credible backup, 17th among those listed there"
+                  "display": "2B: credible backup, better than 17% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -1112,7 +1120,8 @@
             "display": "pinch-hit bat"
           },
           "bat": {
-            "display": "76th"
+            "display": "76",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "98"
@@ -1147,7 +1156,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "3B: emergency only, 7th among those listed there"
+                  "display": "3B: emergency only, better than 7% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -1183,7 +1192,8 @@
             "display": "Nothing else"
           },
           "bat": {
-            "display": "38th"
+            "display": "38",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "54"
@@ -1218,7 +1228,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "LF: emergency only, 5th among those listed there"
+                  "display": "LF: emergency only, better than 5% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -1254,7 +1264,8 @@
             "display": "Nothing else"
           },
           "bat": {
-            "display": "57th"
+            "display": "57",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "50"
@@ -1289,7 +1300,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "1B: emergency only, 6th among those listed there"
+                  "display": "1B: emergency only, better than 6% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -1325,7 +1336,8 @@
             "display": "Nothing else"
           },
           "bat": {
-            "display": "16th"
+            "display": "16",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "44"
@@ -1360,7 +1372,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "3B: regular quality, 64th among those listed there"
+                  "display": "3B: regular quality, better than 64% of those listed there"
                 },
                 "quiet": false,
                 "chips": [
@@ -1396,7 +1408,8 @@
             "display": "Nothing else"
           },
           "bat": {
-            "display": "28th"
+            "display": "28",
+            "hint": "On a 0–100 scale against major league peers; 50 is typical"
           },
           "pa": {
             "display": "41"
@@ -1431,7 +1444,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "C: credible backup, 13th among those listed there"
+                  "display": "C: credible backup, better than 13% of those listed there"
                 },
                 "quiet": false,
                 "chips": [

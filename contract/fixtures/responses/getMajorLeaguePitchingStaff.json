@@ -164,15 +164,17 @@
                 "display": "29"
               },
               "estimate": {
-                "display": "50th"
+                "display": "50",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
-                "display": "50th",
-                "hint": "His results carry 19% of the trust in his estimate"
+                "display": "50",
+                "hint": "On the 0–100 scale; his results carry 19% of the trust in his estimate"
               },
               "read": {
                 "display": "No concern",
@@ -194,15 +196,15 @@
                 "because": [
                   {
                     "label": "Why",
-                    "value": "no visible tool rating; results 50th (160 BF of weighted sample, trusted 19% as his level)."
+                    "value": "no visible tool rating; results 50 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
                   },
                   {
                     "label": "Why",
-                    "value": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50th, 19 above it."
+                    "value": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50 on the 0–100 scale, 19 above it."
                   },
                   {
                     "label": "Why",
-                    "value": "Working estimate better than 50% of MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
+                    "value": "Working estimate 50 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
                   }
                 ],
                 "source": {
@@ -242,7 +244,7 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "no visible tool rating; results 50th (160 BF of weighted sample, trusted 19% as his level)."
+                      "display": "no visible tool rating; results 50 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
                     },
                     "quiet": false,
                     "chips": [],
@@ -250,7 +252,7 @@
                   },
                   {
                     "text": {
-                      "display": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50th, 19 above it."
+                      "display": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50 on the 0–100 scale, 19 above it."
                     },
                     "quiet": false,
                     "chips": [],
@@ -258,7 +260,7 @@
                   },
                   {
                     "text": {
-                      "display": "Working estimate better than 50% of MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
+                      "display": "Working estimate 50 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
                     },
                     "quiet": false,
                     "chips": [],
@@ -316,11 +318,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -438,11 +442,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -560,11 +566,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -682,11 +690,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -870,11 +880,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -897,7 +909,7 @@
               "tools": null,
               "results": null,
               "read": 0,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",
@@ -997,11 +1009,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -1024,7 +1038,7 @@
               "tools": null,
               "results": null,
               "read": 1,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",
@@ -1124,11 +1138,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -1151,7 +1167,7 @@
               "tools": null,
               "results": null,
               "read": 2,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",
@@ -1251,11 +1267,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -1278,7 +1296,7 @@
               "tools": null,
               "results": null,
               "read": 3,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",
@@ -1378,11 +1396,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -1405,7 +1425,7 @@
               "tools": null,
               "results": null,
               "read": 4,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",
@@ -1505,11 +1525,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -1532,7 +1554,7 @@
               "tools": null,
               "results": null,
               "read": 5,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",
@@ -1632,11 +1654,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -1659,7 +1683,7 @@
               "tools": null,
               "results": null,
               "read": 6,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",
@@ -1759,11 +1783,13 @@
               },
               "estimate": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
                 "display": "Not known",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
                 "display": "No sample",
@@ -1786,7 +1812,7 @@
               "tools": null,
               "results": null,
               "read": 7,
-              "usedAs": "unknown"
+              "usedAs": null
             },
             "claim": {
               "text": "Cannot judge",

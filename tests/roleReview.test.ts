@@ -45,7 +45,7 @@ describe('a holder in his group', () => {
   it('both lenses weak and the weakest of the group: a strong, agreeing case', () => {
     const r = byId(review(rotation()), 5);
     expect(r).toMatchObject({ kind: 'ratings_and_results_weak', strength: 'strong', isWeakest: true, rank: 5, groupSize: 5 });
-    expect(r.reasons.join(' ')).toMatch(/tools 35th.*results 2\dth.*the weakest of 5/);
+    expect(r.reasons.join(' ')).toMatch(/tools 35 on the 0–100 scale.*results 2\d on the 0–100 scale.*the weakest of 5/);
     expect(r.calibration).toBe(REVIEW_CALIBRATION);
   });
 
@@ -63,7 +63,7 @@ describe('a holder in his group', () => {
     const r = byId(review(rotation({ ratingsPct: 30, skillsPct: 62, runsPct: 62, reliability: 0.8 })), 5);
     expect(r.kind === 'tools_weak_results_fine' || r.kind === 'no_concern').toBe(true);
     if (r.kind === 'tools_weak_results_fine') expect(r.strength).toBe('watch');
-    expect(r.explanations.join(' ')).toMatch(/results \(62nd\) are well ahead of his visible tools \(30th\)/);
+    expect(r.explanations.join(' ')).toMatch(/results \(62 on the 0–100 scale\) are well ahead of his visible tools \(30 on the 0–100 scale\)/);
   });
 
   it('weak results but fine tools is a watch item: he may be underperforming his tools', () => {
@@ -75,7 +75,7 @@ describe('a holder in his group', () => {
 
   it('runs allowed far worse than peripherals is named as a competing explanation (luck)', () => {
     const r = byId(review(rotation({ skillsPct: 58, runsPct: 20 })), 5);
-    expect(r.explanations.join(' ')).toMatch(/runs allowed \(20th\) are well behind.*may be costing him/);
+    expect(r.explanations.join(' ')).toMatch(/runs allowed \(20 on the 0–100 scale\) are well behind.*may be costing him/);
   });
 
   it('age is a stated risk, not a lens', () => {

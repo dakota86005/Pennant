@@ -24,7 +24,7 @@ import { estimateOf as workingEstimate, type LensEvidence } from './roleReview.j
 import type { ClearingOption, ResponseCandidate, TransactionPath } from './mlbResponses.js';
 import type { PlatoonRead } from './platoon.js';
 import type { RightsStatus } from './playerRights.js';
-import { ordinal } from './roleStanding.js';
+import { onScale } from './roleStanding.js';
 import { POSITION_LABELS, type LineupPicture } from './lineupPicture.js';
 
 export interface PlanStep {
@@ -134,7 +134,7 @@ function followUpFor(after: ClubView, gained: RoleRef, deps: PlanDeps, exclude: 
   }
   const [first, ...rest] = options;
   return {
-    text: `One ${gained.label} has to leave the active roster; the weakest by working estimate among those who can be optioned is ${first.m.name}${first.estimate === null ? ' (no estimate)' : ` (${ordinal(first.estimate)})`}.`,
+    text: `One ${gained.label} has to leave the active roster; the weakest by working estimate among those who can be optioned is ${first.m.name}${first.estimate === null ? ' (no estimate)' : ` (${onScale(first.estimate)})`}.`,
     chosen: { playerId: first.m.playerId, name: first.m.name, estimate: first.estimate, class: first.clearing?.class ?? 'routine' },
     alternatives: rest.slice(0, 3).map((x) => ({ playerId: x.m.playerId, name: x.m.name, estimate: x.estimate })),
   };
@@ -377,7 +377,7 @@ export function buildComplementPlans(deps: { view: ClubView; subject: RosterMemb
   const adv = lead.complement.fit.advantage;
   const bench = lead.pathKind === 'role_change';
   const gloveCost = lead.complement.glove.candidate !== null && lead.complement.glove.regular !== null && lead.complement.glove.candidate < lead.complement.glove.regular
-    ? [`His glove at ${place} is behind ${subject.name}'s (${Math.round(lead.complement.glove.candidate)}th against ${Math.round(lead.complement.glove.regular)}th), so some of the bat's gain is given back in the field.`] : [];
+    ? [`His glove at ${place} is behind ${subject.name}'s (${Math.round(lead.complement.glove.candidate)} against ${onScale(lead.complement.glove.regular)}), so some of the bat's gain is given back in the field.`] : [];
   const transaction = lead.path.chain.length ? lead.path.chain.filter((l) => l.kind === 'transaction').map((l) => l.label).join(' then ') : lead.path.steps.map((st) => st.label).join(' then ');
   const steps: PlanStep[] = bench
     ? [

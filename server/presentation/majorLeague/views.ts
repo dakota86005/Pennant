@@ -17,7 +17,7 @@ import type {
   MlbPositionPlayersView, MlbRow, MlbStaffSection, MlbTable,
 } from './types.js';
 import {
-  chip, codeWords, FINDING_TEXT, FUNCTION_STRENGTH, FUNCTION_TONE, hintIf, horizonText, KIND_LABEL, labelOf, needBadge, ord, PEN_HEADING,
+  chip, codeWords, FINDING_TEXT, FUNCTION_STRENGTH, FUNCTION_TONE, SOFT_FUNCTION_STRENGTH, hintIf, horizonText, KIND_LABEL, labelOf, needBadge, rankOf, FINDING_ORDER, PLATOON_ORDER, TIER_ORDER, betterThan, onScale, scaleNumber, SCALE_HINT, PEN_HEADING,
   PLATOON_BASIS, platoonChip, platoonHeadline, positionAbbr, QUALITY_TEXT, QUALITY_TONE, REQUIRED_COVERS, sentences, share, signed,
   STRENGTH_TONE, TAG_TEXT, TIER_TEXT,
 } from './words.js';
@@ -207,8 +207,8 @@ function hitterDetail(v: OverviewContext, h: Holder, spot: { position: number; l
   const est = h.estimate;
   const prof = e.toolsProfile ?? null;
   const p = h.platoon ?? null;
-  const tools = ord(est.ratingsPct);
-  const results = est.resultsPct === null ? 'no sample' : `${ord(est.resultsPct)} (trusted ${share(e.reliability)})`;
+  const tools = onScale(est.ratingsPct);
+  const results = est.resultsPct === null ? 'no sample' : `${onScale(est.resultsPct)} (trusted ${share(e.reliability)})`;
   const bat: MlbLine[] = [];
   if (prof?.text.trim()) bat.push(line(prof.text));
   const contributions = (prof?.contributions ?? []).filter((c) => c.tool !== 'avoidK');
@@ -217,24 +217,24 @@ function hitterDetail(v: OverviewContext, h: Holder, spot: { position: number; l
       chips: contributions.map((c) => chip(`${c.tool === 'gap' ? 'gap' : c.tool} ${c.rating} ${signed(c.points)}`, c.points >= 9 ? 'good' : c.points <= -9 ? 'bad' : 'neutral')),
     }));
   }
-  bat.push(line(`Tools ${tools ?? 'not known'} · results ${results}`, { hint: 'Places among major league peers; 50th is average' }));
+  bat.push(line(`Tools ${tools ?? 'not known'} · results ${results}`, { hint: SCALE_HINT }));
   if (e.toolsExpected != null) bat.push(line(`His visible tools imply ${signed(e.toolsExpected * 1000)} points of wOBA against the league average.`, { quiet: true }));
   const std = standardLine(h);
   if (std) bat.push(line(std, { quiet: true }));
 
   const glove: MlbLine[] = [];
   if ((est.weightOnDefense ?? 0) > 0 && est.defensePct != null) {
-    glove.push(line(`Glove ${ord(est.defensePct)} at ${spot.label}, ${share(est.weightOnDefense ?? 0)} of his estimate.`));
+    glove.push(line(`Glove ${onScale(est.defensePct)} at ${spot.label}, ${share(est.weightOnDefense ?? 0)} of his estimate.`));
   } else {
     glove.push(line(spot.position === 10 ? 'A designated hitter is his bat alone.' : 'His glove at the position is not visible: the estimate is his bat alone.', { quiet: true }));
   }
   if (e.defense?.visible) {
-    const zone = e.defense.resultsPct != null ? `; zone results ${ord(e.defense.resultsPct)} over ${Math.round(e.defense.resultsInnings ?? 0)} innings` : '';
-    glove.push(line(`Visible grade ${e.defense.grade ?? 'not shown'} (${ord(e.defense.pct) ?? 'not placed'} among those listed there)${zone}.`, { quiet: true }));
+    const zone = e.defense.resultsPct != null ? `; zone results ${onScale(e.defense.resultsPct)} over ${Math.round(e.defense.resultsInnings ?? 0)} innings` : '';
+    glove.push(line(`Visible grade ${e.defense.grade ?? 'not shown'} (${betterThan(e.defense.pct, 'those listed there') ?? 'not placed among those listed there'})${zone}.`, { quiet: true }));
   }
   if (est.runningPct != null) {
     const runs = e.running?.perSixHundred != null ? `; ${signed(e.running.perSixHundred)} baserunning runs per 600 PA` : '';
-    glove.push(line(`Running ${ord(est.runningPct)}, ${share(est.weightOnRunning ?? 0)} of his estimate${runs}.`));
+    glove.push(line(`Running ${onScale(est.runningPct)}, ${share(est.weightOnRunning ?? 0)} of his estimate${runs}.`));
   } else {
     glove.push(line('No running evidence.', { quiet: true }));
   }
@@ -313,11 +313,11 @@ export function positionPlayersView(v: OverviewContext): MlbPositionPlayersView 
       bats: r.bats ? cell(r.bats) : cell('Not known', { tone: 'unknown' }),
       plays: cell(share(r.share), { hint: 'His share of the innings at the position' }),
       estimate: h
-        ? numberCell(ord(est?.value), 'Not known', { hint: h.standard ? `Typical for the role: ${Math.round(h.standard.typical)}` : undefined })
+        ? numberCell(scaleNumber(est?.value), 'Not known', { hint: h.standard ? `Typical for the role: ${Math.round(h.standard.typical)} on the 0–100 scale` : SCALE_HINT })
         : notRead,
-      bat: h ? numberCell(ord(est?.batValue ?? est?.value), 'Not known') : notRead,
-      glove: gloveShown ? cell(ord(est?.defensePct) as string) : cell(sp.position === 10 ? 'Not used' : 'Not shown', { tone: 'unknown', hint: sp.position === 10 ? 'A designated hitter is his bat alone' : 'His glove at the position is not visible' }),
-      run: numberCell(ord(est?.runningPct), 'No read'),
+      bat: h ? numberCell(scaleNumber(est?.batValue ?? est?.value), 'Not known', { hint: SCALE_HINT }) : notRead,
+      glove: gloveShown ? cell(scaleNumber(est?.defensePct) as string, { hint: SCALE_HINT }) : cell(sp.position === 10 ? 'Not used' : 'Not shown', { tone: 'unknown', hint: sp.position === 10 ? 'A designated hitter is his bat alone' : 'His glove at the position is not visible' }),
+      run: numberCell(scaleNumber(est?.runningPct), 'No read', { hint: SCALE_HINT }),
       platoon: h ? platoonChip(h.platoon) : notRead,
       read: h ? cell(labelOf(FINDING_TEXT, h.kind), { tone: findingTone(h), hint: hintIf(h.reasons[0]) }) : notRead,
     };
@@ -330,8 +330,8 @@ export function positionPlayersView(v: OverviewContext): MlbPositionPlayersView 
       bat: est?.batValue ?? est?.value ?? null,
       glove: gloveShown ? est?.defensePct ?? null : null,
       run: est?.runningPct ?? null,
-      platoon: h?.platoon ? h.platoon.verdict : null,
-      read: h ? h.kind : null,
+      platoon: rankOf(PLATOON_ORDER, h?.platoon?.verdict),
+      read: rankOf(FINDING_ORDER, h?.kind),
     };
     return tableRow(`spot-${sp.position}`, cells, sort, {
       player: player(v, r.playerId, r.name),
@@ -362,12 +362,12 @@ function armTable(v: OverviewContext, g: RoleGroupReview, relief: boolean): MlbT
   const rows = g.holders.map((h, index) => {
     const results = h.estimate.resultsPct === null
       ? cell('No sample', { tone: 'unknown' })
-      : cell(ord(h.estimate.resultsPct) as string, { hint: `His results carry ${share(h.evidence.reliability)} of the trust in his estimate` });
+      : cell(scaleNumber(h.estimate.resultsPct) as string, { hint: `On the 0–100 scale; his results carry ${share(h.evidence.reliability)} of the trust in his estimate` });
     const cells: Record<string, Cell> = {
       pitcher: cell(h.name),
       age: h.age === null ? cell('Not known', { tone: 'unknown' }) : cell(String(h.age)),
-      estimate: numberCell(ord(h.estimate.value), 'Not known', { hint: relief && h.standard ? `Typical for the role: ${Math.round(h.standard.typical)}` : undefined }),
-      tools: numberCell(ord(h.estimate.ratingsPct), 'Not known'),
+      estimate: numberCell(scaleNumber(h.estimate.value), 'Not known', { hint: relief && h.standard ? `Typical for the role: ${Math.round(h.standard.typical)} on the 0–100 scale` : SCALE_HINT }),
+      tools: numberCell(scaleNumber(h.estimate.ratingsPct), 'Not known', { hint: SCALE_HINT }),
       results,
       read: cell(labelOf(FINDING_TEXT, h.kind), { tone: findingTone(h), hint: hintIf(h.reasons[0]) }),
     };
@@ -377,7 +377,7 @@ function armTable(v: OverviewContext, g: RoleGroupReview, relief: boolean): MlbT
     if (relief) {
       const tier = h.tier ? labelOf(TIER_TEXT, h.tier) : 'Not yet clear';
       cells.usedAs = cell(h.stakes ? `${tier} · ${h.stakes} stakes` : tier, { hint: hintIf(h.usage[0]), ...(h.tier ? {} : { tone: 'unknown' as const }) });
-      sort.usedAs = h.tier ?? null;
+      sort.usedAs = rankOf(TIER_ORDER, h.tier);
     }
     const actions = h.strength === 'strong' || h.strength === 'moderate' ? [action('Replacement options', decision(`mlb:role_holder_review:${h.playerId}`))] : [];
     return tableRow(`arm-${h.playerId}`, cells, sort, { player: player(v, h.playerId, h.name), detail: armDetail(h), actions, claim: readClaim(v, h) });
@@ -454,8 +454,8 @@ export function benchView(v: OverviewContext): MlbBenchView {
     return {
       key: f.key,
       title: cell(f.label.trim() || codeWords(f.key)),
-      strength: cell(labelOf(FUNCTION_STRENGTH, f.strength), { tone: FUNCTION_TONE[f.strength] ?? 'unknown' }),
-      text: cell(f.text.trim() || labelOf(FUNCTION_STRENGTH, f.strength)),
+      strength: cell(labelOf(required ? FUNCTION_STRENGTH : SOFT_FUNCTION_STRENGTH, f.strength), { tone: FUNCTION_TONE[f.strength] ?? 'unknown' }),
+      text: cell(f.text.trim() || labelOf(required ? FUNCTION_STRENGTH : SOFT_FUNCTION_STRENGTH, f.strength)),
       by: f.by.slice(0, 4).map((x) => line(`${x.name}${x.note.trim() ? ` · ${x.note.trim()}` : ''}`, {
         players: [player(v, x.playerId, x.name)],
         chips: x.quality && required ? [cell(labelOf(QUALITY_TEXT, x.quality), { tone: QUALITY_TONE[x.quality] ?? 'unknown' })] : [],
@@ -472,7 +472,7 @@ export function benchView(v: OverviewContext): MlbBenchView {
       for: cell(`${r.role}${r.partnerAt ? ` · shares ${positionAbbr(r.partnerAt)}` : ''}`),
       canPlay: covers.length ? cell(covers.join(', ')) : cell('No visible grade', { tone: 'unknown' }),
       also: tags.length ? cell(tags.join(', ')) : cell('Nothing else'),
-      bat: numberCell(ord(r.batValue), 'Not known'),
+      bat: numberCell(scaleNumber(r.batValue), 'Not known', { hint: SCALE_HINT }),
       pa: cell(String(r.pa)),
     };
     const sort: Record<string, number | string | null> = {
@@ -480,7 +480,7 @@ export function benchView(v: OverviewContext): MlbBenchView {
       bat: r.batValue, pa: r.pa,
     };
     const reads = r.coverReads.map((c) => line(
-      `${positionAbbr(c.position)}: ${labelOf(QUALITY_TEXT, c.quality)}${c.pct !== null ? `, ${ord(c.pct)} among those listed there` : ''}`,
+      `${positionAbbr(c.position)}: ${labelOf(QUALITY_TEXT, c.quality)}${c.pct !== null ? `, ${betterThan(c.pct, 'those listed there')}` : ''}`,
       { chips: [cell(positionAbbr(c.position), { tone: QUALITY_TONE[c.quality] ?? 'unknown' })] },
     ));
     return tableRow(`bench-${r.playerId}`, cells, sort, {

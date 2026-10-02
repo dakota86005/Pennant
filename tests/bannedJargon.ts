@@ -63,6 +63,9 @@ export const BANNED_VERDICTS: readonly RegExp[] = [
   /\bextend (?:him|now)\b/i, /\bextension candidate\b/i, /\bre-sign\b/i, /\blet (?:him )?walk\b/i,
   /\brelease candidate\b/i, /\bcore keeper\b/i, /\bhold off\b/i, /\bconsider moving\b/i, /\bwatch decline\b/i,
   /\bmarket-dependent\b/i,
+  // A headline worded as an order (N8 review, H1; D-065): the staff's call reads as the staff's view ("Staff's view: ..."),
+  // never "Make the change" or "Set up the platoon"
+  /^(?:Make|Set up) the\b/, /^Keep watching\b/,
 ];
 
 /**

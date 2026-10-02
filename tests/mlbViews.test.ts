@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  departmentReport, frontOfficeStats, majorLeagueDecision, majorLeagueView, resetFrontOfficeCache, warmFrontOffice,
+  decisionKey, departmentReport, frontOfficeStats, majorLeagueDecision, majorLeagueView, resetFrontOfficeCache, warmFrontOffice,
 } from '../server/frontOfficeService.js';
 import { mlbOverview } from '../server/mlbOperations.js';
 import { reviewClub, reviewNeeds, type ReviewPorts } from '../server/mlbReview.js';
@@ -56,6 +56,34 @@ describe('Major League Ops\' views on the synthetic save, from the per-import ca
     }
   });
 
+  it('says a working estimate, tools or results as a place on the 0–100 scale, never an ordinal or a percentile (N8 review, M3, M4)', async () => {
+    for (const view of Object.keys(OPERATION)) {
+      const body = await majorLeagueView(save.org, view);
+      const said = [...shownStrings(body), ...basisStrings(body)].map(({ text }) => text);
+      expect(said.filter((t) => /\b\d+(?:st|nd|rd|th)\b/.test(t) && !/\b(?:1st|2nd|3rd) base\b/i.test(t)), view).toEqual([]);
+      expect(said.filter((t) => /better than \d+%/.test(t) && !/better than \d+% of those listed there/.test(t)), view).toEqual([]);
+    }
+  });
+
+  it('sorts a coded column by its served order, an unknown as null, never by the alphabet of codes (M6)', async () => {
+    const ps = await majorLeagueView(save.org, 'pitchingStaff');
+    const pp = await majorLeagueView(save.org, 'positionPlayers');
+    const pen = ps.sections.flatMap((s) => s.table.rows).filter((r) => 'usedAs' in r.sort);
+    expect(pen.length).toBeGreaterThan(0);
+    for (const r of pen) expect(r.sort.usedAs === null || typeof r.sort.usedAs === 'number').toBe(true);
+    for (const r of pp.lineup.rows) for (const key of ['platoon', 'read']) expect(r.sort[key] === null || typeof r.sort[key] === 'number').toBe(true);
+  });
+
+  it('names the bench\'s jobs in plain words that avoid "cover" (N8 review)', async () => {
+    const bv = await majorLeagueView(save.org, 'benchBackups');
+    expect(bv.functions.length).toBeGreaterThan(0);
+    for (const f of bv.functions) {
+      expect(f.title.display, f.key).not.toMatch(/\bcover/i);
+      expect(f.strength.display, f.key).not.toMatch(/\bcover/i);
+    }
+    expect(bv.functions.find((f) => f.key === 'catcher')?.title.display).toBe('Backs up catcher');
+  });
+
   it('lists every regular, arm and bench player the review read, once each, in its own order', async () => {
     const o = mlbOverview(save.org);
     const lineup = o.review.find((g) => g.role === 'lineup regular')!.lineup!;
@@ -102,6 +130,12 @@ describe('Major League Ops\' views on the synthetic save, from the per-import ca
     expect(first.needId).toBe(need);
     expect(bannedInPayload(first, 'getMajorLeagueDecision')).toEqual([]);
     await expect(majorLeagueDecision(save.org, { need: 'mlb:nothing:1' })).rejects.toThrow(/isn't open in the current export/);
+    // A choice the decision doesn't offer keys no entry of its own (the review's cache keys): an unknown role or context
+    // is the same decision, and a duration that isn't served is refused
+    const odd = await majorLeagueDecision(save.org, { need, role: 'shortstop_of_the_future', context: 'forever' });
+    expect(odd).toBe(first);
+    await expect(majorLeagueDecision(save.org, { need, days: 1_000_000 })).rejects.toThrow(/doesn't offer that duration/);
+    expect(decisionKey('b', { need: ` ${need} `, role: 'x', context: 'y' })).toBe(decisionKey('b', { need }));
   });
 
   it('builds the open needs\' decisions ahead after a warm-up, so opening one from the desk builds nothing', async () => {

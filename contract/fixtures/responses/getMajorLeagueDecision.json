@@ -262,7 +262,8 @@
             },
             "value": 21.586000000000002,
             "display": {
-              "display": "22nd"
+              "display": "22",
+              "hint": "On a 0–100 scale against major league peers; 50 is typical"
             }
           },
           {
@@ -271,7 +272,8 @@
             },
             "value": 27.9,
             "display": {
-              "display": "28th"
+              "display": "28",
+              "hint": "On a 0–100 scale against major league peers; 50 is typical"
             }
           },
           {
@@ -288,7 +290,7 @@
         "lines": [
           {
             "text": {
-              "display": "This season: AVG .000 · OBP .000 · SLG .000 · HR not known (41 PA)"
+              "display": "This season: AVG not known · OBP not known · SLG not known · HR not known (41 PA)"
             },
             "quiet": false,
             "chips": [],

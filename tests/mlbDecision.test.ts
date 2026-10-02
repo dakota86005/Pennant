@@ -6,8 +6,9 @@ import { departmentOffice, servedDepartments } from '../server/presentation/cata
 import type { DepartmentContext } from '../server/presentation/frontOffice/desk.js';
 import { decisionView, type DecisionAsk } from '../server/presentation/majorLeague/decision.js';
 import type { MlbDecisionView } from '../server/presentation/majorLeague/types.js';
-import { DURATIONS } from '../server/presentation/majorLeague/words.js';
-import { bannedInPayload, basisStrings, shownStrings } from './bannedJargon';
+import { line } from '../server/presentation/majorLeague/common.js';
+import { DURATIONS, STAKES_TIER, stakesWords } from '../server/presentation/majorLeague/words.js';
+import { BANNED_VERDICTS, bannedIn, bannedInPayload, basisStrings, shownStrings } from './bannedJargon';
 import { ARMS, CLUBS, LENS, candidatesOf, replacePacket } from './mlbGolden';
 import { fakePorts, healthy26, mkState, viewOf } from './mlbFixtures';
 
@@ -43,6 +44,35 @@ describe('a decision is Major League Ops\' packet, in the GM\'s order, and autho
     expect(shownStrings(view).filter(({ text }) => WINDOW_LABELS.some((p) => p.test(text)))).toEqual([]);
   });
 
+  it('words the staff\'s call as the staff\'s view, never an order, with the lean only in the basis (H1, M2; D-065)', () => {
+    for (const packet of [replacePacket(), ...packets.map(([, p]) => p)]) {
+      const view = word(packet);
+      if (!view.call) continue;
+      expect(view.call.stance.display).toMatch(/^Staff's view: (?:act|worth pursuing|keep watching|hold)$/);
+      expect(view.call.headline.text).toMatch(/^Staff's view: /);
+      expect(bannedIn(view.call.headline.text, [BANNED_VERDICTS])).toEqual([]);
+      const titles = [...view.call.blocks, ...(view.why?.blocks ?? [])].map((b) => b.title?.display ?? '');
+      expect(titles.filter((t) => /context did|philosophy leaned/i.test(t))).toEqual([]);
+    }
+    expect(word(replacePacket()).call!.stance.display).toBe('Staff\'s view: act');
+  });
+
+  it('says a working estimate as a place on the 0–100 scale, never an ordinal or a percentile (M3, M4)', () => {
+    for (const [, packet] of packets) {
+      const view = word(packet);
+      const said = [...shownStrings(view), ...basisStrings(view)].map(({ text }) => text);
+      expect(said.filter((t) => /\b\d+(?:st|nd|rd|th)\b/.test(t))).toEqual([]);
+      expect(said.filter((t) => /better than \d+%/.test(t) && !/better than \d+% of those listed there/.test(t))).toEqual([]);
+    }
+  });
+
+  it('names the stakes tier "development-sensitive", the owner\'s word, wherever a sentence says it (M9)', () => {
+    expect(STAKES_TIER.development_priority).toBe('development-sensitive');
+    expect(stakesWords('Development priority prospects need reps; a development priority arm too.'))
+      .toBe('Development-sensitive prospects need reps; a development-sensitive arm too.');
+    expect(line('He is a development priority prospect.').text.display).toBe('He is a development-sensitive prospect.');
+  });
+
   it('runs problem → why → the staff\'s call → the ways to respond → every candidate → the mechanics', () => {
     const view = word(replacePacket({ organization: CLUBS.contending }));
     const keys = Object.keys(view);
@@ -60,6 +90,20 @@ describe('a decision is Major League Ops\' packet, in the GM\'s order, and autho
       const given = packet.groups.filter((g) => g.candidates.length).map((g) => [g.label, g.candidates.map((c) => c.playerId)]);
       expect(served).toEqual(given);
       expect(view.candidates!.count).toBe(candidatesOf(packet).length);
+    }
+  });
+
+  it('sorts a coded column by its served order, an unknown as null so it sorts last (M6)', () => {
+    const packet = replacePacket({ ports: { evidence: { currentState: 'current', chronology: 'unavailable' } } });
+    const rows = word(packet).candidates!.groups.flatMap((g) => g.table.rows);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      for (const key of ['response', 'development', 'transaction', 'fit', 'organization']) {
+        expect(r.sort[key] === null || typeof r.sort[key] === 'number', `${r.id} ${key}`).toBe(true);
+      }
+      const c = candidatesOf(packet).find((x) => x.playerId === r.player?.playerId)!;
+      expect(r.sort.transaction === null).toBe(c.path.status === 'indeterminate');
+      expect(r.sort.development === null).toBe(c.development.status === 'indeterminate' || c.development.status === 'unassessed');
     }
   });
 

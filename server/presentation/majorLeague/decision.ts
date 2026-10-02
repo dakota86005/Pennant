@@ -26,7 +26,7 @@ import type {
 } from './types.js';
 import {
   BASIS, chip, codeWords, COMPARE_TEXT, COMPARE_TONE, CONFIDENCE_TEXT, DEV, DEV_TONE, DIMENSION_LABEL, DURATIONS, FARM_STATUS, FARM_TONE,
-  hintIf, horizonText, KIND_LABEL, labelOf, needBadge, ord, PATH, PATH_LABEL, PATH_TONE, PREFERENCE, RIGHTS_TONE, ROLE_CHOICES, sentences,
+  hintIf, horizonText, KIND_LABEL, labelOf, needBadge, onScale, rankOf, DEV_ORDER, FIT_ORDER, PATH_ORDER, PREFERENCE_ORDER, RESPONSE_ORDER, scaleNumber, SCALE_HINT, PATH, PATH_LABEL, PATH_TONE, PREFERENCE, RIGHTS_TONE, ROLE_CHOICES, sentences,
   CERTAINTY_TEXT, EVIDENCE_TEXT, FIT_TEXT, FIT_TONE, GROUP_TEXT, STAKES_TIER, stakesWords, STANCE_TEXT, STANCE_TONE, STEP_STATUS, VERDICT_TEXT, VERDICT_TONE,
 } from './words.js';
 
@@ -97,7 +97,7 @@ function whyOf(v: ViewContext, need: MlbNeed): MlbWhy | null {
       because: [
         ...x.parts.map((p) => ({
           label: p.label.trim() || 'Part',
-          value: `${ord(p.value) ?? 'not known'}${p.weight !== null && p.weight > 0 ? `, ${Math.round(p.weight * 100)}% of the estimate` : ''}${p.basis.trim() ? `: ${p.basis.trim()}` : ''}`,
+          value: `${onScale(p.value) ?? 'not known'}${p.weight !== null && p.weight > 0 ? `, ${Math.round(p.weight * 100)}% of the estimate` : ''}${p.basis.trim() ? `: ${p.basis.trim()}` : ''}`,
         })),
         ...because('Not changed by your club\'s context', x.context.notChanged),
       ],
@@ -112,13 +112,11 @@ function whyOf(v: ViewContext, need: MlbNeed): MlbWhy | null {
     }),
   });
   const parts = x.parts.map((p) => line(
-    `${p.label.trim() || 'Part'} ${ord(p.value) ?? 'not known'}${p.weight !== null && p.weight > 0 ? ` · ${Math.round(p.weight * 100)}% of the estimate` : ''}`,
+    `${p.label.trim() || 'Part'} ${onScale(p.value) ?? 'not known'}${p.weight !== null && p.weight > 0 ? ` · ${Math.round(p.weight * 100)}% of the estimate` : ''}`,
     { hint: hintIf(p.basis), tone: p.value === null ? 'unknown' : undefined },
   ));
+  // The club's lean lives only in the claim's basis, never on the decision's face (D-060, D-065)
   const blocks: MlbBlock[] = [block('What the estimate is made of', parts)];
-  blocks.push(block('What your club\'s context did', changed.length
-    ? [line(`It changed how urgent this reads: "${shaded}" here, "${neutral}" for a club with no philosophy. Why is in the basis above.`, { quiet: true })]
-    : [line(`Nothing: a club with no philosophy would have read this the same way${need.severity === (x.neutralSeverity as string) ? ', at the same urgency' : ''}.`, { quiet: true })]));
   blocks.push(block('What the context never changes', linesOf(x.context.notChanged), { collapsed: true }));
   if (x.unknown.length) blocks.push(block('Not known', linesOf(x.unknown, false)));
   if (x.explanations.length) blocks.push(block('What could explain it', linesOf(x.explanations, false)));
@@ -135,7 +133,7 @@ function pictureOf(v: ViewContext, pic: RolePicture): MlbPicture {
       lines.push(line(`His estimate is ${Math.round(r.weightOnResults * 100)}% results, ${Math.round((1 - r.weightOnResults) * 100)}% tools.`, { quiet: true }));
     }
     if (r.weakestCore !== null) {
-      lines.push(line(`Weakest core tool: ${ord(r.weakestCore)}${r.evidenceStatus !== 'complete' ? ` · ratings ${labelOf(EVIDENCE_TEXT, r.evidenceStatus)}` : ''}`, { quiet: true }));
+      lines.push(line(`Weakest core tool: ${onScale(r.weakestCore)}${r.evidenceStatus !== 'complete' ? ` · ratings ${labelOf(EVIDENCE_TEXT, r.evidenceStatus)}` : ''}`, { quiet: true }));
     }
     const p = r.performance;
     lines.push(line(p ? `This season: ${p.lines.map((l) => `${l.label} ${l.value}`).join(' · ')} (${p.sample} ${p.sampleUnit})` : 'This season: no line yet', { quiet: !p }));
@@ -166,9 +164,9 @@ function pictureOf(v: ViewContext, pic: RolePicture): MlbPicture {
       status: cell(`${r.age ?? 'Age not known'} · ${r.relation === 'subject' ? r.status : r.underReview ? 'Under review' : 'Current'}`),
       subject: r.relation === 'subject' || r.underReview === true,
       lenses: [
-        { label: cell('Estimate'), value: r.estimate, display: cell(ord(r.estimate) ?? 'No evidence', r.estimate === null ? { tone: 'unknown' } : {}) },
-        { label: cell('Tools'), value: r.composite, display: cell(ord(r.composite) ?? 'No evidence', r.composite === null ? { tone: 'unknown' } : {}) },
-        { label: cell('Results'), value: r.resultsPct, display: cell(ord(r.resultsPct) ?? 'No evidence', r.resultsPct === null ? { tone: 'unknown' } : {}) },
+        { label: cell('Estimate'), value: r.estimate, display: cell(scaleNumber(r.estimate) ?? 'No evidence', r.estimate === null ? { tone: 'unknown' } : { hint: SCALE_HINT }) },
+        { label: cell('Tools'), value: r.composite, display: cell(scaleNumber(r.composite) ?? 'No evidence', r.composite === null ? { tone: 'unknown' } : { hint: SCALE_HINT }) },
+        { label: cell('Results'), value: r.resultsPct, display: cell(scaleNumber(r.resultsPct) ?? 'No evidence', r.resultsPct === null ? { tone: 'unknown' } : { hint: SCALE_HINT }) },
       ],
       lines,
     };
@@ -196,7 +194,7 @@ function callOf(v: ViewContext, r: Recommendation): MlbCall {
       wouldChange: sentences(r.wouldChange),
       lean: shading.length
         ? {
-          neutral: r.neutralStance ? `A club with no stated philosophy would have been told: ${labelOf(STANCE_TEXT, r.neutralStance)}.` : 'A club with no stated philosophy would have been told the same.',
+          neutral: r.neutralStance ? `A club with no stated philosophy would have seen "${labelOf(STANCE_TEXT, r.neutralStance)}".` : 'A club with no stated philosophy would have seen the same call.',
           why: sentences(shading.map((s) => `${labelOf(DIMENSION_LABEL, s.dimension)}: ${s.text}`)),
         }
         : null,
@@ -206,11 +204,7 @@ function callOf(v: ViewContext, r: Recommendation): MlbCall {
   });
   const blocks: MlbBlock[] = [block('Because', linesOf(r.because, false))];
   if (r.toSettle.length) blocks.push(block('To settle first', linesOf(r.toSettle, false)));
-  if (shading.length) {
-    blocks.push(block('How your philosophy leaned on this', [
-      line(r.neutralStance ? `A club with no stated philosophy would have been told: ${labelOf(STANCE_TEXT, r.neutralStance)}.` : 'It changed the wording, not the call.', { quiet: true }),
-    ]));
-  }
+  // How the philosophy leaned is in the headline's basis only, never a block on the face (D-060, D-065)
   blocks.push(block('What would change this', linesOf(r.wouldChange, false), { collapsed: true }));
   return {
     title: cell('The staff\'s call'),
@@ -232,7 +226,7 @@ function planOf(p: Plan): MlbPlan {
   for (const st of p.steps) if (st.note?.trim()) steps.push(line(st.note, { quiet: true }));
   const blocks: MlbBlock[] = [block(null, [line(p.summary, { quiet: true })]), block('Steps', steps)];
   if (p.followUp) {
-    const alternatives = p.followUp.alternatives.map((a) => `${a.name}${a.estimate === null ? '' : ` (${ord(a.estimate)})`}`).join(', ');
+    const alternatives = p.followUp.alternatives.map((a) => `${a.name}${a.estimate === null ? '' : ` (${onScale(a.estimate)})`}`).join(', ');
     blocks.push(block('What follows', [
       line(p.followUp.text),
       ...(alternatives ? [line(`Or: ${alternatives}.`, { quiet: true })] : []),
@@ -241,9 +235,9 @@ function planOf(p: Plan): MlbPlan {
   const effects: MlbLine[] = p.groups.flatMap((g) => {
     const out = [line(`${g.label}: healthy ${g.healthyBefore} → ${g.healthyAfter}${g.floor !== null ? ` (minimum ${g.floor})` : ''}`)];
     const change = g.change !== null && Math.abs(g.change) >= 0.5 ? ` (${g.change >= 0 ? '+' : ''}${g.change.toFixed(1)})` : '';
-    out.push(line(`Mean estimate ${ord(g.meanBefore) ?? 'not known'} → ${ord(g.meanAfter) ?? 'not known'}${change}`, { quiet: true }));
+    out.push(line(`Mean estimate ${scaleNumber(g.meanBefore) ?? 'not known'} → ${onScale(g.meanAfter) ?? 'not known'}${change}`, { quiet: true }));
     if (g.weakestBefore && g.weakestAfter && g.weakestBefore.name !== g.weakestAfter.name) {
-      out.push(line(`Weakest: ${g.weakestBefore.name} (${ord(g.weakestBefore.estimate)}) → ${g.weakestAfter.name} (${ord(g.weakestAfter.estimate)})`, { quiet: true }));
+      out.push(line(`Weakest: ${g.weakestBefore.name} (${scaleNumber(g.weakestBefore.estimate)}) → ${g.weakestAfter.name} (${onScale(g.weakestAfter.estimate)})`, { quiet: true }));
     }
     if (g.unknown > 0) out.push(line(`${g.unknown} without an estimate`, { quiet: true }));
     return out;
@@ -358,7 +352,7 @@ function candidateDetail(v: ViewContext, c: ResponseCandidate): MlbBlock[] {
   if (c.roleFit) {
     const e = c.roleFit.evidence;
     blocks.push(block('Fit at the major league level', [
-      line(`${c.roleFit.classification ? labelOf(FIT_TEXT, c.roleFit.classification) : 'Not computable'}${e.compositePercentile !== null ? ` · his tools place ${ord(e.compositePercentile)} among major league peers` : ''}`),
+      line(`${c.roleFit.classification ? labelOf(FIT_TEXT, c.roleFit.classification) : 'Not computable'}${e.compositePercentile !== null ? ` · his tools ${onScale(e.compositePercentile)} against major league peers` : ''}`),
       line(`Visible tool ratings: ${labelOf(EVIDENCE_TEXT, e.evidenceStatus)}${e.unassessed.length ? `; not assessed: ${e.unassessed.join(', ')}` : ''}`, { quiet: true }),
     ]));
   }
@@ -413,8 +407,9 @@ function candidateRow(v: ViewContext, c: ResponseCandidate, mode: ResponsePacket
     organization: stance ? cell(labelOf(PREFERENCE, stance)) : cell('No preference'),
   };
   const sort: Record<string, number | string | null> = {
-    player: c.name, age: c.age, response: c.pathKind, development: c.development.status, transaction: c.path.status,
-    fit: c.roleFit?.classification ?? null, organization: stance,
+    // Codes sort by their served order, an unknown last (M6)
+    player: c.name, age: c.age, response: rankOf(RESPONSE_ORDER, c.pathKind), development: rankOf(DEV_ORDER, c.development.status),
+    transaction: rankOf(PATH_ORDER, c.path.status), fit: rankOf(FIT_ORDER, c.roleFit?.classification), organization: rankOf(PREFERENCE_ORDER, stance ?? 'no_preference'),
   };
   if (mode === 'replace') {
     const cmp = c.comparison ?? null;

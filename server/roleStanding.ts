@@ -65,7 +65,12 @@ export function ordinal(n: number): string {
   return `${r}${suffix}`;
 }
 
-const pct = (n: number) => `better than ${Math.round(n)}%`;
+/**
+ * A place on the 0 to 100 scale against peers, in a sentence: "62 on the 0–100 scale". A working estimate, a tools
+ * composite and a results read are places on that scale, not percentiles, so none is said as "62nd" or "better than 62%"
+ * (the N8 review, 2026-10-02).
+ */
+export const onScale = (n: number): string => `${Math.round(n)} on the 0–100 scale`;
 
 export function evaluateRoleStanding(subject: StandingPlayer, incumbents: StandingPlayer[]): RoleStanding {
   const others = incumbents.filter((i) => i.playerId !== subject.playerId);
@@ -100,7 +105,7 @@ export function evaluateRoleStanding(subject: StandingPlayer, incumbents: Standi
   else verdict = 'comparable';
 
   const reasons = [
-    `His visible tools are ${pct(subject.composite)} of MLB peers; ${weakest.name}, the weakest assessed current player, is ${pct(weakest.composite)}.`,
+    `His visible tools are ${onScale(subject.composite)} against MLB peers; ${weakest.name}, the weakest assessed current player, is ${onScale(weakest.composite)}.`,
     verdict === 'strengthens'
       ? `That is ${Math.round(gap)} points clear of ${weakest.name} (a gap of ${MEANINGFUL_GAP} counts as clearly ahead), so he would improve the group.`
       : verdict === 'behind'

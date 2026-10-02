@@ -2559,9 +2559,17 @@ for the scoped jargon exceptions named by its operation.
 - **The words moved from React.** The label maps, the platoon copy and the need badges are server words; the specialists'
   own sentences lost their method and verdict words at the source (percentile, coverage, holders, must, recommend,
   accepted), which the React pages show too. The stakes tier Player Development calls "development priority" reads
-  "development first" in these views: "priority" is a verdict word on every shown string, and the tier is a consequence,
-  never an instruction (D-050). The staff's call is advice ("Make the move", "Worth pursuing", "Keep watching", "Hold"),
-  its rubric in the basis.
+  "Development-sensitive" in these views, the owner's name for it (2026-10-02; the farm adopts it): "priority" is a
+  verdict word on every shown string, and the tier is a consequence, never an instruction (D-050). A working estimate,
+  a tools composite or a results read is a place on the 0 to 100 scale and is said as one ("62 on the 0–100 scale"),
+  never as an ordinal ("62nd") or a percentile ("better than 62%"), which stays for a true share of peers only.
+- **The staff's call is the staff's view, never an order** (amended 2026-10-02, the owner's wording, after the N8
+  review). Its label reads "Staff's view: act", "Staff's view: worth pursuing", "Staff's view: keep watching" or
+  "Staff's view: hold", and its headline reads as the staff's view ("Staff's view: the change is worth making now:
+  ..."), never an imperative ("Make the change", "Set up the platoon"), as D-001 and D-004 ask and as the advice on
+  another club's moves is worded (something to look at, never an instruction). Its rubric is in the basis; how the
+  club's philosophy leaned on it is in the headline's basis only, never a block on the decision's face. The banned-words
+  list carries the imperative headline patterns.
 - **D-060 in a department's views.** No view or decision carries the postseason odds or the deadline posture, its basis
   included; the club's philosophy and season shade a flag or the staff's call only as a lean in the basis, beside what a
   club with no philosophy would get, and no window label is on the face. A need's badge takes the department's

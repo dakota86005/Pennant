@@ -186,7 +186,7 @@ export function reviewBench(players: BenchPlayer[]): BenchReview {
       playerId: row.playerId, name: row.name, quality: read.quality,
       note: `${POSITION_LABELS[read.position]}: ${read.grade !== null ? `grade ${read.grade}` : 'playable'}${read.pct !== null ? `, better than ${Math.round(read.pct)}% of those listed there` : ''}`,
     }));
-    const label = `Cover ${positionsWord(need.positions)}`;
+    const label = `Backs up ${positionsWord(need.positions)}`;
     if (strength === 'none') {
       const text = `No bench player has a visible grade that supports playing ${positionsWord(need.positions)}: if a regular there is hurt or rests, the position is covered by somebody out of place.`;
       gaps.push({ key: need.key, label: need.label, positions: [...need.positions], kind: 'none', text });
