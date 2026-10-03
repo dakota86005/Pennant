@@ -2332,8 +2332,9 @@ for later". **Next: N8** (Major League Ops).
 built at N8"; D-065). Left open: the items in that section's "Left for later".
 
 **N10 (2026-10-01)** on `feature/swiftui-n10-farm`, merged with N8 (2026-10-02): Farm & Development, server and Mac (section 3.5, "As built
-at N10"; D-066). Left open: the owner's calls listed in D-066, and the XCUITests `testFarmDeskToDecision` and
-`testFarmViewsDark`, written and built but not run on the owner's Mac (its screen was locked); CI runs them.
+at N10"; D-066), and with the scouted-ratings work (D-067, D-068): Development tracking says a change of rating source and the
+Organization lines say a fit set aside. The farm's XCUITests (`testFarmDeskToDecision`, `testFarmViewsDark`,
+`testFarmNarrowWindow`, five runs in a row) pass on the owner's Mac and on CI. Left open: the owner's calls listed in D-066.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
