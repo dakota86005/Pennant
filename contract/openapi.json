@@ -1076,6 +1076,318 @@
         }
       }
     },
+    "/api/v2/views/{org}/farm/affiliates": {
+      "get": {
+        "operationId": "getFarmAffiliates",
+        "summary": "The organization from the major-league club down, and each affiliate read twice: can it field a team, and are its players developing (D-045).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmAffiliatesView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/farm/assignments": {
+      "get": {
+        "operationId": "getFarmAssignments",
+        "summary": "Every minor leaguer's assignment and what the organization makes of it, in the farm's stated order; the stakes column has no sort key (D-050).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmAssignmentsView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/farm/decision": {
+      "get": {
+        "operationId": "getFarmDecision",
+        "summary": "One player's assignment in the order a GM decides, with what follows if he moves (a cascade that stops); read ahead for the desk's players and every assignment in question, else on the request.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "player",
+            "in": "query",
+            "required": true,
+            "description": "The player's id (a farm decision target's `key`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmDecisionView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/farm/development": {
+      "get": {
+        "operationId": "getFarmDevelopment",
+        "summary": "What our scouts have seen over this save's rating history (D-064), how fast it moves against comparable players, and the biggest changes.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmDevelopmentView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/farm/development/{playerId}": {
+      "get": {
+        "operationId": "getFarmDevelopmentDetail",
+        "summary": "One player's scouting history in this save: each snapshot, the grades that moved, and how he compares with his peers.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmDevelopmentDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/farm/organization": {
+      "get": {
+        "operationId": "getFarmOrganization",
+        "summary": "The farm as one organization: system-wide findings, who it could reach for at each position and level, starters against rotation spots, the players past their level's window, and the lines the reading used.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmOrganizationView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/farm/prospects": {
+      "get": {
+        "operationId": "getFarmProspects",
+        "summary": "Player Development's calls: the development meetings it raises and the board of every minor leaguer, in the roster's order (no score orders it).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmProspectsView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/views/{org}/majorLeague/benchBackups": {
       "get": {
         "operationId": "getMajorLeagueBench",
@@ -3424,6 +3736,547 @@
         ],
         "description": "OOTP has written a fresh export the server has not imported yet."
       },
+      "FarmAffiliateDetail": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Triple-A · Pacific Coast League · 98 games played · 28 on the active list (14 position players, 14 pitchers)\"."
+          },
+          "operational": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "developmental": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "operationalFindings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFindingView"
+            }
+          },
+          "operationalEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "cover": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmCoverRow"
+            }
+          },
+          "coverNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "pitching": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "assessment": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "developmentalFindings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFindingView"
+            }
+          },
+          "developmentalEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "concerns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmConcernRow"
+            }
+          },
+          "rosterContext": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmPlayerLine"
+            },
+            "description": "Players here who are not counted as ordinary members (injured, on rehab, or unclear), each with why."
+          },
+          "rosterContextNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "unknowns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "line",
+          "operational",
+          "developmental",
+          "operationalFindings",
+          "cover",
+          "coverNote",
+          "pitching",
+          "assessment",
+          "developmentalFindings",
+          "concerns",
+          "rosterContext",
+          "unknowns"
+        ],
+        "description": "One affiliate, read twice: can the club do its job, and are its players developing (D-045)."
+      },
+      "FarmAffiliatesView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmClubStep"
+            },
+            "description": "The organization from the major-league club down, in the stated order."
+          },
+          "order": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "affiliates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmAffiliateDetail"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "affiliates",
+          "asOf",
+          "byline",
+          "clubs",
+          "importStamp",
+          "order",
+          "orgId",
+          "preparedBy",
+          "reportStamp"
+        ]
+      },
+      "FarmAlternativeRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "assignment": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "development": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "philosophy": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "play": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "assignment",
+              "development",
+              "philosophy",
+              "play"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "assignment": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "development": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "philosophy": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "play": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "assignment",
+              "development",
+              "philosophy",
+              "play"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Player Development's reasons it is not defensible, and what it could not see."
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "notes",
+          "sort"
+        ]
+      },
+      "FarmAssignmentRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "age": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "club": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "level": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "results": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "work": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "stakes": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "conclusion": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "club",
+              "level",
+              "results",
+              "work",
+              "stakes",
+              "conclusion"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "age": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "club": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "level": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "results": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "work": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "stakes": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "conclusion": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "club",
+              "level",
+              "results",
+              "work",
+              "stakes",
+              "conclusion"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "levelId": {
+            "type": "string",
+            "description": "The level filter's id this row belongs to."
+          },
+          "inQuestion": {
+            "type": "boolean",
+            "description": "Whether his assignment is in question (needs attention or worth a look), as the farm says."
+          },
+          "stakes": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "His developmental stakes with every reason for them in the basis (the stakes cell opens it)."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "inQuestion",
+          "levelId",
+          "open",
+          "playerId",
+          "sort",
+          "stakes",
+          "teamId"
+        ],
+        "description": "Every minor leaguer's assignment and what the organization makes of it. The stakes column has no sort key (D-050)."
+      },
+      "FarmAssignmentsView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "order": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The stated order: whether the GM needs to look, then name."
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmLevelChoice"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmAssignmentRow"
+            }
+          },
+          "shown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmShownCount"
+            },
+            "description": "How many rows show, for each choice of the level filter (null: every level) and of \"in question only\"."
+          },
+          "emptyInQuestion": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "When no assignment is in question (the default filter) and when there are no players at all."
+          },
+          "emptyAll": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "asOf",
+          "byline",
+          "emptyAll",
+          "emptyInQuestion",
+          "importStamp",
+          "levels",
+          "note",
+          "order",
+          "orgId",
+          "preparedBy",
+          "reportStamp",
+          "rows",
+          "shown"
+        ]
+      },
       "FarmBar": {
         "type": "object",
         "properties": {
@@ -3461,6 +4314,1686 @@
           "line"
         ],
         "description": "The farm's next man's readiness against his bar, with the scale they are both on and the line that labels them."
+      },
+      "FarmCascadeStepView": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "judgment": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Player Development on this exact move: \"Defensible\", \"Not defensible\", \"Can't be judged\", \"Not looked at\"."
+          },
+          "vacancy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Amarillo needs SS (1 of 2)\"."
+          },
+          "candidate": {
+            "$ref": "#/components/schemas/FarmPlayerLine"
+          },
+          "noCandidate": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why no one fills it, when no one does."
+          },
+          "preference": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Philosophy's preference, only beside a defensible step."
+          },
+          "alternatives": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The others as defensible, and that choosing among them is the GM's."
+          },
+          "consequences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "index",
+          "judgment",
+          "vacancy",
+          "consequences",
+          "notes"
+        ]
+      },
+      "FarmCascadeView": {
+        "type": "object",
+        "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmCascadeStepView"
+            }
+          },
+          "noSteps": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "When no move follows at all."
+          },
+          "stop": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the chain stops, and why."
+          },
+          "unresolved": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Holes the chain leaves open: information, never a refusal of the move (D-045)."
+          },
+          "unresolvedNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "howSure": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Said when one step can't be judged: the chain is only as sure as that step."
+          }
+        },
+        "required": [
+          "steps",
+          "stop",
+          "unresolved"
+        ]
+      },
+      "FarmClubStep": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "level": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Major leagues\", \"Triple-A\"."
+          },
+          "league": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The league it plays in; null when the export does not name it."
+          },
+          "levelLine": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The level and the league as one line: \"Triple-A · International League\"."
+          },
+          "operational": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Can it field a team: \"Able\", \"Thin\", \"Short\", toned; null for the major-league club (Major League Ops reads it)."
+          },
+          "developmental": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Are its players developing: \"No issue found\", \"Worth a look\", \"Costing development\"; null for the major-league club."
+          },
+          "players": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"28 on the active list\"."
+          },
+          "majorLeague": {
+            "type": "boolean",
+            "description": "Whether this is the major-league club (drawn at the top, opening Major League Ops' report)."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "level",
+          "levelLine",
+          "majorLeague"
+        ],
+        "description": "One club of the organization, top to bottom: the major-league club first, then each affiliate by level."
+      },
+      "FarmConcernRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "age": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "verdict": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "question": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "verdict",
+              "question",
+              "summary"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "age": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "verdict": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "question": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "summary": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "verdict",
+              "question",
+              "summary"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "open",
+          "playerId",
+          "sort"
+        ],
+        "description": "A player whose assignment at this club is worth reviewing."
+      },
+      "FarmConsequenceView": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "impact": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFactRow"
+            }
+          },
+          "playingTime": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "replacements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmReplacementLine"
+            }
+          },
+          "cascade": {
+            "$ref": "#/components/schemas/FarmCascadeView"
+          },
+          "measured": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "summary",
+          "impact",
+          "playingTime",
+          "replacements",
+          "measured"
+        ],
+        "description": "What follows if he moves: Minor League Operations' consequence (the farm side of the MLB contract)."
+      },
+      "FarmCoverRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "position": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "graded": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "listedOnly": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "strong": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "position",
+              "graded",
+              "listedOnly",
+              "strong"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "position": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "graded": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "listedOnly": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "strong": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "position",
+              "graded",
+              "listedOnly",
+              "strong"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ]
+      },
+      "FarmDecisionView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"23, position player · Double-A · Amarillo Sod Poodles · Texas League\"."
+          },
+          "conclusion": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "stakes": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Developmental stakes: how careful the organization is with his development; never a verdict on where he plays."
+          },
+          "stakesReasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "why": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "verdictParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmEvidenceRow"
+            }
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFactRow"
+            }
+          },
+          "alternativesNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmAlternativeRow"
+            }
+          },
+          "alternativesEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "opportunityNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "opportunity": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "work": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmWorkRow"
+            }
+          },
+          "workMissing": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "roleChange": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "ahead": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "aheadPlayers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmPlayerLine"
+            }
+          },
+          "gone": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "consequenceNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "consequence": {
+            "$ref": "#/components/schemas/FarmConsequenceView"
+          },
+          "consequenceProblem": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why the consequence could not be read this time, when it could not."
+          },
+          "retention": {
+            "$ref": "#/components/schemas/FarmRetentionView"
+          },
+          "uncertain": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "uncertainEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "wouldSettle": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "yours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmEvidenceRow"
+            }
+          }
+        },
+        "required": [
+          "aheadPlayers",
+          "alternatives",
+          "alternativesNote",
+          "asOf",
+          "byline",
+          "conclusion",
+          "consequenceNote",
+          "importStamp",
+          "line",
+          "name",
+          "opportunityNote",
+          "orgId",
+          "owners",
+          "playerId",
+          "preparedBy",
+          "reportStamp",
+          "results",
+          "stakes",
+          "stakesReasons",
+          "teamId",
+          "uncertain",
+          "verdict",
+          "verdictParts",
+          "why",
+          "work",
+          "wouldSettle",
+          "yours"
+        ],
+        "description": "One player's assignment, in the order a GM decides; nothing on it is a transaction."
+      },
+      "FarmDepthRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "atLevels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "One cell per level, in the order of `FarmOrganizationView.levels`."
+          },
+          "upperMinors": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/FarmDepthSort",
+            "description": "The sort keys: the position's place in the field, each level's count, the upper minors' count."
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "atLevels",
+          "upperMinors",
+          "sort"
+        ],
+        "description": "One position's depth across the levels: how many can play it at each, and in the upper minors."
+      },
+      "FarmDepthSort": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "atLevels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integer"
+            }
+          },
+          "upperMinors": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "position",
+          "atLevels",
+          "upperMinors"
+        ]
+      },
+      "FarmDevelopmentDetail": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "pace": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "sourceSwitch": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "When his ratings changed source between snapshots (our scouts' full reports and OSA's view, D-067): the served sentence, a switch and never development, with what it leaves out in its basis. Null otherwise."
+          },
+          "first": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "change": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "ceilingChange": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "snapshots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmSnapshotRow"
+            }
+          },
+          "movement": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmMovementRow"
+            }
+          },
+          "movementEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "peers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "fogNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Where his name opens: his Decision."
+          }
+        },
+        "required": [
+          "asOf",
+          "byline",
+          "ceilingChange",
+          "change",
+          "first",
+          "fogNote",
+          "importStamp",
+          "latest",
+          "line",
+          "movement",
+          "name",
+          "open",
+          "orgId",
+          "pace",
+          "peers",
+          "playerId",
+          "preparedBy",
+          "reportStamp",
+          "snapshots",
+          "summary",
+          "teamId"
+        ],
+        "description": "One player's scouting history in this save: what our scouts saw, first to latest."
+      },
+      "FarmDevelopmentRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "age": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "club": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "role": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "current": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "change": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "pace": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "history": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "club",
+              "role",
+              "current",
+              "change",
+              "pace",
+              "history"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "age": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "club": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "role": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "current": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "change": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "pace": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "history": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "club",
+              "role",
+              "current",
+              "change",
+              "pace",
+              "history"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "levelId": {
+            "type": "string"
+          },
+          "listLine": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"22 · Double-A · Amarillo Sod Poodles\", for the list beside the detail."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "levelId",
+          "listLine",
+          "open",
+          "playerId",
+          "sort",
+          "teamId"
+        ]
+      },
+      "FarmDevelopmentTab": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "label": {
+            "type": "string",
+            "description": "The tab as a menu shows it, with its count (\"Ahead · 3\")."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The list's heading for this tab (\"Ahead of his peers\")."
+          },
+          "order": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The rows in this tab, in its stated order (their ids)."
+          },
+          "rule": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How the tab is ordered, said."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "count",
+          "label",
+          "title",
+          "order",
+          "rule"
+        ]
+      },
+      "FarmDevelopmentView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
+          "ready": {
+            "type": "boolean",
+            "description": "Whether there are two snapshots or more to compare."
+          },
+          "building": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "With fewer than two snapshots: what there is, and what would start the comparison."
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "historyNotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "This save's history notes: a fresh start or a carry-over (D-064), a switch in the kind of ratings (D-061), and how many players' ratings changed source between snapshots (D-067)."
+          },
+          "guide": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFactRow"
+            }
+          },
+          "tabs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmDevelopmentTab"
+            }
+          },
+          "initialTab": {
+            "type": "string"
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmLevelChoice"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmDevelopmentRow"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "tableNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "model": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "asOf",
+          "byline",
+          "empty",
+          "figures",
+          "guide",
+          "historyNotes",
+          "importStamp",
+          "initialTab",
+          "levels",
+          "model",
+          "orgId",
+          "preparedBy",
+          "ready",
+          "reportStamp",
+          "rows",
+          "tableNote",
+          "tabs"
+        ]
+      },
+      "FarmEvaluationRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "move": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "judgment": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "philosophy": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "move",
+              "judgment",
+              "philosophy"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "move": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "judgment": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "philosophy": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "move",
+              "judgment",
+              "philosophy"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "notes",
+          "sort"
+        ]
+      },
+      "FarmEvidenceRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "value": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "why": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "label",
+              "value",
+              "why"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "why": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "value",
+              "why"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ],
+        "description": "One line of a finding's evidence, or any label, value and the basis it rests on."
+      },
+      "FarmFactRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "value": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ],
+        "description": "A label and its value."
+      },
+      "FarmFilter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "label": {
+            "type": "string",
+            "description": "The filter as a menu shows it, with its count (\"Meetings · 4\")."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "count",
+          "label"
+        ]
+      },
+      "FarmFindingView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Short\", \"Needs attention\" or \"Noted\", toned."
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The farm's sentence; its evidence, what is missing and what would settle it are its basis."
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Who raised it: \"Minor League Operations\" or \"Player Development\"."
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmEvidenceRow"
+            }
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmPlayerLine"
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "wouldSettle": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "expanded": {
+            "type": "boolean",
+            "description": "Drawn open (a shortage) rather than folded."
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "headline",
+          "owner",
+          "evidence",
+          "players",
+          "missing",
+          "wouldSettle",
+          "expanded"
+        ],
+        "description": "One finding of Minor League Operations or Player Development, with its evidence, never a score."
+      },
+      "FarmLevelChoice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "description": "A level of the organization, for a view's level filter (its id is the level's number as a string)."
+      },
+      "FarmLineRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "value": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "kind": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "why": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "kind",
+              "why"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "kind": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "why": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "value",
+              "kind",
+              "why"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ],
+        "description": "One line the farm's reading used, as Minor League Operations states it."
+      },
+      "FarmMovementRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "from": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "to": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "change": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "tool",
+              "from",
+              "to",
+              "change"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "from": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "to": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "change": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "tool",
+              "from",
+              "to",
+              "change"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ]
+      },
+      "FarmNextAssignment": {
+        "type": "object",
+        "properties": {
+          "move": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Normal promotion to Triple-A\"."
+          },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Each club it could go to, with how the man fits there."
+          }
+        },
+        "required": [
+          "move",
+          "destinations"
+        ]
       },
       "FarmNextMan": {
         "type": "object",
@@ -3503,6 +6036,1063 @@
           "short",
           "state",
           "text"
+        ]
+      },
+      "FarmOrganizationView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"247 players across 7 affiliates. Player Development can read 180 of them; …\"."
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFindingView"
+            }
+          },
+          "findingsEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmLevelChoice"
+            }
+          },
+          "depth": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmDepthRow"
+            }
+          },
+          "depthNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "starters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmStartersRow"
+            }
+          },
+          "startersNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "pastWindow": {
+            "$ref": "#/components/schemas/FarmPastWindow"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmLineRow"
+            }
+          },
+          "unknowns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "asOf",
+          "byline",
+          "depth",
+          "depthNote",
+          "findings",
+          "importStamp",
+          "levels",
+          "lines",
+          "orgId",
+          "preparedBy",
+          "reportStamp",
+          "scope",
+          "starters",
+          "startersNote",
+          "unknowns"
+        ],
+        "description": "The farm as one organization: where it is piled up, where it is thin, and the lines its reading used."
+      },
+      "FarmPastWindow": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmPlayerRow"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "note",
+          "rows"
+        ]
+      },
+      "FarmPlayerLine": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "playerId",
+          "name",
+          "line",
+          "open"
+        ],
+        "description": "A player named in a line, with where his name opens."
+      },
+      "FarmPlayerRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "age": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "level": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "club": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "level",
+              "club"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "age": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "level": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "club": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "level",
+              "club"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "open",
+          "playerId",
+          "sort"
+        ],
+        "description": "A player in a table, with where he opens (his Decision)."
+      },
+      "FarmProspectCard": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"21 · SS · Double-A · Amarillo Sod Poodles\"."
+          },
+          "queueLine": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Double-A → Triple-A\", \"Double-A · stay\" or \"Double-A · not settled\"."
+          },
+          "call": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Player Development's call, with what it means as its help tag and its evidence as its basis."
+          },
+          "means": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the call means, in a sentence."
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFactRow"
+            }
+          },
+          "supporting": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "cautions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "next": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmNextAssignment"
+            }
+          },
+          "nextEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "placeTitle": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "place": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "scoresNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFactRow"
+            }
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmEvaluationRow"
+            }
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "playerId",
+          "name",
+          "line",
+          "queueLine",
+          "call",
+          "means",
+          "facts",
+          "supporting",
+          "cautions",
+          "next",
+          "placeTitle",
+          "place",
+          "scoresNote",
+          "scores",
+          "evaluations",
+          "open"
+        ],
+        "description": "A development meeting: one player Player Development raised, with its call and the evidence behind it."
+      },
+      "FarmProspectRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "age": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "club": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "role": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "ratings": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "pace": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "call": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "club",
+              "role",
+              "ratings",
+              "pace",
+              "call"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "player": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "age": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "club": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "role": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "ratings": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "pace": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "call": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "player",
+              "age",
+              "club",
+              "role",
+              "ratings",
+              "pace",
+              "call"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "levelId": {
+            "type": "string"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The board's filters this row belongs to (`attention`, `eligible`, `watch`, `behind`; every row is in `all`)."
+          },
+          "listLine": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "His age, role and club as one line: \"21 · SS · Double-A · Club\"."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "cells",
+          "filters",
+          "id",
+          "levelId",
+          "listLine",
+          "open",
+          "playerId",
+          "sort",
+          "teamId"
+        ],
+        "description": "One minor leaguer on the development board."
+      },
+      "FarmProspectsView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "guide": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFactRow"
+            }
+          },
+          "meetingsNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "meetings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmProspectCard"
+            }
+          },
+          "meetingsEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "boardNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "order": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmFilter"
+            }
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmLevelChoice"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmProspectRow"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "model": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "unknowns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "asOf",
+          "boardNote",
+          "byline",
+          "empty",
+          "figures",
+          "filters",
+          "guide",
+          "importStamp",
+          "levels",
+          "meetings",
+          "meetingsNote",
+          "model",
+          "order",
+          "orgId",
+          "preparedBy",
+          "reportStamp",
+          "rows",
+          "summary",
+          "unknowns"
+        ]
+      },
+      "FarmReplacementLine": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "judgment": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "preference": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "playerId",
+          "name",
+          "judgment",
+          "from",
+          "open"
+        ]
+      },
+      "FarmRetentionView": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmEvidenceRow"
+            }
+          },
+          "guardrails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "note",
+          "rows",
+          "guardrails"
+        ]
+      },
+      "FarmShownCount": {
+        "type": "object",
+        "properties": {
+          "levelId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inQuestionOnly": {
+            "type": "boolean"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "levelId",
+          "inQuestionOnly",
+          "label"
+        ],
+        "description": "\"12 of 40 players\": how many rows a choice of the view's filters shows, said."
+      },
+      "FarmSnapshotRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "level": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "current": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "ceiling": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "date",
+              "level",
+              "current",
+              "ceiling"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "level": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "current": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "ceiling": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "date",
+              "level",
+              "current",
+              "ceiling"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ]
+      },
+      "FarmStartersRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "starters": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "spots": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "state": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "level",
+              "starters",
+              "spots",
+              "state"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "starters": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "spots": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "state": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "level",
+              "starters",
+              "spots",
+              "state"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ],
+        "description": "Starters each level is using against its rotation spots."
+      },
+      "FarmViewHead": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Through May 5, 2040\"."
+          },
+          "preparedBy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by the minor league staff\"."
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The two as one line, for a pane with no masthead: \"Prepared by the minor league staff · Through May 5, 2040\"."
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "asOf",
+          "preparedBy",
+          "byline"
+        ],
+        "description": "What every farm view carries: the club, the import and build it was read from, and its date."
+      },
+      "FarmWorkRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "read": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "level": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "why": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "read",
+              "level",
+              "why"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "read": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "level": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "why": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "read",
+              "level",
+              "why"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
         ]
       },
       "FoItem": {
@@ -8773,7 +12363,7 @@
           },
           "key": {
             "type": "string",
-            "description": "A decision's key inside its department."
+            "description": "A decision's key inside its department (Farm & Development's: the player's id), or, on a view, the subject it opens on (an affiliate's team id on Farm & Development's Affiliates; N10)."
           }
         },
         "required": [

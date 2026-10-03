@@ -1,0 +1,241 @@
+{
+  "orgId": 1,
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
+  "asOf": {
+    "display": "Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "playerId": 9203,
+  "teamId": 103,
+  "name": "Player 9203",
+  "line": {
+    "display": "21 · SS · Level 3 · Club 3"
+  },
+  "pace": {
+    "display": "Typical · 50th",
+    "tone": "neutral"
+  },
+  "sourceSwitch": {
+    "text": "His ratings changed source, from OSA's view to our scouts' full reports: the change is a switch, not development.",
+    "tone": "unknown",
+    "basis": {
+      "because": [
+        {
+          "label": "Source",
+          "value": "His ratings changed source, from OSA's view to our scouts' full reports: the change is a switch, not development."
+        },
+        {
+          "label": "Left out",
+          "value": "His snapshots from the other source are left out of his trend and of the snapshots listed here, so a change of source is never read as development."
+        },
+        {
+          "label": "Snapshots in today's source",
+          "value": "2"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "first": {
+    "display": "46"
+  },
+  "latest": {
+    "display": "48"
+  },
+  "change": {
+    "text": "Change in our scouts' read",
+    "tone": "good",
+    "basis": {
+      "because": [
+        {
+          "label": "First snapshot",
+          "value": "May 15, 2040: 46"
+        },
+        {
+          "label": "Latest snapshot",
+          "value": "July 1, 2040: 48"
+        },
+        {
+          "label": "Snapshots in this save",
+          "value": "2"
+        },
+        {
+          "label": "Source",
+          "value": "His ratings changed source, from OSA's view to our scouts' full reports: the change is a switch, not development."
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "value": {
+      "n": 1,
+      "unit": "count",
+      "display": "+1"
+    }
+  },
+  "ceilingChange": {
+    "display": "Not enough history yet",
+    "tone": "unknown"
+  },
+  "summary": {
+    "text": "Our scouts' read of his current skills has changed +1 over the history there is, near what is typical for comparable players.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Read from",
+          "value": "The imported export"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "snapshots": [
+    {
+      "id": "snap:9203:0",
+      "cells": {
+        "date": {
+          "display": "May 15, 2040"
+        },
+        "level": {
+          "display": "Level 3"
+        },
+        "current": {
+          "display": "46"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 0,
+        "level": 3,
+        "current": 46,
+        "ceiling": 60
+      }
+    },
+    {
+      "id": "snap:9203:1",
+      "cells": {
+        "date": {
+          "display": "July 1, 2040"
+        },
+        "level": {
+          "display": "Level 3"
+        },
+        "current": {
+          "display": "48"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 1,
+        "level": 3,
+        "current": 48,
+        "ceiling": 60
+      }
+    }
+  ],
+  "movement": [
+    {
+      "id": "move:9203:con",
+      "cells": {
+        "tool": {
+          "display": "Contact"
+        },
+        "from": {
+          "display": "41"
+        },
+        "to": {
+          "display": "42"
+        },
+        "change": {
+          "display": "+1",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "tool": "Contact",
+        "from": 41,
+        "to": 42,
+        "change": 1
+      }
+    },
+    {
+      "id": "move:9203:pow",
+      "cells": {
+        "tool": {
+          "display": "Power"
+        },
+        "from": {
+          "display": "43"
+        },
+        "to": {
+          "display": "44"
+        },
+        "change": {
+          "display": "+1",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "tool": "Power",
+        "from": 43,
+        "to": 44,
+        "change": 1
+      }
+    }
+  ],
+  "movementEmpty": null,
+  "peers": [],
+  "open": {
+    "kind": "decision",
+    "department": "farm",
+    "key": "9203"
+  },
+  "fogNote": {
+    "display": "These snapshots keep what the organization could see at the time. A change can be real development, a revised scouting read, or both; Pennant never puts OOTP's hidden ratings in their place."
+  }
+}

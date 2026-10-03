@@ -101,13 +101,13 @@
     },
     "links": []
   },
-  "needId": "mlb:what_if:1018",
+  "needId": "mlb:what_if:1002",
   "scenario": true,
   "kicker": {
-    "display": "Open spot · relief pitcher"
+    "display": "Open spot · center fielder"
   },
   "headline": {
-    "text": "If P 1018 is out: an open relief pitcher spot",
+    "text": "If P 1002 is out: an open center fielder spot",
     "tone": "neutral",
     "basis": {
       "because": [
@@ -121,11 +121,11 @@
         },
         {
           "label": "The situation",
-          "value": "Without P 1018 the active roster would be 25 of 26. The remaining relief pitcher depth stays at or above the minimum, so this is a spot to fill, not a role shortfall."
+          "value": "Without P 1002 the active roster would be 25 of 26. The remaining center fielder depth stays at or above the minimum, so this is a spot to fill, not a role shortfall."
         },
         {
           "label": "The situation",
-          "value": "P 1018: assumed unavailable (your scenario)."
+          "value": "P 1002: assumed unavailable (your scenario)."
         },
         {
           "label": "The situation",
@@ -173,7 +173,7 @@
         },
         "selected": true,
         "query": {
-          "need": "mlb:what_if:1018"
+          "need": "mlb:what_if:1002"
         }
       },
       {
@@ -182,7 +182,7 @@
         },
         "selected": false,
         "query": {
-          "need": "mlb:what_if:1018",
+          "need": "mlb:what_if:1002",
           "days": 6
         }
       },
@@ -192,7 +192,7 @@
         },
         "selected": false,
         "query": {
-          "need": "mlb:what_if:1018",
+          "need": "mlb:what_if:1002",
           "days": 14
         }
       },
@@ -202,7 +202,7 @@
         },
         "selected": false,
         "query": {
-          "need": "mlb:what_if:1018",
+          "need": "mlb:what_if:1002",
           "days": 40
         }
       },
@@ -212,7 +212,7 @@
         },
         "selected": false,
         "query": {
-          "need": "mlb:what_if:1018",
+          "need": "mlb:what_if:1002",
           "days": 120
         }
       }
@@ -228,7 +228,7 @@
     "lines": [
       {
         "text": {
-          "display": "Without P 1018 the active roster would be 25 of 26. The remaining relief pitcher depth stays at or above the minimum, so this is a spot to fill, not a role shortfall."
+          "display": "Without P 1002 the active roster would be 25 of 26. The remaining center fielder depth stays at or above the minimum, so this is a spot to fill, not a role shortfall."
         },
         "quiet": false,
         "chips": [],
@@ -236,17 +236,17 @@
       },
       {
         "text": {
-          "display": "P 1018: assumed unavailable (your scenario)"
+          "display": "P 1002: assumed unavailable (your scenario)"
         },
         "quiet": false,
         "chips": [],
         "players": [
           {
-            "playerId": 1018,
-            "name": "P 1018",
+            "playerId": 1002,
+            "name": "P 1002",
             "open": {
               "kind": "player",
-              "playerId": 1018,
+              "playerId": 1002,
               "teamId": 1
             }
           }
@@ -282,279 +282,17 @@
   "why": null,
   "picture": {
     "title": {
-      "display": "The evidence: the relief pitcher picture"
+      "display": "The evidence: the center fielder picture"
     },
-    "note": {
-      "display": "7 healthy on the active roster against a minimum of 7."
-    },
+    "note": null,
     "people": [
       {
         "player": {
-          "playerId": 1019,
-          "name": "P 1019",
+          "playerId": 1005,
+          "name": "P 1005",
           "open": {
             "kind": "player",
-            "playerId": 1019,
-            "teamId": 1
-          }
-        },
-        "status": {
-          "display": "30 · Current"
-        },
-        "subject": false,
-        "lenses": [
-          {
-            "label": {
-              "display": "Estimate"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Tools"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Results"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          }
-        ],
-        "lines": [
-          {
-            "text": {
-              "display": "This season: ERA 5.11 · K not known · BB not known · G/GS 12/0 (12.3 IP)"
-            },
-            "quiet": false,
-            "chips": [],
-            "players": []
-          },
-          {
-            "text": {
-              "display": "The export carries no leverage for him."
-            },
-            "quiet": true,
-            "chips": [],
-            "players": []
-          }
-        ]
-      },
-      {
-        "player": {
-          "playerId": 1020,
-          "name": "P 1020",
-          "open": {
-            "kind": "player",
-            "playerId": 1020,
-            "teamId": 1
-          }
-        },
-        "status": {
-          "display": "24 · Current"
-        },
-        "subject": false,
-        "lenses": [
-          {
-            "label": {
-              "display": "Estimate"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Tools"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Results"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          }
-        ],
-        "lines": [
-          {
-            "text": {
-              "display": "This season: ERA 4.22 · K not known · BB not known · G/GS 12/0 (10.7 IP)"
-            },
-            "quiet": false,
-            "chips": [],
-            "players": []
-          },
-          {
-            "text": {
-              "display": "The export carries no leverage for him."
-            },
-            "quiet": true,
-            "chips": [],
-            "players": []
-          }
-        ]
-      },
-      {
-        "player": {
-          "playerId": 1021,
-          "name": "P 1021",
-          "open": {
-            "kind": "player",
-            "playerId": 1021,
-            "teamId": 1
-          }
-        },
-        "status": {
-          "display": "33 · Current"
-        },
-        "subject": false,
-        "lenses": [
-          {
-            "label": {
-              "display": "Estimate"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Tools"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Results"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          }
-        ],
-        "lines": [
-          {
-            "text": {
-              "display": "This season: ERA 4.91 · K not known · BB not known · G/GS 12/0 (11 IP)"
-            },
-            "quiet": false,
-            "chips": [],
-            "players": []
-          },
-          {
-            "text": {
-              "display": "The export carries no leverage for him."
-            },
-            "quiet": true,
-            "chips": [],
-            "players": []
-          }
-        ]
-      },
-      {
-        "player": {
-          "playerId": 1022,
-          "name": "P 1022",
-          "open": {
-            "kind": "player",
-            "playerId": 1022,
-            "teamId": 1
-          }
-        },
-        "status": {
-          "display": "31 · Current"
-        },
-        "subject": false,
-        "lenses": [
-          {
-            "label": {
-              "display": "Estimate"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Tools"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Results"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          }
-        ],
-        "lines": [
-          {
-            "text": {
-              "display": "This season: ERA 3.27 · K not known · BB not known · G/GS 12/0 (11 IP)"
-            },
-            "quiet": false,
-            "chips": [],
-            "players": []
-          },
-          {
-            "text": {
-              "display": "The export carries no leverage for him."
-            },
-            "quiet": true,
-            "chips": [],
-            "players": []
-          }
-        ]
-      },
-      {
-        "player": {
-          "playerId": 1023,
-          "name": "P 1023",
-          "open": {
-            "kind": "player",
-            "playerId": 1023,
+            "playerId": 1005,
             "teamId": 1
           }
         },
@@ -567,20 +305,20 @@
             "label": {
               "display": "Estimate"
             },
-            "value": null,
+            "value": 76.75842396777443,
             "display": {
-              "display": "No evidence",
-              "tone": "unknown"
+              "display": "77",
+              "hint": "On a 0–100 scale against major league peers; 50 is typical"
             }
           },
           {
             "label": {
               "display": "Tools"
             },
-            "value": null,
+            "value": 99,
             "display": {
-              "display": "No evidence",
-              "tone": "unknown"
+              "display": "99",
+              "hint": "On a 0–100 scale against major league peers; 50 is typical"
             }
           },
           {
@@ -597,7 +335,7 @@
         "lines": [
           {
             "text": {
-              "display": "This season: ERA 6.39 · K not known · BB not known · G/GS 12/0 (12.7 IP)"
+              "display": "This season: AVG not known · OBP not known · SLG not known · HR not known (110 PA)"
             },
             "quiet": false,
             "chips": [],
@@ -605,137 +343,15 @@
           },
           {
             "text": {
-              "display": "The export carries no leverage for him."
+              "display": "Started 28 games at center fielder this season (248 innings, 0 errors)."
             },
             "quiet": true,
             "chips": [],
             "players": []
-          }
-        ]
-      },
-      {
-        "player": {
-          "playerId": 1024,
-          "name": "P 1024",
-          "open": {
-            "kind": "player",
-            "playerId": 1024,
-            "teamId": 1
-          }
-        },
-        "status": {
-          "display": "24 · Current"
-        },
-        "subject": false,
-        "lenses": [
-          {
-            "label": {
-              "display": "Estimate"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Tools"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Results"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          }
-        ],
-        "lines": [
-          {
-            "text": {
-              "display": "This season: ERA 2.53 · K not known · BB not known · G/GS 12/0 (10.7 IP)"
-            },
-            "quiet": false,
-            "chips": [],
-            "players": []
           },
           {
             "text": {
-              "display": "The export carries no leverage for him."
-            },
-            "quiet": true,
-            "chips": [],
-            "players": []
-          }
-        ]
-      },
-      {
-        "player": {
-          "playerId": 1025,
-          "name": "P 1025",
-          "open": {
-            "kind": "player",
-            "playerId": 1025,
-            "teamId": 1
-          }
-        },
-        "status": {
-          "display": "25 · Current"
-        },
-        "subject": false,
-        "lenses": [
-          {
-            "label": {
-              "display": "Estimate"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Tools"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          },
-          {
-            "label": {
-              "display": "Results"
-            },
-            "value": null,
-            "display": {
-              "display": "No evidence",
-              "tone": "unknown"
-            }
-          }
-        ],
-        "lines": [
-          {
-            "text": {
-              "display": "This season: ERA 3.38 · K not known · BB not known · G/GS 12/0 (13.3 IP)"
-            },
-            "quiet": false,
-            "chips": [],
-            "players": []
-          },
-          {
-            "text": {
-              "display": "The export carries no leverage for him."
+              "display": "His visible tools imply +97 points of wOBA against the league average."
             },
             "quiet": true,
             "chips": [],
@@ -758,7 +374,7 @@
     "lines": [
       {
         "text": {
-          "display": "No internal player clears Player Development and Player Rights for this relief pitcher spot yet; the candidates who do not are listed below with why."
+          "display": "No internal player clears Player Development and Player Rights for this center fielder spot yet; the candidates who do not are listed below with why."
         },
         "quiet": false,
         "chips": [],
@@ -782,17 +398,17 @@
         },
         "selected": true,
         "query": {
-          "need": "mlb:what_if:1018"
+          "need": "mlb:what_if:1002"
         }
       },
       {
         "text": {
-          "display": "Short bullpen assignment"
+          "display": "Bench role"
         },
         "selected": false,
         "query": {
-          "need": "mlb:what_if:1018",
-          "context": "short_bullpen"
+          "need": "mlb:what_if:1002",
+          "context": "bench_role"
         }
       },
       {
@@ -801,7 +417,7 @@
         },
         "selected": false,
         "query": {
-          "need": "mlb:what_if:1018",
+          "need": "mlb:what_if:1002",
           "context": "temporary_depth"
         }
       },
@@ -811,7 +427,7 @@
         },
         "selected": false,
         "query": {
-          "need": "mlb:what_if:1018",
+          "need": "mlb:what_if:1002",
           "context": "durable_role"
         }
       }
@@ -823,11 +439,11 @@
     "title": {
       "display": "Every candidate, with the evidence behind each verdict"
     },
-    "count": 5,
+    "count": 1,
     "groups": [
       {
         "title": {
-          "display": "Open, but it only moves the hole: his own role falls below the standard"
+          "display": "Evaluation incomplete: Player Development cannot establish defensibility"
         },
         "collapsed": false,
         "table": {
@@ -884,25 +500,24 @@
           ],
           "rows": [
             {
-              "id": "candidate-role_change-1013",
+              "id": "candidate-recall-1108",
               "cells": {
                 "player": {
-                  "display": "P 1013"
+                  "display": "P 1108"
                 },
                 "age": {
-                  "display": "28"
+                  "display": "22"
                 },
                 "response": {
-                  "display": "Change role"
+                  "display": "Recall (40-man)"
                 },
                 "development": {
-                  "display": "Not applicable",
-                  "tone": "neutral",
-                  "hint": "An active MLB player changing role; no assignment changes hands."
+                  "display": "Incomplete",
+                  "tone": "unknown"
                 },
                 "transaction": {
-                  "display": "Open",
-                  "tone": "good"
+                  "display": "Not established",
+                  "tone": "unknown"
                 },
                 "fit": {
                   "display": "Not established",
@@ -913,20 +528,20 @@
                 }
               },
               "sort": {
-                "player": "P 1013",
-                "age": 28,
-                "response": 0,
-                "development": 3,
-                "transaction": 0,
+                "player": "P 1108",
+                "age": 22,
+                "response": 1,
+                "development": null,
+                "transaction": null,
                 "fit": null,
                 "organization": 2
               },
               "player": {
-                "playerId": 1013,
-                "name": "P 1013",
+                "playerId": 1108,
+                "name": "P 1108",
                 "open": {
                   "kind": "player",
-                  "playerId": 1013,
+                  "playerId": 1108,
                   "teamId": 1
                 }
               },
@@ -941,7 +556,7 @@
                   "lines": [
                     {
                       "text": {
-                        "display": "Active starting pitcher used as relief pitcher."
+                        "display": "40-man center fielder, level 2."
                       },
                       "quiet": false,
                       "chips": [],
@@ -949,7 +564,31 @@
                     },
                     {
                       "text": {
-                        "display": "Any pitcher can be used in relief; Player Development does not assess it."
+                        "display": "Player Development cannot establish temporary depth or a durable MLB assignment. This is missing evidence, not a question of duration."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Player Development has not assessed him as durable major-league role."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Not an actionable solution until the evaluation can be completed; he stays visible for review."
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Listed center fielder."
                       },
                       "quiet": true,
                       "chips": [],
@@ -960,7 +599,7 @@
                 },
                 {
                   "title": {
-                    "display": "Development"
+                    "display": "Development: judged for each duration"
                   },
                   "player": null,
                   "chips": [],
@@ -968,9 +607,86 @@
                   "lines": [
                     {
                       "text": {
-                        "display": "An active MLB player changing role; no assignment changes hands."
+                        "display": "Player Development cannot establish temporary depth or a durable MLB assignment. This is missing evidence, not a question of duration."
                       },
                       "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Temporary major-league depth: Incomplete"
+                      },
+                      "quiet": true,
+                      "chips": [
+                        {
+                          "display": "Incomplete",
+                          "tone": "unknown"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Durable major-league role: not assessed"
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Player Development has not assessed him as durable major-league role."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Developmental stakes: protected prospect · Triple-A and major league career 44 PA, 0 IP"
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Visible ceiling of a major-league regular: a potential of 54 is at the median of major-league hitters (50, Pennant's starting line) or above it."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "At 22 most of his development is still ahead of him."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Developmental stakes: protected prospect, which is what that ceiling sets with most of his development still ahead of him."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Missing: Player Development has not assessed him as durable major-league role."
+                      },
+                      "quiet": true,
                       "chips": [],
                       "players": []
                     }
@@ -995,7 +711,7 @@
                     },
                     {
                       "text": {
-                        "display": "Visible tool ratings: complete; not assessed: Stuff, Movement, Control, Stamina"
+                        "display": "Visible tool ratings: complete; not assessed: Contact, Gap Power, Power, Eye, Avoid K"
                       },
                       "quiet": true,
                       "chips": [],
@@ -1006,7 +722,7 @@
                 },
                 {
                   "title": {
-                    "display": "Season line (33.7 IP, level 1)"
+                    "display": "Season line (44 PA, level 2)"
                   },
                   "player": null,
                   "chips": [],
@@ -1014,7 +730,7 @@
                   "lines": [
                     {
                       "text": {
-                        "display": "ERA 4.81 · K not known · BB not known · G/GS 6/6"
+                        "display": "AVG not known · OBP not known · SLG not known · HR not known"
                       },
                       "quiet": false,
                       "chips": [],
@@ -1033,9 +749,30 @@
                   "lines": [
                     {
                       "text": {
-                        "display": "1. Use P 1013 as relief pitcher; no roster transaction"
+                        "display": "1. Recall status unknown — assignment cause not established"
                       },
                       "quiet": false,
+                      "chips": [
+                        {
+                          "display": "Not established",
+                          "tone": "unknown"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Missing: The transaction log is unavailable, so an option cannot be told apart from a rehab assignment."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Missing: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment."
+                      },
+                      "quiet": true,
                       "chips": [],
                       "players": []
                     }
@@ -1052,7 +789,7 @@
                   "lines": [
                     {
                       "text": {
-                        "display": "Active roster: 26 of 26 (no change)"
+                        "display": "Active roster: 26 of 26 (+1) (The assumed absence opens a spot.)"
                       },
                       "quiet": false,
                       "chips": [],
@@ -1060,7 +797,39 @@
                     },
                     {
                       "text": {
-                        "display": "40-man: 26 of 40 (no change)"
+                        "display": "40-man: 32 of 40 (no change)"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    }
+                  ],
+                  "collapsed": false
+                },
+                {
+                  "title": {
+                    "display": "Minor-league consequence"
+                  },
+                  "player": null,
+                  "chips": [],
+                  "claims": [],
+                  "lines": [
+                    {
+                      "text": {
+                        "display": "Farm 1 F (AAA) stays as it is, by Minor League Operations' own reading."
+                      },
+                      "quiet": false,
+                      "chips": [
+                        {
+                          "display": "short",
+                          "tone": "bad"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "No defensible move follows, and Farm 1 F is left short at CF."
                       },
                       "quiet": false,
                       "chips": [],
@@ -1068,11 +837,148 @@
                     },
                     {
                       "text": {
-                        "display": "Leaves starting pitcher with 4 available against a minimum of 5, below it.",
-                        "tone": "bad"
+                        "display": "CF cover: 1 graded → 0 graded"
                       },
                       "quiet": false,
                       "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Active roster: 6 players (3 P) → 5 players (3 P)"
+                      },
+                      "quiet": false,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Left open: Farm 1 F is left short at CF: 0 remain at CF, 2 short of the 2 it needs."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers C."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers 1B."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers 3B."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only one man covers SS; a day off or an injury leaves the club without it."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers LF."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers CF."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nobody on the roster covers RF."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "The club can fill only two of the eight fielding positions at once."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only two position players: short of what the club needs to rest a lineup."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only three pitchers: short of what the club needs to cover a schedule."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "No pitcher is taking this club's starts; the rotation needs five."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Only three relief arms: short of the seven a schedule takes."
+                      },
+                      "quiet": true,
+                      "chips": [],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "Nothing establishes whether he is on a rehab assignment or was optioned. He is counted here; if he is on rehab this overstates what his leaving costs."
+                      },
+                      "quiet": true,
+                      "chips": [
+                        {
+                          "display": "Roster note",
+                          "tone": "caution"
+                        }
+                      ],
+                      "players": []
+                    },
+                    {
+                      "text": {
+                        "display": "5 other player(s) on this club (P 1104, P 1105, P 1106, …) may be on rehab; they are counted, so its depth may be overstated."
+                      },
+                      "quiet": true,
+                      "chips": [
+                        {
+                          "display": "Roster note",
+                          "tone": "caution"
+                        }
+                      ],
                       "players": []
                     }
                   ],
@@ -1088,7 +994,7 @@
                   "lines": [
                     {
                       "text": {
-                        "display": "MLB service: 0 yr 104 d"
+                        "display": "MLB service: 0 yr 0 d"
                       },
                       "quiet": false,
                       "chips": [],
@@ -1096,96 +1002,7 @@
                     },
                     {
                       "text": {
-                        "display": "Contract: Major-league contract"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Organizational preference"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Philosophy expresses preference only among alternatives that are valid on every stage above; it cannot authorize, block, or resolve an unknown."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                }
-              ],
-              "actions": []
-            },
-            {
-              "id": "candidate-role_change-1014",
-              "cells": {
-                "player": {
-                  "display": "P 1014"
-                },
-                "age": {
-                  "display": "30"
-                },
-                "response": {
-                  "display": "Change role"
-                },
-                "development": {
-                  "display": "Not applicable",
-                  "tone": "neutral",
-                  "hint": "An active MLB player changing role; no assignment changes hands."
-                },
-                "transaction": {
-                  "display": "Open",
-                  "tone": "good"
-                },
-                "fit": {
-                  "display": "Not established",
-                  "tone": "unknown"
-                },
-                "organization": {
-                  "display": "No preference"
-                }
-              },
-              "sort": {
-                "player": "P 1014",
-                "age": 30,
-                "response": 0,
-                "development": 3,
-                "transaction": 0,
-                "fit": null,
-                "organization": 2
-              },
-              "player": {
-                "playerId": 1014,
-                "name": "P 1014",
-                "open": {
-                  "kind": "player",
-                  "playerId": 1014,
-                  "teamId": 1
-                }
-              },
-              "detail": [
-                {
-                  "title": {
-                    "display": "Why he is here"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active starting pitcher used as relief pitcher."
+                        "display": "Contract: Minor-league contract"
                       },
                       "quiet": false,
                       "chips": [],
@@ -1193,886 +1010,7 @@
                     },
                     {
                       "text": {
-                        "display": "Any pitcher can be used in relief; Player Development does not assess it."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Development"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "An active MLB player changing role; no assignment changes hands."
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Fit at the major league level"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Not established"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Visible tool ratings: complete; not assessed: Stuff, Movement, Control, Stamina"
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Season line (31.3 IP, level 1)"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "ERA 4.60 · K not known · BB not known · G/GS 6/6"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Transaction path"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "1. Use P 1014 as relief pitcher; no roster transaction"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Roster effect"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active roster: 26 of 26 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "40-man: 26 of 40 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Leaves starting pitcher with 4 available against a minimum of 5, below it.",
-                        "tone": "bad"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Contract and control"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "MLB service: 0 yr 104 d"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Contract: Major-league contract"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Organizational preference"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Philosophy expresses preference only among alternatives that are valid on every stage above; it cannot authorize, block, or resolve an unknown."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                }
-              ],
-              "actions": []
-            },
-            {
-              "id": "candidate-role_change-1015",
-              "cells": {
-                "player": {
-                  "display": "P 1015"
-                },
-                "age": {
-                  "display": "23"
-                },
-                "response": {
-                  "display": "Change role"
-                },
-                "development": {
-                  "display": "Not applicable",
-                  "tone": "neutral",
-                  "hint": "An active MLB player changing role; no assignment changes hands."
-                },
-                "transaction": {
-                  "display": "Open",
-                  "tone": "good"
-                },
-                "fit": {
-                  "display": "Not established",
-                  "tone": "unknown"
-                },
-                "organization": {
-                  "display": "No preference"
-                }
-              },
-              "sort": {
-                "player": "P 1015",
-                "age": 23,
-                "response": 0,
-                "development": 3,
-                "transaction": 0,
-                "fit": null,
-                "organization": 2
-              },
-              "player": {
-                "playerId": 1015,
-                "name": "P 1015",
-                "open": {
-                  "kind": "player",
-                  "playerId": 1015,
-                  "teamId": 1
-                }
-              },
-              "detail": [
-                {
-                  "title": {
-                    "display": "Why he is here"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active starting pitcher used as relief pitcher."
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Any pitcher can be used in relief; Player Development does not assess it."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Development"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "An active MLB player changing role; no assignment changes hands."
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Fit at the major league level"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Not established"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Visible tool ratings: complete; not assessed: Stuff, Movement, Control, Stamina"
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Season line (32 IP, level 1)"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "ERA 4.78 · K not known · BB not known · G/GS 6/6"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Transaction path"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "1. Use P 1015 as relief pitcher; no roster transaction"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Roster effect"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active roster: 26 of 26 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "40-man: 26 of 40 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Leaves starting pitcher with 4 available against a minimum of 5, below it.",
-                        "tone": "bad"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Contract and control"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "MLB service: 0 yr 35 d"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Contract: Major-league contract"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Organizational preference"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Philosophy expresses preference only among alternatives that are valid on every stage above; it cannot authorize, block, or resolve an unknown."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                }
-              ],
-              "actions": []
-            },
-            {
-              "id": "candidate-role_change-1016",
-              "cells": {
-                "player": {
-                  "display": "P 1016"
-                },
-                "age": {
-                  "display": "25"
-                },
-                "response": {
-                  "display": "Change role"
-                },
-                "development": {
-                  "display": "Not applicable",
-                  "tone": "neutral",
-                  "hint": "An active MLB player changing role; no assignment changes hands."
-                },
-                "transaction": {
-                  "display": "Open",
-                  "tone": "good"
-                },
-                "fit": {
-                  "display": "Not established",
-                  "tone": "unknown"
-                },
-                "organization": {
-                  "display": "No preference"
-                }
-              },
-              "sort": {
-                "player": "P 1016",
-                "age": 25,
-                "response": 0,
-                "development": 3,
-                "transaction": 0,
-                "fit": null,
-                "organization": 2
-              },
-              "player": {
-                "playerId": 1016,
-                "name": "P 1016",
-                "open": {
-                  "kind": "player",
-                  "playerId": 1016,
-                  "teamId": 1
-                }
-              },
-              "detail": [
-                {
-                  "title": {
-                    "display": "Why he is here"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active starting pitcher used as relief pitcher."
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Any pitcher can be used in relief; Player Development does not assess it."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Development"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "An active MLB player changing role; no assignment changes hands."
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Fit at the major league level"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Not established"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Visible tool ratings: complete; not assessed: Stuff, Movement, Control, Stamina"
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Season line (32 IP, level 1)"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "ERA 4.78 · K not known · BB not known · G/GS 6/6"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Transaction path"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "1. Use P 1016 as relief pitcher; no roster transaction"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Roster effect"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active roster: 26 of 26 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "40-man: 26 of 40 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Leaves starting pitcher with 4 available against a minimum of 5, below it.",
-                        "tone": "bad"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Contract and control"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "MLB service: 0 yr 104 d"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Contract: Major-league contract"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Organizational preference"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Philosophy expresses preference only among alternatives that are valid on every stage above; it cannot authorize, block, or resolve an unknown."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                }
-              ],
-              "actions": []
-            },
-            {
-              "id": "candidate-role_change-1017",
-              "cells": {
-                "player": {
-                  "display": "P 1017"
-                },
-                "age": {
-                  "display": "29"
-                },
-                "response": {
-                  "display": "Change role"
-                },
-                "development": {
-                  "display": "Not applicable",
-                  "tone": "neutral",
-                  "hint": "An active MLB player changing role; no assignment changes hands."
-                },
-                "transaction": {
-                  "display": "Open",
-                  "tone": "good"
-                },
-                "fit": {
-                  "display": "Not established",
-                  "tone": "unknown"
-                },
-                "organization": {
-                  "display": "No preference"
-                }
-              },
-              "sort": {
-                "player": "P 1017",
-                "age": 29,
-                "response": 0,
-                "development": 3,
-                "transaction": 0,
-                "fit": null,
-                "organization": 2
-              },
-              "player": {
-                "playerId": 1017,
-                "name": "P 1017",
-                "open": {
-                  "kind": "player",
-                  "playerId": 1017,
-                  "teamId": 1
-                }
-              },
-              "detail": [
-                {
-                  "title": {
-                    "display": "Why he is here"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active starting pitcher used as relief pitcher."
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Any pitcher can be used in relief; Player Development does not assess it."
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Development"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "An active MLB player changing role; no assignment changes hands."
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Fit at the major league level"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Not established"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Visible tool ratings: complete; not assessed: Stuff, Movement, Control, Stamina"
-                      },
-                      "quiet": true,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Season line (38.3 IP, level 1)"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "ERA 3.29 · K not known · BB not known · G/GS 6/6"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Transaction path"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "1. Use P 1017 as relief pitcher; no roster transaction"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Roster effect"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "Active roster: 26 of 26 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "40-man: 26 of 40 (no change)"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Leaves starting pitcher with 4 available against a minimum of 5, below it.",
-                        "tone": "bad"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    }
-                  ],
-                  "collapsed": false
-                },
-                {
-                  "title": {
-                    "display": "Contract and control"
-                  },
-                  "player": null,
-                  "chips": [],
-                  "claims": [],
-                  "lines": [
-                    {
-                      "text": {
-                        "display": "MLB service: 0 yr 104 d"
-                      },
-                      "quiet": false,
-                      "chips": [],
-                      "players": []
-                    },
-                    {
-                      "text": {
-                        "display": "Contract: Major-league contract"
+                        "display": "Options: 0 of 3 used, 3 left"
                       },
                       "quiet": false,
                       "chips": [],
@@ -2108,7 +1046,14 @@
         }
       }
     ],
-    "notConsidered": [],
+    "notConsidered": [
+      {
+        "display": "Not considered (6): Regulars at other positions (moving one opens a new hole)"
+      },
+      {
+        "display": "Not considered (5): Active players whose visible evidence does not support the role"
+      }
+    ],
     "empty": null
   },
   "mechanics": null,

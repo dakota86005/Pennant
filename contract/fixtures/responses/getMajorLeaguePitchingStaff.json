@@ -164,7 +164,7 @@
                 "display": "29"
               },
               "estimate": {
-                "display": "50",
+                "display": "47",
                 "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "tools": {
@@ -173,7 +173,7 @@
                 "hint": "On a 0–100 scale against major league peers; 50 is typical"
               },
               "results": {
-                "display": "50",
+                "display": "47",
                 "hint": "On the 0–100 scale; his results carry 19% of the trust in his estimate"
               },
               "read": {
@@ -184,9 +184,9 @@
             "sort": {
               "pitcher": "P 1017",
               "age": 29,
-              "estimate": 50,
+              "estimate": 47,
               "tools": null,
-              "results": 50,
+              "results": 47,
               "read": 0
             },
             "claim": {
@@ -196,15 +196,19 @@
                 "because": [
                   {
                     "label": "Why",
-                    "value": "no visible tool rating; results 50 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
+                    "value": "no visible tool rating; results 47 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
                   },
                   {
                     "label": "Why",
-                    "value": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50 on the 0–100 scale, 19 above it."
+                    "value": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 47 on the 0–100 scale, 16 above it."
                   },
                   {
                     "label": "Why",
-                    "value": "Working estimate 50 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
+                    "value": "Working estimate 47 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
+                  },
+                  {
+                    "label": "What could explain it",
+                    "value": "His runs allowed (30 on the 0–100 scale) are well behind his strikeouts, walks and home runs (50 on the 0–100 scale): sequencing, defense or ballpark may be costing him, and that tends to correct."
                   }
                 ],
                 "source": {
@@ -244,7 +248,7 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "no visible tool rating; results 50 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
+                      "display": "no visible tool rating; results 47 on the 0–100 scale (160 BF of weighted sample, trusted 19% as his level)."
                     },
                     "quiet": false,
                     "chips": [],
@@ -252,7 +256,7 @@
                   },
                   {
                     "text": {
-                      "display": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 50 on the 0–100 scale, 19 above it."
+                      "display": "For starters in a rotation a typical working estimate is about 53 (Pennant's starting yardstick); below 31 is unusually weak and below 28 well below what the job takes. He is at 47 on the 0–100 scale, 16 above it."
                     },
                     "quiet": false,
                     "chips": [],
@@ -260,7 +264,7 @@
                   },
                   {
                     "text": {
-                      "display": "Working estimate 50 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
+                      "display": "Working estimate 47 on the 0–100 scale against MLB starting pitchers (results only: no visible tools); number 1 of 1 in the group."
                     },
                     "quiet": false,
                     "chips": [],
@@ -287,9 +291,9 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Nothing unusual."
+                      "display": "His runs allowed (30 on the 0–100 scale) are well behind his strikeouts, walks and home runs (50 on the 0–100 scale): sequencing, defense or ballpark may be costing him, and that tends to correct."
                     },
-                    "quiet": true,
+                    "quiet": false,
                     "chips": [],
                     "players": []
                   },

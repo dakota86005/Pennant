@@ -1,0 +1,1897 @@
+{
+  "orgId": 1,
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
+  "asOf": {
+    "display": "Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "scope": {
+    "text": "6 players across 1 affiliate. Player Development can read 0 of them; 0 can't be judged on the evidence there is and 6 have no season to read yet.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Players",
+          "value": "6"
+        },
+        {
+          "label": "Affiliates",
+          "value": "1"
+        },
+        {
+          "label": "Read by Player Development",
+          "value": "0"
+        },
+        {
+          "label": "Can't be judged yet",
+          "value": "0"
+        },
+        {
+          "label": "No season to read",
+          "value": "6"
+        },
+        {
+          "label": "On rehab from the major-league club",
+          "value": "0"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Minor League Operations",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "findings": [
+    {
+      "id": "org-x3",
+      "severity": {
+        "display": "Short",
+        "tone": "bad"
+      },
+      "headline": {
+        "text": "The major-league club is thin at 2B, and no one in the upper minors can step in.",
+        "tone": "bad",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at 2B",
+              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            },
+            {
+              "label": "Major-league club",
+              "value": "thin at 2B (MLB Operations' own cover read.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": []
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x3:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at 2B"
+            },
+            "value": {
+              "display": "0"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at 2B",
+            "value": "0",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x3:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        },
+        {
+          "id": "org-x3:e2",
+          "cells": {
+            "label": {
+              "display": "Major-league club"
+            },
+            "value": {
+              "display": "thin at 2B"
+            },
+            "why": {
+              "display": "MLB Operations' own cover read."
+            }
+          },
+          "sort": {
+            "label": "Major-league club",
+            "value": "thin at 2B",
+            "why": "MLB Operations' own cover read."
+          }
+        }
+      ],
+      "players": [],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": true
+    },
+    {
+      "id": "org-x4",
+      "severity": {
+        "display": "Short",
+        "tone": "bad"
+      },
+      "headline": {
+        "text": "The major-league club is thin at 3B, and no one in the upper minors can step in.",
+        "tone": "bad",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at 3B",
+              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            },
+            {
+              "label": "Major-league club",
+              "value": "thin at 3B (MLB Operations' own cover read.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": []
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x4:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at 3B"
+            },
+            "value": {
+              "display": "0"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at 3B",
+            "value": "0",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x4:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        },
+        {
+          "id": "org-x4:e2",
+          "cells": {
+            "label": {
+              "display": "Major-league club"
+            },
+            "value": {
+              "display": "thin at 3B"
+            },
+            "why": {
+              "display": "MLB Operations' own cover read."
+            }
+          },
+          "sort": {
+            "label": "Major-league club",
+            "value": "thin at 3B",
+            "why": "MLB Operations' own cover read."
+          }
+        }
+      ],
+      "players": [],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": true
+    },
+    {
+      "id": "org-x7",
+      "severity": {
+        "display": "Short",
+        "tone": "bad"
+      },
+      "headline": {
+        "text": "The major-league club is thin at CF, and only one player in the upper minors can step in.",
+        "tone": "bad",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at CF",
+              "value": "1 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            },
+            {
+              "label": "Major-league club",
+              "value": "thin at CF (MLB Operations' own cover read.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": [
+          {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1160"
+          }
+        ]
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x7:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at CF"
+            },
+            "value": {
+              "display": "1"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at CF",
+            "value": "1",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x7:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        },
+        {
+          "id": "org-x7:e2",
+          "cells": {
+            "label": {
+              "display": "Major-league club"
+            },
+            "value": {
+              "display": "thin at CF"
+            },
+            "why": {
+              "display": "MLB Operations' own cover read."
+            }
+          },
+          "sort": {
+            "label": "Major-league club",
+            "value": "thin at CF",
+            "why": "MLB Operations' own cover read."
+          }
+        }
+      ],
+      "players": [
+        {
+          "playerId": 1160,
+          "name": "P 1160",
+          "line": {
+            "display": "Farm 1 F, age 22"
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1160"
+          }
+        }
+      ],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": true
+    },
+    {
+      "id": "org-x1",
+      "severity": {
+        "display": "Needs attention",
+        "tone": "caution"
+      },
+      "headline": {
+        "text": "No one in the upper minors can play C.",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at C",
+              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": []
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x1:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at C"
+            },
+            "value": {
+              "display": "0"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at C",
+            "value": "0",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x1:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        }
+      ],
+      "players": [],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": false
+    },
+    {
+      "id": "org-x2",
+      "severity": {
+        "display": "Needs attention",
+        "tone": "caution"
+      },
+      "headline": {
+        "text": "No one in the upper minors can play 1B.",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at 1B",
+              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": []
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x2:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at 1B"
+            },
+            "value": {
+              "display": "0"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at 1B",
+            "value": "0",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x2:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        }
+      ],
+      "players": [],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": false
+    },
+    {
+      "id": "org-x5",
+      "severity": {
+        "display": "Needs attention",
+        "tone": "caution"
+      },
+      "headline": {
+        "text": "Only one player in the upper minors can play SS.",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at SS",
+              "value": "1 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": [
+          {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1156"
+          }
+        ]
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x5:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at SS"
+            },
+            "value": {
+              "display": "1"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at SS",
+            "value": "1",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x5:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        }
+      ],
+      "players": [
+        {
+          "playerId": 1156,
+          "name": "P 1156",
+          "line": {
+            "display": "Farm 1 F, age 22"
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1156"
+          }
+        }
+      ],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": false
+    },
+    {
+      "id": "org-x6",
+      "severity": {
+        "display": "Needs attention",
+        "tone": "caution"
+      },
+      "headline": {
+        "text": "No one in the upper minors can play LF.",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at LF",
+              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": []
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x6:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at LF"
+            },
+            "value": {
+              "display": "0"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at LF",
+            "value": "0",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x6:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        }
+      ],
+      "players": [],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": false
+    },
+    {
+      "id": "org-x8",
+      "severity": {
+        "display": "Needs attention",
+        "tone": "caution"
+      },
+      "headline": {
+        "text": "Only one player in the upper minors can play RF.",
+        "tone": "caution",
+        "basis": {
+          "because": [
+            {
+              "label": "Upper-minors players at RF",
+              "value": "1 (Players at AAA or L3 with a revealed grade there or listed there.)"
+            },
+            {
+              "label": "Thin below",
+              "value": "2 (What the organization needs to be able to answer an injury from within.)"
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A player developing toward the position from a lower level.",
+            "Acquisition, which is outside this module."
+          ],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": [
+          {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1158"
+          }
+        ]
+      },
+      "owner": {
+        "display": "Minor League Operations"
+      },
+      "evidence": [
+        {
+          "id": "org-x8:e0",
+          "cells": {
+            "label": {
+              "display": "Upper-minors players at RF"
+            },
+            "value": {
+              "display": "1"
+            },
+            "why": {
+              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+            }
+          },
+          "sort": {
+            "label": "Upper-minors players at RF",
+            "value": "1",
+            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+          }
+        },
+        {
+          "id": "org-x8:e1",
+          "cells": {
+            "label": {
+              "display": "Thin below"
+            },
+            "value": {
+              "display": "2"
+            },
+            "why": {
+              "display": "What the organization needs to be able to answer an injury from within."
+            }
+          },
+          "sort": {
+            "label": "Thin below",
+            "value": "2",
+            "why": "What the organization needs to be able to answer an injury from within."
+          }
+        }
+      ],
+      "players": [
+        {
+          "playerId": 1158,
+          "name": "P 1158",
+          "line": {
+            "display": "Farm 1 F, age 23"
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1158"
+          }
+        }
+      ],
+      "missing": [],
+      "wouldSettle": [
+        {
+          "display": "A player developing toward the position from a lower level."
+        },
+        {
+          "display": "Acquisition, which is outside this module."
+        }
+      ],
+      "expanded": false
+    }
+  ],
+  "findingsEmpty": null,
+  "levels": [
+    {
+      "id": "2",
+      "name": "AAA"
+    }
+  ],
+  "depth": [
+    {
+      "id": "depth:C",
+      "position": {
+        "display": "C"
+      },
+      "atLevels": [
+        {
+          "display": "0",
+          "tone": "neutral"
+        }
+      ],
+      "upperMinors": {
+        "display": "0",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 0,
+        "atLevels": [
+          0
+        ],
+        "upperMinors": 0
+      }
+    },
+    {
+      "id": "depth:1B",
+      "position": {
+        "display": "1B"
+      },
+      "atLevels": [
+        {
+          "display": "0",
+          "tone": "neutral"
+        }
+      ],
+      "upperMinors": {
+        "display": "0",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 1,
+        "atLevels": [
+          0
+        ],
+        "upperMinors": 0
+      }
+    },
+    {
+      "id": "depth:2B",
+      "position": {
+        "display": "2B"
+      },
+      "atLevels": [
+        {
+          "display": "0",
+          "tone": "neutral"
+        }
+      ],
+      "upperMinors": {
+        "display": "0",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 2,
+        "atLevels": [
+          0
+        ],
+        "upperMinors": 0
+      }
+    },
+    {
+      "id": "depth:3B",
+      "position": {
+        "display": "3B"
+      },
+      "atLevels": [
+        {
+          "display": "0",
+          "tone": "neutral"
+        }
+      ],
+      "upperMinors": {
+        "display": "0",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 3,
+        "atLevels": [
+          0
+        ],
+        "upperMinors": 0
+      }
+    },
+    {
+      "id": "depth:SS",
+      "position": {
+        "display": "SS"
+      },
+      "atLevels": [
+        {
+          "display": "1 (1 with high stakes)",
+          "hint": "High stakes: a core or protected prospect, or development-sensitive"
+        }
+      ],
+      "upperMinors": {
+        "display": "1",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 4,
+        "atLevels": [
+          1
+        ],
+        "upperMinors": 1
+      }
+    },
+    {
+      "id": "depth:LF",
+      "position": {
+        "display": "LF"
+      },
+      "atLevels": [
+        {
+          "display": "0",
+          "tone": "neutral"
+        }
+      ],
+      "upperMinors": {
+        "display": "0",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 5,
+        "atLevels": [
+          0
+        ],
+        "upperMinors": 0
+      }
+    },
+    {
+      "id": "depth:CF",
+      "position": {
+        "display": "CF"
+      },
+      "atLevels": [
+        {
+          "display": "1 (1 with high stakes)",
+          "hint": "High stakes: a core or protected prospect, or development-sensitive"
+        }
+      ],
+      "upperMinors": {
+        "display": "1",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 6,
+        "atLevels": [
+          1
+        ],
+        "upperMinors": 1
+      }
+    },
+    {
+      "id": "depth:RF",
+      "position": {
+        "display": "RF"
+      },
+      "atLevels": [
+        {
+          "display": "1 (1 with high stakes)",
+          "hint": "High stakes: a core or protected prospect, or development-sensitive"
+        }
+      ],
+      "upperMinors": {
+        "display": "1",
+        "tone": "bad",
+        "hint": "Below the farm's line of 2 in the upper minors"
+      },
+      "sort": {
+        "position": 7,
+        "atLevels": [
+          1
+        ],
+        "upperMinors": 1
+      }
+    }
+  ],
+  "depthNote": {
+    "display": "Players who can play each position, by level. Depth counts what a man can play; congestion counts the one path he is on."
+  },
+  "starters": [
+    {
+      "id": "starters:2",
+      "cells": {
+        "level": {
+          "display": "AAA"
+        },
+        "starters": {
+          "display": "0"
+        },
+        "spots": {
+          "display": "5"
+        },
+        "state": {
+          "display": "Every man has a spot",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "level": 2,
+        "starters": 0,
+        "spots": 5,
+        "state": -5
+      }
+    }
+  ],
+  "startersNote": {
+    "display": "Pitchers each club is using as starters, against the spots the level has. A man past the spots is a man not starting."
+  },
+  "pastWindow": null,
+  "lines": [
+    {
+      "id": "line:BODY_COUNT",
+      "cells": {
+        "name": {
+          "display": "Bodies a club needs to rest a lineup and cover a schedule."
+        },
+        "value": {
+          "display": "hitters thin below 12, plenty at 17 · pitchers thin below 12, plenty at 18"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "BODY_COUNT",
+        "value": "{\"hitters\":{\"thinBelow\":12,\"surplusAt\":17},\"pitchers\":{\"thinBelow\":12,\"surplusAt\":18}}",
+        "kind": "policy",
+        "why": "Bodies a club needs to rest a lineup and cover a schedule."
+      }
+    },
+    {
+      "id": "line:ROTATION_SPOTS",
+      "cells": {
+        "name": {
+          "display": "A five-man rotation, the shape OOTP runs at every full-season level."
+        },
+        "value": {
+          "display": "5"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "ROTATION_SPOTS",
+        "value": "5",
+        "kind": "policy",
+        "why": "A five-man rotation, the shape OOTP runs at every full-season level."
+      }
+    },
+    {
+      "id": "line:RELIEF_CORPS",
+      "cells": {
+        "name": {
+          "display": "Relief cover over a normal week, and the point past which arms outnumber innings."
+        },
+        "value": {
+          "display": "thin below 7 · critical below 5 · crowded at 9"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "RELIEF_CORPS",
+        "value": "{\"thinBelow\":7,\"criticalBelow\":5,\"crowdedAt\":9}",
+        "kind": "policy",
+        "why": "Relief coverage over a normal week, and the point past which arms outnumber innings."
+      }
+    },
+    {
+      "id": "line:CRITICAL_POSITIONS",
+      "cells": {
+        "name": {
+          "display": "Positions whose loss cannot be covered by moving somebody else."
+        },
+        "value": {
+          "display": "C, SS, CF"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "CRITICAL_POSITIONS",
+        "value": "[\"C\",\"SS\",\"CF\"]",
+        "kind": "policy",
+        "why": "Positions whose loss cannot be covered by moving somebody else."
+      }
+    },
+    {
+      "id": "line:INJURED_DAYS_NOT_COUNTED",
+      "cells": {
+        "name": {
+          "display": "Days of injury past which a man is not counted as cover."
+        },
+        "value": {
+          "display": "7"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "INJURED_DAYS_NOT_COUNTED",
+        "value": "7",
+        "kind": "policy",
+        "why": "Days of injury past which a man is not counted as cover."
+      }
+    },
+    {
+      "id": "line:PLAYABLE_GRADE / STRONG_GRADE",
+      "cells": {
+        "name": {
+          "display": "Where a visible fielding grade is usable, and where it is a real cover."
+        },
+        "value": {
+          "display": "35 / 50"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "PLAYABLE_GRADE / STRONG_GRADE",
+        "value": "35 / 50",
+        "kind": "policy",
+        "why": "Where a visible fielding grade is usable, and where it is a real cover."
+      }
+    },
+    {
+      "id": "line:POSITION_CAPACITY",
+      "cells": {
+        "name": {
+          "display": "How many men a position supports before one is not getting developmental reps."
+        },
+        "value": {
+          "display": "covered 2 · congested at 4"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "POSITION_CAPACITY",
+        "value": "{\"covered\":2,\"congestedAt\":4}",
+        "kind": "policy",
+        "why": "How many men a position supports before one is not getting developmental reps."
+      }
+    },
+    {
+      "id": "line:REGULAR_SHARE / PART_TIME_SHARE",
+      "cells": {
+        "name": {
+          "display": "Share of a job that makes a man its regular, and below which he is occasional."
+        },
+        "value": {
+          "display": "0.4 / 0.15"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "REGULAR_SHARE / PART_TIME_SHARE",
+        "value": "0.4 / 0.15",
+        "kind": "policy",
+        "why": "Share of a job that makes a man its regular, and below which he is occasional."
+      }
+    },
+    {
+      "id": "line:REGULAR_PLAY_SHARE",
+      "cells": {
+        "name": {
+          "display": "Share of the club's games a man needs to appear in to be read as playing regularly."
+        },
+        "value": {
+          "display": "0.55"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "REGULAR_PLAY_SHARE",
+        "value": "0.55",
+        "kind": "policy",
+        "why": "Share of the club's games a man must appear in to be read as playing regularly."
+      }
+    },
+    {
+      "id": "line:ROTATION_SHARE",
+      "cells": {
+        "name": {
+          "display": "A starter's share of a five-man rotation's starts: in it, spot-starting, or not used."
+        },
+        "value": {
+          "display": "regular 0.7 · part time 0.35"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "ROTATION_SHARE",
+        "value": "{\"regular\":0.7,\"partTime\":0.35}",
+        "kind": "policy",
+        "why": "A starter's share of a five-man rotation's starts: in it, spot-starting, or not used."
+      }
+    },
+    {
+      "id": "line:MINIMUM_CLUB_GAMES",
+      "cells": {
+        "name": {
+          "display": "Games a club needs to have played before a share or a shape is read."
+        },
+        "value": {
+          "display": "20"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "MINIMUM_CLUB_GAMES",
+        "value": "20",
+        "kind": "policy",
+        "why": "Games a club must have played before a share or a shape is read."
+      }
+    },
+    {
+      "id": "line:DEPARTED_SHARE_NOTED",
+      "cells": {
+        "name": {
+          "display": "Share of a job played by men no longer on the club past which the shares are said to lag. Used only when the export has no game log."
+        },
+        "value": {
+          "display": "0.25"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "DEPARTED_SHARE_NOTED",
+        "value": "0.25",
+        "kind": "policy",
+        "why": "Share of a job played by men no longer on the club past which the shares are said to lag. Used only when the export has no game log."
+      }
+    },
+    {
+      "id": "line:RECENT_WINDOW_GAMES",
+      "cells": {
+        "name": {
+          "display": "Club games the recent read looks back over: three turns of a five-man rotation. Backtested on the export's own game log; one partial season of one save."
+        },
+        "value": {
+          "display": "15"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "RECENT_WINDOW_GAMES",
+        "value": "15",
+        "kind": "provisional",
+        "why": "Club games the recent read looks back over: three turns of a five-man rotation. Backtested on the export's own game log; one partial season of one save."
+      }
+    },
+    {
+      "id": "line:RECENT_MINIMUM_GAMES",
+      "cells": {
+        "name": {
+          "display": "Games a man needs to have been observable for before his recent share is read as a role. Below it his role is not established."
+        },
+        "value": {
+          "display": "6"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "RECENT_MINIMUM_GAMES",
+        "value": "6",
+        "kind": "provisional",
+        "why": "Games a man must have been observable for before his recent share is read as a role. Below it his role is not established."
+      }
+    },
+    {
+      "id": "line:RECENT_ROTATION_SHARE",
+      "cells": {
+        "name": {
+          "display": "A starter's share of his turns over the recent window: two of three is in the rotation, one is spot-starting."
+        },
+        "value": {
+          "display": "regular 0.6 · part time 0.3"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "RECENT_ROTATION_SHARE",
+        "value": "{\"regular\":0.6,\"partTime\":0.3}",
+        "kind": "provisional",
+        "why": "A starter's share of his turns over the recent window: two of three is in the rotation, one is spot-starting."
+      }
+    },
+    {
+      "id": "line:MINIMUM_SAMPLE",
+      "cells": {
+        "name": {
+          "display": "Plate appearances / innings below which a line is not read at all."
+        },
+        "value": {
+          "display": "pa 40 · ip 12"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "MINIMUM_SAMPLE",
+        "value": "{\"pa\":40,\"ip\":12}",
+        "kind": "provisional",
+        "why": "Plate appearances / innings below which a line is not read at all."
+      }
+    },
+    {
+      "id": "line:MATURE_SAMPLE",
+      "cells": {
+        "name": {
+          "display": "Sample at which the current-level line is treated as mature."
+        },
+        "value": {
+          "display": "pa 250 · ip 60"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "MATURE_SAMPLE",
+        "value": "{\"pa\":250,\"ip\":60}",
+        "kind": "provisional",
+        "why": "Sample at which the current-level line is treated as mature."
+      }
+    },
+    {
+      "id": "line:LEAGUE_POPULATION_MINIMUM",
+      "cells": {
+        "name": {
+          "display": "Qualified players a league needs before a place out of 100 in it means anything."
+        },
+        "value": {
+          "display": "25"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "LEAGUE_POPULATION_MINIMUM",
+        "value": "25",
+        "kind": "provisional",
+        "why": "Qualified players a league needs before a percentile in it means anything."
+      }
+    },
+    {
+      "id": "line:YOUNG_FOR_LEVEL / OLD_FOR_LEVEL",
+      "cells": {
+        "name": {
+          "display": "Years from the level's rostered average age at which a man is young or old for it."
+        },
+        "value": {
+          "display": "1.5 / 1.5"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "YOUNG_FOR_LEVEL / OLD_FOR_LEVEL",
+        "value": "1.5 / 1.5",
+        "kind": "policy",
+        "why": "Years from the level's rostered average age at which a man is young or old for it."
+      }
+    },
+    {
+      "id": "line:AGE_LEVEL_DEVELOPMENT_LIMIT",
+      "cells": {
+        "name": {
+          "display": "Years past the level average at which the assignment stops being a development question."
+        },
+        "value": {
+          "display": "3"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "AGE_LEVEL_DEVELOPMENT_LIMIT",
+        "value": "3",
+        "kind": "policy",
+        "why": "Years past the level average at which the assignment stops being a development question."
+      }
+    },
+    {
+      "id": "line:UPPER_MINORS_DEPTH_FLOOR",
+      "cells": {
+        "name": {
+          "display": "Upper-minors players at a position below which the organization is thin there."
+        },
+        "value": {
+          "display": "2"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "UPPER_MINORS_DEPTH_FLOOR",
+        "value": "2",
+        "kind": "policy",
+        "why": "Upper-minors players at a position below which the organization is thin there."
+      }
+    },
+    {
+      "id": "line:PRIORITY_CONGESTION_AT",
+      "cells": {
+        "name": {
+          "display": "High-stakes prospects on one path at one level past which the organization competes with itself."
+        },
+        "value": {
+          "display": "2"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "PRIORITY_CONGESTION_AT",
+        "value": "2",
+        "kind": "policy",
+        "why": "Priority prospects on one path at one level past which the organization competes with itself."
+      }
+    },
+    {
+      "id": "line:CASCADE_MAX_STEPS",
+      "cells": {
+        "name": {
+          "display": "Steps a chain is followed before it is speculation."
+        },
+        "value": {
+          "display": "4"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "CASCADE_MAX_STEPS",
+        "value": "4",
+        "kind": "policy",
+        "why": "Steps a chain is followed before it is speculation."
+      }
+    },
+    {
+      "id": "line:RUNWAY_CLOSING_AGE",
+      "cells": {
+        "name": {
+          "display": "Age at which an ordinary developmental runway at a level is treated as closing."
+        },
+        "value": {
+          "display": "upper minors 26 · lower minors 24 · complex 23"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "RUNWAY_CLOSING_AGE",
+        "value": "{\"upperMinors\":26,\"lowerMinors\":24,\"complex\":23}",
+        "kind": "policy",
+        "why": "Age at which an ordinary developmental runway at a level is treated as closing."
+      }
+    },
+    {
+      "id": "line:RUNWAY_SERVICE_LIMIT",
+      "cells": {
+        "name": {
+          "display": "Professional seasons past which a player at a low level has had his developmental look."
+        },
+        "value": {
+          "display": "5"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "RUNWAY_SERVICE_LIMIT",
+        "value": "5",
+        "kind": "policy",
+        "why": "Professional seasons past which a player at a low level has had his developmental look."
+      }
+    },
+    {
+      "id": "line:Ceiling lines in force",
+      "cells": {
+        "name": {
+          "display": "Pennant's starting lines: this league's own were measured on other ratings than today's."
+        },
+        "value": {
+          "display": "hitters 45 / 50 / 56 · pitchers 45 / 48 / 53"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value: this save's own were measured on other ratings",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "name": "Ceiling lines in force",
+        "value": "hitters 45 / 50 / 56 · pitchers 45 / 48 / 53",
+        "kind": "provisional",
+        "why": "Pennant's starting lines: this league's own were measured on other ratings than today's."
+      },
+      "claim": {
+        "text": "This save's own lines were set aside",
+        "tone": "unknown",
+        "basis": {
+          "because": [
+            {
+              "label": "In force",
+              "value": "Pennant's starting lines: this league's own were measured on other ratings than today's."
+            },
+            {
+              "label": "Set aside",
+              "value": "The save's earlier fit rests on true ratings, not today's ratings (OSA's view), so it isn't used."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": [],
+        "hint": "They were measured on other ratings than today's"
+      }
+    },
+    {
+      "id": "line:CEILING_LINES (Pennant's starting lines)",
+      "cells": {
+        "name": {
+          "display": "Pennant's starting lines: where a visible ceiling composite stops projecting as a major leaguer of each kind. The composite (the unweighted mean of the visible tools) of the weakest tenth, the median and the best tenth of the active major leaguers of one import (Arizona, 2026-5-16): hitters 45 / 50 / 56, pitchers 45 / 48 / 53. Kind-aware because the composite is. Each league's own lines are measured from its major leaguers at every import and used once they hold up; these are used only where that has not happened or cannot (a small or fictional league), and say so."
+        },
+        "value": {
+          "display": "hitters 45 / 50 / 56 · pitchers 45 / 48 / 53"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "CEILING_LINES (Pennant's starting lines)",
+        "value": "hitters 45 / 50 / 56 · pitchers 45 / 48 / 53",
+        "kind": "provisional",
+        "why": "Pennant's starting lines: where a visible potential composite stops projecting as a major leaguer of each kind. The composite (the unweighted mean of the visible tools) of the weakest tenth, the median and the best tenth of the active major leaguers of one import (Arizona, 2026-5-16): hitters 45 / 50 / 56, pitchers 45 / 48 / 53. Kind-aware because the composite is. Each league's own lines are measured from its major leaguers at every import and used once they hold up; these are used only where that has not happened or cannot (a small or fictional league), and say so."
+      }
+    },
+    {
+      "id": "line:CEILING_LINES (the quantiles they stand for)",
+      "cells": {
+        "name": {
+          "display": "What \"a major leaguer\", \"a regular\" and \"an impact player\" are taken to mean: clearing the weakest tenth, the median and the best tenth of major leaguers of his kind. A decision about where a ceiling starts to be worth protecting, not a fact about baseball."
+        },
+        "value": {
+          "display": "p10 / p50 / p90 of major leaguers of his kind"
+        },
+        "kind": {
+          "display": "Policy"
+        },
+        "why": {
+          "display": "Chosen by the club's staff, not fitted"
+        }
+      },
+      "sort": {
+        "name": "CEILING_LINES (the quantiles they stand for)",
+        "value": "p10 / p50 / p90 of major leaguers of his kind",
+        "kind": "policy",
+        "why": "What \"a major leaguer\", \"a regular\" and \"an impact player\" are taken to mean: clearing the weakest tenth, the median and the best tenth of major leaguers of his kind. A decision about where a ceiling starts to be worth protecting, not a fact about baseball."
+      }
+    },
+    {
+      "id": "line:DEVELOPMENT_AGE",
+      "cells": {
+        "name": {
+          "display": "The age through which most, some and little of a player's development is still ahead of him. The bands of the youth curve the absolute composite used (72 or more through 22, 45 to 60 at 23-24, 18 to 30 at 25-26, 5 from 27), so the historical judgment about youth is kept and only its use changed. Not fitted: how players develop can only be measured from the same players' ratings a season apart, and the save does not hold those yet. Today's ratings agree with where the bands end: the gap between current and ceiling closes between 24 and 26."
+        },
+        "value": {
+          "display": "most 22 · some 24 · little 26"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "DEVELOPMENT_AGE",
+        "value": "{\"most\":22,\"some\":24,\"little\":26}",
+        "kind": "provisional",
+        "why": "The age through which most, some and little of a player's development is still ahead of him. The bands of the youth curve the absolute composite used (72 or more through 22, 45 to 60 at 23-24, 18 to 30 at 25-26, 5 from 27), so the historical judgment about youth is kept and only its use changed. Not fitted: how players develop can only be measured from the same players' ratings a season apart, and the save does not hold those yet. Today's ratings agree with where the bands end: the gap between current and potential closes between 24 and 26."
+      }
+    },
+    {
+      "id": "line:PROJECTION_REALIZED_UNDER",
+      "cells": {
+        "name": {
+          "display": "Points of ceiling over current under which what the scouts project has, in effect, happened. With tools graded in steps of five, a gap under three composite points is at most two tool grades in five for a hitter and at most one in three for a pitcher. How much projection counts as none is a policy line; not fitted."
+        },
+        "value": {
+          "display": "3"
+        },
+        "kind": {
+          "display": "Starting value"
+        },
+        "why": {
+          "display": "A starting value until this save can show better"
+        }
+      },
+      "sort": {
+        "name": "PROJECTION_REALIZED_UNDER",
+        "value": "3",
+        "kind": "provisional",
+        "why": "Points of potential over current under which what the scouts project has, in effect, happened. With tools graded in steps of five, a gap under three composite points is at most two tool grades in five for a hitter and at most one in three for a pitcher. How much projection counts as none is a policy line; not fitted."
+      }
+    }
+  ],
+  "unknowns": [
+    {
+      "display": "Farm 1 F: 6 of its players have no readable production this season, so their assignments are not assessed rather than judged."
+    },
+    {
+      "display": "Farm 1 F: It has played 0 games, fewer than the 20 a work share needs, so how it is using its roster cannot be read yet and no playing-time conflict is reported for it."
+    }
+  ]
+}

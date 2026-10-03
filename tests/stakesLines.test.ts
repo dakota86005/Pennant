@@ -11,6 +11,7 @@ import {
 } from '../server/stakesLines.js';
 import { openDevelopmentalContext } from '../server/developmentalContext.js';
 import { IDS } from './fixture.js';
+import { computeFarmSystem } from '../server/farmOperations.js';
 
 /**
  * The ceiling lines of the developmental-stakes model are a measurement of the league's own major leaguers at each import (cycle 4 of
@@ -162,6 +163,11 @@ describe('the lines in force for a save', () => {
     const lines = stakesLinesFor(IDS.league);
     expect(lines.source).toBe('starting');
     expect(lines.setAside).toMatch(/rests on true ratings, not today's ratings .*so it isn't used/);
+    // The farm's stated lines carry it beside the starting lines, for the Organization reading's basis (N10)
+    const ceiling = computeFarmSystem(IDS.mlbTeam).calibration.find((c) => c.name === 'Ceiling lines in force');
+    expect(ceiling).toMatchObject({ status: 'provisional', setAside: lines.setAside });
+    // Never "not measured yet" beside it: the league's own were measured, on other ratings
+    expect(ceiling?.basis).toBe('Pennant\'s starting lines: this league\'s own were measured on other ratings than today\'s.');
     historyDb.prepare(`DELETE FROM save_calibration_fits WHERE subsystem = ?`).run(STAKES_SUBSYSTEM);
   });
 

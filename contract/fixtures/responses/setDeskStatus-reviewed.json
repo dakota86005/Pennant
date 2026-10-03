@@ -1,5 +1,5 @@
 {
-  "key": "farm:position_single_cover:organization:critical",
+  "key": "farm:rotation_short:affiliate:101:ej78gq",
   "done": {
     "display": "Marked reviewed"
   },
@@ -27,7 +27,7 @@
     "since": null
   },
   "undo": {
-    "key": "farm:position_single_cover:organization:critical",
+    "key": "farm:rotation_short:affiliate:101:ej78gq",
     "status": "open",
     "until": null,
     "note": "",
@@ -47,6 +47,509 @@
         "hint": "Urgent first, then the nearest deadline; five from each department"
       },
       "items": [
+        {
+          "key": "farm:position_uncovered:affiliate:101:critical",
+          "department": "farm",
+          "raisedBy": {
+            "display": "Raised by the minor league staff"
+          },
+          "severity": "critical",
+          "neutralSeverity": "critical",
+          "urgency": {
+            "text": "Urgent",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Farm & Development said",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "On the desk",
+                  "value": "Urgent"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "The desk",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+            },
+            "links": []
+          },
+          "headline": {
+            "text": "Farm 1 F: Nobody on the roster covers 1B, 3B, C, LF or RF.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "1B",
+                  "value": "Farm 1 F: Nobody on the roster covers 1B."
+                },
+                {
+                  "label": "3B",
+                  "value": "Farm 1 F: Nobody on the roster covers 3B."
+                },
+                {
+                  "label": "C",
+                  "value": "Farm 1 F: Nobody on the roster covers C."
+                },
+                {
+                  "label": "LF",
+                  "value": "Farm 1 F: Nobody on the roster covers LF."
+                },
+                {
+                  "label": "RF",
+                  "value": "Farm 1 F: Nobody on the roster covers RF."
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+            },
+            "links": [
+              {
+                "kind": "club",
+                "teamId": 101
+              }
+            ],
+            "hint": "5 findings, one row: each is in the breakdown"
+          },
+          "detail": null,
+          "due": null,
+          "dueInDays": null,
+          "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
+          "count": 5,
+          "attention": {
+            "status": "open",
+            "line": {
+              "display": "Open"
+            },
+            "until": null,
+            "deferralEnded": false,
+            "note": null,
+            "stillShown": null,
+            "since": null
+          }
+        },
+        {
+          "key": "farm:pitcher_bodies_short:affiliate:101:gv3ubl",
+          "department": "farm",
+          "raisedBy": {
+            "display": "Raised by the minor league staff"
+          },
+          "severity": "critical",
+          "neutralSeverity": "critical",
+          "urgency": {
+            "text": "Urgent",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Farm & Development said",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "On the desk",
+                  "value": "Urgent"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "The desk",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+            },
+            "links": []
+          },
+          "headline": {
+            "text": "Farm 1 F: Only three pitchers: short of what the club needs to cover a schedule.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "About",
+                  "value": "An affiliate"
+                },
+                {
+                  "label": "Why",
+                  "value": "Pitchers: 3"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": [
+              {
+                "kind": "club",
+                "teamId": 101
+              }
+            ]
+          },
+          "detail": null,
+          "due": null,
+          "dueInDays": null,
+          "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
+          "count": 1,
+          "attention": {
+            "status": "open",
+            "line": {
+              "display": "Open"
+            },
+            "until": null,
+            "deferralEnded": false,
+            "note": null,
+            "stillShown": null,
+            "since": null
+          }
+        },
+        {
+          "key": "farm:hitter_bodies_short:affiliate:101:1wxylwd",
+          "department": "farm",
+          "raisedBy": {
+            "display": "Raised by the minor league staff"
+          },
+          "severity": "critical",
+          "neutralSeverity": "critical",
+          "urgency": {
+            "text": "Urgent",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Farm & Development said",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "On the desk",
+                  "value": "Urgent"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "The desk",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+            },
+            "links": []
+          },
+          "headline": {
+            "text": "Farm 1 F: Only three position players: short of what the club needs to rest a lineup.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "About",
+                  "value": "An affiliate"
+                },
+                {
+                  "label": "Why",
+                  "value": "Position players: 3"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": [
+              {
+                "kind": "club",
+                "teamId": 101
+              }
+            ]
+          },
+          "detail": null,
+          "due": null,
+          "dueInDays": null,
+          "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
+          "count": 1,
+          "attention": {
+            "status": "open",
+            "line": {
+              "display": "Open"
+            },
+            "until": null,
+            "deferralEnded": false,
+            "note": null,
+            "stillShown": null,
+            "since": null
+          }
+        },
+        {
+          "key": "farm:relief_short:affiliate:101:1xkhrzj",
+          "department": "farm",
+          "raisedBy": {
+            "display": "Raised by the minor league staff"
+          },
+          "severity": "critical",
+          "neutralSeverity": "critical",
+          "urgency": {
+            "text": "Urgent",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Farm & Development said",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "On the desk",
+                  "value": "Urgent"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "The desk",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+            },
+            "links": []
+          },
+          "headline": {
+            "text": "Farm 1 F: Only three relief arms: short of the seven a schedule takes.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "About",
+                  "value": "An affiliate"
+                },
+                {
+                  "label": "Why",
+                  "value": "Relief arms: 3"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": [
+              {
+                "kind": "club",
+                "teamId": 101
+              }
+            ]
+          },
+          "detail": null,
+          "due": null,
+          "dueInDays": null,
+          "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
+          "count": 1,
+          "attention": {
+            "status": "open",
+            "line": {
+              "display": "Open"
+            },
+            "until": null,
+            "deferralEnded": false,
+            "note": null,
+            "stillShown": null,
+            "since": null
+          }
+        },
+        {
+          "key": "farm:cannot_field_defense:affiliate:101:11k7xrz",
+          "department": "farm",
+          "raisedBy": {
+            "display": "Raised by the minor league staff"
+          },
+          "severity": "critical",
+          "neutralSeverity": "critical",
+          "urgency": {
+            "text": "Urgent",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Farm & Development said",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "With no philosophy and no season",
+                  "value": "Urgent"
+                },
+                {
+                  "label": "On the desk",
+                  "value": "Urgent"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "The desk",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
+            },
+            "links": []
+          },
+          "headline": {
+            "text": "Farm 1 F: The club can fill only three of the eight fielding positions at once.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "About",
+                  "value": "An affiliate"
+                },
+                {
+                  "label": "Why",
+                  "value": "Positions fillable simultaneously: 3 of 8"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": [
+              {
+                "kind": "club",
+                "teamId": 101
+              }
+            ]
+          },
+          "detail": null,
+          "due": null,
+          "dueInDays": null,
+          "evidence": null,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "affiliates",
+            "key": "101"
+          },
+          "count": 1,
+          "attention": {
+            "status": "open",
+            "line": {
+              "display": "Open"
+            },
+            "until": null,
+            "deferralEnded": false,
+            "note": null,
+            "stillShown": null,
+            "since": null
+          }
+        },
         {
           "key": "majorLeague:need:mlb:role_below_standard:catcher",
           "department": "majorLeague",
@@ -150,112 +653,22 @@
             "stillShown": null,
             "since": null
           }
-        },
+        }
+      ],
+      "more": [
         {
-          "key": "farm:position_single_cover:organization:attention",
           "department": "farm",
-          "raisedBy": {
-            "display": "Raised by the minor league staff"
+          "line": {
+            "display": "And 3 more in Farm & Development"
           },
-          "severity": "attention",
-          "neutralSeverity": "attention",
-          "urgency": {
-            "text": "Needs attention",
-            "tone": "caution",
-            "basis": {
-              "because": [
-                {
-                  "label": "Farm & Development said",
-                  "value": "Needs attention"
-                },
-                {
-                  "label": "With no philosophy and no season",
-                  "value": "Needs attention"
-                },
-                {
-                  "label": "On the desk",
-                  "value": "Needs attention"
-                }
-              ],
-              "source": {
-                "department": "farm",
-                "specialist": "The desk",
-                "asOf": null,
-                "gameDate": "2040-05-05"
-              },
-              "unknown": [],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "policy",
-              "called": "A line chosen and stated",
-              "stamp": "Farm & Development states critical, attention or noted, the desk's own scale, and passes unchanged. The desk places each item by its department's plain reading, with no philosophy and no season to weigh; a shaded reading is shown beside it and decides nothing."
-            },
-            "links": []
-          },
-          "headline": {
-            "text": "Little depth in the upper minors at 1B, 3B, CF and LF.",
-            "tone": "caution",
-            "basis": {
-              "because": [
-                {
-                  "label": "1B",
-                  "value": "No one in the upper minors can play 1B."
-                },
-                {
-                  "label": "3B",
-                  "value": "No one in the upper minors can play 3B."
-                },
-                {
-                  "label": "CF",
-                  "value": "No one in the upper minors can play CF."
-                },
-                {
-                  "label": "LF",
-                  "value": "No one in the upper minors can play LF."
-                }
-              ],
-              "source": {
-                "department": "farm",
-                "specialist": "Minor League Operations",
-                "asOf": null,
-                "gameDate": "2040-05-05"
-              },
-              "unknown": [],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "provisional",
-              "called": "A starting number, not yet fitted on this save",
-              "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
-            },
-            "links": [
-              {
-                "kind": "view",
-                "department": "farm",
-                "view": "organization"
-              }
-            ],
-            "hint": "4 findings, one row: each is in the breakdown"
-          },
-          "detail": null,
-          "due": null,
-          "dueInDays": null,
-          "evidence": null,
-          "open": null,
-          "count": 4,
-          "attention": {
-            "status": "open",
-            "line": {
-              "display": "Open"
-            },
-            "until": null,
-            "deferralEnded": false,
-            "note": null,
-            "stillShown": null,
-            "since": null
+          "count": 3,
+          "open": {
+            "kind": "view",
+            "department": "farm",
+            "view": "report"
           }
         }
       ],
-      "more": [],
       "empty": null,
       "incomplete": null,
       "setAside": {
@@ -268,7 +681,7 @@
         "handled": 0,
         "items": [
           {
-            "key": "farm:position_single_cover:organization:critical",
+            "key": "farm:rotation_short:affiliate:101:ej78gq",
             "department": "farm",
             "raisedBy": {
               "display": "Raised by the minor league staff"
@@ -309,25 +722,17 @@
               "links": []
             },
             "headline": {
-              "text": "The major-league club is thin at 2B, C, RF and SS, with little in the upper minors to step in.",
+              "text": "Farm 1 F: No pitcher is taking this club's starts; the rotation needs five.",
               "tone": "bad",
               "basis": {
                 "because": [
                   {
-                    "label": "2B",
-                    "value": "The major-league club is thin at 2B, and no one in the upper minors can step in."
+                    "label": "About",
+                    "value": "An affiliate"
                   },
                   {
-                    "label": "C",
-                    "value": "The major-league club is thin at C, and no one in the upper minors can step in."
-                  },
-                  {
-                    "label": "RF",
-                    "value": "The major-league club is thin at RF, and no one in the upper minors can step in."
-                  },
-                  {
-                    "label": "SS",
-                    "value": "The major-league club is thin at SS, and no one in the upper minors can step in."
+                    "label": "Why",
+                    "value": "Taking starts: 0"
                   }
                 ],
                 "source": {
@@ -341,23 +746,26 @@
                 "lean": null,
                 "certainty": "provisional",
                 "called": "A starting number, not yet fitted on this save",
-                "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+                "stamp": "The farm's stated lines, 10 of 30 still starting values"
               },
               "links": [
                 {
-                  "kind": "view",
-                  "department": "farm",
-                  "view": "organization"
+                  "kind": "club",
+                  "teamId": 101
                 }
-              ],
-              "hint": "4 findings, one row: each is in the breakdown"
+              ]
             },
             "detail": null,
             "due": null,
             "dueInDays": null,
             "evidence": null,
-            "open": null,
-            "count": 4,
+            "open": {
+              "kind": "view",
+              "department": "farm",
+              "view": "affiliates",
+              "key": "101"
+            },
+            "count": 1,
             "attention": {
               "note": "Talked it over with the manager",
               "since": "2040-07-01T12:00:00.000Z",
@@ -373,7 +781,7 @@
           }
         ]
       },
-      "openCount": 2,
+      "openCount": 9,
       "deferChoices": [
         {
           "until": "2040-5-7",

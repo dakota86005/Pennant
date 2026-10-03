@@ -975,7 +975,7 @@ it reads, "couldn't be read this time" for anything else) or `notYet`. What each
 | Department | Reads (through the specialist's public module) | Items | Key figures | What it can't answer yet |
 |---|---|---|---|---|
 | Major League Ops | `mlbOverview` (needs), `computeRosterCrunchIssues` (the 40-man's clocks and option notes, from Player State and Player Rights) | every need, every designation or waiver clock (urgent, days left), every option note (noted) | active roster, 40-man, injured list | the 40-man when the export has no roster status (said in "What we can't see") |
-| Farm & Development | `computeFarmSystem` (its attention list, with each item's code and position) | every item on it, in its own words (counts in words, never a zero) and scale, the same kind about one subject in one row | players in the system, affiliates (and how many are short), players we have a read on | Player Development's prospect ladder (the Prospects view, N10) |
+| Farm & Development | `computeFarmSystem` (its attention list, with each item's code and position) | every item on it, in its own words (counts in words, never a zero) and scale, the same kind about one subject in one row | players in the system, affiliates (and how many are short), players we have a read on (each figure opening its view since N10) | — (the prospect calls are on Prospects since N10; each item opens its Decision, Affiliates or Organization) |
 | Finance | `computeContracts`, `computePayroll` | every contract ending, holding an option or headed to arbitration (noted; never a recommendation) | payroll this season, room under the budget, free agents after this season (a floor, "at least three", while any player is not settled) | a decision date (the export has none, so no clock) |
 | Medical | the injury report (`orgInjuries`) | every injured player, less a return Major League Ops has on its desk | injured, with the major league club, day-to-day | — |
 | Scouting, Trades, League Office, Philosophy & Staff | — | — | — | no report yet, said plainly ("No scouting report yet.") |
@@ -1076,6 +1076,79 @@ responses). The Front Office's own report is its Report view.
   is drawn in the label colour on the fixed page colour, a checked pair. The contract's synthetic save now has settled
   lineups (`buildSave({ lineups: true })`), so the fixtures and snapshots draw real lineup rows.
 - *Left for later:* the per-view sidebar counts (the counts are on the glances); the clubhouse tools are N9's.
+
+**As built at N10 (2026-10-01): Farm & Development.** Branch `feature/swiftui-n10-farm` (D-066; BEHAVIOR_CASES.md "Pennant
+for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
+- **Server.** `GET /api/v2/views/:org/farm/organization`, `/affiliates`, `/assignments`, `/prospects`, `/development`, and
+  `/decision?player=<id>` (keyed as N8's decision), `/development/:playerId` (each its own operation and type in `presentation/farm/types.ts`). The
+  adapters (`presentation/farm/`) word what `farmViewsBuild.ts` reads through the specialists' public modules
+  (`computeFarmSystem` with one `FarmSession`, `farmConsequenceFor`, `computeProspects`, `computeScoutedDevelopment`,
+  `developmentHistoryFor`, now shared with `/api/development-history`). `farmViewService.ts` keeps one club's build on the
+  Front Office's key, built in its worker after each kept Front Office build; the desk's players and every assignment in
+  question have their Decision read ahead; another is read on the request in the worker and kept. The farm's desk items
+  name the player or the affiliate in their headline and open, through N8's served `open`, Decision (a `decision`
+  target keyed by the player) or Affiliates (a view target with a `key`); the report's figures open their views. Richer payloads for the previews are worded by the real adapters from synthetic answers in
+  `contract/fixtures/farm/` (`npm run contract:fixtures` writes them too); the contract's synthetic save and the app's
+  synthetic league gain a farm (`minors: true`).
+- **Mac.** `FarmStore` (PennantKit, on `AppModel.farm`) reads the five lists together once per store key, so moving
+  between the farm's views is a read from memory; a Decision and a player's history are read when opened. What a view
+  opens on is N8's `AppRoute.key`, read from `\.currentRoute`; the sidebar selects the view's row. Organization (findings, depth by level, starters against
+  spots, the lines the reading used), Affiliates (the organization drawn as a rail of clubs from the major-league club
+  down, each with its two readings as pills, the chosen one in a fixed fill; the chosen affiliate read twice beneath it),
+  Assignments (a native `Table`, in question only at first, a level filter, the chosen row's assignment beneath), Decision (numbered sections; the cascade as steps on a rail ending at the
+  served stop, a hole left open in a neutral box with an information symbol, never an error; opened on its own, the
+  assignments in question), Prospects (React's inbox and board as one table with the chosen player's meeting beneath it)
+  and Development tracking (the served tabs and order, a player's snapshots and grades beneath it). Every view with a
+  table is N8's `TablePane`; a page's short tables (Organization's, an affiliate's) are grids that stack their rows on a
+  narrow column (`PageGrid`), never a `Table` inside a page's scroll view. Native tables sort
+  by served keys through the unknown-last comparator (`ServedColumnSort`, FeatureCore), keep the served order until a
+  header is clicked, remember their columns (`TableColumnCustomization` in scene storage), drag a `PlayerRef`, open the
+  player's Decision on a double-click or Return, and offer Open Decision, Follow and Copy Name; the stakes column has no
+  `sortUsing`. A desk item opens through N8's served `open` (one button, "Open Decision" or "Open").
+- **Speed** (the owner's export, a read-only scratch copy, 7 affiliates and 230 assignments, in process under tsx): the
+  build 1.2 s on the server's thread when called directly (farm system 0.6 s, prospects 0.1 s, scouted development
+  0.09 s, 18 decisions ahead 0.2 s, the words 0.03 s), 2.3 s through the worker under tsx; warm GETs p50 / p95:
+  Organization 1.0 / 2.0 ms (47 kB), Affiliates 2.1 / 2.8 ms (188 kB), Assignments 2.1 / 2.6 ms (185 kB), Prospects
+  3.2 / 3.7 ms (210 kB), Development 0.4 / 0.7 ms; a Decision read ahead 0.5 / 0.5 ms; a routine one 0.9 s on its first
+  request (in the worker under tsx; the consequence itself is 0.24 s), 0.5 / 1.0 ms after.
+- *Left for later:* the scratch export's rating history has one snapshot, so Development tracking was timed only on the
+  synthetic history; a player window (N11) will be the nearest view for a player outside the farm.
+- *Found in the live captures:* on the default 900-point window Assignments and Prospects crashed the app (AppKit ran
+  out of constraint passes while the split view's content column took its minimum from the tables' column minimums and
+  the panes'). The first fix (`minWidth: 0` on every farm view) clipped the content instead of fitting it (the review's
+  H1); after the merge with N8 the farm takes N8's answer instead (below).
+- *After the review (2026-10-02):* the farm's key also counts this save's rating-snapshot writes, so the import's
+  snapshot (written by a post-import hook after the views may have warmed) is never missed; nobody is counted ahead of
+  or behind his peers while the history is building ("Not yet"); an alternative with no preference says why by its
+  judgment; Assignments' stakes cell opens a basis with every reason; "N of M players", the byline, an affiliate's level
+  line and a prospect's list line are served, not composed in Swift; the farm's tables, the affiliates list and the
+  detail panes sit on `readablePage` with the system's content background hidden, and the cascade's circles and its
+  open-hole box use fixed PennantDesign fills; a fold is the native `DisclosureGroup`. The tier `development_priority`
+  reads "Development-sensitive" (the owner's name).
+- *After the merge with N8 (2026-10-02):* the window's content column asks nothing of its content
+  (`.noContentMinimum()`), and Prospects, Development tracking, Assignments, the Decision list and Affiliates are
+  `TablePane`s, what goes with the chosen row beneath the table in its own scroll area, as Mail lays out a message
+  under its list (H1). A view's head puts its figures beneath its words when the column has no room for both
+  (`FarmHead`); label, value and why facts are a grid where there is room and stacked where there is not
+  (`FarmFacts`); a fold's title opens it too, as Get Info's sections do; the Decision's stakes and labelled lines wrap
+  (M4). Run under the accessibility audit for the first time, the farm's tables take N8's `table.…` identifiers and
+  their view's served name and drop the system's alternating rows, a neutral cell is plain text, the pages sit on
+  `readablePage`, the toolbar filters are a button and a popover of choices (N8's what-if pattern: a toolbar `Picker`
+  or `Menu` had no action to press), and the chosen affiliate is drawn in a fixed fill, not the system's grey
+  selection. N8's `TablePane` anchors a head too wide for it at the leading edge (with the farm in the synthetic league,
+  a decision's candidates' head was centred half under the sidebar). `testFarmNarrowWindow` cycles every farm view, a
+  Decision with its results fold and its cascade, and the Decision list at 900 × 700 with the inspector open.
+- *After the merge with the scouted ratings (#55, D-067, D-068; 2026-10-02):* #55's per-player source filtering lives in
+  `developmentHistoryFor`, so `/api/development-history` and the farm read the same rows and `ratingSourceSwitches`.
+  Development tracking says a change of source: a quiet line on his history (`FarmDevelopmentDetail.sourceSwitch`, a
+  claim whose basis says what is left out), a hint on his row's snapshot count, and a history note counting the players
+  whose ratings changed source. A player none of whose snapshots is in today's source stays listed ("None in today's
+  source", nothing compared), never a silent gap. The farm's stated lines carry the stakes lines' `setAside` sentence
+  (`FarmSystemView.calibration[].setAside`, additive on `/api/farm`); the Organization's ceiling-lines line then reads
+  "A starting value: this save's own were measured on other ratings" and opens a basis with the lines in force and that
+  sentence, and the starting lines' own text says "this league's own were measured on other ratings than today's",
+  never "not measured yet". Previews: `contract/fixtures/farm/development-detail-switched.json` and
+  `organization-set-aside.json`.
 
 ### 3.6 Signature interactions
 
@@ -1423,10 +1496,11 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
   "OSA's view" for the whole export instead (D-067, review L6). A league comparison's basis shows both readings where
   they differ ("Our scouts: 65 · OSA: 70"; a percentile "Our scouts: 65th percentile · OSA: 70th", D-068), only when
   the yardstick is OSA's rows from the file. Drawing the mark is the client's.
-  For the farm (N10, not built here): its Development tracking must show the served `ratingSourceSwitches` (a player
-  whose ratings changed source between snapshots, a switch, never development), and the lines basis of the stakes tiers
-  should append the served `setAside` sentence of `CeilingLinesInForce` when the league's own lines rest on other
-  ratings than today's and the starting lines serve (D-068, the owner's decision).
+  For the farm (built at N10 after the merge, section 3.5 "As built at N10"): its Development tracking shows the served
+  `ratingSourceSwitches` (a player whose ratings changed source between snapshots, a switch, never development), and
+  the Organization's ceiling-lines line carries the served `setAside` sentence of `CeilingLinesInForce` in its basis
+  when the league's own lines rest on other ratings than today's and the starting lines serve (D-068, the owner's
+  decision).
 - The N3 gaps, served additively on reused routes: `ImportProgress.words` (the phase, the table named for a person, the
   progress line); `ServerStatus.importNote` and the import-finished event's `note` (why an import failed, as a sentence
   to act on with the raw message as its detail, was interrupted, or has no export folder); `POST /api/config` answers
@@ -2256,6 +2330,11 @@ for later". **Next: N8** (Major League Ops).
 
 **N8 (2026-10-01)** on `feature/swiftui-n8-mlb`: Major League Ops served per view and drawn natively (section 3.5, "As
 built at N8"; D-065). Left open: the items in that section's "Left for later".
+
+**N10 (2026-10-01)** on `feature/swiftui-n10-farm`, merged with N8 (2026-10-02): Farm & Development, server and Mac (section 3.5, "As built
+at N10"; D-066), and with the scouted-ratings work (D-067, D-068): Development tracking says a change of rating source and the
+Organization lines say a fit set aside. The farm's XCUITests (`testFarmDeskToDecision`, `testFarmViewsDark`,
+`testFarmNarrowWindow`, five runs in a row) pass on the owner's Mac and on CI. Left open: the owner's calls listed in D-066.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

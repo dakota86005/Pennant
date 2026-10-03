@@ -10,6 +10,18 @@
     "40-Man & Options": {
       "extractionState": "manual"
     },
+    "Against": {
+      "extractionState": "manual"
+    },
+    "Against His Peers": {
+      "extractionState": "manual"
+    },
+    "Against his peers": {
+      "extractionState": "manual"
+    },
+    "Age": {
+      "extractionState": "manual"
+    },
     "AI": {
       "extractionState": "manual"
     },
@@ -19,10 +31,16 @@
     "Affiliates": {
       "extractionState": "manual"
     },
+    "All Levels": {
+      "extractionState": "manual"
+    },
     "An import is running. Choose a save when it has finished.": {
       "extractionState": "manual"
     },
     "Appearance": {
+      "extractionState": "manual"
+    },
+    "Are its players developing?": {
       "extractionState": "manual"
     },
     "Around the league": {
@@ -38,6 +56,9 @@
       "extractionState": "manual"
     },
     "Assignments": {
+      "extractionState": "manual"
+    },
+    "Assignments worth reviewing": {
       "extractionState": "manual"
     },
     "Automatic": {
@@ -65,6 +86,24 @@
       "extractionState": "manual"
     },
     "Bullpen": {
+      "extractionState": "manual"
+    },
+    "Can the club do its job?": {
+      "extractionState": "manual"
+    },
+    "Can the club field a team?": {
+      "extractionState": "manual"
+    },
+    "Ceiling": {
+      "extractionState": "manual"
+    },
+    "Ceiling Change": {
+      "extractionState": "manual"
+    },
+    "Choose a player to decide on": {
+      "extractionState": "manual"
+    },
+    "Choose an affiliate": {
       "extractionState": "manual"
     },
     "Choose Another Save": {
@@ -95,6 +134,9 @@
     "Commands": {
       "extractionState": "manual"
     },
+    "Conclusion": {
+      "extractionState": "manual"
+    },
     "Contracts": {
       "extractionState": "manual"
     },
@@ -109,6 +151,9 @@
     },
     "Data folder": {},
     "Data status": {
+      "extractionState": "manual"
+    },
+    "Date": {
       "extractionState": "manual"
     },
     "Decision": {
@@ -127,6 +172,9 @@
       "extractionState": "manual"
     },
     "Development Tracking": {
+      "extractionState": "manual"
+    },
+    "Developmental stakes": {
       "extractionState": "manual"
     },
     "Dismiss": {
@@ -165,10 +213,16 @@
     "Find the Save": {
       "extractionState": "manual"
     },
+    "First Read": {
+      "extractionState": "manual"
+    },
     "Folder": {
       "extractionState": "manual"
     },
     "Followed": {
+      "extractionState": "manual"
+    },
+    "For": {
       "extractionState": "manual"
     },
     "Forward": {
@@ -189,6 +243,9 @@
     "Front Office": {
       "extractionState": "manual"
     },
+    "Full development evidence": {
+      "extractionState": "manual"
+    },
     "GM Briefing": {
       "extractionState": "manual"
     },
@@ -198,16 +255,40 @@
     "Go": {
       "extractionState": "manual"
     },
+    "Graded Cover": {
+      "extractionState": "manual"
+    },
+    "Grades that moved": {
+      "extractionState": "manual"
+    },
     "Group": {
       "extractionState": "manual"
     },
     "Hide Inspector": {
       "extractionState": "manual"
     },
+    "His case for a roster spot": {
+      "extractionState": "manual"
+    },
+    "His Results": {
+      "extractionState": "manual"
+    },
+    "His results, against his league and park-adjusted": {
+      "extractionState": "manual"
+    },
+    "His Work": {
+      "extractionState": "manual"
+    },
     "Horizon Board": {
       "extractionState": "manual"
     },
     "How it's called": {
+      "extractionState": "manual"
+    },
+    "How this was measured": {
+      "extractionState": "manual"
+    },
+    "How to Read This": {
       "extractionState": "manual"
     },
     "How we win and lose": {
@@ -226,6 +307,9 @@
     "Importing…": {
       "extractionState": "manual"
     },
+    "In Question Only": {
+      "extractionState": "manual"
+    },
     "In use": {
       "extractionState": "manual"
     },
@@ -238,16 +322,25 @@
     "L": {
       "extractionState": "manual"
     },
+    "Latest Read": {
+      "extractionState": "manual"
+    },
     "Leaders": {
       "extractionState": "manual"
     },
     "League Office": {
       "extractionState": "manual"
     },
+    "Level": {
+      "extractionState": "manual"
+    },
     "Light": {
       "extractionState": "manual"
     },
     "Lineup": {
+      "extractionState": "manual"
+    },
+    "Listed Only": {
       "extractionState": "manual"
     },
     "Loading": {
@@ -266,6 +359,9 @@
       "extractionState": "manual"
     },
     "Morning Report": {
+      "extractionState": "manual"
+    },
+    "Moves supported": {
       "extractionState": "manual"
     },
     "Name": {
@@ -293,6 +389,9 @@
     "None yet": {
       "extractionState": "manual"
     },
+    "Not established": {
+      "extractionState": "manual"
+    },
     "Not found": {
       "extractionState": "manual"
     },
@@ -306,6 +405,9 @@
       "extractionState": "manual"
     },
     "Nothing selected": {
+      "extractionState": "manual"
+    },
+    "Now → Ceiling": {
       "extractionState": "manual"
     },
     "OOTP save": {
@@ -335,7 +437,13 @@
     "Organizational Philosophy": {
       "extractionState": "manual"
     },
+    "Other defensible assignments": {
+      "extractionState": "manual"
+    },
     "Our philosophy's lean": {
+      "extractionState": "manual"
+    },
+    "Our Read": {
       "extractionState": "manual"
     },
     "Payroll & Budget": {
@@ -371,7 +479,19 @@
     "Pitching Staff": {
       "extractionState": "manual"
     },
+    "Player": {
+      "extractionState": "manual"
+    },
+    "Player Development": {
+      "extractionState": "manual"
+    },
+    "Player Development's Call": {
+      "extractionState": "manual"
+    },
     "Player Search": {
+      "extractionState": "manual"
+    },
+    "Position": {
       "extractionState": "manual"
     },
     "Position Players": {
@@ -414,6 +534,9 @@
     "Rotation": {
       "extractionState": "manual"
     },
+    "Rotation Spots": {
+      "extractionState": "manual"
+    },
     "Save": {},
     "Save Club": {
       "extractionState": "manual"
@@ -430,6 +553,9 @@
     "Scouting": {
       "extractionState": "manual"
     },
+    "Scouting history": {
+      "extractionState": "manual"
+    },
     "Search": {
       "extractionState": "manual"
     },
@@ -437,6 +563,9 @@
       "extractionState": "manual"
     },
     "Section": {
+      "extractionState": "manual"
+    },
+    "Select a player to see his assignment.": {
       "extractionState": "manual"
     },
     "Select a row to see the staff's read.": {
@@ -450,6 +579,9 @@
       "extractionState": "manual"
     },
     "Set Up Pennant…": {
+      "extractionState": "manual"
+    },
+    "Show": {
       "extractionState": "manual"
     },
     "Show Candidates": {
@@ -474,13 +606,28 @@
     "Since the last export": {
       "extractionState": "manual"
     },
+    "Snapshots": {
+      "extractionState": "manual"
+    },
+    "Spots": {
+      "extractionState": "manual"
+    },
     "Staff's Options": {
+      "extractionState": "manual"
+    },
+    "Stakes": {
       "extractionState": "manual"
     },
     "Standings": {
       "extractionState": "manual"
     },
+    "Starters against rotation spots": {
+      "extractionState": "manual"
+    },
     "Starting…": {},
+    "Step %lld": {
+      "extractionState": "manual"
+    },
     "Stopping…": {},
     "Storylines": {
       "extractionState": "manual"
@@ -491,10 +638,22 @@
     "Strengths": {
       "extractionState": "manual"
     },
+    "Strong": {
+      "extractionState": "manual"
+    },
     "System": {
       "extractionState": "manual"
     },
     "Team Colors": {
+      "extractionState": "manual"
+    },
+    "The chain": {
+      "extractionState": "manual"
+    },
+    "The Level": {
+      "extractionState": "manual"
+    },
+    "The lines this reading used": {
       "extractionState": "manual"
     },
     "The Pennant server isn't running": {
@@ -568,6 +727,9 @@
       "extractionState": "manual"
     },
     "Try Again": {},
+    "Upper Minors": {
+      "extractionState": "manual"
+    },
     "Us vs Them": {
       "extractionState": "manual"
     },
@@ -578,6 +740,12 @@
       "extractionState": "manual"
     },
     "Use This Save": {
+      "extractionState": "manual"
+    },
+    "Used as Starters": {
+      "extractionState": "manual"
+    },
+    "Value": {
       "extractionState": "manual"
     },
     "W": {
@@ -592,13 +760,52 @@
     "What changed": {
       "extractionState": "manual"
     },
+    "What follows if he moves": {
+      "extractionState": "manual"
+    },
+    "What he is getting where he is": {
+      "extractionState": "manual"
+    },
+    "What is uncertain": {
+      "extractionState": "manual"
+    },
+    "What It Is": {
+      "extractionState": "manual"
+    },
+    "What Player Development says": {
+      "extractionState": "manual"
+    },
+    "What remains your decision": {
+      "extractionState": "manual"
+    },
+    "What the chain leaves open": {
+      "extractionState": "manual"
+    },
+    "What the Level Is Doing": {
+      "extractionState": "manual"
+    },
     "What This Comparison Is": {
       "extractionState": "manual"
     },
     "What would change it": {
       "extractionState": "manual"
     },
+    "What would settle it": {
+      "extractionState": "manual"
+    },
+    "Where It Leaves Him": {
+      "extractionState": "manual"
+    },
     "Where Pennant looked": {
+      "extractionState": "manual"
+    },
+    "Who could take the job": {
+      "extractionState": "manual"
+    },
+    "Who decided what": {
+      "extractionState": "manual"
+    },
+    "Who the organization could reach for": {
       "extractionState": "manual"
     },
     "Who we have": {
@@ -607,7 +814,16 @@
     "Whole Desk": {
       "extractionState": "manual"
     },
+    "Whose playing time changes": {
+      "extractionState": "manual"
+    },
+    "Whose Question": {
+      "extractionState": "manual"
+    },
     "Why": {
+      "extractionState": "manual"
+    },
+    "Why his assignment is being reviewed": {
       "extractionState": "manual"
     },
     "Wire": {

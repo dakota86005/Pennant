@@ -29,7 +29,7 @@ import type { DeptId } from './contract/presentation.js';
 import { currentSaveLocation } from './dataStatus.js';
 import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
 import {
-  buildClubReport, buildDecision, buildFrontOffice, buildTrail, type BuildRequest, type BuildResult, type ClubRequest, type DecisionRequest, type TrailRequest,
+  buildClubReport, buildDecision, buildFrontOffice, buildTrail, type BuildRequest, type BuildResult, type ClubRequest, type DecisionRequest, type TrailRequest, type WorkerJob,
 } from './frontOfficeBuild.js';
 import { catalogClubs } from './org.js';
 import { importedAt } from './playerStateRoutes.js';
@@ -201,11 +201,11 @@ function workerAvailable(): boolean {
 }
 let workerBroken = false;
 
-type Job =
-  | { kind: 'build'; request: BuildRequest }
-  | { kind: 'trail'; request: TrailRequest }
-  | { kind: 'club'; request: ClubRequest }
-  | { kind: 'decision'; request: DecisionRequest };
+type Job = WorkerJob;
+/** Another department's jobs (N10: the farm's), which its own service posts, checks and keeps (`runDepartmentJob`). */
+type DepartmentJob = Extract<Job, { kind: 'farmViews' | 'farmDecision' }>;
+/** The Front Office's own jobs, which this service checks and keeps. */
+type OwnJob = Exclude<Job, DepartmentJob>;
 
 function inWorker<T>(job: Job): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -227,7 +227,7 @@ function inWorker<T>(job: Job): Promise<T> {
 }
 
 /** Takes in what the worker built: its payloads' claims are checked again and registered (`adoptAuthored`). */
-function adopt<T>(job: Job, result: T): T {
+function adopt<T>(job: OwnJob, result: T): T {
   if (job.kind === 'trail' || job.kind === 'decision') return result === null ? result : adoptAuthored(result);
   if (job.kind === 'club') {
     adoptAuthored((result as unknown as { report: ClubReport }).report);
@@ -241,7 +241,7 @@ function adopt<T>(job: Job, result: T): T {
 }
 
 /** Runs a job in a worker thread; in-process when none can start (logged once), never on the request's own turn. */
-async function run<T>(job: Job): Promise<T> {
+async function run<T>(job: OwnJob): Promise<T> {
   if (workerAvailable()) {
     let result: T | undefined;
     try {
@@ -260,6 +260,35 @@ async function run<T>(job: Job): Promise<T> {
   if (job.kind === 'club') return buildClubReport(job.request) as T;
   if (job.kind === 'decision') return buildDecision(job.request) as T;
   return (job.kind === 'build' ? await buildFrontOffice(job.request) : buildTrail(job.request)) as T;
+}
+
+/**
+ * Another department's job in the Front Office's worker (N10: the farm's views and a decision read on the click), off the
+ * event loop like a build; in-process when no worker can start. What it posts back is the caller's to check and keep
+ * (`adoptAuthored`), keyed on the same inputs as the Front Office (`frontOfficeInputsKey`).
+ */
+export async function runDepartmentJob<T>(job: DepartmentJob, inProcess: () => T): Promise<T> {
+  // Counted by the department's own service, never in the Front Office's builds and runs
+  if (workerAvailable()) {
+    try {
+      return await inWorker<T>(job);
+    } catch (err) {
+      workerBroken = true;
+      console.error('[front office] worker unavailable, building in-process from now on:', err);
+    }
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  return inProcess();
+}
+
+/** Everything a club's answers depend on, as one string (N10: the farm's views key on the Front Office's inputs). */
+export function frontOfficeInputsKey(orgId: number): string {
+  return inputsKey(orgId);
+}
+
+/** A key's stamp, as every payload built for it carries (`reportStamp`). */
+export function frontOfficeStampOf(key: string): string {
+  return stampOf(key);
 }
 
 // ── the cache ───────────────────────────────────────────────────────────────

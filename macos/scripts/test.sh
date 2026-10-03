@@ -143,6 +143,10 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testFollowByDrag configured '{"theme":"light"}'
   prepare_ui_test testSearchToClubWindow configured '{"theme":"light"}'
   prepare_ui_test testClubWindow configured '{"theme":"light"}'
+  # Farm & Development (N10): a desk item into Decision and its cascade; every farm view in dark
+  prepare_ui_test testFarmDeskToDecision configured '{"theme":"light"}'
+  prepare_ui_test testFarmViewsDark configured '{"theme":"dark"}'
+  prepare_ui_test testFarmNarrowWindow configured '{"theme":"light"}'
   # Major League Ops (N8): the report's companion, the tables, a row's detail and context menu, a decision
   prepare_ui_test testMajorLeagueViews configured '{"theme":"light"}'
   prepare_ui_test testMajorLeagueNarrowWindow configured '{"theme":"light"}'
@@ -181,7 +185,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
         const fs = require("fs"), path = require("path");
         const dir = process.argv[1];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
-        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-)/;
+        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n10-)/;
         const kept = new Set();
         for (const test of manifest) for (const a of test.attachments ?? []) {
           const name = a.suggestedHumanReadableName ?? "";

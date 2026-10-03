@@ -63,7 +63,10 @@ public struct TablePane<Head: View, TableContent: View, Detail: View>: View {
                 .frame(height: detailHeight)
                 .accessibilityLabel(Text("Details"))
             }
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+            // Anchored at the leading edge, as `NoContentMinimum` is: a head that cannot be narrower than the pane runs
+            // past its trailing edge (under the inspector), never under the sidebar (N10: the synthetic league's farm
+            // widened a decision's candidates' head, and centred it half under the sidebar)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
         .background(Color.readablePage)
     }

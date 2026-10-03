@@ -176,6 +176,25 @@ describe('a report counts what its own workspace lists (case 10)', () => {
     expect(rows.reduce((n, it) => n + it.count, 0)).toBe(computeFarmSystem(save.org).attention.length);
   });
 
+  it('Farm & Development: each item names who it is about and opens where the farm answers it (N10 with N8\'s `open`)', async () => {
+    const rows = await itemsOf('farm');
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.open, row.key).not.toBeNull();
+      const link = row.headline.links[0];
+      if (row.open!.kind === 'decision') {
+        expect(row.open).toMatchObject({ department: 'farm' });
+        expect(link).toMatchObject({ kind: 'player', playerId: Number(row.open!.key) });
+      } else if (row.open!.view === 'affiliates') {
+        expect(link).toMatchObject({ kind: 'club', teamId: Number(row.open!.key) });
+      } else {
+        expect(row.open).toMatchObject({ kind: 'view', department: 'farm', view: 'organization' });
+      }
+    }
+    // The synthetic farm raises its affiliates' holes, so at least one item opens an affiliate
+    expect(rows.some((r) => r.open?.view === 'affiliates')).toBe(true);
+  });
+
   it('groups the same kind of farm finding about one subject into one row listing the positions (review S-7)', async () => {
     const attention = computeFarmSystem(save.org).attention;
     const rows = await itemsOf('farm');

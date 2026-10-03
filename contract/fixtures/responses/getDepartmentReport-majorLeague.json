@@ -96,7 +96,7 @@
         "because": [
           {
             "label": "Players",
-            "value": "26"
+            "value": "32"
           },
           {
             "label": "Limit",
@@ -117,9 +117,9 @@
       },
       "links": [],
       "value": {
-        "n": 26,
+        "n": 32,
         "unit": "count",
-        "display": "26 of 40",
+        "display": "32 of 40",
         "whole": 40
       }
     },

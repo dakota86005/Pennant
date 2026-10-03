@@ -22,6 +22,7 @@ import { computePayroll } from './payroll.js';
 import { departmentOffice, servedDepartments } from './presentation/catalog.js';
 import { needTrail } from './presentation/frontOffice/claims.js';
 import { assemble, type BuildContext, type DepartmentAnswer, type DepartmentContext } from './presentation/frontOffice/desk.js';
+import type { FarmDecisionRequest, FarmViewsRequest } from './farmViewsBuild.js';
 import { farmMaterial } from './presentation/frontOffice/farm.js';
 import { financeMaterial } from './presentation/frontOffice/finance.js';
 import { majorLeagueMaterial, type MajorLeagueInput } from './presentation/frontOffice/majorLeague.js';
@@ -268,3 +269,16 @@ export function buildClubReport(request: ClubRequest): { report: ClubReport; ms:
   const report = clubReportWords(build, material, ours, abbr);
   return { report, ms: Math.round((performance.now() - started) * 10) / 10 };
 }
+
+/**
+ * Every job the Front Office's worker runs (`frontOfficeWorker.ts`), as one list: the service posts them and the worker
+ * runs them, so a kind can't be added to one side and missed on the other. The farm's two (N10) are Farm & Development's
+ * views and one player's decision read on the click (`farmViewsBuild.ts`); Major League Ops' decision (N8) is `decision`.
+ */
+export type WorkerJob =
+  | { kind: 'build'; request: BuildRequest }
+  | { kind: 'trail'; request: TrailRequest }
+  | { kind: 'club'; request: ClubRequest }
+  | { kind: 'decision'; request: DecisionRequest }
+  | { kind: 'farmViews'; request: FarmViewsRequest }
+  | { kind: 'farmDecision'; request: FarmDecisionRequest };

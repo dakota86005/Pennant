@@ -315,6 +315,7 @@ export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | n
       // An earlier build doesn't know our scouts' full reports as a kind (D-067): it reads them as a kind it never compares
       .run(name, values[0], record.mode === 'scouted-complete' ? 'unknown' : record.mode, ...values.slice(2));
   }).immediate();
+  noteSnapshotsWritten();
 }
 
 /** The recorded rating mode of each snapshot date of this save (dates as the snapshots store them); unrecorded dates are absent. */
@@ -437,6 +438,20 @@ function leagueGameDate(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * How many times this thread has written rating snapshots or their modes (N10). A cache whose answer reads the save's
+ * rating history (the farm's Development tracking) keys on it: the import's snapshot is written by a post-import hook
+ * after the swap, so that cache may warm before it, and must not miss the newest snapshot for a whole import. A
+ * snapshot taken in a worker is counted here by the thread that waited on it (`snapshotsAfterImport`).
+ */
+let snapshotWrites = 0;
+export function snapshotWriteCount(): number {
+  return snapshotWrites;
+}
+export function noteSnapshotsWritten(): void {
+  snapshotWrites += 1;
 }
 
 /** The ratings a snapshot keeps for every rostered player, read from the given sources (the evidence's or the league's population view). */
@@ -570,6 +585,7 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
     if (saveName !== null) dualWrite.run(saveName, gameDate, saveKey, new Date().toISOString());
   });
   insertAll.immediate();
+  noteSnapshotsWritten();
   if (!filed) return null;
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players${populationRows.length ? ` (and OSA's view of ${populationRows.length}, the league's yardstick)` : ''}`);
   return { gameDate, players: rows.length, ourScouts, evidenceMode };
@@ -1638,25 +1654,9 @@ export function peerDevelopmentTrendByPlayerForOrg(
 export const historyRoutes = Router();
 
 
-/**
- * Full scouting-history series for an organization.
- *
- * This is observational data only: the ratings captured at each import.
- * It deliberately does not reinterpret those snapshots as true talent.
- * Player Development and Retention already consume the derived trend models;
- * this route exists so the UI can show the underlying history honestly.
- */
-historyRoutes.get('/development-history/:orgId', (req, res) => {
-  const orgId =
-    Number(req.params.orgId);
-
-  if (!Number.isFinite(orgId)) {
-    return res.status(400).json({
-      error:
-        'Invalid organization id',
-    });
-  }
-
+/** The organization's rating history in this save (D-064), as `/api/development-history/:orgId` serves it (N10: the Mac
+ * app's Development tracking reads the same function, so the two never read different histories). */
+export function developmentHistoryFor(orgId: number) {
   const saveKey =
     currentHistoryKey();
 
@@ -1779,7 +1779,7 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
     }
   }
 
-  res.json({
+  return {
     snapshots:
       dates.length,
 
@@ -1799,7 +1799,29 @@ historyRoutes.get('/development-history/:orgId', (req, res) => {
 
     // Whether any of this save's rating history is not used or started fresh, in a sentence, with its basis (D-064)
     history: historyNote(),
-  });
+  };
+}
+
+/**
+ * Full scouting-history series for an organization.
+ *
+ * This is observational data only: the ratings captured at each import.
+ * It deliberately does not reinterpret those snapshots as true talent.
+ * Player Development and Retention already consume the derived trend models;
+ * this route exists so the UI can show the underlying history honestly.
+ */
+historyRoutes.get('/development-history/:orgId', (req, res) => {
+  const orgId =
+    Number(req.params.orgId);
+
+  if (!Number.isFinite(orgId)) {
+    return res.status(400).json({
+      error:
+        'Invalid organization id',
+    });
+  }
+
+  res.json(developmentHistoryFor(orgId));
 });
 
 

@@ -105,10 +105,17 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
     const club = a.target.kind === 'affiliate' ? view.affiliates.find((x) => x.teamId === (a.target as { teamId: number }).teamId)?.label ?? null : null;
     // A reason adds to the line only for a player's assignment or roster spot; a finding's first evidence restates it
     const detail = a.kind === 'assignment' || a.kind === 'retention' ? a.detail.trim() : '';
+    // The headline names who it is about; the item opens where the farm answers it (N10, with N8's served `open`): a
+    // player's Decision, the affiliate on Affiliates, the Organization
     const link = a.target.kind === 'player'
       ? target({ kind: 'player', playerId: a.target.playerId })
       : a.target.kind === 'affiliate'
         ? target({ kind: 'club', teamId: a.target.teamId })
+        : target({ kind: 'view', department: 'farm', view: 'organization' });
+    const open = a.target.kind === 'player'
+      ? target({ kind: 'decision', department: 'farm', key: String(a.target.playerId) })
+      : a.target.kind === 'affiliate'
+        ? target({ kind: 'view', department: 'farm', view: 'affiliates', key: String(a.target.teamId) })
         : target({ kind: 'view', department: 'farm', view: 'organization' });
     const because = members.length > 1
       ? members.map((m) => ({ label: m.position ?? KIND_WORDS[m.kind], value: m.headline.trim() }))
@@ -134,6 +141,7 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
       shading: [],
       headline,
       detail: detail ? cell(detail) : null,
+      open,
       count: members.length,
     });
   });
@@ -147,6 +155,7 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
       text: 'Players in the system',
       tone: 'neutral',
       value: servedValue(scope.players, 'count', String(scope.players)),
+      links: [target({ kind: 'view', department: 'farm', view: 'assignments' })],
       basis: fact([
         { label: 'Players', value: String(scope.players) },
         { label: 'Read by Player Development', value: String(scope.assessed) },
@@ -158,6 +167,7 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
       tone: struggling > 0 ? 'caution' : 'neutral',
       value: servedValue(view.affiliates.length, 'count', String(view.affiliates.length)),
       hint: struggling > 0 ? `${struggling} short of what the club needs to play` : undefined,
+      links: [target({ kind: 'view', department: 'farm', view: 'affiliates' })],
       basis: fact(view.affiliates.map((a) => ({ label: `${a.label} (${a.levelName})`, value: a.operational.status === 'healthy' ? 'Can field its team' : a.operational.status === 'thin' ? 'Thin' : 'Short' }))
         .concat(view.affiliates.length ? [] : [{ label: 'Affiliates', value: 'None in the export' }])),
     }),
@@ -165,6 +175,7 @@ export function farmMaterial(ctx: DepartmentContext, view: FarmInput): Departmen
       text: 'Players we have a read on',
       tone: 'neutral',
       value: servedValue(scope.assessed, 'count', `${scope.assessed} of ${scope.players}`, scope.players > 0 ? { whole: scope.players } : undefined),
+      links: [target({ kind: 'view', department: 'farm', view: 'organization' })],
       basis: fact(
         [{ label: 'Read', value: String(scope.assessed) }, { label: 'Players', value: String(scope.players) }],
         scope.players > scope.assessed ? [`${scope.players - scope.assessed} players could not be read on the evidence there is.`] : [],

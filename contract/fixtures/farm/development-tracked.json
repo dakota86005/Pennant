@@ -1,0 +1,475 @@
+{
+  "orgId": 1,
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
+  "asOf": {
+    "display": "Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "ready": true,
+  "building": null,
+  "figures": [
+    {
+      "text": "Scouting snapshots",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Snapshots in this save",
+            "value": "3"
+          },
+          {
+            "label": "From",
+            "value": "April 1, 2040 to July 1, 2040"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Player Development",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "April 1, 2040 to July 1, 2040",
+      "value": {
+        "n": 3,
+        "unit": "count",
+        "display": "3"
+      }
+    },
+    {
+      "text": "Days of history",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "From",
+            "value": "April 1, 2040 to July 1, 2040"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Player Development",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "Days of the season between the first and latest snapshot",
+      "value": {
+        "n": 91,
+        "unit": "days",
+        "display": "91"
+      }
+    },
+    {
+      "text": "Ahead of their peers",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Ahead",
+            "value": "1"
+          },
+          {
+            "label": "Tracked",
+            "value": "3"
+          },
+          {
+            "label": "No pace yet",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Player Development",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "Moving as fast as or faster than four in five comparable players",
+      "value": {
+        "n": 1,
+        "unit": "count",
+        "display": "1"
+      }
+    },
+    {
+      "text": "Behind their peers",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Behind",
+            "value": "1"
+          },
+          {
+            "label": "Tracked",
+            "value": "3"
+          },
+          {
+            "label": "No pace yet",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Player Development",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "Moving as slowly as or slower than four in five comparable players",
+      "value": {
+        "n": 1,
+        "unit": "count",
+        "display": "1"
+      }
+    }
+  ],
+  "historyNotes": [
+    {
+      "display": "One player's ratings changed source between snapshots: a switch, not development.",
+      "tone": "unknown",
+      "hint": "Each one's snapshots from the other source are left out of his trend"
+    }
+  ],
+  "guide": [
+    {
+      "id": "guide:composite",
+      "cells": {
+        "label": {
+          "display": "Our scouts' read"
+        },
+        "value": {
+          "display": "An average of the scouting grades kept at each export, on the save's scale."
+        }
+      },
+      "sort": {
+        "label": "Our scouts' read",
+        "value": "An average of the scouting grades kept at each export, on the save's scale."
+      }
+    },
+    {
+      "id": "guide:pace",
+      "cells": {
+        "label": {
+          "display": "Against his peers"
+        },
+        "value": {
+          "display": "The change in that read against similar minor leaguers: the same kind of player, the same age range and, where there are enough, the same starting level."
+        }
+      },
+      "sort": {
+        "label": "Against his peers",
+        "value": "The change in that read against similar minor leaguers: the same kind of player, the same age range and, where there are enough, the same starting level."
+      }
+    },
+    {
+      "id": "guide:change",
+      "cells": {
+        "label": {
+          "display": "What a change means"
+        },
+        "value": {
+          "display": "Real development, a revised scouting read, or both."
+        }
+      },
+      "sort": {
+        "label": "What a change means",
+        "value": "Real development, a revised scouting read, or both."
+      }
+    },
+    {
+      "id": "guide:rule",
+      "cells": {
+        "label": {
+          "display": "When it shows"
+        },
+        "value": {
+          "display": "A trend needs three snapshots over 75 days of the season; a pace against his peers also needs 20 comparable players; until then the history says it is building."
+        }
+      },
+      "sort": {
+        "label": "When it shows",
+        "value": "A trend needs three snapshots over 75 days of the season; a pace against his peers also needs 20 comparable players; until then the history says it is building."
+      }
+    }
+  ],
+  "tabs": [
+    {
+      "id": "ahead",
+      "name": "Ahead",
+      "count": 1,
+      "title": {
+        "display": "Ahead of his peers"
+      },
+      "order": [
+        "development:9201"
+      ],
+      "rule": {
+        "display": "Furthest ahead first"
+      },
+      "label": "Ahead · 1"
+    },
+    {
+      "id": "behind",
+      "name": "Behind",
+      "count": 1,
+      "title": {
+        "display": "Behind his peers"
+      },
+      "order": [
+        "development:9202"
+      ],
+      "rule": {
+        "display": "Furthest behind first"
+      },
+      "label": "Behind · 1"
+    },
+    {
+      "id": "changes",
+      "name": "Biggest changes",
+      "count": 3,
+      "title": {
+        "display": "Largest changes"
+      },
+      "order": [
+        "development:9201",
+        "development:9202",
+        "development:9203"
+      ],
+      "rule": {
+        "display": "The 25 largest changes in our scouts' read, up or down",
+        "hint": "Across the whole organization, before a level is chosen"
+      },
+      "label": "Biggest changes · 3"
+    },
+    {
+      "id": "all",
+      "name": "All",
+      "count": 3,
+      "title": {
+        "display": "Every player we track"
+      },
+      "order": [
+        "development:9201",
+        "development:9203",
+        "development:9202"
+      ],
+      "rule": {
+        "display": "Furthest ahead of his peers first; no pace yet last"
+      },
+      "label": "All · 3"
+    }
+  ],
+  "initialTab": "ahead",
+  "levels": [
+    {
+      "id": "2",
+      "name": "Level 2"
+    },
+    {
+      "id": "3",
+      "name": "Level 3"
+    }
+  ],
+  "rows": [
+    {
+      "id": "development:9201",
+      "cells": {
+        "player": {
+          "display": "Player 9201"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 2 · Club 2"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "current": {
+          "display": "48"
+        },
+        "change": {
+          "display": "+4.5",
+          "tone": "good"
+        },
+        "pace": {
+          "display": "Ahead · 88th",
+          "tone": "good"
+        },
+        "history": {
+          "display": "3 snapshots"
+        }
+      },
+      "sort": {
+        "player": "9201, Player",
+        "age": 21,
+        "club": "02 Club 2",
+        "role": "SS",
+        "current": 48,
+        "change": 4.5,
+        "pace": 88,
+        "history": 3
+      },
+      "playerId": 9201,
+      "teamId": 102,
+      "levelId": "2",
+      "listLine": {
+        "display": "21 · Level 2 · Club 2"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9201"
+      }
+    },
+    {
+      "id": "development:9202",
+      "cells": {
+        "player": {
+          "display": "Player 9202"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 3 · Club 3"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "current": {
+          "display": "42"
+        },
+        "change": {
+          "display": "−2",
+          "tone": "bad"
+        },
+        "pace": {
+          "display": "Behind · 9th",
+          "tone": "bad"
+        },
+        "history": {
+          "display": "3 snapshots"
+        }
+      },
+      "sort": {
+        "player": "9202, Player",
+        "age": 21,
+        "club": "03 Club 3",
+        "role": "SS",
+        "current": 42,
+        "change": -2,
+        "pace": 9,
+        "history": 3
+      },
+      "playerId": 9202,
+      "teamId": 103,
+      "levelId": "3",
+      "listLine": {
+        "display": "21 · Level 3 · Club 3"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9202"
+      }
+    },
+    {
+      "id": "development:9203",
+      "cells": {
+        "player": {
+          "display": "Player 9203"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "Level 3 · Club 3"
+        },
+        "role": {
+          "display": "SS"
+        },
+        "current": {
+          "display": "48"
+        },
+        "change": {
+          "display": "+1",
+          "tone": "good"
+        },
+        "pace": {
+          "display": "Typical · 50th",
+          "tone": "neutral"
+        },
+        "history": {
+          "display": "2 snapshots",
+          "hint": "His ratings changed source; the other source's snapshots are left out"
+        }
+      },
+      "sort": {
+        "player": "9203, Player",
+        "age": 21,
+        "club": "03 Club 3",
+        "role": "SS",
+        "current": 48,
+        "change": 1,
+        "pace": 50,
+        "history": 2
+      },
+      "playerId": 9203,
+      "teamId": 103,
+      "levelId": "3",
+      "listLine": {
+        "display": "21 · Level 3 · Club 3"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "9203"
+      }
+    }
+  ],
+  "empty": {
+    "display": "No players match this view."
+  },
+  "tableNote": {
+    "display": "Every minor leaguer with scouting history in this save. Where he plays is decided on Prospects and his Decision."
+  },
+  "model": {
+    "display": "What our scouts have seen, kept at each export, and how fast it is changing against comparable minor leaguers. Neither is OOTP's hidden rating."
+  }
+}
