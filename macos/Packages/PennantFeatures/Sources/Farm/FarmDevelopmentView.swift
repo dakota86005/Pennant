@@ -206,6 +206,11 @@ struct DevelopmentDetailContent: View {
                 Text(verbatim: detail.line.display).foregroundStyle(.readableSecondary)
                 Pill(detail.pace.display, tone: Tone(detail.pace.tone))
             }
+            // His ratings changed source between snapshots (D-067): said, with what it leaves out in its basis
+            if let sourceSwitch = detail.sourceSwitch {
+                ServedClaimLine(sourceSwitch, font: .callout)
+                    .accessibilityIdentifier("farm.development.sourceSwitch")
+            }
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 4) {
                 GridRow { Text("First Read").foregroundStyle(.readableSecondary); CellText(detail.first).monospacedDigit() }
                 GridRow { Text("Latest Read").foregroundStyle(.readableSecondary); CellText(detail.latest).monospacedDigit() }

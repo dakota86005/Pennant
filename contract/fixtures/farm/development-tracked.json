@@ -157,7 +157,13 @@
       }
     }
   ],
-  "historyNotes": [],
+  "historyNotes": [
+    {
+      "display": "One player's ratings changed source between snapshots: a switch, not development.",
+      "tone": "unknown",
+      "hint": "Each one's snapshots from the other source are left out of his trend"
+    }
+  ],
   "guide": [
     {
       "id": "guide:composite",
@@ -430,7 +436,8 @@
           "tone": "neutral"
         },
         "history": {
-          "display": "3 snapshots"
+          "display": "2 snapshots",
+          "hint": "His ratings changed source; the other source's snapshots are left out"
         }
       },
       "sort": {
@@ -441,7 +448,7 @@
         "current": 48,
         "change": 1,
         "pace": 50,
-        "history": 3
+        "history": 2
       },
       "playerId": 9203,
       "teamId": 103,

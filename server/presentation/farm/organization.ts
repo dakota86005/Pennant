@@ -6,10 +6,10 @@
  */
 import type { FarmSystemView } from '../../farmOperations.js';
 import { cell, claim, row } from '../claim.js';
-import { decisionTarget, factBasis, findingsWorstFirst, findingView, headOf, lastNameKey, linesCalled } from './common.js';
+import { decisionTarget, factBasis, findingsWorstFirst, findingView, headOf, judgmentBasis, lastNameKey, linesCalled } from './common.js';
 import type { FarmContext } from './input.js';
 import type { FarmDepthRow, FarmLineRow, FarmOrganizationView, FarmPlayerRow, FarmStartersRow } from './types.js';
-import { MINOR_LEAGUE_OPS, plain, plural } from './words.js';
+import { MINOR_LEAGUE_OPS, PLAYER_DEVELOPMENT, plain, plural } from './words.js';
 
 const FIELD_ORDER = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
 
@@ -113,9 +113,23 @@ export function organizationView(ctx: FarmContext, system: FarmSystemView): Farm
       name: cell(plain(c.basis) || 'A line Minor League Operations states'),
       value: cell(lineValue(c.value)),
       kind: cell(KIND[c.status] ?? plain(c.status)),
-      why: cell(KIND[c.status] === 'Policy' ? 'Chosen by the club\'s staff, not fitted' : c.status === 'measured' ? 'Measured on this save\'s own players' : 'A starting value until this save can show better'),
+      // The league's own lines set aside for resting on other ratings than today's (D-068): said on the line, why in its basis
+      why: c.setAside
+        ? cell('A starting value: this save\'s own were measured on other ratings', { tone: 'unknown' })
+        : cell(KIND[c.status] === 'Policy' ? 'Chosen by the club\'s staff, not fitted' : c.status === 'measured' ? 'Measured on this save\'s own players' : 'A starting value until this save can show better'),
     },
     { name: c.name, value: c.value, kind: c.status, why: c.basis },
+    c.setAside
+      ? claim({
+        text: 'This save\'s own lines were set aside',
+        tone: 'unknown',
+        hint: 'They were measured on other ratings than today\'s',
+        basis: judgmentBasis(ctx, PLAYER_DEVELOPMENT, {
+          because: [{ label: 'In force', value: plain(c.basis) }, { label: 'Set aside', value: plain(c.setAside) }],
+          called,
+        }),
+      })
+      : undefined,
   ));
 
   return {

@@ -8,6 +8,7 @@
  * The movers React worked out on the client are served: the biggest changes are the largest observed changes either
  * way (`MOVERS_SHOWN`, stated), set over the whole organization before any level is chosen.
  */
+import type { Cell } from '../../contract/presentation.js';
 import type { ScoutedDevelopmentPlayer } from '../../scoutedDevelopment.js';
 import { cell, claim, row, servedValue, unknownValue } from '../claim.js';
 import { decisionTarget, factBasis, factRow, headOf, lastNameKey, sentenceCells } from './common.js';
@@ -43,18 +44,27 @@ function summaryText(player: ScoutedDevelopmentPlayer): string {
 
 interface Tracked {
   player: ScoutedDevelopmentPlayer;
+  /** His snapshots in today's source of his ratings; empty when every one he has is from the other source (D-067). */
   snaps: HistoryRowInput[];
+  /** The served sentence when his ratings changed source between snapshots (D-067), else null. */
+  switched: string | null;
 }
+
+/** Why a source switch leaves snapshots out, for the basis beside the served sentence (D-067). */
+const SOURCE_SWITCH_WHY = 'His snapshots from the other source are left out of his trend and of the snapshots listed here, so a change of source is never read as development.';
+/** The same, short enough for a help tag on his row. */
+const SOURCE_SWITCH_HINT = 'His ratings changed source; the other source\'s snapshots are left out';
 
 function detailOf(ctx: FarmContext, t: Tracked, rating: RatingDisplay): FarmDevelopmentDetail {
   const { player, snaps } = t;
   const h = player.evidence.developmentHistory;
-  const first = snaps[0];
-  const latest = snaps[snaps.length - 1];
+  // None when every snapshot of his is from the other source (D-067): then nothing is compared, and it says so
+  const first: HistoryRowInput | undefined = snaps[0];
+  const latest: HistoryRowInput | undefined = snaps[snaps.length - 1];
   const pace = paceWords(player.evidence.peerDevelopment.pace, player.evidence.peerDevelopment.percentile);
-  const tools = first.position === 1 ? PITCHER_TOOLS : HITTER_TOOLS;
+  const tools = (first ? first.position === 1 : player.kind === 'pitcher') ? PITCHER_TOOLS : HITTER_TOOLS;
   const movement: FarmMovementRow[] = [];
-  if (snaps.length >= 2) {
+  if (first && latest && snaps.length >= 2) {
     for (const [key, label] of tools) {
       const from = first[key];
       const to = latest[key];
@@ -91,16 +101,30 @@ function detailOf(ctx: FarmContext, t: Tracked, rating: RatingDisplay): FarmDeve
     name: player.name,
     line: cell(`${player.age} · ${roleWords(player.kind, player.role)} · ${player.levelName} · ${player.team}`),
     pace: cell(pace.text, { tone: pace.tone }),
-    first: cell(composite(first.cur, rating)),
-    latest: cell(composite(latest.cur, rating)),
+    sourceSwitch: t.switched
+      ? claim({
+        text: plain(t.switched),
+        tone: 'unknown',
+        basis: factBasis(ctx, PLAYER_DEVELOPMENT, [
+          { label: 'Source', value: plain(t.switched) },
+          { label: 'Left out', value: SOURCE_SWITCH_WHY },
+          { label: 'Snapshots in today\'s source', value: snaps.length ? String(snaps.length) : 'None yet' },
+        ]),
+      })
+      : null,
+    first: cell(composite(first?.cur ?? null, rating), first?.cur == null ? { tone: 'unknown' } : {}),
+    latest: cell(composite(latest?.cur ?? null, rating), latest?.cur == null ? { tone: 'unknown' } : {}),
     change: claim({
       text: 'Change in our scouts\' read',
       tone: delta === null || delta === 0 ? 'neutral' : delta > 0 ? 'good' : 'bad',
       value: delta === null ? unknownValue('count', 'Not enough history yet') : servedValue(delta, 'count', signed(delta)),
       basis: factBasis(ctx, PLAYER_DEVELOPMENT, [
-        { label: 'First snapshot', value: `${gameDateDisplay(first.game_date) ?? first.game_date}: ${composite(first.cur, rating)}` },
-        { label: 'Latest snapshot', value: `${gameDateDisplay(latest.game_date) ?? latest.game_date}: ${composite(latest.cur, rating)}` },
-        { label: 'Snapshots in this save', value: String(snaps.length) },
+        ...(first && latest ? [
+          { label: 'First snapshot', value: `${gameDateDisplay(first.game_date) ?? first.game_date}: ${composite(first.cur, rating)}` },
+          { label: 'Latest snapshot', value: `${gameDateDisplay(latest.game_date) ?? latest.game_date}: ${composite(latest.cur, rating)}` },
+        ] : []),
+        { label: 'Snapshots in this save', value: snaps.length ? String(snaps.length) : 'None in today\'s source' },
+        ...(t.switched ? [{ label: 'Source', value: plain(t.switched) }] : []),
         ...h.reasons.map((r) => ({ label: 'History', value: plain(r) })),
       ], delta === null ? [SNAPSHOT_RULE] : []),
     }),
@@ -115,11 +139,25 @@ function detailOf(ctx: FarmContext, t: Tracked, rating: RatingDisplay): FarmDeve
     }),
     snapshots,
     movement,
-    movementEmpty: movement.length ? null : cell(snaps.length >= 2 ? 'None of his visible scouting grades changed across these snapshots.' : 'One snapshot so far: nothing to compare yet.'),
+    movementEmpty: movement.length ? null : cell(snaps.length >= 2
+      ? 'None of his visible scouting grades changed across these snapshots.'
+      : snaps.length === 1 ? 'One snapshot so far: nothing to compare yet.' : 'No snapshot from today\'s source of his ratings yet: nothing to compare.'),
     peers: sentenceCells(player.evidence.peerDevelopment.reasons),
     open: decisionTarget(player.playerId),
     fogNote: cell('These snapshots keep what the organization could see at the time. A change can be real development, a revised scouting read, or both; Pennant never puts OOTP\'s hidden ratings in their place.'),
   };
+}
+
+/**
+ * How many tracked players' ratings changed source between snapshots (D-067), in one line with its why in the hover;
+ * none when nobody's did. Each one's own history says so too.
+ */
+function sourceSwitchNote(n: number): Cell[] {
+  if (n === 0) return [];
+  return [cell(
+    `${n === 1 ? 'One player\'s ratings' : `${n} players' ratings`} changed source between snapshots: a switch, not development.`,
+    { tone: 'unknown', hint: 'Each one\'s snapshots from the other source are left out of his trend' },
+  )];
 }
 
 export interface DevelopmentViews {
@@ -139,8 +177,13 @@ export function developmentViews(
     if (list) list.push(r);
     else byPlayer.set(r.player_id, [r]);
   }
+  // Players whose ratings changed source between snapshots (D-067): his rows from the other source are already left out,
+  // and he is listed with the sentence, even when none of his snapshots is left (never a silent gap)
+  const switched = new Map(history.ratingSourceSwitches.map((s) => [s.playerId, s.text]));
   // Every minor leaguer with at least one snapshot of this save, in the roster's order (level, then name)
-  const tracked: Tracked[] = players.filter((p) => byPlayer.has(p.playerId)).map((player) => ({ player, snaps: byPlayer.get(player.playerId)! }));
+  const tracked: Tracked[] = players
+    .filter((p) => byPlayer.has(p.playerId) || switched.has(p.playerId))
+    .map((player) => ({ player, snaps: byPlayer.get(player.playerId) ?? [], switched: switched.get(player.playerId) ?? null }));
 
   const ready = history.snapshots >= 2;
   const change = (t: Tracked) => t.player.evidence.developmentHistory.currentDelta;
@@ -187,7 +230,8 @@ export function developmentViews(
     const p = t.player;
     const d = change(t);
     const pace = paceWords(p.evidence.peerDevelopment.pace, p.evidence.peerDevelopment.percentile);
-    const latest = t.snaps[t.snaps.length - 1];
+    const latest: HistoryRowInput | undefined = t.snaps[t.snaps.length - 1];
+    const cur = latest?.cur ?? null;
     return {
       ...row(
         id(t),
@@ -196,17 +240,20 @@ export function developmentViews(
           age: cell(String(p.age)),
           club: cell(`${p.levelName} · ${p.team}`),
           role: cell(roleWords(p.kind, p.role)),
-          current: cell(composite(latest.cur, rating), latest.cur === null ? { tone: 'unknown' } : {}),
+          current: cell(composite(cur, rating), cur === null ? { tone: 'unknown' } : {}),
           change: d === null ? cell('Not enough history yet', { tone: 'unknown' }) : cell(signed(d), { tone: d > 0 ? 'good' : d < 0 ? 'bad' : 'neutral' }),
           pace: cell(pace.text, { tone: pace.tone }),
-          history: cell(plural(t.snaps.length, 'snapshot')),
+          // A change of source is said on his history, the sentence in its hover (D-067)
+          history: t.snaps.length
+            ? cell(plural(t.snaps.length, 'snapshot'), t.switched ? { hint: SOURCE_SWITCH_HINT } : {})
+            : cell('None in today\'s source', { tone: 'unknown', hint: SOURCE_SWITCH_HINT }),
         },
         {
           player: lastNameKey(p.name),
           age: p.age,
           club: `${String(p.level).padStart(2, '0')} ${p.team}`,
           role: roleWords(p.kind, p.role),
-          current: latest.cur,
+          current: cur,
           change: d,
           pace: p.evidence.peerDevelopment.pace === 'insufficient' ? null : place(t),
           history: t.snaps.length,
@@ -269,7 +316,10 @@ export function developmentViews(
         basis: factBasis(ctx, PLAYER_DEVELOPMENT, [{ label: 'Snapshots in this save', value: String(history.snapshots) }], [SNAPSHOT_RULE]),
       }),
     figures,
-    historyNotes: sentenceCells([...(history.history.note ? [history.history.note] : []), ...history.ratingModeSwitches.map((s) => s.text)]),
+    historyNotes: [
+      ...sentenceCells([...(history.history.note ? [history.history.note] : []), ...history.ratingModeSwitches.map((s) => s.text)]),
+      ...sourceSwitchNote(tracked.filter((t) => t.switched !== null).length),
+    ],
     guide: [
       factRow('guide:composite', 'Our scouts\' read', 'An average of the scouting grades kept at each export, on the save\'s scale.'),
       factRow('guide:pace', 'Against his peers', 'The change in that read against similar minor leaguers: the same kind of player, the same age range and, where there are enough, the same starting level.'),

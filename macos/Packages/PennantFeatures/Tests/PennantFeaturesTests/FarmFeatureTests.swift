@@ -84,6 +84,36 @@ struct FarmFeatureTests {
         #expect(Tone(chain.stop.tone) != .bad)
     }
 
+    @Test("a change of rating source is served on his history and on the view, never a silent gap (D-067)")
+    func sourceSwitchServed() throws {
+        let detail = try #require(PreviewFixtures.farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail-switched"))
+        let sourceSwitch = try #require(detail.sourceSwitch)
+        #expect(sourceSwitch.text.contains("changed source"))
+        #expect(!sourceSwitch.basis.because.isEmpty)
+        let plain = try #require(PreviewFixtures.farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail"))
+        #expect(plain.sourceSwitch == nil)
+        let view = try #require(PreviewFixtures.farmFixture(Components.Schemas.FarmDevelopmentView.self, "development-tracked"))
+        #expect(view.historyNotes.contains { $0.display.contains("changed source") })
+        let row = try #require(view.rows.first { $0.playerId == detail.playerId })
+        #expect(row.cells.history.hint != nil)
+        // The preview store holds him, so the detail pane draws the served sentence
+        let model = PreviewFixtures.ready()
+        #expect(model.farm.details[detail.playerId]?.sourceSwitch?.text == sourceSwitch.text)
+    }
+
+    @Test("the Organization's set-aside line opens its basis: the starting lines in force and why the league's own are not (D-068)")
+    func setAsideLine() throws {
+        let view = try #require(PreviewFixtures.farmFixture(Components.Schemas.FarmOrganizationView.self, "organization-set-aside"))
+        let withBasis = view.lines.filter { $0.claim != nil }
+        #expect(withBasis.count == 1)
+        let line = try #require(withBasis.first)
+        let because = try #require(line.claim?.basis.because)
+        #expect(because.contains { $0.label == "Set aside" && $0.value.contains("isn't used") })
+        #expect(because.contains { $0.label == "In force" })
+        let captured = try #require(PreviewFixtures.decode(Components.Schemas.FarmOrganizationView.self, "getFarmOrganization"))
+        #expect(captured.lines.allSatisfy { $0.claim == nil })
+    }
+
     @Test("a farm item on the desk opens where the farm answers it, through its served open, labelled by its kind")
     func deskItemOpensDecision() throws {
         let report = try #require(PreviewFixtures.decode(Components.Schemas.DepartmentReport.self, "getDepartmentReport-farm"))

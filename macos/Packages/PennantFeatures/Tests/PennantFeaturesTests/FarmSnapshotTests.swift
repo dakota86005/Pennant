@@ -21,8 +21,8 @@ struct FarmSnapshotTests {
         try FileManager.default.createDirectory(at: Self.folder, withIntermediateDirectories: true)
     }
 
-    private func hosted(_ view: some View, key: String? = nil) -> some View {
-        let model = PreviewFixtures.ready()
+    private func hosted(_ view: some View, key: String? = nil, farm: FarmStore? = nil) -> some View {
+        let model = PreviewFixtures.ready(farm: farm)
         let window = MainWindowModel(registry: DepartmentRegistry(allDepartments))
         return view
             .environment(model)
@@ -65,6 +65,18 @@ struct FarmSnapshotTests {
     @Test("Development tracking: the movers and a player's history", arguments: [false, true])
     func development(dark: Bool) throws {
         try draw(hosted(NavigationStack { FarmDevelopmentView() }), size: CGSize(width: 1280, height: 900), dark: dark, name: "farm-development")
+    }
+
+    @Test("Development tracking: a player whose ratings changed source, said above his history (D-067)", arguments: [false, true])
+    func developmentSourceSwitch(dark: Bool) throws {
+        let detail = try #require(PreviewFixtures.farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail-switched"))
+        try draw(hosted(ScrollView { DevelopmentDetailContent(detail: detail).padding(20) }), size: CGSize(width: 720, height: 760), dark: dark, name: "farm-development-source-switch")
+    }
+
+    @Test("Organization: its own lines set aside for resting on other ratings (D-068)", arguments: [false, true])
+    func organizationSetAside(dark: Bool) throws {
+        let view = try #require(PreviewFixtures.farmFixture(Components.Schemas.FarmOrganizationView.self, "organization-set-aside"))
+        try draw(hosted(FarmOrganizationView(), farm: .preview(organization: view)), size: CGSize(width: 1100, height: 4400), dark: dark, name: "farm-organization-set-aside")
     }
 
     @Test("the farm's report, its items opening where the farm answers them", arguments: [false, true])

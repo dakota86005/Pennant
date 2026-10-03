@@ -104,8 +104,19 @@ struct OrganizationContent: View {
                  columns: [Text("What It Is"), Text("Value"), Text("Kind"), Text("Why")],
                  rows: view.lines) { row in
             [AnyView(GridCell(row.cells.name)), AnyView(GridCell(row.cells.value).monospacedDigit()),
-             AnyView(GridCell(row.cells.kind)), AnyView(GridCell(row.cells.why, secondary: true))]
+             AnyView(GridCell(row.cells.kind)), AnyView(why(row))]
         }
         .accessibilityIdentifier("farm.organization.lines")
+    }
+
+    /// A line's why; one with a basis (the league's own lines set aside for resting on other ratings, D-068) opens it.
+    @ViewBuilder
+    private func why(_ row: Components.Schemas.FarmLineRow) -> some View {
+        if let claim = row.claim {
+            ClaimText(claim, edge: .leading) { GridCell(row.cells.why, secondary: true) }
+            .accessibilityIdentifier("farm.organization.lines.setAside")
+        } else {
+            GridCell(row.cells.why, secondary: true)
+        }
     }
 }

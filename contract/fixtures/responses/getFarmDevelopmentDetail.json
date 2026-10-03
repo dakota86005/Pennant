@@ -23,6 +23,7 @@
     "display": "History still building",
     "tone": "unknown"
   },
+  "sourceSwitch": null,
   "first": {
     "display": "40"
   },

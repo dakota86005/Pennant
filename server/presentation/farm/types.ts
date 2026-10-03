@@ -424,6 +424,11 @@ export interface FarmDevelopmentDetail extends FarmViewHead {
   name: string;
   line: Cell;
   pace: Cell;
+  /**
+   * When his ratings changed source between snapshots (our scouts' full reports and OSA's view, D-067): the served
+   * sentence, a switch and never development, with what it leaves out in its basis. Null otherwise.
+   */
+  sourceSwitch: Claim | null;
   first: Cell;
   latest: Cell;
   change: Claim;
@@ -444,7 +449,10 @@ export interface FarmDevelopmentView extends FarmViewHead {
   /** With fewer than two snapshots: what there is, and what would start the comparison. */
   building: Claim | null;
   figures: Claim[];
-  /** This save's history notes: a fresh start or a carry-over (D-064), a switch in the kind of ratings (D-061). */
+  /**
+   * This save's history notes: a fresh start or a carry-over (D-064), a switch in the kind of ratings (D-061), and how
+   * many players' ratings changed source between snapshots (D-067).
+   */
   historyNotes: Cell[];
   guide: FarmFactRow[];
   tabs: FarmDevelopmentTab[];

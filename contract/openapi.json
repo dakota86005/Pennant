@@ -5012,6 +5012,10 @@
           "pace": {
             "$ref": "#/components/schemas/Cell"
           },
+          "sourceSwitch": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "When his ratings changed source between snapshots (our scouts' full reports and OSA's view, D-067): the served sentence, a switch and never development, with what it leaves out in its basis. Null otherwise."
+          },
           "first": {
             "$ref": "#/components/schemas/Cell"
           },
@@ -5364,7 +5368,7 @@
             "items": {
               "$ref": "#/components/schemas/Cell"
             },
-            "description": "This save's history notes: a fresh start or a carry-over (D-064), a switch in the kind of ratings (D-061)."
+            "description": "This save's history notes: a fresh start or a carry-over (D-064), a switch in the kind of ratings (D-061), and how many players' ratings changed source between snapshots (D-067)."
           },
           "guide": {
             "type": "array",

@@ -866,7 +866,9 @@ describe('the committed fixtures of finding the save (N3.5 B2, which the Mac sta
   const FARM_FIXTURES: Array<[string, string]> = [
     ['decision-cascade.json', 'FarmDecisionView'],
     ['development-detail.json', 'FarmDevelopmentDetail'],
+    ['development-detail-switched.json', 'FarmDevelopmentDetail'],
     ['development-tracked.json', 'FarmDevelopmentView'],
+    ['organization-set-aside.json', 'FarmOrganizationView'],
     ['prospects-meetings.json', 'FarmProspectsView'],
   ];
 

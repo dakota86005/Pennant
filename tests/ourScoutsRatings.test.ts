@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
-import { developmentTrendByPlayer, historyDb, modeFilter, snapshotModes, stampSnapshotMode } from '../server/history.js';
+import { developmentHistoryFor, developmentTrendByPlayer, historyDb, modeFilter, snapshotModes, stampSnapshotMode } from '../server/history.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { takeImportSnapshots } from '../server/importSnapshots.js';
 import { indexesFor } from '../server/importWorker.js';
@@ -288,6 +288,13 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
       expect(list.changes.map((c: { player_id: number }) => c.player_id)).toContain(RATED);
       const switched = list.ratingSourceSwitches.find((s: { playerId: number }) => s.playerId === SWITCHER);
       expect(switched.text).toMatch(/from OSA's view to our scouts' full reports: the change is a switch, not development/);
+      // The organization's history, as the old route and the farm's Development tracking both read it (N10): his OSA row
+      // left out and the switch served beside it
+      const history = developmentHistoryFor(OURS);
+      expect(history.rows.filter((r) => r.player_id === SWITCHER).map((r) => r.game_date)).toEqual([dates[1]]);
+      expect(history.ratingSourceSwitches).toContainEqual({ playerId: SWITCHER, text: switched.text });
+      const route = await request(`/api/development-history/${OURS}`);
+      expect(route.ratingSourceSwitches).toEqual(history.ratingSourceSwitches);
       // In his history and trend: today he is our scouts' (he is not in the file, so not filled), so OSA's row is left out
       const trend = developmentTrendByPlayer().get(SWITCHER);
       expect(trend?.snapshotCount ?? 0).toBe(1);

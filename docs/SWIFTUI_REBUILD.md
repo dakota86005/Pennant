@@ -1138,6 +1138,17 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   selection. N8's `TablePane` anchors a head too wide for it at the leading edge (with the farm in the synthetic league,
   a decision's candidates' head was centred half under the sidebar). `testFarmNarrowWindow` cycles every farm view, a
   Decision with its results fold and its cascade, and the Decision list at 900 × 700 with the inspector open.
+- *After the merge with the scouted ratings (#55, D-067, D-068; 2026-10-02):* #55's per-player source filtering lives in
+  `developmentHistoryFor`, so `/api/development-history` and the farm read the same rows and `ratingSourceSwitches`.
+  Development tracking says a change of source: a quiet line on his history (`FarmDevelopmentDetail.sourceSwitch`, a
+  claim whose basis says what is left out), a hint on his row's snapshot count, and a history note counting the players
+  whose ratings changed source. A player none of whose snapshots is in today's source stays listed ("None in today's
+  source", nothing compared), never a silent gap. The farm's stated lines carry the stakes lines' `setAside` sentence
+  (`FarmSystemView.calibration[].setAside`, additive on `/api/farm`); the Organization's ceiling-lines line then reads
+  "A starting value: this save's own were measured on other ratings" and opens a basis with the lines in force and that
+  sentence, and the starting lines' own text says "this league's own were measured on other ratings than today's",
+  never "not measured yet". Previews: `contract/fixtures/farm/development-detail-switched.json` and
+  `organization-set-aside.json`.
 
 ### 3.6 Signature interactions
 
@@ -1485,10 +1496,11 @@ is the raw message (for the log and a help tag); an unknown `/v2` route answers 
   "OSA's view" for the whole export instead (D-067, review L6). A league comparison's basis shows both readings where
   they differ ("Our scouts: 65 · OSA: 70"; a percentile "Our scouts: 65th percentile · OSA: 70th", D-068), only when
   the yardstick is OSA's rows from the file. Drawing the mark is the client's.
-  For the farm (N10, not built here): its Development tracking must show the served `ratingSourceSwitches` (a player
-  whose ratings changed source between snapshots, a switch, never development), and the lines basis of the stakes tiers
-  should append the served `setAside` sentence of `CeilingLinesInForce` when the league's own lines rest on other
-  ratings than today's and the starting lines serve (D-068, the owner's decision).
+  For the farm (built at N10 after the merge, section 3.5 "As built at N10"): its Development tracking shows the served
+  `ratingSourceSwitches` (a player whose ratings changed source between snapshots, a switch, never development), and
+  the Organization's ceiling-lines line carries the served `setAside` sentence of `CeilingLinesInForce` in its basis
+  when the league's own lines rest on other ratings than today's and the starting lines serve (D-068, the owner's
+  decision).
 - The N3 gaps, served additively on reused routes: `ImportProgress.words` (the phase, the table named for a person, the
   progress line); `ServerStatus.importNote` and the import-finished event's `note` (why an import failed, as a sentence
   to act on with the raw message as its detail, was interrupted, or has no export folder); `POST /api/config` answers

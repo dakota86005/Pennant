@@ -115,6 +115,8 @@ export interface DevelopmentHistoryInput {
   observationDays: number | null;
   rows: HistoryRowInput[];
   ratingModeSwitches: Array<{ text: string }>;
+  /** Players whose ratings changed source between snapshots (D-067): his rows from the other source are already left out. */
+  ratingSourceSwitches: Array<{ playerId: number; text: string }>;
   history: { note: string | null; because: string[] };
 }
 

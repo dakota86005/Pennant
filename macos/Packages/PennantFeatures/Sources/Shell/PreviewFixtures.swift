@@ -174,7 +174,11 @@ nonisolated public enum PreviewFixtures {
             prospects: farmFixture(Components.Schemas.FarmProspectsView.self, "prospects-meetings"),
             development: farmFixture(Components.Schemas.FarmDevelopmentView.self, "development-tracked"),
             decisions: decisions.compactMap { $0 },
-            details: [farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail")].compactMap { $0 }
+            details: [
+                farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail"),
+                // A player whose ratings changed source between snapshots (D-067)
+                farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail-switched"),
+            ].compactMap { $0 }
         )
     }
 
@@ -254,7 +258,8 @@ nonisolated public enum PreviewFixtures {
         savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil,
         since: Bool = false,
         following: FollowingStore? = nil,
-        clubOwed: Components.Schemas.ClubOwed? = nil
+        clubOwed: Components.Schemas.ClubOwed? = nil,
+        farm: FarmStore? = nil
     ) -> AppModel {
         var status = status(configured: configured)
         if let clubOwed { status?.clubOwed = clubOwed }
@@ -290,7 +295,7 @@ nonisolated public enum PreviewFixtures {
             savePlayedElsewhere: savePlayedElsewhere,
             following: configured ? (following ?? Self.following()) : nil,
             league: configured ? league : nil,
-            farm: configured ? farm : nil,
+            farm: configured ? (farm ?? Self.farm) : nil,
             majorLeague: configured ? majorLeague : nil
         )
     }

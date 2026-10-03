@@ -17,6 +17,7 @@ import { currentHistoryKey } from '../server/historyIdentity.js';
 import { cell } from '../server/presentation/claim.js';
 import { decisionView } from '../server/presentation/farm/decision.js';
 import { developmentViews, MOVERS_SHOWN } from '../server/presentation/farm/development.js';
+import { organizationView } from '../server/presentation/farm/organization.js';
 import type { DevelopmentHistoryInput, FarmContext, HistoryRowInput } from '../server/presentation/farm/input.js';
 import { prospectsView } from '../server/presentation/farm/prospects.js';
 import { CALL_ORDER, MEETING_CALLS, PLAIN, callWord, plain, tierWord } from '../server/presentation/farm/words.js';
@@ -241,13 +242,40 @@ describe('no hidden score orders the prospects (D-044)', () => {
   });
 });
 
+describe('the lines the Organization reading used say what was set aside (D-068)', () => {
+  const CEILING = 'Ceiling lines in force';
+  const SET_ASIDE = 'The save\'s earlier fit rests on true ratings, not today\'s ratings (OSA\'s view), so it isn\'t used.';
+  const SET_ASIDE_BASIS = 'Pennant\'s starting lines: this league\'s own were measured on other ratings than today\'s.';
+
+  it('draws the stakes lines\' set-aside sentence beside the starting lines, short on the line and whole in its hover', () => {
+    // As the farm states them when the stakes lines are set aside (stakesLines.test.ts holds the real report to it)
+    const calibration = system.calibration.map((c) => (c.name === CEILING ? { ...c, status: 'provisional', basis: SET_ASIDE_BASIS, setAside: SET_ASIDE } : c));
+    const view = organizationView(ctx, { ...system, calibration });
+    const line = view.lines.find((l) => l.sort.name === CEILING)!;
+    expect(line.cells.why.display).toBe('A starting value: this save\'s own were measured on other ratings');
+    // The whole sentence is in the line's basis, beside the starting lines in force
+    expect(line.claim?.text).toBe('This save\'s own lines were set aside');
+    expect(line.claim?.basis.because).toEqual(expect.arrayContaining([{ label: 'Set aside', value: SET_ASIDE }]));
+    expect(line.claim?.basis.because.find((b) => b.label === 'In force')?.value).toMatch(/starting lines/);
+    expect(bannedInPayload(view)).toEqual([]);
+  });
+
+  it('says nothing set aside when nothing was', () => {
+    const view = organizationView(ctx, system);
+    const line = view.lines.find((l) => l.sort.name === CEILING)!;
+    expect(system.calibration.find((c) => c.name === CEILING)!.setAside).toBeUndefined();
+    expect(line.claim).toBeUndefined();
+    expect(line.cells.why.display).not.toMatch(/other ratings/);
+  });
+});
+
 describe('development tracking compares only this save\'s own history (D-064, D-061)', () => {
   const rowsFor = (id: number, dates: string[], cur: number[]): HistoryRowInput[] => dates.map((d, i) => ({
     game_date: d, player_id: id, name: `Player ${id}`, team_id: 103, level: 3, levelName: 'Level 3', position: 6, age: 21, cur: cur[i], pot: 60,
     con: 40 + i, gap: 40, pow: 40, eye: 40, avk: 40, spd: 50, stu: null, mov: null, ctl: null,
   }));
   const history = (rows: HistoryRowInput[], dates: string[]): DevelopmentHistoryInput => ({
-    snapshots: dates.length, dates, observationDays: dates.length > 1 ? 90 : null, rows, ratingModeSwitches: [], history: { note: null, because: [] },
+    snapshots: dates.length, dates, observationDays: dates.length > 1 ? 90 : null, rows, ratingModeSwitches: [], ratingSourceSwitches: [], history: { note: null, because: [] },
   });
 
   it('says the history is building with fewer than two snapshots, never a change of zero', () => {
@@ -280,6 +308,52 @@ describe('development tracking compares only this save\'s own history (D-064, D-
     // Both directions are movers
     expect(changes.order.some((id) => players.find((p) => `development:${p.playerId}` === id)!.evidence.developmentHistory.currentDelta! < 0)).toBe(true);
     expect(changes.rule.display).toMatch(new RegExp(`${MOVERS_SHOWN} largest changes`));
+  });
+
+  it('says a change of rating source on the player and on the view, never a silent gap (D-067)', () => {
+    const dates = ['2040-4-1', '2040-5-15', '2040-7-1'];
+    const SWITCH = 'His ratings changed source, from OSA\'s view to our scouts\' full reports: the change is a switch, not development.';
+    // Player 1: two of his snapshots left in today's source; player 2: none left at all; player 3: no switch
+    const rows = [...rowsFor(1, dates.slice(1), [46, 48]), ...rowsFor(3, dates, [44, 45, 46])];
+    const input = { ...history(rows, dates), ratingSourceSwitches: [{ playerId: 1, text: SWITCH }, { playerId: 2, text: SWITCH }] };
+    const players = [scoutedPlayer(1, 3, {}, 2), scoutedPlayer(2, 3), scoutedPlayer(3, 3, {}, 2)];
+    const { view, details } = developmentViews(ctx, players, input, RATING);
+    expect(view.rows.map((r) => r.playerId)).toEqual([1, 2, 3]);
+    const note = view.historyNotes.find((n) => /changed source/.test(n.display))!;
+    expect(note.display).toBe('2 players\' ratings changed source between snapshots: a switch, not development.');
+    expect(note.hint).toMatch(/left out of his trend/);
+    const [one, two, three] = details;
+    expect(one.sourceSwitch?.text).toBe(SWITCH);
+    expect(JSON.stringify(one.sourceSwitch?.basis.because)).toMatch(/left out of his trend/);
+    expect(one.snapshots).toHaveLength(2);
+    expect(JSON.stringify(one.change.basis)).toMatch(/changed source/);
+    expect(view.rows[0].cells.history).toMatchObject({ display: '2 snapshots', hint: expect.stringMatching(/changed source/) });
+    // Every snapshot of his was the other source's: listed, said so, nothing compared and nothing invented
+    expect(view.rows[1].cells.history).toMatchObject({ display: 'None in today\'s source', tone: 'unknown' });
+    expect(view.rows[1].cells.current.display).toBe('Not seen');
+    expect(two.sourceSwitch?.text).toBe(SWITCH);
+    expect(two.snapshots).toEqual([]);
+    expect(two.movement).toEqual([]);
+    expect(two.movementEmpty?.display).toMatch(/No snapshot from today's source/);
+    expect(three.sourceSwitch).toBeNull();
+    expect(view.rows[2].cells.history.hint ?? null).toBeNull();
+    expect(bannedInPayload({ view, details })).toEqual([]);
+  });
+
+  it('says nothing of a source switch when nobody\'s ratings changed source', () => {
+    const dates = ['2040-4-1', '2040-7-1'];
+    const { view, details } = developmentViews(ctx, [scoutedPlayer(1, 3, {}, 1)], history(rowsFor(1, dates, [45, 46]), dates), RATING);
+    expect(view.historyNotes.some((n) => /changed source/.test(n.display))).toBe(false);
+    expect(details[0].sourceSwitch).toBeNull();
+  });
+
+  it('serves the shared history\'s source switches into the farm\'s build (D-067)', () => {
+    const h = developmentHistoryFor(save.org);
+    expect(Array.isArray(h.ratingSourceSwitches)).toBe(true);
+    const { views } = buildFarmViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    // The synthetic save has one source throughout: no switch, and no sentence about one
+    expect(views.development.historyNotes.some((n) => /changed source/.test(n.display))).toBe(false);
+    expect(views.developmentDetails.every((d) => d.sourceSwitch === null)).toBe(true);
   });
 
   it('reads the save\'s own history only: a snapshot filed under another save is never in the comparison', () => {
@@ -500,11 +574,29 @@ describe('fixtures for the Mac app\'s farm previews (N10)', () => {
     const rows = players.flatMap((p, i) => dates.map((d, j) => ({
       game_date: d, player_id: p.playerId, name: p.name, team_id: p.teamId, level: p.level, levelName: p.levelName, position: i === 1 ? 1 : 6, age: 21, cur: 44 + j * (i === 1 ? -1 : 2), pot: 60,
       con: 40 + j, gap: 40, pow: 42 + j, eye: 40, avk: 40, spd: 50, stu: 45 - j, mov: 45, ctl: 44,
-    })));
-    const { view, details } = developmentViews(ctx, players, { snapshots: 3, dates, observationDays: 91, rows, ratingModeSwitches: [], history: { note: null, because: [] } }, RATING);
+    })))
+      // The third man's first snapshot was OSA's view, before our scouts rated him: left out, and said (D-067)
+      .filter((r) => !(r.player_id === 9203 && r.game_date === dates[0]));
+    const ratingSourceSwitches = [{ playerId: 9203, text: 'His ratings changed source, from OSA\'s view to our scouts\' full reports: the change is a switch, not development.' }];
+    const { view, details } = developmentViews(ctx, players, { snapshots: 3, dates, observationDays: 91, rows, ratingModeSwitches: [], ratingSourceSwitches, history: { note: null, because: [] } }, RATING);
     expect(bannedInPayload({ view, details })).toEqual([]);
     fixture('development-tracked.json', view);
     fixture('development-detail.json', details[0]);
+    fixture('development-detail-switched.json', details.find((d) => d.playerId === 9203));
+  });
+
+  it('the Organization reading with its own lines set aside for resting on other ratings (D-068)', () => {
+    const calibration = system.calibration.map((c) => (c.name === 'Ceiling lines in force'
+      ? {
+        ...c,
+        status: 'provisional',
+        basis: 'Pennant\'s starting lines: this league\'s own were measured on other ratings than today\'s.',
+        setAside: 'The save\'s earlier fit rests on true ratings, not today\'s ratings (OSA\'s view), so it isn\'t used.',
+      }
+      : c));
+    const view = organizationView(ctx, { ...system, calibration });
+    expect(bannedInPayload(view)).toEqual([]);
+    fixture('organization-set-aside.json', view);
   });
 });
 
