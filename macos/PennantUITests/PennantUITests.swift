@@ -1193,7 +1193,8 @@ final class PennantUITests: XCTestCase {
                 XCTAssertTrue(table.waitForExistence(timeout: 10), "the depth by position did not draw")
                 keep(window.screenshot(), named: "\(prefix)-depthChart-by-position")
                 element(app, "depthChart.mode").radioButtons.element(boundBy: 1).click()
-                XCTAssertTrue(element(app, "depthChart.field").waitForExistence(timeout: 10), "the depth by club did not draw")
+                // The field where there is room, the positions as cards where there is not: the club's view either way
+                XCTAssertTrue(element(app, "depthChart.club").waitForExistence(timeout: 10), "the depth by club did not draw")
             }
             keep(window.screenshot(), named: "\(prefix)-\(view.view)")
         }
