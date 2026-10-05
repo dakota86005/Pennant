@@ -28,6 +28,12 @@ nonisolated public struct Theme: Sendable, Equatable {
         /// The system's colours, not a club's: drawn with the system's materials and label colours.
         public var isNeutral: Bool
 
+        /// A position's badge (the depth chart's, the roster diagram's): its fill and its words. In the system's colours
+        /// a fixed, checked pair, never white on the system accent (a yellow accent read about 1.5:1; N9 review, M7); a
+        /// pack's accent and its words are the server's, checked there.
+        public var badgeFill: Color { isNeutral ? Color(nsColor: .readableHeadingFill) : accent }
+        public var badgeText: Color { isNeutral ? Color(nsColor: .readableHeadingText) : accentText }
+
         /// The system's colours, following the window's appearance: the window's background under the title, a
         /// content background's fill for the masthead, the label colours for its text (its secondary lines in the
         /// readable secondary grey: the system's secondary label reads about 3.9:1 on the window's background), the

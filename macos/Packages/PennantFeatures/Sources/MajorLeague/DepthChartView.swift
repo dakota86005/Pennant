@@ -110,13 +110,12 @@ struct DepthPlate: View {
     var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
-        let accentText = palette.isNeutral ? Color.white : palette.accentText
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
-                Text(verbatim: position.id).font(.system(size: 10, weight: .bold)).foregroundStyle(accentText)
+                Text(verbatim: position.id).font(.system(size: 10, weight: .bold)).foregroundStyle(palette.badgeText)
                     .lineLimit(1).fixedSize()
                     .padding(.horizontal, 4).padding(.vertical, 1)
-                    .background(accent, in: .rect(cornerRadius: 3))
+                    .background(palette.badgeFill, in: .rect(cornerRadius: 3))
                     .accessibilityLabel(Text(verbatim: position.title.display))
                 if let empty = position.empty { Text(verbatim: empty.display).font(.caption).foregroundStyle(.readableSecondary) }
             }
