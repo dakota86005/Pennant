@@ -18,7 +18,7 @@ import { seasonTrendsView } from '../server/presentation/clubhouse/trends.js';
 import { computeRosterCrunchIssues, type CrunchIssues } from '../server/rosterops.js';
 import { computeTrends } from '../server/trends.js';
 import { bannedInPayload } from './bannedJargon';
-import { buildSave, type BuiltSave } from './syntheticSave';
+import { buildSave, exec, type BuiltSave } from './syntheticSave';
 
 /*
  * Major League Ops' clubhouse tools (N9, D-069; BEHAVIOR_CASES.md "Pennant for Mac", the `clubhouseViews.test.ts` rows):
@@ -144,6 +144,59 @@ describe('an unknown rest day, pitch count or split is not known, never zero (D-
       for (const k of Object.keys(r.cells).filter((x) => x.startsWith('day'))) expect(r.cells[k].display).toBe('Not known');
     }
     expect(pen.note?.basis.unknown).toContain('The export has no game-by-game pitching log, so rest and recent workload are not known.');
+    // Never "0 of N limited or unavailable" when nobody's workload is known
+    expect(pen.summary?.display).toBe('Availability not known');
+    expect(pen.summary?.tone).toBe('unknown');
+  });
+
+  it('says a pitch count the log doesn\'t carry is not known on the Mac, and the old route keeps its figures as they were', () => {
+    // The synthetic log carries no pitch counts; give one reliever's outings theirs, then take his latest one's out
+    const first = computePitchingStaff(save.org);
+    if (!first.ok || !('starterDepth' in first.body)) throw new Error('no staff');
+    const armId = first.body.bullpen.find((p) => p.recentOutings.some((o) => o.daysAgo <= 2))!.player_id;
+    exec(`UPDATE players_game_pitching_stats SET pi = 12 WHERE player_id = ${armId}`);
+    const staff = computePitchingStaff(save.org);
+    if (!staff.ok || !('starterDepth' in staff.body)) throw new Error('no staff');
+    const arm = staff.body.bullpen.find((p) => p.player_id === armId)!;
+    expect(arm.workloadKnown).toBe(true);
+    const latest = db.prepare(`SELECT s.game_id, s.pi FROM players_game_pitching_stats s JOIN games g ON g.game_id = s.game_id
+      WHERE s.player_id = ? AND g.played = 1 ORDER BY g.game_id DESC LIMIT 1`).get(arm.player_id) as { game_id: number; pi: number };
+    exec(`UPDATE players_game_pitching_stats SET pi = NULL WHERE player_id = ${arm.player_id} AND game_id = ${latest.game_id}`);
+    try {
+      const after = computePitchingStaff(save.org);
+      if (!after.ok || !('starterDepth' in after.body)) throw new Error('no staff');
+      const him = after.body.bullpen.find((p) => p.player_id === arm.player_id)!;
+      // The old route's figures read the missing count as 0, as the React page always has
+      expect(him.pitchesLast3).toBe(arm.pitchesLast3 - latest.pi);
+      expect(him.lastOuting?.pitches).toBe(0);
+      // The Mac app's fields carry the gap
+      expect(him.workloadKnown).toBe(false);
+      expect(him.lastOutingPitches).toBeNull();
+      expect(him.recentOutings.some((o) => o.pitches === null)).toBe(true);
+      const view = pitchingAvailabilityView(v, { staff: after.body });
+      const row = view.sections.find((s) => s.id === 'bullpen')!.table.rows.find((r) => r.id === `pen-${arm.player_id}`)!;
+      expect(row.cells.p3.display).toBe('Not known');
+      expect(row.sort.p3).toBeNull();
+      const day = Object.keys(row.cells).find((k) => k.startsWith('day') && row.cells[k].display === 'Pitched')!;
+      expect(row.cells[day].hint).toMatch(/^Pitch count not in the export, /);
+      expect(row.sort[day]).toBeNull();
+      if (!['two_straight', 'injured', 'rested', 'no_appearances'].includes(String(him.statusCode))) expect(row.cells.tonight.display).toBe('Not known');
+      const words = visible(row.detail).map((x) => x.text).join(' ');
+      expect(words).toMatch(/pitch count not in the export/);
+      expect(words).not.toMatch(/\b0 pitches\b|\(0 today\)|\(0 yesterday\)/);
+    } finally {
+      exec(`UPDATE players_game_pitching_stats SET pi = NULL WHERE player_id = ${armId}`);
+    }
+  });
+
+  it('says a starter\'s wins and losses are not known when the line doesn\'t carry them, never 0-0', () => {
+    const staff = computePitchingStaff(save.org);
+    if (!staff.ok || !('starterDepth' in staff.body)) throw new Error('no staff');
+    const [first, ...rest] = staff.body.rotation;
+    const view = pitchingAvailabilityView(v, { staff: { ...staff.body, rotation: [{ ...first, stats: { ...first.stats!, w: null as unknown as number } }, ...rest] } });
+    const row = view.sections.find((s) => s.id === 'rotation')!.table.rows[0];
+    expect(row.cells.wl.display).toBe('Not known');
+    expect(row.cells.wl.tone).toBe('unknown');
   });
 
   it('says a reliever with no appearance has none yet, and a day he didn\'t pitch is a dash with its words, not a zero', async () => {
@@ -155,6 +208,8 @@ describe('an unknown rest day, pitch count or split is not known, never zero (D-
       for (const d of days) {
         const c = r.cells[d.id];
         if (c.display === '–') expect(c.hint).toBe('Didn\'t pitch');
+        // The synthetic log carries no pitch counts: an outing is said as pitched, never a 0 (D-018)
+        else if (c.display === 'Pitched') expect(c.hint).toMatch(/^Pitch count not in the export, \d+ outs?$/);
         else expect(c.display).toMatch(/^\d+$/);
       }
     }

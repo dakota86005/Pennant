@@ -25,10 +25,18 @@ interface Appearance {
   player_id: number;
   dateKey: number;
   date: string;
-  pitches: number;
+  /**
+   * His pitches in that game, or null when the log row carries none (D-018). The old route's figures (`pitchesLast3`,
+   * `lastOuting.pitches`, the availability label) read a missing count as 0, as they always have (`pitchesOrZero`); the
+   * Mac app's fields beside them (N9) carry the null, so it reads "not known".
+   */
+  pitches: number | null;
   outs: number;
   started: boolean;
 }
+
+/** The old route's reading of a pitch count the log doesn't carry: 0, as the React page has always shown it. */
+const pitchesOrZero = (a: Appearance): number => a.pitches ?? 0;
 
 const dayFromKey = (key: number): Date =>
   new Date(Math.floor(key / 10000), (Math.floor(key / 100) % 100) - 1, key % 100);
@@ -82,7 +90,7 @@ function bullpenStatus(
   const on = (d: number) => recent.find((a) => daysBetween(todayKey, a.dateKey) === d);
   const pitches3 = recent
     .filter((a) => daysBetween(todayKey, a.dateKey) <= 2)
-    .reduce((sum, a) => sum + a.pitches, 0);
+    .reduce((sum, a) => sum + pitchesOrZero(a), 0);
 
   const today = on(0);
   const yesterday = on(1);
@@ -91,13 +99,13 @@ function bullpenStatus(
   // question a manager is actually asking on this screen.
   if (today && yesterday) return { label: 'Two straight — sit him', tone: 'bad', code: 'two_straight', count: null };
   if (pitches3 >= 50) return { label: `${pitches3} pitches in 3 days`, tone: 'bad', code: 'heavy_three_days', count: pitches3 };
-  if (today && today.pitches >= 30) return { label: `${today.pitches} pitches today`, tone: 'bad', code: 'heavy_today', count: today.pitches };
-  if (today) return { label: `Would be back-to-back (${today.pitches} today)`, tone: 'warn', code: 'back_to_back', count: today.pitches };
-  if (yesterday && yesterday.pitches >= 30) {
-    return { label: `${yesterday.pitches} pitches yesterday`, tone: 'warn', code: 'heavy_yesterday', count: yesterday.pitches };
+  if (today && pitchesOrZero(today) >= 30) return { label: `${pitchesOrZero(today)} pitches today`, tone: 'bad', code: 'heavy_today', count: pitchesOrZero(today) };
+  if (today) return { label: `Would be back-to-back (${pitchesOrZero(today)} today)`, tone: 'warn', code: 'back_to_back', count: pitchesOrZero(today) };
+  if (yesterday && pitchesOrZero(yesterday) >= 30) {
+    return { label: `${pitchesOrZero(yesterday)} pitches yesterday`, tone: 'warn', code: 'heavy_yesterday', count: pitchesOrZero(yesterday) };
   }
   if (pitches3 >= 40) return { label: `${pitches3} pitches in 3 days`, tone: 'warn', code: 'busy_three_days', count: pitches3 };
-  if (yesterday) return { label: `Available (${yesterday.pitches} yesterday)`, tone: 'ok', code: 'pitched_yesterday', count: yesterday.pitches };
+  if (yesterday) return { label: `Available (${pitchesOrZero(yesterday)} yesterday)`, tone: 'ok', code: 'pitched_yesterday', count: pitchesOrZero(yesterday) };
   const last = recent[0];
   if (!last) return { label: 'No appearances yet', tone: 'ok', code: 'no_appearances', count: null };
   const rest = daysBetween(todayKey, last.dateKey);
@@ -189,7 +197,7 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
          ORDER BY dateKey DESC`
       )
       .all(...ids) as Array<{
-      player_id: number; date: string; dateKey: number; pitches: number; outs: number; gs: number;
+      player_id: number; date: string; dateKey: number; pitches: number | null; outs: number; gs: number;
     }>;
     for (const r of rows) {
       const list = appearances.get(r.player_id) ?? [];
@@ -197,7 +205,7 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
         player_id: r.player_id,
         dateKey: r.dateKey,
         date: r.date,
-        pitches: r.pitches ?? 0,
+        pitches: r.pitches ?? null,
         outs: r.outs ?? 0,
         started: (r.gs ?? 0) > 0,
       });
@@ -241,7 +249,9 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
       velocity: p.velocity,
       // OSA's view filling in for our scouts (D-067): a quiet mark and its sentence for the grades; null otherwise
       ratingsFill: ratingFillOf(p.player_id),
-      lastOuting: last ? { date: last.date, pitches: last.pitches, outs: last.outs } : null,
+      lastOuting: last ? { date: last.date, pitches: pitchesOrZero(last), outs: last.outs } : null,
+      // N9: his last outing's pitches for the Mac app, null when the log row carries none (D-018)
+      lastOutingPitches: last ? last.pitches : null,
       // N9: each outing in the calendar's days (today and the four before it), for the Mac app's rest calendar
       recentOutings: todayKey === null
         ? []
@@ -298,7 +308,10 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
         // N9: what the reading rests on, for the Mac app's words (null when no game has been played)
         statusCode: status.code,
         statusCount: status.count,
-        pitchesLast3: last3.reduce((sum, a) => sum + a.pitches, 0),
+        // N9: whether every outing the reading's three days rest on carries its pitch count; when one doesn't, a reading
+        // from pitches (and the pitches over three days) is not known on the Mac (D-018), whatever 0 the old label read
+        workloadKnown: last3.every((a) => a.pitches !== null),
+        pitchesLast3: last3.reduce((sum, a) => sum + pitchesOrZero(a), 0),
         appearancesLast3: last3.length,
       };
     })

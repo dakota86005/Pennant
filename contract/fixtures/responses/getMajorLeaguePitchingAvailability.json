@@ -291,7 +291,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing Apr 29 (6 days before the last game played): 0 pitches, 11 outs"
+                      "display": "Last outing Apr 29 (6 days before the last game played): pitch count not in the export, 11 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -316,12 +316,14 @@
                 "display": "R"
               },
               "tonight": {
-                "display": "Available (0 yesterday)",
-                "tone": "good"
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "A recent outing's pitch count isn't in the export"
               },
               "p3": {
-                "display": "0",
-                "hint": "Pitches over the last three days"
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "A recent outing's pitch count isn't in the export"
               },
               "apps3": {
                 "display": "1",
@@ -363,8 +365,9 @@
                 "hint": "Didn't pitch"
               },
               "day1": {
-                "display": "0",
-                "hint": "0 pitches, 8 outs"
+                "display": "Pitched",
+                "tone": "unknown",
+                "hint": "Pitch count not in the export, 8 outs"
               },
               "day0": {
                 "display": "–",
@@ -375,8 +378,8 @@
               "pitcher": "P 1022",
               "role": 1,
               "throws": "R",
-              "tonight": 0,
-              "p3": 0,
+              "tonight": null,
+              "p3": null,
               "apps3": 1,
               "ip": 11,
               "era": 3.27,
@@ -388,7 +391,7 @@
               "day4": 0,
               "day3": 0,
               "day2": 0,
-              "day1": 0,
+              "day1": null,
               "day0": 0
             },
             "player": {
@@ -411,8 +414,8 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Available (0 yesterday)",
-                      "tone": "good"
+                      "display": "Not known",
+                      "tone": "unknown"
                     },
                     "quiet": false,
                     "chips": [],
@@ -420,7 +423,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing May 4 (1 day before the last game played): 0 pitches, 8 outs"
+                      "display": "Last outing May 4 (1 day before the last game played): pitch count not in the export, 8 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -480,8 +483,9 @@
                 "tone": "good"
               },
               "day4": {
-                "display": "0",
-                "hint": "0 pitches, 11 outs"
+                "display": "Pitched",
+                "tone": "unknown",
+                "hint": "Pitch count not in the export, 11 outs"
               },
               "day3": {
                 "display": "–",
@@ -514,7 +518,7 @@
               "sv": 2,
               "hld": 0,
               "health": 0,
-              "day4": 0,
+              "day4": null,
               "day3": 0,
               "day2": 0,
               "day1": 0,
@@ -549,7 +553,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing May 1 (4 days before the last game played): 0 pitches, 11 outs"
+                      "display": "Last outing May 1 (4 days before the last game played): pitch count not in the export, 11 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -677,7 +681,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing Apr 28 (7 days before the last game played): 0 pitches, 10 outs"
+                      "display": "Last outing Apr 28 (7 days before the last game played): pitch count not in the export, 10 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -805,7 +809,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing Apr 27 (8 days before the last game played): 0 pitches, 10 outs"
+                      "display": "Last outing Apr 27 (8 days before the last game played): pitch count not in the export, 10 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -934,7 +938,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing Apr 30 (5 days before the last game played): 0 pitches, 10 outs"
+                      "display": "Last outing Apr 30 (5 days before the last game played): pitch count not in the export, 10 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -963,8 +967,9 @@
                 "tone": "good"
               },
               "p3": {
-                "display": "0",
-                "hint": "Pitches over the last three days"
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "A recent outing's pitch count isn't in the export"
               },
               "apps3": {
                 "display": "1",
@@ -1002,8 +1007,9 @@
                 "hint": "Didn't pitch"
               },
               "day2": {
-                "display": "0",
-                "hint": "0 pitches, 11 outs"
+                "display": "Pitched",
+                "tone": "unknown",
+                "hint": "Pitch count not in the export, 11 outs"
               },
               "day1": {
                 "display": "–",
@@ -1019,7 +1025,7 @@
               "role": 1,
               "throws": "R",
               "tonight": 0,
-              "p3": 0,
+              "p3": null,
               "apps3": 1,
               "ip": 11,
               "era": 9,
@@ -1030,7 +1036,7 @@
               "health": 0,
               "day4": 0,
               "day3": 0,
-              "day2": 0,
+              "day2": null,
               "day1": 0,
               "day0": 0
             },
@@ -1063,7 +1069,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing May 3 (2 days before the last game played): 0 pitches, 11 outs"
+                      "display": "Last outing May 3 (2 days before the last game played): pitch count not in the export, 11 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -1088,12 +1094,14 @@
                 "display": "R"
               },
               "tonight": {
-                "display": "Would be back-to-back (0 today)",
-                "tone": "caution"
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "A recent outing's pitch count isn't in the export"
               },
               "p3": {
-                "display": "0",
-                "hint": "Pitches over the last three days"
+                "display": "Not known",
+                "tone": "unknown",
+                "hint": "A recent outing's pitch count isn't in the export"
               },
               "apps3": {
                 "display": "1",
@@ -1139,16 +1147,17 @@
                 "hint": "Didn't pitch"
               },
               "day0": {
-                "display": "0",
-                "hint": "0 pitches, 11 outs"
+                "display": "Pitched",
+                "tone": "unknown",
+                "hint": "Pitch count not in the export, 11 outs"
               }
             },
             "sort": {
               "pitcher": "P 1023",
               "role": 1,
               "throws": "R",
-              "tonight": 1,
-              "p3": 0,
+              "tonight": null,
+              "p3": null,
               "apps3": 1,
               "ip": 12.7,
               "era": 11.37,
@@ -1161,7 +1170,7 @@
               "day3": 0,
               "day2": 0,
               "day1": 0,
-              "day0": 0
+              "day0": null
             },
             "player": {
               "playerId": 1023,
@@ -1183,8 +1192,8 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Would be back-to-back (0 today)",
-                      "tone": "caution"
+                      "display": "Not known",
+                      "tone": "unknown"
                     },
                     "quiet": false,
                     "chips": [],
@@ -1192,7 +1201,7 @@
                   },
                   {
                     "text": {
-                      "display": "Last outing May 5 (the last game played): 0 pitches, 11 outs"
+                      "display": "Last outing May 5 (the last game played): pitch count not in the export, 11 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -1453,7 +1462,7 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Last outing Apr 30 (5 days before the last game played): 0 pitches, 17 outs"
+                      "display": "Last outing Apr 30 (5 days before the last game played): pitch count not in the export, 17 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -1556,7 +1565,7 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Last outing May 1 (4 days before the last game played): 0 pitches, 16 outs"
+                      "display": "Last outing May 1 (4 days before the last game played): pitch count not in the export, 16 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -1658,7 +1667,7 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Last outing May 3 (2 days before the last game played): 0 pitches, 16 outs"
+                      "display": "Last outing May 3 (2 days before the last game played): pitch count not in the export, 16 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -1760,7 +1769,7 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Last outing May 4 (1 day before the last game played): 0 pitches, 19 outs"
+                      "display": "Last outing May 4 (1 day before the last game played): pitch count not in the export, 19 outs"
                     },
                     "quiet": false,
                     "chips": [],
@@ -1862,7 +1871,7 @@
                 "lines": [
                   {
                     "text": {
-                      "display": "Last outing May 5 (the last game played): 0 pitches, 16 outs"
+                      "display": "Last outing May 5 (the last game played): pitch count not in the export, 16 outs"
                     },
                     "quiet": false,
                     "chips": [],

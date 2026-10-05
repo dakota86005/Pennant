@@ -34,9 +34,13 @@ function dayBefore(key: number, back: number): string {
 }
 
 /** The availability reading in words, from the route's code and count, with its tone (rested, limited, down). */
-function availability(code: BullpenCode | null, count: number | null, gameLog: boolean): Cell {
+function availability(code: BullpenCode | null, count: number | null, gameLog: boolean, workloadKnown = true): Cell {
   if (code === null) return cell('Not known', { tone: 'unknown', hint: 'No game has been played yet' });
   if (!gameLog && code !== 'injured') return cell('Not known', { tone: 'unknown', hint: 'The export has no game-by-game pitching log' });
+  // A reading from pitches, when an outing it rests on has no pitch count, is not known (D-018), never read as 0
+  if (!workloadKnown && FROM_PITCHES.has(code)) {
+    return cell('Not known', { tone: 'unknown', hint: 'A recent outing\'s pitch count isn\'t in the export' });
+  }
   const n = count ?? 0;
   const words: Record<BullpenCode, [string, Tone]> = {
     injured: [count ? `Out about ${n} more days` : 'Out: on the injured list', 'bad'],
@@ -54,6 +58,9 @@ function availability(code: BullpenCode | null, count: number | null, gameLog: b
   return cell(text, { tone });
 }
 
+/** The readings that rest on pitch counts (the rest rest on days, appearances or the injured list). */
+const FROM_PITCHES: ReadonlySet<BullpenCode> = new Set(['heavy_three_days', 'heavy_today', 'back_to_back', 'heavy_yesterday', 'busy_three_days', 'pitched_yesterday']);
+
 /** Rested first, then limited, then down; not known last (a null key). */
 const TONE_ORDER: Record<string, number> = { good: 0, caution: 1, bad: 2 };
 
@@ -68,7 +75,8 @@ function lastOuting(arm: AnyArm, gameLog: boolean, today: number | null): MlbLin
   if (!arm.lastOuting) return line('No appearance yet this season.', { quiet: true });
   const ago = arm.daysRest === null ? '' : arm.daysRest === 0 ? ' (the last game played)' : ` (${plural(arm.daysRest, 'day')} before the last game played)`;
   const date = today === null ? arm.lastOuting.date : dayBefore(today, arm.daysRest ?? 0);
-  return line(`Last outing ${date}${ago}: ${plural(arm.lastOuting.pitches, 'pitch', 'pitches')}, ${plural(arm.lastOuting.outs, 'out')}`);
+  const pitches = arm.lastOutingPitches === null ? 'pitch count not in the export' : plural(arm.lastOutingPitches, 'pitch', 'pitches');
+  return line(`Last outing ${date}${ago}: ${pitches}, ${plural(arm.lastOuting.outs, 'out')}`);
 }
 
 function stamina(arm: AnyArm): Cell {
@@ -83,13 +91,17 @@ function bullpenTable(v: ClubhouseContext, staff: Staff): { table: MlbTable; lim
   const pen = [...staff.bullpen.filter((p) => p.injury?.playable !== false), ...staff.bullpen.filter((p) => p.injury?.playable === false)];
   const dayColumns = today === null ? [] : DAYS.map((back) => column(`day${back}`, dayBefore(today, back), true));
   const rows: MlbRow[] = pen.map((p) => {
-    const tonight = availability(today === null ? null : (p.statusCode as BullpenCode | null), p.statusCount, gameLog);
+    const tonight = availability(today === null ? null : (p.statusCode as BullpenCode | null), p.statusCount, gameLog, p.workloadKnown);
     const cells: Record<string, Cell> = {
       pitcher: cell(p.name),
       role: cell(p.isCloser ? 'Closer' : 'Reliever'),
       throws: cell(p.throws),
       tonight,
-      p3: gameLog ? cell(String(p.pitchesLast3), { hint: 'Pitches over the last three days' }) : cell('Not known', { tone: 'unknown' }),
+      p3: !gameLog
+        ? cell('Not known', { tone: 'unknown' })
+        : p.workloadKnown
+          ? cell(String(p.pitchesLast3), { hint: 'Pitches over the last three days' })
+          : cell('Not known', { tone: 'unknown', hint: 'A recent outing\'s pitch count isn\'t in the export' }),
       apps3: gameLog ? cell(String(p.appearancesLast3), { hint: 'Games pitched in the last three days' }) : cell('Not known', { tone: 'unknown' }),
       ip: statCell(stat('ip'), p.stats?.ip, p.stats, 'No line'),
       era: statCell(stat('era'), p.stats?.era, p.stats, 'No line'),
@@ -102,21 +114,25 @@ function bullpenTable(v: ClubhouseContext, staff: Staff): { table: MlbTable; lim
     const sort: Record<string, number | string | null> = {
       pitcher: p.name, role: p.isCloser ? 0 : 1, throws: p.throws,
       tonight: tonight.tone && tonight.tone in TONE_ORDER ? TONE_ORDER[tonight.tone] : null,
-      p3: gameLog ? p.pitchesLast3 : null, apps3: gameLog ? p.appearancesLast3 : null,
+      p3: gameLog && p.workloadKnown ? p.pitchesLast3 : null, apps3: gameLog ? p.appearancesLast3 : null,
       ip: statSort(p.stats?.ip), era: statSort(p.stats?.era), eraPlus: statSort(p.stats?.eraPlus), fip: statSort(p.stats?.fip),
       sv: statSort(p.stats?.sv), hld: statSort(p.stats?.hld), health: p.injury ? (p.injury.playable ? 1 : 2) : 0,
     };
     if (today !== null) {
       for (const back of DAYS) {
         const outings = p.recentOutings.filter((o) => o.daysAgo === back);
-        const pitches = outings.reduce((s, o) => s + o.pitches, 0);
+        const counted = outings.every((o) => o.pitches !== null);
+        const pitches = outings.reduce((s, o) => s + (o.pitches ?? 0), 0);
         const outs = outings.reduce((s, o) => s + o.outs, 0);
         cells[`day${back}`] = !gameLog
           ? cell('Not known', { tone: 'unknown' })
-          : outings.length
-            ? cell(String(pitches), { hint: `${plural(pitches, 'pitch', 'pitches')}, ${plural(outs, 'out')}` })
-            : cell('–', { hint: 'Didn\'t pitch' });
-        sort[`day${back}`] = gameLog ? pitches : null;
+          : !outings.length
+            ? cell('–', { hint: 'Didn\'t pitch' })
+            : counted
+              ? cell(String(pitches), { hint: `${plural(pitches, 'pitch', 'pitches')}, ${plural(outs, 'out')}` })
+              // He pitched, but the log doesn't carry the count: said, never a 0 (D-018)
+              : cell('Pitched', { tone: 'unknown', hint: `Pitch count not in the export, ${plural(outs, 'out')}` });
+        sort[`day${back}`] = gameLog && counted ? pitches : null;
       }
     }
     const detail: MlbBlock[] = [block('Tonight', [line(tonight.display, { tone: tonight.tone }), lastOuting(p, gameLog, today)])];
@@ -152,7 +168,11 @@ function starterRow(v: ClubhouseContext, p: Starter, gameLog: boolean, today: nu
     pitcher: cell(p.name),
     throws: cell(p.throws),
     age: cell(String(p.age)),
-    wl: p.stats ? cell(`${p.stats.w ?? 0}-${p.stats.l ?? 0}`) : cell('No line', { tone: 'unknown' }),
+    wl: !p.stats
+      ? cell('No line', { tone: 'unknown' })
+      : p.stats.w === null || p.stats.w === undefined || p.stats.l === null || p.stats.l === undefined
+        ? cell('Not known', { tone: 'unknown', hint: 'His wins and losses aren\'t in the export' })
+        : cell(`${p.stats.w}-${p.stats.l}`),
     ip: statCell(stat('ip'), p.stats?.ip, p.stats, 'No line'),
     era: statCell(stat('era'), p.stats?.era, p.stats, 'No line'),
     eraPlus: statCell(stat('eraPlus'), p.stats?.eraPlus, p.stats, 'No line'),
@@ -216,7 +236,12 @@ export function pitchingAvailabilityView(v: ClubhouseContext, input: PitchingInp
     {
       id: 'bullpen',
       title: cell('Bullpen'),
-      summary: pen.total ? cell(`${pen.limited} of ${pen.total} limited or unavailable`, { tone: pen.limited ? 'caution' : 'neutral' }) : null,
+      summary: !pen.total
+        ? null
+        : staff.gameLog
+          ? cell(`${pen.limited} of ${pen.total} limited or unavailable`, { tone: pen.limited ? 'caution' : 'neutral' })
+          // Without the game log nobody's workload is known: never "0 of N" (D-018)
+          : cell('Availability not known', { tone: 'unknown', hint: 'No game-by-game pitching log, so who is limited isn\'t known' }),
       table: pen.table,
       note: rule,
     },
