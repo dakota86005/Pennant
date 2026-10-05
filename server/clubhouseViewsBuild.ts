@@ -104,18 +104,31 @@ function fillsFor(ids: Iterable<number>): Map<number, RatingFill> {
   return out;
 }
 
-function lineupOf(v: ClubhouseContext, orgId: number, ask: LineupAsk, next: ReturnType<typeof computeNextGame>): MlbLineupView {
-  const card = bodyOr(computeLineup(orgId, ask));
+/** The lineup cards one build reads, by ask: each is read once (the run search is most of a card's cost). */
+type Cards = Map<string, LineupCard | string>;
+
+function cardFor(cards: Cards, orgId: number, ask: LineupAsk): LineupCard | string {
+  const key = lineupKey(ask);
+  let card = cards.get(key);
+  if (card === undefined) {
+    card = bodyOr(computeLineup(orgId, ask));
+    cards.set(key, card);
+  }
+  return card;
+}
+
+function lineupOf(v: ClubhouseContext, orgId: number, ask: LineupAsk, next: ReturnType<typeof computeNextGame>, cards: Cards = new Map()): MlbLineupView {
+  const card = cardFor(cards, orgId, ask);
   const ids = typeof card === 'string' ? [] : card.lineup.map((l) => l.player_id);
   return lineupView(v, { ask, card, next, fills: fillsFor(ids) });
 }
 
-function planOf(v: ClubhouseContext, orgId: number, gameId: number): MlbGamePlanView {
+function planOf(v: ClubhouseContext, orgId: number, gameId: number, cards: Cards = new Map()): MlbGamePlanView {
   const plan = bodyOr(computeGamePlan(orgId, gameId));
   let card: LineupCard | string | null = null;
   if (typeof plan !== 'string') {
     // The lineup builder already ranks hitters by platoon split, so the plan's card is its answer for the starter's hand
-    card = bodyOr(computeLineup(orgId, { vs: plan.lineupVs === 'l' ? 'l' : 'r', style: 'saber', dh: 'auto', sort: 'talent' }));
+    card = cardFor(cards, orgId, { vs: plan.lineupVs === 'l' ? 'l' : 'r', style: 'saber', dh: 'auto', sort: 'talent' });
   }
   return gamePlanView(v, { plan, card, gameId });
 }
@@ -138,13 +151,14 @@ export function buildClubhouseViews(request: ClubhouseViewsRequest): ClubhouseVi
   const orgId = request.orgId;
   const next = timed('nextGame', () => computeNextGame(orgId));
   const defaultAsk: LineupAsk = { vs: next?.theirStarter?.throws === 'L' ? 'l' : 'r', style: 'saber', dh: 'auto', sort: 'talent' };
+  const cards: Cards = new Map();
   const lineups = timed('lineups', () => {
     const out: ClubhouseViewsResult['lineups'] = [];
     for (const vs of ['r', 'l'] as const) {
       for (const style of ['saber', 'trad'] as const) {
         for (const sort of ['talent', 'production'] as const) {
           const ask: LineupAsk = { vs, style, dh: 'auto', sort };
-          out.push({ key: lineupKey(ask), view: lineupOf(v, orgId, ask, next) });
+          out.push({ key: lineupKey(ask), view: lineupOf(v, orgId, ask, next, cards) });
         }
       }
     }
@@ -156,7 +170,7 @@ export function buildClubhouseViews(request: ClubhouseViewsRequest): ClubhouseVi
   const games = typeof scheduleBody === 'string' || !('series' in scheduleBody)
     ? []
     : scheduleBody.series.flatMap((s) => s.games.map((g) => ({ id: g.game_id, played: g.played })));
-  const plans = timed('plans', () => games.filter((g) => !g.played).slice(0, PLANS_AHEAD).map((g) => ({ gameId: g.id, view: planOf(v, orgId, g.id) })));
+  const plans = timed('plans', () => games.filter((g) => !g.played).slice(0, PLANS_AHEAD).map((g) => ({ gameId: g.id, view: planOf(v, orgId, g.id, cards) })));
   const chart = timed('depthRead', () => bodyOr(computeDepthChart(orgId)));
   const depth = timed('depth', () => depthChartView(v, {
     chart,
