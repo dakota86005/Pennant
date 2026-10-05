@@ -32,16 +32,21 @@ struct PretendHome {
             try manager.setAttributes([.modificationDate: played], ofItemAtPath: url.path(percentEncoded: false))
         }
         if humanClubs != 1 {
-            // The export's teams file with the first `humanClubs` clubs managed by the human
+            // The export's teams file with the first `humanClubs` major-league clubs managed by the human (the synthetic
+            // league lists each club's affiliate after it since N10: a farm club is never one the GM is asked to choose)
             let teams = csv.appending(path: "teams.csv")
             // Written again with its own time kept: a file newer than the rest by minutes reads as a new export's
             let written = try manager.attributesOfItem(atPath: teams.path(percentEncoded: false))[.modificationDate] as? Date
             var lines = try String(contentsOf: teams, encoding: .utf8).split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
             let header = lines[0].split(separator: ",", omittingEmptySubsequences: false).map(String.init)
             let column = try #require(header.firstIndex(of: "human_team"))
+            let level = try #require(header.firstIndex(of: "level"))
+            var managed = 0
             for index in lines.indices.dropFirst() where !lines[index].isEmpty {
                 var fields = lines[index].split(separator: ",", omittingEmptySubsequences: false).map(String.init)
-                fields[column] = index <= humanClubs ? "1" : "0"
+                let majorLeague = fields[level] == "1"
+                if majorLeague { managed += 1 }
+                fields[column] = majorLeague && managed <= humanClubs ? "1" : "0"
                 lines[index] = fields.joined(separator: ",")
             }
             try lines.joined(separator: "\n").write(to: teams, atomically: true, encoding: .utf8)

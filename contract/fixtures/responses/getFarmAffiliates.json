@@ -1,0 +1,1731 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "clubs": [
+    {
+      "teamId": 1,
+      "name": "Club 1 N",
+      "level": {
+        "display": "Major leagues"
+      },
+      "league": null,
+      "levelLine": {
+        "display": "Major leagues"
+      },
+      "operational": null,
+      "developmental": null,
+      "players": null,
+      "majorLeague": true,
+      "open": {
+        "kind": "view",
+        "department": "majorLeague",
+        "view": "report"
+      }
+    },
+    {
+      "teamId": 101,
+      "name": "Farm 1 F",
+      "level": {
+        "display": "AAA"
+      },
+      "league": {
+        "display": "Fictional Triple-A"
+      },
+      "levelLine": {
+        "display": "AAA · Fictional Triple-A"
+      },
+      "operational": {
+        "display": "Short",
+        "tone": "bad",
+        "hint": "Can the club field a team and cover a schedule?"
+      },
+      "developmental": {
+        "display": "No issue found",
+        "tone": "good",
+        "hint": "Are the players here developing?"
+      },
+      "players": {
+        "display": "6 on the active list"
+      },
+      "majorLeague": false,
+      "open": {
+        "kind": "view",
+        "department": "farm",
+        "view": "affiliates",
+        "key": "101"
+      }
+    }
+  ],
+  "order": {
+    "display": "From the major-league club down, by level",
+    "hint": "Clubs at one level are in name order"
+  },
+  "affiliates": [
+    {
+      "teamId": 101,
+      "name": "Farm 1 F",
+      "line": {
+        "display": "AAA · Fictional Triple-A · 0 games played · 6 on the active list (3 position players, 3 pitchers)"
+      },
+      "operational": {
+        "text": "Short",
+        "tone": "bad",
+        "basis": {
+          "because": [
+            {
+              "label": "Active list",
+              "value": "6 (3 position players, 3 pitchers)"
+            },
+            {
+              "label": "Positions it can fill at once",
+              "value": "3 of 8"
+            },
+            {
+              "label": "Starters against rotation spots",
+              "value": "0 against 5"
+            },
+            {
+              "label": "Relief arms",
+              "value": "3"
+            },
+            {
+              "label": "Finding",
+              "value": "Nobody on the roster covers C."
+            },
+            {
+              "label": "Finding",
+              "value": "Nobody on the roster covers 1B."
+            },
+            {
+              "label": "Finding",
+              "value": "Nobody on the roster covers 3B."
+            },
+            {
+              "label": "Finding",
+              "value": "Only one man covers SS; a day off or an injury leaves the club without it."
+            },
+            {
+              "label": "Finding",
+              "value": "Nobody on the roster covers LF."
+            },
+            {
+              "label": "Finding",
+              "value": "Only one man covers CF; a day off or an injury leaves the club without it."
+            },
+            {
+              "label": "Finding",
+              "value": "Nobody on the roster covers RF."
+            },
+            {
+              "label": "Finding",
+              "value": "The club can fill only three of the eight fielding positions at once."
+            },
+            {
+              "label": "Finding",
+              "value": "Only three position players: short of what the club needs to rest a lineup."
+            },
+            {
+              "label": "Finding",
+              "value": "Only three pitchers: short of what the club needs to cover a schedule."
+            },
+            {
+              "label": "Finding",
+              "value": "No pitcher is taking this club's starts; the rotation needs five."
+            },
+            {
+              "label": "Finding",
+              "value": "Only three relief arms: short of the seven a schedule takes."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": [],
+        "hint": "Can the club field a team and cover a schedule?"
+      },
+      "developmental": {
+        "text": "No issue found",
+        "tone": "good",
+        "basis": {
+          "because": [
+            {
+              "label": "Players read",
+              "value": "0"
+            },
+            {
+              "label": "Finding",
+              "value": "6 of the club's players have no production to read yet."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "provisional",
+          "called": "A starting number, not yet fitted on this save",
+          "stamp": "The farm's stated lines, 10 of 30 still starting values"
+        },
+        "links": [],
+        "hint": "Are the players here developing?"
+      },
+      "operationalFindings": [
+        {
+          "id": "op-1",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Nobody on the roster covers C.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Players with a revealed grade there",
+                  "value": "0 (A visible fielding grade of 35 or better.)"
+                },
+                {
+                  "label": "Players listed there",
+                  "value": "0 (The roster's own listed position.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A player assigned to the club who can play the position."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-1:e0",
+              "cells": {
+                "label": {
+                  "display": "Players with a revealed grade there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "A visible fielding grade of 35 or better."
+                }
+              },
+              "sort": {
+                "label": "Players with a revealed grade there",
+                "value": "0",
+                "why": "A visible fielding grade of 35 or better."
+              }
+            },
+            {
+              "id": "op-1:e1",
+              "cells": {
+                "label": {
+                  "display": "Players listed there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "The roster's own listed position."
+                }
+              },
+              "sort": {
+                "label": "Players listed there",
+                "value": "0",
+                "why": "The roster's own listed position."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A player assigned to the club who can play the position."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-2",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Nobody on the roster covers 1B.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Players with a revealed grade there",
+                  "value": "0 (A visible fielding grade of 35 or better.)"
+                },
+                {
+                  "label": "Players listed there",
+                  "value": "0 (The roster's own listed position.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A player assigned to the club who can play the position."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-2:e0",
+              "cells": {
+                "label": {
+                  "display": "Players with a revealed grade there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "A visible fielding grade of 35 or better."
+                }
+              },
+              "sort": {
+                "label": "Players with a revealed grade there",
+                "value": "0",
+                "why": "A visible fielding grade of 35 or better."
+              }
+            },
+            {
+              "id": "op-2:e1",
+              "cells": {
+                "label": {
+                  "display": "Players listed there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "The roster's own listed position."
+                }
+              },
+              "sort": {
+                "label": "Players listed there",
+                "value": "0",
+                "why": "The roster's own listed position."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A player assigned to the club who can play the position."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-3",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Nobody on the roster covers 3B.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Players with a revealed grade there",
+                  "value": "0 (A visible fielding grade of 35 or better.)"
+                },
+                {
+                  "label": "Players listed there",
+                  "value": "0 (The roster's own listed position.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A player assigned to the club who can play the position."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-3:e0",
+              "cells": {
+                "label": {
+                  "display": "Players with a revealed grade there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "A visible fielding grade of 35 or better."
+                }
+              },
+              "sort": {
+                "label": "Players with a revealed grade there",
+                "value": "0",
+                "why": "A visible fielding grade of 35 or better."
+              }
+            },
+            {
+              "id": "op-3:e1",
+              "cells": {
+                "label": {
+                  "display": "Players listed there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "The roster's own listed position."
+                }
+              },
+              "sort": {
+                "label": "Players listed there",
+                "value": "0",
+                "why": "The roster's own listed position."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A player assigned to the club who can play the position."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-4",
+          "severity": {
+            "display": "Needs attention",
+            "tone": "caution"
+          },
+          "headline": {
+            "text": "Only one man covers SS; a day off or an injury leaves the club without it.",
+            "tone": "caution",
+            "basis": {
+              "because": [
+                {
+                  "label": "Revealed grades there",
+                  "value": "1 (A visible fielding grade of 35 or better.)"
+                },
+                {
+                  "label": "Covered by a roster label only",
+                  "value": "0 (Listed at the position with no visible grade for it.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A second player who can play the position."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": [
+              {
+                "kind": "decision",
+                "department": "farm",
+                "key": "1106"
+              }
+            ]
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-4:e0",
+              "cells": {
+                "label": {
+                  "display": "Revealed grades there"
+                },
+                "value": {
+                  "display": "1"
+                },
+                "why": {
+                  "display": "A visible fielding grade of 35 or better."
+                }
+              },
+              "sort": {
+                "label": "Revealed grades there",
+                "value": "1",
+                "why": "A visible fielding grade of 35 or better."
+              }
+            },
+            {
+              "id": "op-4:e1",
+              "cells": {
+                "label": {
+                  "display": "Covered by a roster label only"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "Listed at the position with no visible grade for it."
+                }
+              },
+              "sort": {
+                "label": "Covered by a roster label only",
+                "value": "0",
+                "why": "Listed at the position with no visible grade for it."
+              }
+            }
+          ],
+          "players": [
+            {
+              "playerId": 1106,
+              "name": "P 1106",
+              "line": {
+                "display": "grade 55"
+              },
+              "open": {
+                "kind": "decision",
+                "department": "farm",
+                "key": "1106"
+              }
+            }
+          ],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A second player who can play the position."
+            }
+          ],
+          "expanded": false
+        },
+        {
+          "id": "op-5",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Nobody on the roster covers LF.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Players with a revealed grade there",
+                  "value": "0 (A visible fielding grade of 35 or better.)"
+                },
+                {
+                  "label": "Players listed there",
+                  "value": "0 (The roster's own listed position.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A player assigned to the club who can play the position."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-5:e0",
+              "cells": {
+                "label": {
+                  "display": "Players with a revealed grade there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "A visible fielding grade of 35 or better."
+                }
+              },
+              "sort": {
+                "label": "Players with a revealed grade there",
+                "value": "0",
+                "why": "A visible fielding grade of 35 or better."
+              }
+            },
+            {
+              "id": "op-5:e1",
+              "cells": {
+                "label": {
+                  "display": "Players listed there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "The roster's own listed position."
+                }
+              },
+              "sort": {
+                "label": "Players listed there",
+                "value": "0",
+                "why": "The roster's own listed position."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A player assigned to the club who can play the position."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-6",
+          "severity": {
+            "display": "Needs attention",
+            "tone": "caution"
+          },
+          "headline": {
+            "text": "Only one man covers CF; a day off or an injury leaves the club without it.",
+            "tone": "caution",
+            "basis": {
+              "because": [
+                {
+                  "label": "Revealed grades there",
+                  "value": "1 (A visible fielding grade of 35 or better.)"
+                },
+                {
+                  "label": "Covered by a roster label only",
+                  "value": "0 (Listed at the position with no visible grade for it.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A second player who can play the position."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": [
+              {
+                "kind": "decision",
+                "department": "farm",
+                "key": "1108"
+              }
+            ]
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-6:e0",
+              "cells": {
+                "label": {
+                  "display": "Revealed grades there"
+                },
+                "value": {
+                  "display": "1"
+                },
+                "why": {
+                  "display": "A visible fielding grade of 35 or better."
+                }
+              },
+              "sort": {
+                "label": "Revealed grades there",
+                "value": "1",
+                "why": "A visible fielding grade of 35 or better."
+              }
+            },
+            {
+              "id": "op-6:e1",
+              "cells": {
+                "label": {
+                  "display": "Covered by a roster label only"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "Listed at the position with no visible grade for it."
+                }
+              },
+              "sort": {
+                "label": "Covered by a roster label only",
+                "value": "0",
+                "why": "Listed at the position with no visible grade for it."
+              }
+            }
+          ],
+          "players": [
+            {
+              "playerId": 1108,
+              "name": "P 1108",
+              "line": {
+                "display": "grade 44"
+              },
+              "open": {
+                "kind": "decision",
+                "department": "farm",
+                "key": "1108"
+              }
+            }
+          ],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A second player who can play the position."
+            }
+          ],
+          "expanded": false
+        },
+        {
+          "id": "op-7",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Nobody on the roster covers RF.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Players with a revealed grade there",
+                  "value": "0 (A visible fielding grade of 35 or better.)"
+                },
+                {
+                  "label": "Players listed there",
+                  "value": "0 (The roster's own listed position.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A player assigned to the club who can play the position."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-7:e0",
+              "cells": {
+                "label": {
+                  "display": "Players with a revealed grade there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "A visible fielding grade of 35 or better."
+                }
+              },
+              "sort": {
+                "label": "Players with a revealed grade there",
+                "value": "0",
+                "why": "A visible fielding grade of 35 or better."
+              }
+            },
+            {
+              "id": "op-7:e1",
+              "cells": {
+                "label": {
+                  "display": "Players listed there"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "The roster's own listed position."
+                }
+              },
+              "sort": {
+                "label": "Players listed there",
+                "value": "0",
+                "why": "The roster's own listed position."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A player assigned to the club who can play the position."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-8",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "The club can fill only three of the eight fielding positions at once.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Positions fillable simultaneously",
+                  "value": "3 of 8 (Maximum matching of players to positions, so one utility man is not counted three times.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A player who covers one of the positions nobody can fill."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-8:e0",
+              "cells": {
+                "label": {
+                  "display": "Positions fillable simultaneously"
+                },
+                "value": {
+                  "display": "3 of 8"
+                },
+                "why": {
+                  "display": "Maximum matching of players to positions, so one utility man is not counted three times."
+                }
+              },
+              "sort": {
+                "label": "Positions fillable simultaneously",
+                "value": "3 of 8",
+                "why": "Maximum matching of players to positions, so one utility man is not counted three times."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A player who covers one of the positions nobody can fill."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-9",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Only three position players: short of what the club needs to rest a lineup.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Position players",
+                  "value": "3 (Active list, rehab assignees excluded.)"
+                },
+                {
+                  "label": "Short below",
+                  "value": "12 (Eight fielding positions plus rest.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A position player assigned to the club."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-9:e0",
+              "cells": {
+                "label": {
+                  "display": "Position players"
+                },
+                "value": {
+                  "display": "3"
+                },
+                "why": {
+                  "display": "Active list, rehab assignees excluded."
+                }
+              },
+              "sort": {
+                "label": "Position players",
+                "value": "3",
+                "why": "Active list, rehab assignees excluded."
+              }
+            },
+            {
+              "id": "op-9:e1",
+              "cells": {
+                "label": {
+                  "display": "Short below"
+                },
+                "value": {
+                  "display": "12"
+                },
+                "why": {
+                  "display": "Eight fielding positions plus rest."
+                }
+              },
+              "sort": {
+                "label": "Short below",
+                "value": "12",
+                "why": "Eight fielding positions plus rest."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A position player assigned to the club."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-10",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Only three pitchers: short of what the club needs to cover a schedule.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Pitchers",
+                  "value": "3 (Active list, rehab assignees excluded.)"
+                },
+                {
+                  "label": "Short below",
+                  "value": "12 (A five-man rotation plus relief cover.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A pitcher assigned to the club."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-10:e0",
+              "cells": {
+                "label": {
+                  "display": "Pitchers"
+                },
+                "value": {
+                  "display": "3"
+                },
+                "why": {
+                  "display": "Active list, rehab assignees excluded."
+                }
+              },
+              "sort": {
+                "label": "Pitchers",
+                "value": "3",
+                "why": "Active list, rehab assignees excluded."
+              }
+            },
+            {
+              "id": "op-10:e1",
+              "cells": {
+                "label": {
+                  "display": "Short below"
+                },
+                "value": {
+                  "display": "12"
+                },
+                "why": {
+                  "display": "A five-man rotation plus relief cover."
+                }
+              },
+              "sort": {
+                "label": "Short below",
+                "value": "12",
+                "why": "A five-man rotation plus relief cover."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A pitcher assigned to the club."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-11",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "No pitcher is taking this club's starts; the rotation needs five.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Taking starts",
+                  "value": "0 (Assigned to start, or has started a game this season. Rehab assignees excluded.)"
+                },
+                {
+                  "label": "Assigned to start by OOTP role",
+                  "value": "0 (OOTP role 11, rehab assignees excluded.)"
+                },
+                {
+                  "label": "Rotation spots",
+                  "value": "5 (A five-man rotation, the shape OOTP runs at every full-season level.)"
+                },
+                {
+                  "label": "Relief arms on the club",
+                  "value": "3 (OOTP role; one of them may be taking the open start.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A starter assigned to the club, or a relief arm on it stretched into the open start."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-11:e0",
+              "cells": {
+                "label": {
+                  "display": "Taking starts"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "Assigned to start, or has started a game this season. Rehab assignees excluded."
+                }
+              },
+              "sort": {
+                "label": "Taking starts",
+                "value": "0",
+                "why": "Assigned to start, or has started a game this season. Rehab assignees excluded."
+              }
+            },
+            {
+              "id": "op-11:e1",
+              "cells": {
+                "label": {
+                  "display": "Assigned to start by OOTP role"
+                },
+                "value": {
+                  "display": "0"
+                },
+                "why": {
+                  "display": "OOTP role 11, rehab assignees excluded."
+                }
+              },
+              "sort": {
+                "label": "Assigned to start by OOTP role",
+                "value": "0",
+                "why": "OOTP role 11, rehab assignees excluded."
+              }
+            },
+            {
+              "id": "op-11:e2",
+              "cells": {
+                "label": {
+                  "display": "Rotation spots"
+                },
+                "value": {
+                  "display": "5"
+                },
+                "why": {
+                  "display": "A five-man rotation, the shape OOTP runs at every full-season level."
+                }
+              },
+              "sort": {
+                "label": "Rotation spots",
+                "value": "5",
+                "why": "A five-man rotation, the shape OOTP runs at every full-season level."
+              }
+            },
+            {
+              "id": "op-11:e3",
+              "cells": {
+                "label": {
+                  "display": "Relief arms on the club"
+                },
+                "value": {
+                  "display": "3"
+                },
+                "why": {
+                  "display": "OOTP role; one of them may be taking the open start."
+                }
+              },
+              "sort": {
+                "label": "Relief arms on the club",
+                "value": "3",
+                "why": "OOTP role; one of them may be taking the open start."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A starter assigned to the club, or a relief arm on it stretched into the open start."
+            }
+          ],
+          "expanded": true
+        },
+        {
+          "id": "op-12",
+          "severity": {
+            "display": "Short",
+            "tone": "bad"
+          },
+          "headline": {
+            "text": "Only three relief arms: short of the seven a schedule takes.",
+            "tone": "bad",
+            "basis": {
+              "because": [
+                {
+                  "label": "Relief arms",
+                  "value": "3 (OOTP role, closers included, rehab assignees excluded.)"
+                },
+                {
+                  "label": "Short below",
+                  "value": "7 (Relief cover over a normal week.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Minor League Operations",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A relief arm assigned to the club."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Minor League Operations"
+          },
+          "evidence": [
+            {
+              "id": "op-12:e0",
+              "cells": {
+                "label": {
+                  "display": "Relief arms"
+                },
+                "value": {
+                  "display": "3"
+                },
+                "why": {
+                  "display": "OOTP role, closers included, rehab assignees excluded."
+                }
+              },
+              "sort": {
+                "label": "Relief arms",
+                "value": "3",
+                "why": "OOTP role, closers included, rehab assignees excluded."
+              }
+            },
+            {
+              "id": "op-12:e1",
+              "cells": {
+                "label": {
+                  "display": "Short below"
+                },
+                "value": {
+                  "display": "7"
+                },
+                "why": {
+                  "display": "Relief cover over a normal week."
+                }
+              },
+              "sort": {
+                "label": "Short below",
+                "value": "7",
+                "why": "Relief cover over a normal week."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [],
+          "wouldSettle": [
+            {
+              "display": "A relief arm assigned to the club."
+            }
+          ],
+          "expanded": true
+        }
+      ],
+      "operationalEmpty": null,
+      "cover": [
+        {
+          "id": "cover:101:C",
+          "cells": {
+            "position": {
+              "display": "C *",
+              "hint": "A shortage here can't be covered by moving somebody else"
+            },
+            "graded": {
+              "display": "0",
+              "tone": "bad"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "0"
+            }
+          },
+          "sort": {
+            "position": 0,
+            "graded": 0,
+            "listedOnly": 0,
+            "strong": 0
+          }
+        },
+        {
+          "id": "cover:101:1B",
+          "cells": {
+            "position": {
+              "display": "1B"
+            },
+            "graded": {
+              "display": "0",
+              "tone": "bad"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "0"
+            }
+          },
+          "sort": {
+            "position": 1,
+            "graded": 0,
+            "listedOnly": 0,
+            "strong": 0
+          }
+        },
+        {
+          "id": "cover:101:2B",
+          "cells": {
+            "position": {
+              "display": "2B"
+            },
+            "graded": {
+              "display": "1",
+              "tone": "caution"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "0"
+            }
+          },
+          "sort": {
+            "position": 2,
+            "graded": 1,
+            "listedOnly": 0,
+            "strong": 0
+          }
+        },
+        {
+          "id": "cover:101:3B",
+          "cells": {
+            "position": {
+              "display": "3B"
+            },
+            "graded": {
+              "display": "0",
+              "tone": "bad"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "0"
+            }
+          },
+          "sort": {
+            "position": 3,
+            "graded": 0,
+            "listedOnly": 0,
+            "strong": 0
+          }
+        },
+        {
+          "id": "cover:101:SS",
+          "cells": {
+            "position": {
+              "display": "SS *",
+              "hint": "A shortage here can't be covered by moving somebody else"
+            },
+            "graded": {
+              "display": "1",
+              "tone": "caution"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "1"
+            }
+          },
+          "sort": {
+            "position": 4,
+            "graded": 1,
+            "listedOnly": 0,
+            "strong": 1
+          }
+        },
+        {
+          "id": "cover:101:LF",
+          "cells": {
+            "position": {
+              "display": "LF"
+            },
+            "graded": {
+              "display": "0",
+              "tone": "bad"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "0"
+            }
+          },
+          "sort": {
+            "position": 5,
+            "graded": 0,
+            "listedOnly": 0,
+            "strong": 0
+          }
+        },
+        {
+          "id": "cover:101:CF",
+          "cells": {
+            "position": {
+              "display": "CF *",
+              "hint": "A shortage here can't be covered by moving somebody else"
+            },
+            "graded": {
+              "display": "1",
+              "tone": "caution"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "0"
+            }
+          },
+          "sort": {
+            "position": 6,
+            "graded": 1,
+            "listedOnly": 0,
+            "strong": 0
+          }
+        },
+        {
+          "id": "cover:101:RF",
+          "cells": {
+            "position": {
+              "display": "RF"
+            },
+            "graded": {
+              "display": "0",
+              "tone": "bad"
+            },
+            "listedOnly": {
+              "display": "None",
+              "tone": "neutral"
+            },
+            "strong": {
+              "display": "0"
+            }
+          },
+          "sort": {
+            "position": 7,
+            "graded": 0,
+            "listedOnly": 0,
+            "strong": 0
+          }
+        }
+      ],
+      "coverNote": {
+        "display": "A graded cover has a visible fielding grade at the position; one covered only by a roster label is counted apart, since the label is a fact and the grade says how well he plays there. * marks a position whose loss can't be covered by moving somebody else."
+      },
+      "pitching": {
+        "display": "Pitching: 0 assigned to start against 5 rotation spots, 3 relief arms. 3 of 8 positions can be filled at once."
+      },
+      "assessment": {
+        "display": "Player Development can read 0 of this club's players. 6 have no season to read yet."
+      },
+      "developmentalFindings": [
+        {
+          "id": "dev-13",
+          "severity": {
+            "display": "Noted",
+            "tone": "neutral"
+          },
+          "headline": {
+            "text": "6 of the club's players have no production to read yet.",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "The league's own run environment could not be established from the export.",
+                  "value": "5 (Why no current-level line could be read.)"
+                },
+                {
+                  "label": "11 is below the minimum sample this evaluation requires.",
+                  "value": "1 (Why no current-level line could be read.)"
+                }
+              ],
+              "source": {
+                "department": "farm",
+                "specialist": "Player Development",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [
+                "A season long enough to read."
+              ],
+              "wouldChange": [
+                "More games played."
+              ],
+              "lean": null,
+              "certainty": "provisional",
+              "called": "A starting number, not yet fitted on this save",
+              "stamp": "The farm's stated lines, 10 of 30 still starting values"
+            },
+            "links": []
+          },
+          "owner": {
+            "display": "Player Development"
+          },
+          "evidence": [
+            {
+              "id": "dev-13:e0",
+              "cells": {
+                "label": {
+                  "display": "The league's own run environment could not be established from the export."
+                },
+                "value": {
+                  "display": "5"
+                },
+                "why": {
+                  "display": "Why no current-level line could be read."
+                }
+              },
+              "sort": {
+                "label": "The league's own run environment could not be established from the export.",
+                "value": "5",
+                "why": "Why no current-level line could be read."
+              }
+            },
+            {
+              "id": "dev-13:e1",
+              "cells": {
+                "label": {
+                  "display": "11 is below the minimum sample this evaluation requires."
+                },
+                "value": {
+                  "display": "1"
+                },
+                "why": {
+                  "display": "Why no current-level line could be read."
+                }
+              },
+              "sort": {
+                "label": "11 is below the minimum sample this evaluation requires.",
+                "value": "1",
+                "why": "Why no current-level line could be read."
+              }
+            }
+          ],
+          "players": [],
+          "missing": [
+            {
+              "display": "A season long enough to read."
+            }
+          ],
+          "wouldSettle": [
+            {
+              "display": "More games played."
+            }
+          ],
+          "expanded": false
+        }
+      ],
+      "developmentalEmpty": null,
+      "concerns": [],
+      "rosterContext": [
+        {
+          "playerId": 1104,
+          "name": "P 1104",
+          "line": {
+            "display": "P 1104: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment. He is counted, because nothing establishes otherwise; if he is in fact on rehab, this club's depth is overstated."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1104"
+          }
+        },
+        {
+          "playerId": 1105,
+          "name": "P 1105",
+          "line": {
+            "display": "P 1105: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment. He is counted, because nothing establishes otherwise; if he is in fact on rehab, this club's depth is overstated."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1105"
+          }
+        },
+        {
+          "playerId": 1106,
+          "name": "P 1106",
+          "line": {
+            "display": "P 1106: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment. He is counted, because nothing establishes otherwise; if he is in fact on rehab, this club's depth is overstated."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1106"
+          }
+        },
+        {
+          "playerId": 1107,
+          "name": "P 1107",
+          "line": {
+            "display": "P 1107: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment. He is counted, because nothing establishes otherwise; if he is in fact on rehab, this club's depth is overstated."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1107"
+          }
+        },
+        {
+          "playerId": 1108,
+          "name": "P 1108",
+          "line": {
+            "display": "P 1108: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment. He is counted, because nothing establishes otherwise; if he is in fact on rehab, this club's depth is overstated."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1108"
+          }
+        },
+        {
+          "playerId": 1109,
+          "name": "P 1109",
+          "line": {
+            "display": "P 1109: The transaction log is unavailable, so this cannot be told apart from an option or a rehab assignment. He is counted, because nothing establishes otherwise; if he is in fact on rehab, this club's depth is overstated."
+          },
+          "open": {
+            "kind": "decision",
+            "department": "farm",
+            "key": "1109"
+          }
+        }
+      ],
+      "rosterContextNote": {
+        "display": "Players not counted as ordinary members of this club: a major-league player on rehab is passing through, not depth, and an injured man is not cover today."
+      },
+      "unknowns": [
+        {
+          "display": "6 of this club's players have no readable production this season, so their assignments are not assessed rather than judged."
+        },
+        {
+          "display": "This club has played 0 games, fewer than the 20 a work share needs, so how it is using its roster cannot be read yet and no playing-time conflict is reported for it."
+        }
+      ]
+    }
+  ],
+  "empty": null
+}

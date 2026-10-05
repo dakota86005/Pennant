@@ -767,7 +767,10 @@ first) are named as ahead and count against nobody's claim; a designated hitter
 is batting, not fielding; a player injured past a week is not cover and competes
 for nothing; a pool Player Development has not evaluated leaves a cascade
 indeterminate rather than closed. The organization is read once per request
-(`FarmSession`) and never cached across requests. The superseded solvers, their
+(`FarmSession`) and never cached across requests. The Mac app's farm views
+(D-066) keep a worded build on the Front Office's key and the save's rating-snapshot writes (the import, the
+settings, the live log, the history), so nothing is served across an export or a setting;
+the session itself lives for that one build. The superseded solvers, their
 routes and the three older farm pages are gone: there is one farm implementation.
 
 ## Per-save calibration: the neutral store and refit (D-053)

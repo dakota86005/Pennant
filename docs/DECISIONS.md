@@ -2588,6 +2588,56 @@ for the scoped jargon exceptions named by its operation.
   club with no philosophy would get, and no window label is on the face. A need's badge takes the department's
   philosophy-free severity, as the desk does.
 
+## D-066 — Farm & Development on the Mac: D-065 for the farm, its views built in a job of their own
+
+**Status:** Accepted at N10 of the SwiftUI rebuild (2026-10-01; numbered D-066 at the merge with N8, which holds D-065),
+the builder's calls pending the owner's review (listed below). Applies D-065 to Farm & Development and refines D-044 to
+D-047, D-050, D-056 and D-064 for the presentation layer only: no farm, development or stakes judgment changes.
+**Implementation:** `server/presentation/farm/` (the words), `server/farmViewsBuild.ts` (the reader),
+`server/farmViewService.ts` (the cache), `GET /api/v2/views/:org/farm/{organization,affiliates,assignments,prospects,
+development}`, `/views/:org/farm/decision?player=<id>` and `/views/:org/farm/development/:playerId`; the Mac app's
+`FarmStore` and PennantFeatures' Farm target. SWIFTUI_REBUILD.md section 3.5, "As built at N10".
+
+What D-065 says of a department's views holds for the farm's: one payload per view, each its own contract operation;
+the words moved from React; a decision is the one deep read a click computes, its target's `key` sent as a query
+(`?player=`, as Major League Ops' is `?need=`); a desk item opens it through the item's served `open`. Where the farm
+differs:
+
+- **Each view is its own payload, worded once.** Every sentence the React farm pages wrote on the client (the label maps
+  of `src/pages/farm/common.tsx`, the Overview's and Organization's sentences, the Prospects and Development word
+  builders, Development's movers) is served. The specialists' own sentences pass through one phrase table
+  (`presentation/farm/words.ts` `PLAIN`) where they use a word the plain-language rule keeps off the screen; the meaning
+  stays the specialist's. React's routes and pages are unchanged; `/api/development-history` and the v2 view read the
+  same extracted function (`developmentHistoryFor`), so the two never read different histories.
+- **Built in a job of their own, after the club's report, never kept longer (D-047).** Major League Ops' views are
+  worded inside the club's Front Office build (D-065); the farm's are not, because Development tracking reads the save's
+  rating history, which the import's snapshot writes in a post-import hook after the swap. So the farm's views are built
+  in the same worker as their own job (one list of the worker's jobs, `WorkerJob`), after each kept build of the club's
+  Front Office, on the Front Office's own key (the club, the import, the settings and configuration files, the live log,
+  the calibration revision) and a count of this save's rating-snapshot writes: a build made before the snapshot is never
+  served past it, and the snapshot never rebuilds the club's report. One `FarmSession` serves the build and the
+  decisions read ahead with it (the desk's players and every assignment in question, a few milliseconds each); any
+  other decision is read on the request in the worker and kept with that build. The two caches stay apart because their
+  keys differ (the farm's adds the history) and so do their decisions' (a player's id, against a need and the GM's
+  choices). D-047's promise holds: nothing is served across an export, a philosophy setting or the live log, since each
+  moves the key.
+- **No hidden score orders a board (D-044, D-050).** The Prospects board is in the roster's stated order (level, then
+  name); React sorted it by Player Development's internal readiness score, which now appears only in a player's
+  breakdown. The developmental stakes column of Assignments carries no sort key and the Mac app gives it none. The
+  development meetings are the calls React's inbox listed (a promotion, a lower level or a major-league discussion),
+  stated, not ranked. Development's biggest changes are the 25 largest observed changes either way over the whole
+  organization (`MOVERS_SHOWN`, a presentation line), as React worked them out.
+- **A desk item names who it is about and opens where the farm answers it.** Its headline links the player or the
+  affiliate, as before; its served `open` (D-065) is the player's Decision (a `decision` target keyed by his id), the
+  affiliate on Affiliates (a view target with the team's `key`), or Organization. The Mac app's `AppRoute` carries the
+  `key` a view opens on (N8's), and a keyed view route opens like any other.
+
+The owner's call (2026-10-02): the tier `development_priority` reads "Development-sensitive" everywhere, the Electron
+app included ("priority" is a verdict word no exception may allow). The builder's calls, for the owner: Player Development's calls are "Player Development's call" (never
+"recommendation"), "Review for a major-league chance", "Hold and keep watching", "Current level right" and "Consider a
+lower level"; philosophy's neutral preference reads "Fine by the club"; React's Prospects inbox and board are one view
+(choosing a row opens his meeting).
+
 ## D-067 — The club's own scouts' complete ratings are the scouted evidence when the export carries them
 
 **Status:** Accepted (supervisor, 2026-10-02: the brief "read the club's own scouts' complete ratings"). The rule for a

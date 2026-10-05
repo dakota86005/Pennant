@@ -1,0 +1,611 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "note": {
+    "display": "Player Development says whether the level is developing him; Minor League Operations says whether he can get the work there. Both are shown, with who said what."
+  },
+  "order": {
+    "display": "Whether you need to look, then by last name",
+    "hint": "Needs attention, then worth a look, then routine"
+  },
+  "levels": [
+    {
+      "id": "2",
+      "name": "AAA"
+    }
+  ],
+  "rows": [
+    {
+      "id": "assignment:1104",
+      "cells": {
+        "player": {
+          "display": "P 1104"
+        },
+        "age": {
+          "display": "22"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "1104, P",
+        "age": 22,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1104,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "stakes": {
+        "text": "Developmental stakes: Protected prospect",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "Visible ceiling of an impact major leaguer: a ceiling of 80 is among the best tenth of major-league hitters (56, Pennant's starting line)."
+            },
+            {
+              "label": "And",
+              "value": "At 22 most of his development is still ahead of him."
+            },
+            {
+              "label": "And",
+              "value": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+            },
+            {
+              "label": "And",
+              "value": "His visible projection is nearly all realized (current 80 against a ceiling of 80), so what the scouts see ahead of him has largely happened."
+            },
+            {
+              "label": "And",
+              "value": "Developmental stakes: protected prospect. That ceiling alone would set core prospect; it is lowered one step for the development that has run out."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+        },
+        "links": [],
+        "hint": "How careful to be with his development; never where he plays"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1104"
+      }
+    },
+    {
+      "id": "assignment:1105",
+      "cells": {
+        "player": {
+          "display": "P 1105"
+        },
+        "age": {
+          "display": "23"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "1105, P",
+        "age": 23,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1105,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "stakes": {
+        "text": "Developmental stakes: Protected prospect",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "Visible ceiling of an impact major leaguer: a ceiling of 61 is among the best tenth of major-league pitchers (53, Pennant's starting line)."
+            },
+            {
+              "label": "And",
+              "value": "At 23 some of his development is still ahead of him."
+            },
+            {
+              "label": "And",
+              "value": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+            },
+            {
+              "label": "And",
+              "value": "Developmental stakes: protected prospect. That ceiling alone would set core prospect; it is lowered one step for the development that has run out."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+        },
+        "links": [],
+        "hint": "How careful to be with his development; never where he plays"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1105"
+      }
+    },
+    {
+      "id": "assignment:1106",
+      "cells": {
+        "player": {
+          "display": "P 1106"
+        },
+        "age": {
+          "display": "21"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Core prospect",
+          "tone": "neutral"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "1106, P",
+        "age": 21,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1106,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "stakes": {
+        "text": "Developmental stakes: Core prospect",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "Visible ceiling of an impact major leaguer: a ceiling of 78 is among the best tenth of major-league hitters (56, Pennant's starting line)."
+            },
+            {
+              "label": "And",
+              "value": "At 21 most of his development is still ahead of him."
+            },
+            {
+              "label": "And",
+              "value": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+            },
+            {
+              "label": "And",
+              "value": "Developmental stakes: core prospect, which is what that ceiling sets with most of his development still ahead of him."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+        },
+        "links": [],
+        "hint": "How careful to be with his development; never where he plays"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1106"
+      }
+    },
+    {
+      "id": "assignment:1107",
+      "cells": {
+        "player": {
+          "display": "P 1107"
+        },
+        "age": {
+          "display": "20"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "11 is below the minimum sample this evaluation requires.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Core prospect",
+          "tone": "neutral"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "1107, P",
+        "age": 20,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1107,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "stakes": {
+        "text": "Developmental stakes: Core prospect",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "Visible ceiling of an impact major leaguer: a ceiling of 77 is among the best tenth of major-league pitchers (53, Pennant's starting line)."
+            },
+            {
+              "label": "And",
+              "value": "At 20 most of his development is still ahead of him."
+            },
+            {
+              "label": "And",
+              "value": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+            },
+            {
+              "label": "And",
+              "value": "Developmental stakes: core prospect, which is what that ceiling sets with most of his development still ahead of him."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+        },
+        "links": [],
+        "hint": "How careful to be with his development; never where he plays"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1107"
+      }
+    },
+    {
+      "id": "assignment:1108",
+      "cells": {
+        "player": {
+          "display": "P 1108"
+        },
+        "age": {
+          "display": "22"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "1108, P",
+        "age": 22,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1108,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "stakes": {
+        "text": "Developmental stakes: Protected prospect",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "Visible ceiling of a major-league regular: a ceiling of 54 is at the median of major-league hitters (50, Pennant's starting line) or above it."
+            },
+            {
+              "label": "And",
+              "value": "At 22 most of his development is still ahead of him."
+            },
+            {
+              "label": "And",
+              "value": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+            },
+            {
+              "label": "And",
+              "value": "Developmental stakes: protected prospect, which is what that ceiling sets with most of his development still ahead of him."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+        },
+        "links": [],
+        "hint": "How careful to be with his development; never where he plays"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1108"
+      }
+    },
+    {
+      "id": "assignment:1109",
+      "cells": {
+        "player": {
+          "display": "P 1109"
+        },
+        "age": {
+          "display": "23"
+        },
+        "club": {
+          "display": "AAA · Farm 1 F"
+        },
+        "level": {
+          "display": "not established · not established"
+        },
+        "results": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        },
+        "work": {
+          "display": "Regular work",
+          "tone": "good"
+        },
+        "stakes": {
+          "display": "Protected prospect",
+          "tone": "neutral"
+        },
+        "conclusion": {
+          "display": "Nothing to read yet",
+          "tone": "neutral"
+        }
+      },
+      "sort": {
+        "player": "1109, P",
+        "age": 23,
+        "club": "02 Farm 1 F",
+        "level": null,
+        "results": null,
+        "work": 0,
+        "stakes": null,
+        "conclusion": 207
+      },
+      "playerId": 1109,
+      "teamId": 101,
+      "levelId": "2",
+      "inQuestion": false,
+      "stakes": {
+        "text": "Developmental stakes: Protected prospect",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "Visible ceiling of an impact major leaguer: a ceiling of 80 is among the best tenth of major-league pitchers (53, Pennant's starting line)."
+            },
+            {
+              "label": "And",
+              "value": "At 23 some of his development is still ahead of him."
+            },
+            {
+              "label": "And",
+              "value": "The age profile of Fictional Triple-A could not be established, so whether he is behind his level's schedule was not read and nothing was discounted for it."
+            },
+            {
+              "label": "And",
+              "value": "Developmental stakes: protected prospect. That ceiling alone would set core prospect; it is lowered one step for the development that has run out."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Player Development",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+        },
+        "links": [],
+        "hint": "How careful to be with his development; never where he plays"
+      },
+      "open": {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1109"
+      }
+    }
+  ],
+  "shown": [
+    {
+      "levelId": null,
+      "inQuestionOnly": true,
+      "label": {
+        "display": "0 of 6 players"
+      }
+    },
+    {
+      "levelId": null,
+      "inQuestionOnly": false,
+      "label": {
+        "display": "6 of 6 players"
+      }
+    },
+    {
+      "levelId": "2",
+      "inQuestionOnly": true,
+      "label": {
+        "display": "0 of 6 players"
+      }
+    },
+    {
+      "levelId": "2",
+      "inQuestionOnly": false,
+      "label": {
+        "display": "6 of 6 players"
+      }
+    }
+  ],
+  "emptyInQuestion": {
+    "display": "No assignment is in question here. Every one Player Development could read is defensible, and nobody is short of work."
+  },
+  "emptyAll": {
+    "display": "No players."
+  }
+}

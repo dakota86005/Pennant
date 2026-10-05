@@ -1,0 +1,600 @@
+{
+  "orgId": 1,
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
+  "asOf": {
+    "display": "Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "playerId": 1156,
+  "teamId": 101,
+  "name": "P 1156",
+  "line": {
+    "display": "22, position player · AAA · Farm 1 F · Fictional Triple-A"
+  },
+  "conclusion": {
+    "text": "Nothing to read yet",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Why",
+          "value": "His level standing cannot be read: The league's own run environment could not be established from the export."
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Minor League Operations",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [
+        "The league's own run environment could not be established from the export."
+      ],
+      "wouldChange": [
+        "More of the season: there is no line to read yet."
+      ],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "The farm's stated lines, 10 of 30 still starting values"
+    },
+    "links": [
+      {
+        "kind": "decision",
+        "department": "farm",
+        "key": "1156"
+      }
+    ]
+  },
+  "stakes": {
+    "text": "Developmental stakes: Protected prospect",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Why",
+          "value": "Visible ceiling of a major-league regular: a ceiling of 51 is at the median of major-league hitters (50, Pennant's starting line) or above it."
+        },
+        {
+          "label": "And",
+          "value": "At 22 most of his development is still ahead of him."
+        },
+        {
+          "label": "And",
+          "value": "Developmental stakes: protected prospect, which is what that ceiling sets with most of his development still ahead of him."
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "Player Development's stakes (D-050): a ceiling, lowered by how much development is left"
+    },
+    "links": [],
+    "hint": "How careful to be with his development; never where he plays"
+  },
+  "stakesReasons": [
+    {
+      "display": "Visible ceiling of a major-league regular: a ceiling of 51 is at the median of major-league hitters (50, Pennant's starting line) or above it."
+    },
+    {
+      "display": "At 22 most of his development is still ahead of him."
+    },
+    {
+      "display": "Developmental stakes: protected prospect, which is what that ceiling sets with most of his development still ahead of him."
+    }
+  ],
+  "why": [
+    {
+      "display": "His level standing cannot be read: The league's own run environment could not be established from the export."
+    }
+  ],
+  "verdict": {
+    "text": "Nothing to read yet: his results are not established, and he is ordinary for the level.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Level standing",
+          "value": "not established (The league's own run environment could not be established from the export.)"
+        },
+        {
+          "label": "Developmental window",
+          "value": "ordinary for the level (0.6 years older than the rostered average at this level.)"
+        },
+        {
+          "label": "Developmental stakes",
+          "value": "protected_prospect (Player Development's protection tier: his organization-visible ceiling, lowered by how much of his development has run out.)"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [
+        "The league's own run environment could not be established from the export."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "provisional",
+      "called": "A starting number, not yet fitted on this save",
+      "stamp": "The farm's stated lines, 10 of 30 still starting values"
+    },
+    "links": [],
+    "hint": "The same answer at every club: no philosophy enters it"
+  },
+  "verdictParts": [
+    {
+      "id": "part:0",
+      "cells": {
+        "label": {
+          "display": "Level standing"
+        },
+        "value": {
+          "display": "not established"
+        },
+        "why": {
+          "display": "The league's own run environment could not be established from the export."
+        }
+      },
+      "sort": {
+        "label": "Level standing",
+        "value": "not established",
+        "why": "The league's own run environment could not be established from the export."
+      }
+    },
+    {
+      "id": "part:1",
+      "cells": {
+        "label": {
+          "display": "Developmental window"
+        },
+        "value": {
+          "display": "ordinary for the level"
+        },
+        "why": {
+          "display": "0.6 years older than the rostered average at this level."
+        }
+      },
+      "sort": {
+        "label": "Developmental window",
+        "value": "ordinary for the level",
+        "why": "0.6 years older than the rostered average at this level."
+      }
+    },
+    {
+      "id": "part:2",
+      "cells": {
+        "label": {
+          "display": "Developmental stakes"
+        },
+        "value": {
+          "display": "Protected prospect"
+        },
+        "why": {
+          "display": "Player Development's protection tier: his organization-visible ceiling, lowered by how much of his development has run out."
+        }
+      },
+      "sort": {
+        "label": "Developmental stakes",
+        "value": "Protected prospect",
+        "why": "Player Development's protection tier: his organization-visible ceiling, lowered by how much of his development has run out."
+      }
+    }
+  ],
+  "results": [
+    {
+      "id": "results:league",
+      "cells": {
+        "label": {
+          "display": "Against the Fictional Triple-A"
+        },
+        "value": {
+          "display": "The league's own run environment could not be established from the export.",
+          "tone": "unknown"
+        }
+      },
+      "sort": {
+        "label": "Against the Fictional Triple-A",
+        "value": null
+      }
+    },
+    {
+      "id": "results:sample",
+      "cells": {
+        "label": {
+          "display": "Sample"
+        },
+        "value": {
+          "display": "59 plate appearances over 0 games of his club's; 0% trusted"
+        }
+      },
+      "sort": {
+        "label": "Sample",
+        "value": "59 plate appearances over 0 games of his club's; 0% trusted"
+      }
+    }
+  ],
+  "alternativesNote": {
+    "display": "Philosophy orders only what is defensible. A move the club leans against is exactly as defensible as one it prefers."
+  },
+  "alternatives": [],
+  "alternativesEmpty": {
+    "display": "Player Development hasn't looked at another assignment for him: the league's own run environment could not be established from the export. An assignment can't be judged without a line at his current level to judge it against."
+  },
+  "opportunityNote": {
+    "display": "What he is actually doing now, with the season beside it."
+  },
+  "opportunity": {
+    "display": "No job on this club is contested for him."
+  },
+  "work": [],
+  "workMissing": {
+    "display": "His work at his job can't be read yet.",
+    "tone": "unknown"
+  },
+  "roleChange": null,
+  "ahead": null,
+  "aheadPlayers": [],
+  "gone": null,
+  "consequenceNote": {
+    "display": "Minor League Operations follows the chain; each step is defensible on its own or the chain stops there."
+  },
+  "consequence": {
+    "summary": {
+      "text": "Bo Glove can take the job; Double-A is then one shortstop short, and the chain stops there.",
+      "tone": "unknown",
+      "basis": {
+        "because": [
+          {
+            "label": "How sure",
+            "value": "Can't be judged yet"
+          },
+          {
+            "label": "The job he leaves",
+            "value": "the everyday shortstop job"
+          }
+        ],
+        "source": {
+          "department": "farm",
+          "specialist": "Minor League Operations",
+          "asOf": "2040-07-01T12:00:00.000Z",
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [
+          "Double-A Club is one shortstop short."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "Minor League Operations' consequence of a departure"
+      },
+      "links": []
+    },
+    "impact": [
+      {
+        "id": "impact:now",
+        "cells": {
+          "label": {
+            "display": "Farm 1 F now"
+          },
+          "value": {
+            "display": "Able: eight of eight positions fillable",
+            "tone": "good"
+          }
+        },
+        "sort": {
+          "label": "Farm 1 F now",
+          "value": "Able: eight of eight positions fillable"
+        }
+      },
+      {
+        "id": "impact:after",
+        "cells": {
+          "label": {
+            "display": "Without him"
+          },
+          "value": {
+            "display": "Thin: seven of eight positions fillable. Only one man covers SS.",
+            "tone": "caution"
+          }
+        },
+        "sort": {
+          "label": "Without him",
+          "value": "Thin: seven of eight positions fillable. Only one man covers SS."
+        }
+      },
+      {
+        "id": "impact:job",
+        "cells": {
+          "label": {
+            "display": "The job he leaves"
+          },
+          "value": {
+            "display": "the everyday shortstop job · leaves a hole",
+            "tone": "caution"
+          }
+        },
+        "sort": {
+          "label": "The job he leaves",
+          "value": "the everyday shortstop job · leaves a hole"
+        }
+      }
+    ],
+    "playingTime": [
+      {
+        "display": "Bo Glove moves from sharing short to holding it."
+      }
+    ],
+    "replacements": [
+      {
+        "playerId": 9002,
+        "name": "Bo Glove",
+        "judgment": {
+          "display": "Defensible",
+          "tone": "good"
+        },
+        "from": {
+          "display": "Double-A Club"
+        },
+        "preference": {
+          "display": "The club prefers it"
+        },
+        "open": {
+          "kind": "decision",
+          "department": "farm",
+          "key": "9002"
+        }
+      }
+    ],
+    "cascade": {
+      "steps": [
+        {
+          "index": 1,
+          "judgment": {
+            "display": "Defensible",
+            "tone": "good"
+          },
+          "vacancy": {
+            "display": "Farm 1 F needs SS (1 of 2)"
+          },
+          "candidate": {
+            "playerId": 9002,
+            "name": "Bo Glove",
+            "line": {
+              "display": "Bo Glove (22, Double-A Double-A Club)"
+            },
+            "open": {
+              "kind": "decision",
+              "department": "farm",
+              "key": "9002"
+            }
+          },
+          "noCandidate": null,
+          "preference": {
+            "display": "The club prefers it"
+          },
+          "alternatives": {
+            "display": "As defensible: Cy Range (21, Double-A Club, fine by the club). The chain follows the first in readiness order; which to use is your decision."
+          },
+          "consequences": [
+            {
+              "display": "He takes the everyday shortstop job."
+            },
+            {
+              "display": "Double-A Club loses its shortstop."
+            },
+            {
+              "display": "He would start most days."
+            }
+          ],
+          "notes": [
+            {
+              "display": "The club leans toward promoting a man who is ready."
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "judgment": {
+            "display": "Not looked at",
+            "tone": "unknown"
+          },
+          "vacancy": {
+            "display": "Double-A Club needs SS (1 of 2)"
+          },
+          "candidate": null,
+          "noCandidate": {
+            "display": "Nobody below could be judged for it.",
+            "tone": "neutral"
+          },
+          "preference": null,
+          "alternatives": null,
+          "consequences": [
+            {
+              "display": "Double-A Club stays one short at SS."
+            },
+            {
+              "display": "No player moves."
+            },
+            {
+              "display": "Not applicable: no move."
+            }
+          ],
+          "notes": [
+            {
+              "display": "Nobody below has a qualifying sample at his own level yet."
+            }
+          ]
+        }
+      ],
+      "noSteps": null,
+      "stop": {
+        "text": "The next step can't be judged. Nobody below Double-A could be judged for shortstop.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Where it stops",
+              "value": "The next step can't be judged"
+            },
+            {
+              "label": "Steps followed",
+              "value": "2"
+            },
+            {
+              "label": "Left open",
+              "value": "Double-A Club at SS: one short of the two it needs."
+            }
+          ],
+          "source": {
+            "department": "farm",
+            "specialist": "Minor League Operations",
+            "asOf": "2040-07-01T12:00:00.000Z",
+            "gameDate": "2040-7-1"
+          },
+          "unknown": [
+            "One step can't be judged, so the chain is only as certain as that step."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Each step defensible on its own, or the chain stops there"
+        },
+        "links": []
+      },
+      "unresolved": [
+        {
+          "display": "Double-A Club at SS: one short of the two it needs."
+        }
+      ],
+      "unresolvedNote": {
+        "display": "A hole the chain leaves open is information, not an illegality: it doesn't make a major-league move impossible."
+      },
+      "howSure": {
+        "display": "The chain is only as certain as its least certain step, and one step can't be judged.",
+        "tone": "unknown"
+      }
+    },
+    "measured": [
+      {
+        "display": "Measured on the active lists, rehab assignees excluded."
+      }
+    ]
+  },
+  "consequenceProblem": null,
+  "retention": null,
+  "uncertain": [
+    {
+      "display": "The league's own run environment could not be established from the export."
+    }
+  ],
+  "uncertainEmpty": null,
+  "wouldSettle": [
+    {
+      "display": "More of the season: there is no line to read yet."
+    }
+  ],
+  "yours": [
+    {
+      "display": "Whether to move him at all. Nothing here is a transaction and Pennant executes nothing."
+    }
+  ],
+  "owners": [
+    {
+      "id": "owner:0",
+      "cells": {
+        "label": {
+          "display": "Is this level still developing him?"
+        },
+        "value": {
+          "display": "Player Development"
+        },
+        "why": {
+          "display": "not assessable"
+        }
+      },
+      "sort": {
+        "label": "Is this level still developing him?",
+        "value": "Player Development",
+        "why": "not assessable"
+      }
+    },
+    {
+      "id": "owner:1",
+      "cells": {
+        "label": {
+          "display": "Can he get the work his development needs here?"
+        },
+        "value": {
+          "display": "Minor League Operations"
+        },
+        "why": {
+          "display": "regular work"
+        }
+      },
+      "sort": {
+        "label": "Can he get the work his development needs here?",
+        "value": "Minor League Operations",
+        "why": "regular work"
+      }
+    },
+    {
+      "id": "owner:2",
+      "cells": {
+        "label": {
+          "display": "Which other assignments are defensible?"
+        },
+        "value": {
+          "display": "Player Development"
+        },
+        "why": {
+          "display": "no alternative was evaluated"
+        }
+      },
+      "sort": {
+        "label": "Which other assignments are defensible?",
+        "value": "Player Development",
+        "why": "no alternative was evaluated"
+      }
+    },
+    {
+      "id": "owner:3",
+      "cells": {
+        "label": {
+          "display": "Which of the defensible alternatives does this club prefer?"
+        },
+        "value": {
+          "display": "Organizational Philosophy"
+        },
+        "why": {
+          "display": "no preference is expressed: preference applies only to a defensible assignment"
+        }
+      },
+      "sort": {
+        "label": "Which of the defensible alternatives does this club prefer?",
+        "value": "Organizational Philosophy",
+        "why": "no preference is expressed: preference applies only to a defensible assignment"
+      }
+    }
+  ]
+}

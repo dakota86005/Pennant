@@ -163,7 +163,7 @@ export function buildOrganizationView(input: OrganizationInput): OrganizationVie
           {
             label: `Priority prospects at ${dist.position}, ${level.levelName}`,
             value: String(level.priority),
-            basis: 'Players with a revealed grade there, or listed there, whose protection tier is development priority or better.',
+            basis: 'Players with a revealed grade there, or listed there, whose protection tier is development-sensitive or better.',
           },
           {
             label: 'Competing with itself above',

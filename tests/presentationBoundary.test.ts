@@ -186,8 +186,10 @@ describe('the presentation boundary', () => {
     // through Player Value, Player State and the farm's door (`mlbEvidence`); its own imports are held below
     // `clubReport` is another club's report's reader (N7), held like `morningReport` below; `clubOwed` is the club question
     // still open (no specialist: it says whether the automatic club may be served as chosen)
+    // `farmViewsBuild` is Farm & Development's views' reader (N10), run by the same worker; its own imports are held in
+    // farmViews.test.ts
     const PUBLIC = new Set([
-      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'frontOfficeBuild', 'leagueRules',
+      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'frontOfficeBuild', 'leagueRules',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
       'viewingOrganization',
     ]);
@@ -229,12 +231,49 @@ describe('the presentation boundary', () => {
     }
   });
 
+  /**
+   * Farm & Development's views' reader (N10) words what the farm, Player Development and the save's rating history
+   * already decided: it loads only their public modules, reads no rating and no philosophy of its own (philosophy is
+   * inside the farm's answer, after Player Development's, D-019), no developmental stakes outside the farm's answer
+   * (D-050), and no odds, posture or AI (D-001, D-060). Its one setting is how the GM shows a rating.
+   */
+  it('farmViewsBuild.ts reads the specialists only through their public modules', () => {
+    const allowed = new Set(['org', 'dataStatus', 'farmConsequence', 'farmOperations', 'history', 'scoutedDevelopment', 'settings', 'valuation']);
+    const outside = valueImports('farmViewsBuild.ts').filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
+      .filter((m) => !allowed.has(m));
+    expect(outside).toEqual([]);
+    const source = code('farmViewsBuild.ts');
+    for (const pattern of [
+      ...RATINGS,
+      /developmentalContext|openDevelopmentalContext|evaluateDevelopmentProtection/,
+      /philosophy|Philosophy|assignmentPreference|resolvePhilosophy/,
+      /posture|playoffs|oddsModel/,
+    ]) {
+      expect(source, `farmViewsBuild.ts matches ${pattern}`).not.toMatch(pattern);
+    }
+    // Its one setting is the rating display (rounded to fives or not)
+    expect([...source.matchAll(/loadSettings\(\)\.(\w+)/g)].map((m) => m[1])).toEqual(['roundRatingsToFive']);
+    expect(valueImports('farmViewsBuild.ts').filter((s) => ['providers', 'ai', 'chat', 'storylines'].includes(moduleName(s)))).toEqual([]);
+  });
+
+  /** The farm's views name the farm's parts through its public module only (N10): no farm module reached past it. */
+  it.each(filesUnder('presentation/farm'))('%s names the farm\'s parts only through farmOperations', (file) => {
+    const farmModules = [...code(file).matchAll(/from\s+'\.\.\/\.\.\/(farm\w*|playingTime)\.js'/g)].map((m) => m[1]);
+    expect(farmModules.filter((m) => m !== 'farmOperations' && m !== 'farmConsequence')).toEqual([]);
+  });
+
   it('keeps the Front Office service to the routes, the start and the import: no specialist calls it', () => {
     const importers = (name: string) => filesUnder('')
       .filter((f) => new RegExp(`from\\s+'\\./${name}\\.js'`).test(code(f)));
     // N7: the attention put on the Front Office when served, and Around the League (the club reports it builds), are
     // served views over it, like the routes; no specialist calls either
-    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
+    // N10: the farm's views are kept on the Front Office's inputs and built in its worker, a served view like the others
+    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
+    expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
+    // frontOfficeBuild.ts names the farm's two jobs in the worker's one list of jobs (`WorkerJob`), by type only
+    expect(importers('farmViewsBuild').sort()).toEqual(['farmViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
+    expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
+    expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
     expect(importers('frontOfficeAttention').sort()).toEqual(['api.ts', 'v2Routes.ts']);
     expect(importers('aroundTheLeague').sort()).toEqual(['frontOfficeAttention.ts', 'v2Routes.ts']);
     expect(importers('frontOfficeBuild').sort()).toEqual(['frontOfficeService.ts', 'frontOfficeWorker.ts']);
@@ -245,8 +284,9 @@ describe('the presentation boundary', () => {
     // pack files and hands them to the pack check (D-062)
     // N7: the served views that put the GM's attention on the Front Office, Around the League, and search's index (the
     // catalog's views)
+    // N10: Farm & Development's views, read in the build and kept by their service
     const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts', 'themePackStore.ts',
-      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts']);
+      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

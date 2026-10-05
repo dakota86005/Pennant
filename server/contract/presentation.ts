@@ -139,7 +139,10 @@ export interface Target {
   playerId?: Integer;
   /** A club's id; on a player's target, his organization's club when known (the nearest view a client opens for him). */
   teamId?: Integer;
-  /** A decision's key inside its department. */
+  /**
+   * A decision's key inside its department (Farm & Development's: the player's id), or, on a view, the subject it opens
+   * on (an affiliate's team id on Farm & Development's Affiliates; N10).
+   */
   key?: string;
 }
 

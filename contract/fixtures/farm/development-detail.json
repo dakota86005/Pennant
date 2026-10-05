@@ -1,0 +1,229 @@
+{
+  "orgId": 1,
+  "importStamp": "2040-07-01T12:00:00.000Z",
+  "reportStamp": "r1",
+  "asOf": {
+    "display": "Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "preparedBy": {
+    "display": "Prepared by the minor league staff"
+  },
+  "byline": {
+    "display": "Prepared by the minor league staff · Through July 1, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "playerId": 9201,
+  "teamId": 102,
+  "name": "Player 9201",
+  "line": {
+    "display": "21 · SS · Level 2 · Club 2"
+  },
+  "pace": {
+    "display": "Ahead · 88th",
+    "tone": "good"
+  },
+  "sourceSwitch": null,
+  "first": {
+    "display": "44"
+  },
+  "latest": {
+    "display": "48"
+  },
+  "change": {
+    "text": "Change in our scouts' read",
+    "tone": "good",
+    "basis": {
+      "because": [
+        {
+          "label": "First snapshot",
+          "value": "April 1, 2040: 44"
+        },
+        {
+          "label": "Latest snapshot",
+          "value": "July 1, 2040: 48"
+        },
+        {
+          "label": "Snapshots in this save",
+          "value": "3"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "value": {
+      "n": 4.5,
+      "unit": "count",
+      "display": "+4.5"
+    }
+  },
+  "ceilingChange": {
+    "display": "Not enough history yet",
+    "tone": "unknown"
+  },
+  "summary": {
+    "text": "Our scouts' read of his current skills has changed +4.5, faster than comparable players.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Read from",
+          "value": "The imported export"
+        }
+      ],
+      "source": {
+        "department": "farm",
+        "specialist": "Player Development",
+        "asOf": "2040-07-01T12:00:00.000Z",
+        "gameDate": "2040-7-1"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "snapshots": [
+    {
+      "id": "snap:9201:0",
+      "cells": {
+        "date": {
+          "display": "April 1, 2040"
+        },
+        "level": {
+          "display": "Level 2"
+        },
+        "current": {
+          "display": "44"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 0,
+        "level": 2,
+        "current": 44,
+        "ceiling": 60
+      }
+    },
+    {
+      "id": "snap:9201:1",
+      "cells": {
+        "date": {
+          "display": "May 15, 2040"
+        },
+        "level": {
+          "display": "Level 2"
+        },
+        "current": {
+          "display": "46"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 1,
+        "level": 2,
+        "current": 46,
+        "ceiling": 60
+      }
+    },
+    {
+      "id": "snap:9201:2",
+      "cells": {
+        "date": {
+          "display": "July 1, 2040"
+        },
+        "level": {
+          "display": "Level 2"
+        },
+        "current": {
+          "display": "48"
+        },
+        "ceiling": {
+          "display": "60"
+        }
+      },
+      "sort": {
+        "date": 2,
+        "level": 2,
+        "current": 48,
+        "ceiling": 60
+      }
+    }
+  ],
+  "movement": [
+    {
+      "id": "move:9201:con",
+      "cells": {
+        "tool": {
+          "display": "Contact"
+        },
+        "from": {
+          "display": "40"
+        },
+        "to": {
+          "display": "42"
+        },
+        "change": {
+          "display": "+2",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "tool": "Contact",
+        "from": 40,
+        "to": 42,
+        "change": 2
+      }
+    },
+    {
+      "id": "move:9201:pow",
+      "cells": {
+        "tool": {
+          "display": "Power"
+        },
+        "from": {
+          "display": "42"
+        },
+        "to": {
+          "display": "44"
+        },
+        "change": {
+          "display": "+2",
+          "tone": "good"
+        }
+      },
+      "sort": {
+        "tool": "Power",
+        "from": 42,
+        "to": 44,
+        "change": 2
+      }
+    }
+  ],
+  "movementEmpty": null,
+  "peers": [],
+  "open": {
+    "kind": "decision",
+    "department": "farm",
+    "key": "9201"
+  },
+  "fogNote": {
+    "display": "These snapshots keep what the organization could see at the time. A change can be real development, a revised scouting read, or both; Pennant never puts OOTP's hidden ratings in their place."
+  }
+}

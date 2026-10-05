@@ -111,6 +111,14 @@ import { reviewRetention, type RetentionReview } from './farmRetention.js';
 import * as calibration from './farmCalibration.js';
 import { ROTATION_SPOTS } from './farmCalibration.js';
 
+/*
+ * The farm's answer's own parts, named through its public module (N10): the views word a finding, a work share, a
+ * conflict's timing, a gone holder and a tenure as the farm hands them, and reach no farm module but this one.
+ */
+export type { FarmFinding } from './farmAffiliate.js';
+export type { ConflictTiming, GoneHolder, WorkShare } from './playingTime.js';
+export type { Tenure } from './farmRecentUsage.js';
+
 
 /* ── reading the organization ────────────────────────────────────────────────────────────────── */
 
@@ -324,7 +332,11 @@ export interface FarmSystemView {
   }>;
 
   /** Every threshold this response used, with its stamp. */
-  calibration: Array<{ name: string; value: string; status: string; basis: string }>;
+  calibration: Array<{
+    name: string; value: string; status: string; basis: string;
+    /** The league's own lines set aside because they rest on other ratings than today's, in a sentence (D-068); absent otherwise. */
+    setAside?: string;
+  }>;
 
   unknowns: string[];
 }
@@ -1213,11 +1225,13 @@ export function affiliateOperationalUnder(
 
 /** Every constant this response could have used, with its stamp: the reader sees what is decided and what is provisional. */
 function farmCalibrationReport(lines: CeilingLinesInForce): FarmSystemView['calibration'] {
-  const stamp = (name: string, value: unknown, status: 'policy' | 'provisional' | 'measured', basis: string) => ({
+  const stamp = (name: string, value: unknown, status: 'policy' | 'provisional' | 'measured', basis: string, setAside?: string | null) => ({
     name,
     value: typeof value === 'object' ? JSON.stringify(value) : String(value),
     status,
     basis,
+    // The league's own lines on other ratings than today's, set aside beside the starting lines (D-068): said, never silent
+    ...(setAside ? { setAside } : {}),
   });
   return [
     stamp('BODY_COUNT', calibration.BODY_COUNT, 'policy', 'Bodies a club needs to rest a lineup and cover a schedule.'),
@@ -1249,7 +1263,9 @@ function farmCalibrationReport(lines: CeilingLinesInForce): FarmSystemView['cali
     /* The ceiling lines the tiers were read against: the league's own where measured, else the starting lines, said so. */
     stamp('Ceiling lines in force', linesText(lines.lines), lines.source === 'save' ? 'measured' : 'provisional', lines.source === 'save'
       ? `Measured on the organization's major leaguers on ${dateText(lines.measuredOn)}${lines.reason === 'carried' ? ' (the latest measurement did not hold up, so these stay)' : lines.reason === 'carried_unmeasured' ? ' (the latest import had too few major leaguers to measure, so these stay)' : ''}: the weakest tenth, the median and the best tenth of their visible ratings, for hitters and for pitchers.`
-      : `Pennant's starting lines: ${STARTING_LINES_WHY[lines.reason]}.`),
+      // Set aside (D-068): the league's own were measured, on other ratings than today's, so "not measured yet" would be untrue
+      : `Pennant's starting lines: ${lines.setAside ? 'this league\'s own were measured on other ratings than today\'s' : STARTING_LINES_WHY[lines.reason]}.`,
+    lines.source === 'starting' ? lines.setAside : null),
     ...STAKES_CALIBRATION.map((c) => stamp(c.name, typeof c.value === 'object' && c.value !== null && 'hitter' in c.value ? linesText(c.value as CeilingLines) : c.value, c.stamp.status === 'policy' ? 'policy' : 'provisional', c.stamp.basis)),
   ];
 }

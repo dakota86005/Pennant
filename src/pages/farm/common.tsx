@@ -111,7 +111,7 @@ export const WORK_CLASS: Record<WorkLevel, string> = {
 export const TIER_TEXT: Record<string, string> = {
   core_prospect: 'Core prospect',
   protected_prospect: 'Protected prospect',
-  development_priority: 'Development priority',
+  development_priority: 'Development-sensitive',
   normal: 'Ordinary',
   organizational_depth: 'Organizational depth',
 };

@@ -162,6 +162,32 @@ nonisolated public enum PreviewFixtures {
         return .preview(view, refusal: refusal)
     }
 
+    /// The farm's views (N10): the contract's captured payloads, and the fuller ones its tests word from synthetic answers
+    /// (`contract/fixtures/farm/`: a decision whose chain has steps, the development meetings, three snapshots).
+    @MainActor
+    public static var farm: FarmStore {
+        let decisions = [decode(Components.Schemas.FarmDecisionView.self, "getFarmDecision"), farmFixture(Components.Schemas.FarmDecisionView.self, "decision-cascade")]
+        return .preview(
+            organization: decode(Components.Schemas.FarmOrganizationView.self, "getFarmOrganization"),
+            affiliates: decode(Components.Schemas.FarmAffiliatesView.self, "getFarmAffiliates"),
+            assignments: decode(Components.Schemas.FarmAssignmentsView.self, "getFarmAssignments"),
+            prospects: farmFixture(Components.Schemas.FarmProspectsView.self, "prospects-meetings"),
+            development: farmFixture(Components.Schemas.FarmDevelopmentView.self, "development-tracked"),
+            decisions: decisions.compactMap { $0 },
+            details: [
+                farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail"),
+                // A player whose ratings changed source between snapshots (D-067)
+                farmFixture(Components.Schemas.FarmDevelopmentDetail.self, "development-detail-switched"),
+            ].compactMap { $0 }
+        )
+    }
+
+    /// A farm payload the farm's tests word for the previews (`contract/fixtures/farm/<name>.json`).
+    public static func farmFixture<T: Decodable>(_ type: T.Type, _ name: String) -> T? {
+        guard let data = try? Data(contentsOf: repositoryRoot.appending(path: "contract/fixtures/farm/\(name).json")) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
     /// The captured wire and a rival's report (`getWire`, `getClubReport`).
     @MainActor
     public static var league: LeagueStore {
@@ -232,7 +258,8 @@ nonisolated public enum PreviewFixtures {
         savePlayedElsewhere: Components.Schemas.SavePlayedElsewhere? = nil,
         since: Bool = false,
         following: FollowingStore? = nil,
-        clubOwed: Components.Schemas.ClubOwed? = nil
+        clubOwed: Components.Schemas.ClubOwed? = nil,
+        farm: FarmStore? = nil
     ) -> AppModel {
         var status = status(configured: configured)
         if let clubOwed { status?.clubOwed = clubOwed }
@@ -268,6 +295,7 @@ nonisolated public enum PreviewFixtures {
             savePlayedElsewhere: savePlayedElsewhere,
             following: configured ? (following ?? Self.following()) : nil,
             league: configured ? league : nil,
+            farm: configured ? (farm ?? Self.farm) : nil,
             majorLeague: configured ? majorLeague : nil
         )
     }
