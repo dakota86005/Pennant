@@ -1134,6 +1134,49 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// The clubhouse tools at 1280 × 820, the size the GM most often uses (N9 review): each view drawn, a row chosen in
+    /// its table, captured in the light theme (`testClubhouseWideWindowDark` in the dark one).
+    @MainActor
+    func testClubhouseWideWindow() throws { try clubhouseWide(named: "n9-1280") }
+
+    @MainActor
+    func testClubhouseWideWindowDark() throws { try clubhouseWide(named: "n9-1280-dark") }
+
+    @MainActor
+    private func clubhouseWide(named prefix: String) throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "1280x820"])
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
+        let window = app.windows.firstMatch
+        let views: [(view: String, shows: String, table: Bool)] = [
+            ("lineup", "table.lineup.order", true), ("pitchingAvailability", "table.pitchingAvailability.bullpen", true),
+            ("scheduleGamePlans", "table.schedule.games", true), ("depthChart", "depthChart.mode", false),
+            ("fortyManOptions", "table.fortyMan.fortyMan", true), ("rosters", "table.rosters.hitters", true), ("seasonTrends", "trend.differential", false),
+        ]
+        for view in views {
+            let item = element(app, "sidebar.majorLeague.\(view.view)")
+            if !item.isHittable { reveal(item, in: element(app, "sidebar")) }
+            XCTAssertTrue(item.waitForExistence(timeout: 10), "the sidebar has no \(view.view)")
+            item.click()
+            let shown = element(app, view.shows)
+            XCTAssertTrue(shown.waitForExistence(timeout: 30), "\(view.view) did not draw")
+            if view.table {
+                let row = firstRow(of: shown)
+                if row.waitForExistence(timeout: 10) { row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+            }
+            if view.view == "depthChart" {
+                let table = app.tables.matching(NSPredicate(format: "identifier BEGINSWITH 'table.depthChart.'")).firstMatch
+                XCTAssertTrue(table.waitForExistence(timeout: 10), "the depth by position did not draw")
+                keep(window.screenshot(), named: "\(prefix)-depthChart-by-position")
+                element(app, "depthChart.mode").radioButtons.element(boundBy: 1).click()
+                XCTAssertTrue(element(app, "depthChart.field").waitForExistence(timeout: 10), "the depth by club did not draw")
+            }
+            keep(window.screenshot(), named: "\(prefix)-\(view.view)")
+        }
+        quitCleanly(app)
+    }
+
     /// Following by drag (D-058): a club's name dragged from around the league onto the sidebar's Following section is
     /// followed (the server's answer redraws the section), and ⌘Z unfollows it again.
     @MainActor

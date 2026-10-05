@@ -152,6 +152,8 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testMajorLeagueNarrowWindow configured '{"theme":"light"}'
   # N9: every Major League Ops view, the clubhouse tools included, at 900 × 700 with the inspector open
   prepare_ui_test testClubhouseNarrowWindow configured '{"theme":"light"}'
+  prepare_ui_test testClubhouseWideWindow configured '{"theme":"light"}'
+  prepare_ui_test testClubhouseWideWindowDark configured '{"theme":"dark"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
   if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi
