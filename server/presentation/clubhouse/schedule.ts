@@ -212,6 +212,8 @@ export interface GamePlanInput {
   /** The lineup card for the starter's hand, or the sentence it was refused with. */
   card: LineupCard | string | null;
   gameId: number;
+  /** The plan couldn't be read this time (the build's part failed): the game is one of the club's, said as such. */
+  unreadable?: boolean;
 }
 
 export function gamePlanView(v: ClubhouseContext, input: GamePlanInput): MlbGamePlanView {
@@ -224,7 +226,7 @@ export function gamePlanView(v: ClubhouseContext, input: GamePlanInput): MlbGame
   const plan = input.plan;
   if (typeof plan === 'string') {
     return {
-      ...base, rowId, query: { game: input.gameId }, game: cell('A game not in the export'),
+      ...base, rowId, query: { game: input.gameId }, game: cell(input.unreadable ? 'This game' : 'A game not in the export'),
       starter: line(`${plan}.`, { quiet: true }), missing: null, card: block(null, []), sections: [],
     };
   }

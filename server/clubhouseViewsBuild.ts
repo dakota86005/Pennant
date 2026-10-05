@@ -65,6 +65,8 @@ export interface ClubhouseViewsResult {
   clubs: Array<{ teamId: number; label: string; levelName: string }>;
   /** The club's games, by id (a plan is asked only for one of them). */
   games: number[];
+  /** The parts that couldn't be read this time (each logged, its view worded as such). */
+  failed: string[];
   /** How long each part took, in milliseconds. */
   ms: Record<string, number>;
 }
@@ -137,6 +139,21 @@ function rosterOf(v: ClubhouseContext, teamId: number, clubs: ClubhouseViewsResu
   return rostersView(v, { teamId, roster: bodyOr(computeRoster(teamId)), clubs });
 }
 
+/**
+ * One part of a build, on its own (N9 review, M5): a part that throws is logged and becomes its view's worded "couldn't
+ * be read", never a failed build, so one part can't take down the other views, and the build (with that sentence) is
+ * kept for the import like any other, rather than rebuilt on every request.
+ */
+function partOf<T>(failed: string[], name: string, what: string, read: () => T, instead: (why: string) => T): T {
+  try {
+    return read();
+  } catch (err) {
+    console.error(`[clubhouse] ${name} could not be read:`, err);
+    failed.push(name);
+    return instead(`${what} couldn't be read this time`);
+  }
+}
+
 export function buildClubhouseViews(request: ClubhouseViewsRequest): ClubhouseViewsResult {
   const ms: Record<string, number> = {};
   const timed = <T>(name: string, run: () => T): T => {
@@ -147,9 +164,12 @@ export function buildClubhouseViews(request: ClubhouseViewsRequest): ClubhouseVi
       ms[name] = Math.round((performance.now() - started) * 10) / 10;
     }
   };
+  const failed: string[] = [];
+  const part = <T>(name: string, what: string, read: () => T, instead: (why: string) => T): T =>
+    timed(name, () => partOf(failed, name, what, read, instead));
   const v = contextFor(request);
   const orgId = request.orgId;
-  const next = timed('nextGame', () => computeNextGame(orgId));
+  const next = part('nextGame', 'The next game', () => computeNextGame(orgId), () => null);
   const defaultAsk: LineupAsk = { vs: next?.theirStarter?.throws === 'L' ? 'l' : 'r', style: 'saber', dh: 'auto', sort: 'talent' };
   const cards: Cards = new Map();
   const lineups = timed('lineups', () => {
@@ -158,39 +178,62 @@ export function buildClubhouseViews(request: ClubhouseViewsRequest): ClubhouseVi
       for (const style of ['saber', 'trad'] as const) {
         for (const sort of ['talent', 'production'] as const) {
           const ask: LineupAsk = { vs, style, dh: 'auto', sort };
-          out.push({ key: lineupKey(ask), view: lineupOf(v, orgId, ask, next, cards) });
+          const view = partOf(failed, `lineup ${lineupKey(ask)}`, 'The lineup card', () => lineupOf(v, orgId, ask, next, cards),
+            (why) => lineupView(v, { ask, card: why, next, fills: new Map() }));
+          out.push({ key: lineupKey(ask), view });
         }
       }
     }
     return out;
   });
-  const pitching = timed('pitching', () => pitchingAvailabilityView(v, { staff: bodyOr(computePitchingStaff(orgId)) }));
-  const scheduleBody = timed('scheduleRead', () => bodyOr(computeSchedule(orgId)));
-  const schedule = timed('schedule', () => scheduleView(v, { schedule: scheduleBody }));
+  const pitching = part('pitching', 'The pitching staff', () => pitchingAvailabilityView(v, { staff: bodyOr(computePitchingStaff(orgId)) }),
+    (why) => pitchingAvailabilityView(v, { staff: why }));
+  const scheduleBody = part<ReturnType<typeof computeSchedule> extends Computed<infer T> ? T | string : never>(
+    'scheduleRead', 'The schedule', () => bodyOr(computeSchedule(orgId)), (why) => why);
+  const schedule = part('schedule', 'The schedule', () => scheduleView(v, { schedule: scheduleBody }), (why) => scheduleView(v, { schedule: why }));
   const games = typeof scheduleBody === 'string' || !('series' in scheduleBody)
     ? []
     : scheduleBody.series.flatMap((s) => s.games.map((g) => ({ id: g.game_id, played: g.played })));
-  const plans = timed('plans', () => games.filter((g) => !g.played).slice(0, PLANS_AHEAD).map((g) => ({ gameId: g.id, view: planOf(v, orgId, g.id, cards) })));
-  const chart = timed('depthRead', () => bodyOr(computeDepthChart(orgId)));
-  const depth = timed('depth', () => depthChartView(v, {
+  const plans = timed('plans', () => games.filter((g) => !g.played).slice(0, PLANS_AHEAD).map((g) => ({
+    gameId: g.id,
+    view: partOf(failed, `plan ${g.id}`, 'This game\'s plan', () => planOf(v, orgId, g.id, cards), (why) => gamePlanView(v, { plan: why, card: null, gameId: g.id, unreadable: true })),
+  })));
+  const chart = part<ReturnType<typeof computeDepthChart> extends Computed<infer T> ? T | string : never>(
+    'depthRead', 'The depth chart', () => bodyOr(computeDepthChart(orgId)), (why) => why);
+  const rating = { scaleMax: ratingScaleMax(), roundToFive: loadSettings().roundRatingsToFive === true };
+  const depth = part('depth', 'The depth chart', () => depthChartView(v, {
     chart,
     fills: fillsFor(typeof chart === 'string' ? [] : chart.players.map((p) => p.player_id)),
-    rating: { scaleMax: ratingScaleMax(), roundToFive: loadSettings().roundRatingsToFive === true },
-  }));
+    rating,
+  }), (why) => depthChartView(v, { chart: why, fills: new Map(), rating }));
   const clubs = typeof chart === 'string'
     ? [{ teamId: orgId, label: v.ctx.build.club ?? 'The major league club', levelName: 'MLB' }]
     : chart.teams.filter((t) => t.team_id > 0).map((t) => ({ teamId: t.team_id, label: `${t.label}`.trim() || t.name, levelName: t.levelName }));
-  const fortyMan = timed('fortyMan', () => fortyManView(v, { crunch: bodyOr(computeRosterCrunchIssues(orgId)) }));
-  const rosters = timed('rosters', () => [{ teamId: orgId, view: rosterOf(v, orgId, clubs) }]);
-  const trends = timed('trends', () => seasonTrendsView(v, { trends: bodyOr(computeTrends(orgId)) }));
-  return { defaultAsk, lineups, pitching, schedule, plans, depth, fortyMan, rosters, trends, clubs, games: games.map((g) => g.id), ms };
+  const fortyMan = part('fortyMan', 'The 40-man roster', () => fortyManView(v, { crunch: bodyOr(computeRosterCrunchIssues(orgId)) }),
+    (why) => fortyManView(v, { crunch: why }));
+  const rosters = [{
+    teamId: orgId,
+    view: part('rosters', 'The roster', () => rosterOf(v, orgId, clubs), (why) => rostersView(v, { teamId: orgId, roster: why, clubs })),
+  }];
+  const trends = part('trends', 'The season\'s games', () => seasonTrendsView(v, { trends: bodyOr(computeTrends(orgId)) }),
+    (why) => seasonTrendsView(v, { trends: why }));
+  return { defaultAsk, lineups, pitching, schedule, plans, depth, fortyMan, rosters, trends, clubs, games: games.map((g) => g.id), failed, ms };
 }
 
 /** One view asked on a click (in the worker): a lineup another way, a game's plan, or a club's roster. */
 export function buildClubhouseAsk(request: ClubhouseAskRequest): MlbLineupView | MlbGamePlanView | MlbRostersView {
   const v = contextFor(request);
   const { ask } = request;
-  if (ask.kind === 'lineup') return lineupOf(v, request.orgId, ask.ask, computeNextGame(request.orgId));
-  if (ask.kind === 'plan') return planOf(v, request.orgId, ask.gameId);
-  return rosterOf(v, ask.teamId, ask.clubs);
+  const failed: string[] = [];
+  if (ask.kind === 'lineup') {
+    const next = partOf(failed, 'nextGame', 'The next game', () => computeNextGame(request.orgId), () => null);
+    return partOf(failed, `lineup ${lineupKey(ask.ask)}`, 'The lineup card', () => lineupOf(v, request.orgId, ask.ask, next),
+      (why) => lineupView(v, { ask: ask.ask, card: why, next, fills: new Map() }));
+  }
+  if (ask.kind === 'plan') {
+    return partOf(failed, `plan ${ask.gameId}`, 'This game\'s plan', () => planOf(v, request.orgId, ask.gameId),
+      (why) => gamePlanView(v, { plan: why, card: null, gameId: ask.gameId, unreadable: true }));
+  }
+  return partOf(failed, `roster ${ask.teamId}`, 'The roster', () => rosterOf(v, ask.teamId, ask.clubs),
+    (why) => rostersView(v, { teamId: ask.teamId, roster: why, clubs: ask.clubs }));
 }

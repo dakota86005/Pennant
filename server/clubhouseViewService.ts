@@ -116,10 +116,14 @@ async function viewFor<T extends MlbLineupView | MlbGamePlanView | MlbRostersVie
   let pending = asking.get(key);
   if (!pending) {
     const request = { orgId: entry.orgId, importStamp: entry.importStamp, reportStamp: entry.stamp, ask };
+    const startedGeneration = databaseGeneration();
     pending = runDepartmentJob<MlbLineupView | MlbGamePlanView | MlbRostersView>({ kind: 'clubhouseAsk', request }, () => buildClubhouseAsk(request))
       .then((view) => {
         stats.asks += 1;
         adoptAuthored(view);
+        // Kept with its build only when nothing moved under it, as the build itself is: no swap to another import, the
+        // same inputs. Otherwise it is handed to the requests waiting on it and asked again next time
+        if (databaseGeneration() !== startedGeneration || frontOfficeInputsKey(entry.orgId) !== entry.key) return view;
         entry.views.set(id, view);
         entry.asked.push(id);
         while (entry.asked.length > MAX_ASKED) entry.views.delete(entry.asked.shift()!);
