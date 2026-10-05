@@ -70,6 +70,15 @@ describe('the clubhouse tools say what the routes computed (N9)', () => {
     expect(built.trends.charts).toHaveLength(3);
   });
 
+  it('serves the schedule\'s filters with their rows in their own order: still to play the next first, played the latest first', async () => {
+    const schedule = await clubhouseScheduleNow(String(save.org));
+    const [all, upcoming, played] = schedule.filters;
+    expect(all.rows).toEqual(schedule.games.table.rows.map((r) => r.id));
+    expect(upcoming.rows[0]).toBe(schedule.nextRow);
+    const order = (id: string) => all.rows.indexOf(id);
+    expect(played.rows.map(order)).toEqual([...played.rows.map(order)].sort((a, b) => b - a));
+  });
+
   it('opens the card against the next game\'s starter\'s hand', () => {
     const built = buildClubhouseViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
     const next = computeNextGame(save.org);
