@@ -11,7 +11,7 @@ import { cell, servedValue, unknownValue } from '../claim.js';
 import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbBlock, MlbLine, MlbRow } from '../majorLeague/types.js';
 import { BASIS, RIGHTS_TONE } from '../majorLeague/words.js';
-import { factClaim, head, hintIf, plural, player, type ClubhouseContext } from './common.js';
+import { ageCell, factClaim, head, hintIf, plural, player, type ClubhouseContext } from './common.js';
 import type { MlbFortyManView, MlbTableSection } from './types.js';
 
 const STATE = 'Player State';
@@ -136,7 +136,7 @@ function playerRow(v: ClubhouseContext, p: CrunchPlayer, issues: CrunchIssue[], 
   const cells: Record<string, Cell> = {
     player: cell(p.name),
     position: cell(p.positionName),
-    age: cell(String(p.age)),
+    age: ageCell(p.age),
     level: cell(p.levelName),
     status: statusCell(p),
     options: options.cell,
@@ -144,7 +144,7 @@ function playerRow(v: ClubhouseContext, p: CrunchPlayer, issues: CrunchIssue[], 
     now: now.cell,
   };
   const sort: Record<string, number | string | null> = {
-    player: p.name, position: p.positionName, age: p.age, level: p.levelName, status: p.on26 ? 0 : 1,
+    player: p.name, position: p.positionName, age: p.age ?? null, level: p.levelName, status: p.on26 ? 0 : 1,
     options: options.sort, rule5: rule5.sort, now: now.sort,
   };
   if (withIssues) {

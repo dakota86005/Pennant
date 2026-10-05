@@ -99,6 +99,16 @@ export function dayOrder(date: string | null | undefined): number | null {
   return m ? Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]) : null;
 }
 
+/** A player's age in words, or null when the export doesn't carry it (D-018: never "null" or 0). */
+export const ageWords = (age: number | null | undefined): string | null =>
+  age === null || age === undefined || !Number.isFinite(age) ? null : String(age);
+
+/** A player's age as a cell: "Not known" when the export doesn't carry it. */
+export function ageCell(age: number | null | undefined): Cell {
+  const words = ageWords(age);
+  return words === null ? cell('Not known', { tone: 'unknown', hint: 'His age isn\'t in the export' }) : cell(words);
+}
+
 export const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
 
 /** A hand in words ("right-handed"), from the export's letter. */

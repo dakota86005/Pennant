@@ -6,7 +6,7 @@
  */
 import type { DepthChart } from '../../org.js';
 import { cell } from '../claim.js';
-import { factClaim, head, hintIf, player, type ClubhouseContext } from './common.js';
+import { ageWords, factClaim, head, hintIf, player, type ClubhouseContext } from './common.js';
 import { fillHint, type RatingFill } from './fill.js';
 import type { MlbDepthChartView, MlbDepthClub, MlbDepthEntry, MlbDepthPosition } from './types.js';
 
@@ -49,7 +49,7 @@ function entry(p: Player, orgId: number, input: DepthInput): MlbDepthEntry {
   const graded = now === null && ceiling === null
     ? 'not scouted'
     : ceiling === null || ceiling === now ? (now ?? 'not scouted now') : `${now ?? 'not scouted now'} → ${ceiling}`;
-  const c = cell(`${p.age} · ${graded}`, { hint: 'Age · the scouts\' grade now → his ceiling' });
+  const c = cell(`${ageWords(p.age) ?? 'Age not known'} · ${graded}`, { hint: 'Age · the scouts\' grade now → his ceiling' });
   return { player: player(p.player_id, p.name, orgId), line: fillHint(c, input.fills.get(p.player_id) ?? null) };
 }
 

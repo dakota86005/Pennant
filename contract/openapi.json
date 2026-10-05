@@ -9864,13 +9864,14 @@
             "$ref": "#/components/schemas/MlbTable"
           },
           "bench": {
-            "$ref": "#/components/schemas/MlbLine"
+            "$ref": "#/components/schemas/MlbBlock",
+            "description": "The bench, who is unavailable and who isn't scouted: each man once, a line of his own that opens him."
           },
           "notScouted": {
-            "$ref": "#/components/schemas/MlbLine"
+            "$ref": "#/components/schemas/MlbBlock"
           },
           "unavailable": {
-            "$ref": "#/components/schemas/MlbLine"
+            "$ref": "#/components/schemas/MlbBlock"
           },
           "empty": {
             "$ref": "#/components/schemas/Cell",
@@ -10551,9 +10552,14 @@
           },
           "empty": {
             "$ref": "#/components/schemas/Cell"
+          },
+          "choose": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the plan's place says before a game is chosen."
           }
         },
         "required": [
+          "choose",
           "filters",
           "games",
           "importStamp",

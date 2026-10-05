@@ -4,6 +4,9 @@ import { DATE_KEY } from './dashboard.js';
 import { answer, refuse, type Computed } from './computed.js';
 import { projectedStarters } from './probableStarters.js';
 
+/** The clubs the export projects starters for: the schedule's own projection reader, for its words (N9). */
+export { projectedClubs } from './probableStarters.js';
+
 export const scheduleRoutes = Router();
 
 const HAND: Record<number, string> = { 1: 'R', 2: 'L', 3: 'S' };

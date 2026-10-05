@@ -82,3 +82,11 @@ export function projectedStarters(teams: Iterable<number>): { starterOf: (teamId
     },
   };
 }
+
+/** The clubs the export projects any starter for (a club with no row, or only empty slots, has none at all). */
+export function projectedClubs(): number[] {
+  const columns = slots();
+  if (columns.length === 0) return [];
+  const rows = db.prepare(`SELECT team_id, ${columns.map((c) => `"${c}"`).join(', ')} FROM projected_starting_pitchers`).all() as Array<Record<string, number | null>>;
+  return rows.filter((r) => columns.some((c) => Number(r[c] ?? 0) > 0)).map((r) => Number(r.team_id));
+}

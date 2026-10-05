@@ -60,7 +60,7 @@ struct ScheduleView: View {
                     if isGames, let row = selection.flatMap(gameId) {
                         GamePlanPane(game: row)
                     } else if isGames {
-                        Text("Choose a game for the staff's plan.").font(.callout).foregroundStyle(.readableSecondary)
+                        Text(verbatim: view.choose.display).font(.callout).foregroundStyle(.readableSecondary)
                     }
                     ClaimLine(view.note, font: .callout)
                 }

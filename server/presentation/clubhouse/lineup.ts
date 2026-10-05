@@ -122,7 +122,7 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
     const none = l.pa === null ? 'No line' : 'Not known';
     const cells: Record<string, Cell> = {
       slot: cell(String(l.slot)),
-      player: cell(name, l.dayToDay ? { tone: 'caution', hint: 'Day-to-day: OOTP will let him play, so check him first' } : {}),
+      player: cell(name, l.dayToDay ? { tone: 'caution', hint: 'Day-to-day: OOTP will let him play, so the staff kept him on' } : {}),
       position: cell(l.positionName),
       glove,
       bats: cell(l.bats),
@@ -135,7 +135,7 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
       why: cell(l.why),
     };
     const why: MlbLine[] = [line(l.why)];
-    if (l.dayToDay) why.push(line('Day-to-day: OOTP will let him play, so he is still on the card, but check him before you post it.', { quiet: true, tone: 'caution' }));
+    if (l.dayToDay) why.push(line('Day-to-day: OOTP will let him play, so the staff kept him on the card; how he feels today isn\'t in the export.', { quiet: true, tone: 'caution' }));
     const batLines: MlbLine[] = [];
     if (l.off !== null && l.off !== undefined) {
       batLines.push(line(`${signedBat(l.off)} against ${handWord(ask.vs)}, in points of wOBA above an average major-league hitter`));
@@ -219,14 +219,17 @@ function notes(v: ClubhouseContext, card: LineupCard) {
   return out;
 }
 
-const playersLine = (label: string, people: Array<{ player_id: number; name: string; positionName: string; extra?: string }>, orgId: number, hint?: string): MlbLine | null =>
+/**
+ * The bench, who is unavailable, who isn't scouted: each man named once, on a line of his own that opens him (N9 review:
+ * the names were a sentence and then buttons again), with what the card says beneath when there is something to say.
+ */
+const playersBlock = (title: string, people: Array<{ player_id: number; name: string; positionName: string; extra?: string }>, orgId: number, why?: string): MlbBlock | null =>
   people.length === 0
     ? null
-    : line(`${label} ${people.map((p) => `${p.name} (${p.positionName}${p.extra ? ` · ${p.extra}` : ''})`).join(', ')}`, {
-      quiet: true,
-      players: people.map((p) => player(p.player_id, p.name, orgId)),
-      ...(hint ? { hint } : {}),
-    });
+    : block(title, [
+      ...people.map((p) => line(`${p.name} (${p.positionName}${p.extra ? ` · ${p.extra}` : ''})`, { quiet: true, players: [player(p.player_id, p.name, orgId)] })),
+      ...(why ? [line(why, { quiet: true })] : []),
+    ]);
 
 export function lineupView(v: ClubhouseContext, input: LineupInput): MlbLineupView {
   const { ask, card, next, fills } = input;
@@ -258,12 +261,12 @@ export function lineupView(v: ClubhouseContext, input: LineupInput): MlbLineupVi
       rows: built ? orderRows(v, built, ask, fills) : [],
       empty: built ? cell('No card: nobody is available to play.') : null,
     },
-    bench: built ? playersLine('Bench:', built.bench, orgId) : null,
+    bench: built ? playersBlock('Bench', built.bench, orgId) : null,
     notScouted: built
-      ? playersLine('Not scouted:', built.notScouted ?? [], orgId, 'Their bat hasn\'t been graded, so the card leaves them out')
+      ? playersBlock('Not scouted', built.notScouted ?? [], orgId, 'Their bat hasn\'t been graded, so the card leaves them out.')
       : null,
     unavailable: built
-      ? playersLine('Unavailable:', built.unavailable.map((u) => ({ ...u, extra: `${u.status}${u.daysLeft ? `, ${u.daysLeft} days` : ''}` })), orgId)
+      ? playersBlock('Unavailable', built.unavailable.map((u) => ({ ...u, extra: `${u.status}${u.daysLeft ? `, ${u.daysLeft} days` : ''}` })), orgId)
       : null,
     empty: built ? null : cell(typeof card === 'string' ? `${card}.` : 'No card.'),
   };

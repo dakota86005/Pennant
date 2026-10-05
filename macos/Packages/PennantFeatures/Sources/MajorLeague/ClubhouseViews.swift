@@ -217,8 +217,8 @@ struct LineupNotes: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let tonight = view.tonight { Card { BlockView(tonight) } }
-            ForEach(Array([view.bench, view.unavailable, view.notScouted].compactMap { $0 }.enumerated()), id: \.offset) { _, line in
-                LineView(line: line)
+            ForEach(Array([view.bench, view.unavailable, view.notScouted].compactMap { $0 }.enumerated()), id: \.offset) { _, block in
+                BlockView(block)
             }
         }
     }

@@ -1434,49 +1434,87 @@
     }
   },
   "bench": {
-    "text": {
-      "display": "Bench: P 1000 (3B), P 1009 (LF), P 1006 (1B), P 1011 (3B)"
+    "title": {
+      "display": "Bench"
     },
-    "quiet": true,
+    "player": null,
     "chips": [],
-    "players": [
+    "claims": [],
+    "lines": [
       {
-        "playerId": 1000,
-        "name": "P 1000",
-        "open": {
-          "kind": "player",
-          "playerId": 1000,
-          "teamId": 1
-        }
+        "text": {
+          "display": "P 1000 (3B)"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1000,
+            "name": "P 1000",
+            "open": {
+              "kind": "player",
+              "playerId": 1000,
+              "teamId": 1
+            }
+          }
+        ]
       },
       {
-        "playerId": 1009,
-        "name": "P 1009",
-        "open": {
-          "kind": "player",
-          "playerId": 1009,
-          "teamId": 1
-        }
+        "text": {
+          "display": "P 1009 (LF)"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1009,
+            "name": "P 1009",
+            "open": {
+              "kind": "player",
+              "playerId": 1009,
+              "teamId": 1
+            }
+          }
+        ]
       },
       {
-        "playerId": 1006,
-        "name": "P 1006",
-        "open": {
-          "kind": "player",
-          "playerId": 1006,
-          "teamId": 1
-        }
+        "text": {
+          "display": "P 1006 (1B)"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1006,
+            "name": "P 1006",
+            "open": {
+              "kind": "player",
+              "playerId": 1006,
+              "teamId": 1
+            }
+          }
+        ]
       },
       {
-        "playerId": 1011,
-        "name": "P 1011",
-        "open": {
-          "kind": "player",
-          "playerId": 1011,
-          "teamId": 1
-        }
+        "text": {
+          "display": "P 1011 (3B)"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1011,
+            "name": "P 1011",
+            "open": {
+              "kind": "player",
+              "playerId": 1011,
+              "teamId": 1
+            }
+          }
+        ]
       }
-    ]
+    ],
+    "collapsed": false
   },
   "notScouted": null,
   "unavailable": null,

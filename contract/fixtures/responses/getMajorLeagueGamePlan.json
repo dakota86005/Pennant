@@ -12,7 +12,7 @@
       "because": [
         {
           "label": "How to read it",
-          "value": "Who is starting against us, the card to send up against his hand, how our hitters have actually fared against that man and that club, and which of their bats to be careful with. Every head-to-head line carries its sample: a .667 average in three at-bats is noise."
+          "value": "Who is starting against us, the staff's card against his hand, how our hitters have actually fared against that man and that club, and which of their bats hit the ball hardest. Every head-to-head line carries its sample: a .667 average in three at-bats is noise."
         }
       ],
       "source": {
@@ -344,7 +344,7 @@
     {
       "id": "dangerous",
       "title": {
-        "display": "Be careful with",
+        "display": "Their most dangerous bats",
         "hint": "Their hitters by barrel rate, from every batted ball"
       },
       "summary": null,

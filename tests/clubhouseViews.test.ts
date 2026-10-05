@@ -11,7 +11,11 @@ import { computeLineup, lineupAskOf } from '../server/lineup.js';
 import { computePitchingStaff, type PitchingStaff } from '../server/pitching.js';
 import { departmentOffice, servedDepartments } from '../server/presentation/catalog.js';
 import type { ClubhouseContext } from '../server/presentation/clubhouse/common.js';
+import { depthChartView } from '../server/presentation/clubhouse/depth.js';
 import { fortyManView } from '../server/presentation/clubhouse/fortyMan.js';
+import { scheduleView } from '../server/presentation/clubhouse/schedule.js';
+import { computeSchedule } from '../server/schedule.js';
+import { computeDepthChart } from '../server/org.js';
 import { lineupView } from '../server/presentation/clubhouse/lineup.js';
 import { pitchingAvailabilityView } from '../server/presentation/clubhouse/pitching.js';
 import { seasonTrendsView } from '../server/presentation/clubhouse/trends.js';
@@ -378,5 +382,67 @@ describe('a game plan with no starter says so (D-069, D-018)', () => {
     expect(late.starter.text.display).toBe('No starter projected for this game yet.');
     expect(late.card.title?.display).toBe('Staff\'s view: our card against right-handers');
     expect(late.card.lines.at(-1)?.text.display).toMatch(/^No starter is known for this game, so this is the card against right-handers, not one built for him\.$/);
+  });
+});
+
+describe('the clubhouse tools\' smaller words (N9 review)', () => {
+  it('says the staff\'s view of a day-to-day man and of the plan, never an instruction or a forecast', async () => {
+    const card = computeLineup(save.org, lineupAskOf({}));
+    if (!card.ok) throw new Error(card.error);
+    const [first, ...rest] = card.body.lineup;
+    const view = lineupView(v, { ask: lineupAskOf({}), card: { ...card.body, lineup: [{ ...first, dayToDay: true }, ...rest] }, next: computeNextGame(save.org), fills: new Map() });
+    expect(bannedInPayload(view, 'getMajorLeagueLineup')).toEqual([]);
+    expect(visible(view).map((x) => x.text).join(' ')).toMatch(/Day-to-day: OOTP will let him play, so the staff kept him on/);
+    const schedule = await clubhouseScheduleNow(String(save.org));
+    const plan = await clubhouseGamePlanNow(String(save.org), schedule.nextRow!.replace(/^game-/, ''));
+    expect(bannedInPayload(plan)).toEqual([]);
+    expect(plan.sections.map((s) => s.title?.display)).toContain('Their most dangerous bats');
+    const trends = await clubhouseTrendsNow(String(save.org));
+    expect(bannedInPayload(trends)).toEqual([]);
+  });
+
+  it('names each man on the bench and the unavailable list once, on a line of his own that opens him', async () => {
+    const view = await clubhouseLineupNow(String(save.org));
+    for (const block of [view.bench, view.unavailable, view.notScouted]) {
+      if (!block) continue;
+      for (const l of block.lines.filter((x) => x.players.length)) {
+        expect(l.players).toHaveLength(1);
+        expect(l.text.display.split(l.players[0].name).length - 1).toBe(1);
+      }
+    }
+    expect(view.bench?.title?.display).toBe('Bench');
+    expect(view.bench!.lines.length).toBeGreaterThan(0);
+  });
+
+  it('says a club OOTP projects no starters for has none, rather than "past" a projection it doesn\'t have', () => {
+    const body = computeSchedule(save.org);
+    if (!body.ok || !('headToHead' in body.body)) throw new Error('no schedule');
+    const hint = (view: ReturnType<typeof scheduleView>, column: 'ourStarter' | 'theirStarter') =>
+      new Set(view.games.table.rows.map((r) => r.cells[column]).filter((c) => c.display === 'Not named yet').map((c) => c.hint));
+    const all = scheduleView(v, { schedule: body.body, projectedClubs: save.clubs });
+    expect(hint(all, 'ourStarter')).toEqual(new Set(['OOTP\'s projected starts don\'t reach this game']));
+    const noneForThem = scheduleView(v, { schedule: body.body, projectedClubs: [save.org] });
+    expect(hint(noneForThem, 'theirStarter')).toEqual(new Set(['OOTP hasn\'t projected this club\'s starters']));
+    expect(all.choose.display).toBe('Choose a game for the staff\'s plan.');
+  });
+
+  it('says an age the export doesn\'t carry is not known, never "null"', () => {
+    const crunch = computeRosterCrunchIssues(save.org);
+    if (!crunch.ok) throw new Error(crunch.error);
+    const issues: CrunchIssues = crunch.body;
+    const ageless = <T extends { age: number }>(list: T[]): T[] => list.map((p) => ({ ...p, age: null as unknown as number }));
+    const forty = fortyManView(v, { crunch: { ...issues, crunch: { ...issues.crunch, fortyMan: ageless(issues.crunch.fortyMan), issues: ageless(issues.crunch.issues) } } });
+    const rows = forty.sections.flatMap((s) => s.table.rows);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.cells.age.display).toBe('Not known');
+      expect(r.sort.age).toBeNull();
+    }
+    const chart = computeDepthChart(save.org);
+    if (!chart.ok) throw new Error(chart.error);
+    const depth = depthChartView(v, { chart: { ...chart.body, players: chart.body.players.map((p) => ({ ...p, age: null as unknown as number })) }, fills: new Map(), rating: { scaleMax: 80, roundToFive: false } });
+    const words = JSON.stringify(depth);
+    expect(words).not.toMatch(/\bnull ·/);
+    expect(words).toMatch(/Age not known · /);
   });
 });

@@ -29,7 +29,7 @@ import type {
 import type { BuildContext, DepartmentContext } from './presentation/frontOffice/desk.js';
 import { computeRoster } from './roster.js';
 import { computeRosterCrunchIssues } from './rosterops.js';
-import { computeSchedule } from './schedule.js';
+import { computeSchedule, projectedClubs } from './schedule.js';
 import { ratingFillOf } from './scoutedEvidence.js';
 import { loadSettings } from './settings.js';
 import { computeTrends } from './trends.js';
@@ -190,7 +190,7 @@ export function buildClubhouseViews(request: ClubhouseViewsRequest): ClubhouseVi
     (why) => pitchingAvailabilityView(v, { staff: why }));
   const scheduleBody = part<ReturnType<typeof computeSchedule> extends Computed<infer T> ? T | string : never>(
     'scheduleRead', 'The schedule', () => bodyOr(computeSchedule(orgId)), (why) => why);
-  const schedule = part('schedule', 'The schedule', () => scheduleView(v, { schedule: scheduleBody }), (why) => scheduleView(v, { schedule: why }));
+  const schedule = part('schedule', 'The schedule', () => scheduleView(v, { schedule: scheduleBody, projectedClubs: projectedClubs() }), (why) => scheduleView(v, { schedule: why, projectedClubs: [] }));
   const games = typeof scheduleBody === 'string' || !('series' in scheduleBody)
     ? []
     : scheduleBody.series.flatMap((s) => s.games.map((g) => ({ id: g.game_id, played: g.played })));

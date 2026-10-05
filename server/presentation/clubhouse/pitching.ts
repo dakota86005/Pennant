@@ -11,7 +11,7 @@ import { cell } from '../claim.js';
 import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbBlock, MlbLine, MlbRow, MlbTable } from '../majorLeague/types.js';
 import { PITCHING_STATS } from '../statCatalog.js';
-import { factClaim, head, plural, player, statCell, statSort, type ClubhouseContext } from './common.js';
+import { ageCell, factClaim, head, plural, player, statCell, statSort, type ClubhouseContext } from './common.js';
 import { withFill } from './fill.js';
 import type { MlbPitchingAvailabilityView, MlbTableSection } from './types.js';
 
@@ -167,7 +167,7 @@ function starterRow(v: ClubhouseContext, p: Starter, gameLog: boolean, today: nu
     slot: p.slot === null ? cell('Depth', { tone: 'neutral' }) : cell(String(p.slot)),
     pitcher: cell(p.name),
     throws: cell(p.throws),
-    age: cell(String(p.age)),
+    age: ageCell(p.age),
     wl: !p.stats
       ? cell('No line', { tone: 'unknown' })
       : p.stats.w === null || p.stats.w === undefined || p.stats.l === null || p.stats.l === undefined
@@ -185,7 +185,7 @@ function starterRow(v: ClubhouseContext, p: Starter, gameLog: boolean, today: nu
     health: healthCell(p),
   };
   const sort: Record<string, number | string | null> = {
-    slot: p.slot, pitcher: p.name, throws: p.throws, age: p.age, wl: statSort(p.stats?.w),
+    slot: p.slot, pitcher: p.name, throws: p.throws, age: p.age ?? null, wl: statSort(p.stats?.w),
     ip: statSort(p.stats?.ip), era: statSort(p.stats?.era), eraPlus: statSort(p.stats?.eraPlus), fip: statSort(p.stats?.fip),
     whip: statSort(p.stats?.whip), k9: statSort(p.stats?.k9), stamina: p.stamina, rest: p.daysRest, next: p.nextStartInDays,
     health: p.injury ? (p.injury.playable ? 1 : 2) : 0,

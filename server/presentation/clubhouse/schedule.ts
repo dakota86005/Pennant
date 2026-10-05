@@ -12,7 +12,7 @@ import type { Schedule } from '../../schedule.js';
 import { cell, servedValue } from '../claim.js';
 import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbRow } from '../majorLeague/types.js';
-import { dayOrder, dayWords, factClaim, HAND_WORDS, head, plural, player, type ClubhouseContext } from './common.js';
+import { ageWords, dayOrder, dayWords, factClaim, HAND_WORDS, head, plural, player, type ClubhouseContext } from './common.js';
 import type { MlbGamePlanView, MlbScheduleView, MlbTableSection } from './types.js';
 
 const SCHEDULE = 'The schedule';
@@ -66,14 +66,14 @@ function headToHead(s: Full): MlbTableSection | null {
   };
 }
 
-function starterCell(starter: Game['ourStarter'], played: boolean): Cell {
+function starterCell(starter: Game['ourStarter'], played: boolean, projected: boolean): Cell {
   if (starter) return cell(`${starter.name} (${starter.throws})`, played ? {} : { hint: 'Projected: it can change as the season is simmed' });
-  return played
-    ? cell('Not in the export', { tone: 'unknown' })
-    : cell('Not named yet', { tone: 'unknown', hint: 'Past the starts OOTP has projected' });
+  if (played) return cell('Not in the export', { tone: 'unknown' });
+  // A club OOTP projects no starters for at all is said as such, never "past" a projection it doesn't have
+  return cell('Not named yet', { tone: 'unknown', hint: projected ? 'OOTP\'s projected starts don\'t reach this game' : 'OOTP hasn\'t projected this club\'s starters' });
 }
 
-function gameRows(s: Full): { rows: MlbRow[]; played: string[]; upcoming: string[] } {
+function gameRows(s: Full, orgId: number, projected: ReadonlySet<number>): { rows: MlbRow[]; played: string[]; upcoming: string[] } {
   const rows: MlbRow[] = [];
   const played: string[] = [];
   const upcoming: string[] = [];
@@ -103,8 +103,8 @@ function gameRows(s: Full): { rows: MlbRow[]; played: string[]; upcoming: string
         oppRecord: g.opponentRecord ? cell(`${g.opponentRecord.w}–${g.opponentRecord.l}`, { hint: 'Their record in the standings' }) : cell('Not in the export', { tone: 'unknown' }),
         result,
         innings,
-        ourStarter: starterCell(g.ourStarter, g.played),
-        theirStarter: starterCell(g.theirStarter, g.played),
+        ourStarter: starterCell(g.ourStarter, g.played, projected.has(orgId)),
+        theirStarter: starterCell(g.theirStarter, g.played, projected.has(g.oppId)),
         series: cell(seriesWords),
       }, {
         date: dayOrder(g.date),
@@ -121,8 +121,13 @@ function gameRows(s: Full): { rows: MlbRow[]; played: string[]; upcoming: string
   return { rows, played, upcoming };
 }
 
+/** What the plan's place says before a game is chosen. */
+const CHOOSE = 'Choose a game for the staff\'s plan.';
+
 export interface ScheduleInput {
   schedule: Schedule | string;
+  /** The clubs the export projects starters for (`projectedClubs`): a club missing has none at all. */
+  projectedClubs: number[];
 }
 
 export function scheduleView(v: ClubhouseContext, input: ScheduleInput): MlbScheduleView {
@@ -136,18 +141,19 @@ export function scheduleView(v: ClubhouseContext, input: ScheduleInput): MlbSche
     because: [
       { label: 'Series', value: 'Grouped from consecutive games against the same opponent at the same venue.' },
       { label: 'Starters', value: 'For games already played, the actual ones; for games to come, each club\'s projected rotation, read at the game\'s place among that club\'s own games still to play. They change as the season is simmed.' },
-      { label: 'Past the projection', value: 'OOTP projects a club\'s next several starts; a game further out has no starter named yet.' },
+      { label: 'Past the projection', value: 'OOTP projects a club\'s next several starts; a game further out has no starter named yet, and a club OOTP hasn\'t projected has none named at all.' },
+      { label: 'How the projection is read', value: 'As the pattern the exports show: a five-man turn, then its first three again. Off days aren\'t modelled, so a day off that lets a club skip a starter isn\'t seen.' },
     ],
   });
   const empty = (text: string): MlbScheduleView => ({
     ...base, record: [], headToHead: null,
     games: { id: 'games', title: cell('Games'), summary: null, table: { columns: [], rows: [], empty: cell(text) }, note: null },
-    filters: [], nextRow: null, note, empty: cell(text),
+    filters: [], nextRow: null, note, empty: cell(text), choose: cell(CHOOSE),
   });
   const s = input.schedule;
   if (typeof s === 'string') return empty(`${s}.`);
   if (!isFull(s)) return empty('No games scheduled for this club.');
-  const { rows, played, upcoming } = gameRows(s);
+  const { rows, played, upcoming } = gameRows(s, v.ctx.build.orgId, new Set(input.projectedClubs));
   const nextSeries = s.series[s.nextSeriesIndex];
   const nextGame = nextSeries?.games.find((g) => !g.played) ?? null;
   return {
@@ -177,6 +183,7 @@ export function scheduleView(v: ClubhouseContext, input: ScheduleInput): MlbSche
     nextRow: nextGame ? gameRowId(nextGame.game_id) : null,
     note,
     empty: null,
+    choose: cell(CHOOSE),
   };
 }
 
@@ -219,7 +226,7 @@ export interface GamePlanInput {
 export function gamePlanView(v: ClubhouseContext, input: GamePlanInput): MlbGamePlanView {
   const base = head(v, 'Game Plan', {
     text: 'The staff\'s preparation for one game',
-    full: 'Who is starting against us, the card to send up against his hand, how our hitters have actually fared against that man and that club, and which of their bats to be careful with. Every head-to-head line carries its sample: a .667 average in three at-bats is noise.',
+    full: 'Who is starting against us, the staff\'s card against his hand, how our hitters have actually fared against that man and that club, and which of their bats hit the ball hardest. Every head-to-head line carries its sample: a .667 average in three at-bats is noise.',
     specialist: PLAN,
   });
   const rowId = gameRowId(input.gameId);
@@ -234,7 +241,7 @@ export function gamePlanView(v: ClubhouseContext, input: GamePlanInput): MlbGame
   const oppId = plan.game.opponent.team_id;
   const s = plan.starter;
   const starter = s
-    ? line(`Their starter: ${s.name}, ${HAND_WORDS[s.throws] ?? 'hand not in the export'}, ${s.age}${s.confirmed ? '' : ' (projected, and liable to change)'}`, {
+    ? line(`Their starter: ${s.name}, ${HAND_WORDS[s.throws] ?? 'hand not in the export'}, ${ageWords(s.age) ?? 'age not known'}${s.confirmed ? '' : ' (projected, and liable to change)'}`, {
       players: [player(s.player_id, s.name, oppId)],
     })
     : plan.game.played
@@ -256,7 +263,7 @@ export function gamePlanView(v: ClubhouseContext, input: GamePlanInput): MlbGame
       ];
   const dangerous: MlbTableSection = {
     id: 'dangerous',
-    title: cell('Be careful with', { hint: 'Their hitters by barrel rate, from every batted ball' }),
+    title: cell('Their most dangerous bats', { hint: 'Their hitters by barrel rate, from every batted ball' }),
     summary: null,
     table: {
       columns: [column('player', 'Hitter'), column('position', 'Pos'), column('barrel', 'Brl%', true), column('ev', 'EV', true)],

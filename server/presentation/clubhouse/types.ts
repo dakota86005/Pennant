@@ -67,9 +67,10 @@ export interface MlbLineupView extends MlbViewHead {
   /** What else the card says about itself (the run search, a DH the league doesn't use). */
   notes: Claim[];
   order: MlbTable;
-  bench: MlbLine | null;
-  notScouted: MlbLine | null;
-  unavailable: MlbLine | null;
+  /** The bench, who is unavailable and who isn't scouted: each man once, a line of his own that opens him. */
+  bench: MlbBlock | null;
+  notScouted: MlbBlock | null;
+  unavailable: MlbBlock | null;
   /** Why there is no card (too few position players, nothing imported); null when there is one. */
   empty: Cell | null;
 }
@@ -106,6 +107,8 @@ export interface MlbScheduleView extends MlbViewHead {
   nextRow: string | null;
   note: Claim;
   empty: Cell | null;
+  /** What the plan's place says before a game is chosen. */
+  choose: Cell;
 }
 
 /** One game's plan: their starter, our card against his hand, how our hitters have fared, and their dangerous bats. */

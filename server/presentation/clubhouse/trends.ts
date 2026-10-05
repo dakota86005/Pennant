@@ -64,7 +64,7 @@ export function seasonTrendsView(v: ClubhouseContext, input: TrendsInput): MlbSe
       headline: cell(`${signed(final)} on the season`, { tone: final > 0 ? 'good' : final < 0 ? 'bad' : 'neutral' }),
       caption: factClaim(v, 'Every game moves the line by that game\'s margin', {
         specialist: TRENDS,
-        because: [{ label: 'How to read it', value: 'A line drifting down while the record looks fine is the classic sign of a club winning close games, which rarely holds.' }],
+        because: [{ label: 'How to read it', value: 'A line drifting down while the record looks fine means the record is running ahead of the runs scored and allowed.' }],
       }),
       axis: cell('Run differential'),
       baseline: 0,

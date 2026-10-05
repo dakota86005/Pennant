@@ -66,6 +66,10 @@ export const BANNED_VERDICTS: readonly RegExp[] = [
   // A headline worded as an order (N8 review, H1; D-065): the staff's call reads as the staff's view ("Staff's view: ..."),
   // never "Make the change" or "Set up the platoon"
   /^(?:Make|Set up) the\b/, /^Keep watching\b/,
+  // The staff's view, never an instruction to the GM or a forecast (N9 review): "check him before you post it", "be
+  // careful with", "the card to send up", "which rarely holds"
+  /\bcheck (?:him|her|them)\b(?: \w+)? (?:first|before)\b/i, /\bbefore you post\b/i, /\bbe careful with\b/i, /\bthe card to send up\b/i,
+  /\b(?:rarely|seldom|never|always) (?:holds|lasts)\b/i,
 ];
 
 /**
