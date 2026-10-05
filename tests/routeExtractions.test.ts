@@ -7,6 +7,7 @@ import { clubRecord, computeStandings } from '../server/league.js';
 import { computeTrends } from '../server/trends.js';
 import { computeRosterCrunch } from '../server/rosterops.js';
 import { computePitchingStaff } from '../server/pitching.js';
+import { computePlayerDossier } from '../server/player.js';
 import type { Computed } from '../server/computed.js';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
@@ -83,6 +84,30 @@ describe('each old route answers what its module computes', () => {
       await same(route, compute, save.org);
     } finally {
       for (const t of tables) db.exec(`ALTER TABLE zz_${t} RENAME TO ${t}`);
+    }
+  });
+});
+
+/**
+ * N11: the player card's dossier (`/api/player/:id`) computes in `computePlayerDossier`, which the player window reads too.
+ * (Proved byte-identical against the route before it on the owner's export and the USBL save, 126 requests, when made.)
+ */
+describe('the player card\'s dossier answers what its module computes (N11)', () => {
+  it('for hitters, pitchers, prospects, an unknown id and an id that isn\'t a number', async () => {
+    const ids = [save.regular, save.reliever, ...save.hitters.slice(0, 3), ...save.pitchers.slice(0, 2), ...save.prospects.slice(0, 2), 999_999_999];
+    for (const id of ids) await same('player', (n) => computePlayerDossier(n), id);
+    expect(computePlayerDossier(save.regular).ok).toBe(true);
+    const res = await fetch(`${base}/api/player/nobody`);
+    expect(res.status).toBe(404);
+  });
+
+  it('on an export with no players table', async () => {
+    db.exec('ALTER TABLE players RENAME TO zz_players');
+    try {
+      expect(computePlayerDossier(save.regular)).toEqual({ ok: false, status: 400, error: 'No data imported yet' });
+      await same('player', (n) => computePlayerDossier(n), save.regular);
+    } finally {
+      db.exec('ALTER TABLE zz_players RENAME TO players');
     }
   });
 });

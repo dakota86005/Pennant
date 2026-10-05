@@ -187,9 +187,10 @@ describe('the presentation boundary', () => {
     // `clubReport` is another club's report's reader (N7), held like `morningReport` below; `clubOwed` is the club question
     // still open (no specialist: it says whether the automatic club may be served as chosen)
     // `farmViewsBuild` is Farm & Development's views' reader (N10), run by the same worker; its own imports are held in
-    // farmViews.test.ts
+    // farmViews.test.ts. `playerDossierBuild` is the player window's reader (N11), run by the same worker; its own imports
+    // are held below
     const PUBLIC = new Set([
-      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'frontOfficeBuild', 'leagueRules',
+      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'playerDossierBuild', 'frontOfficeBuild', 'leagueRules',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
       'viewingOrganization',
     ]);
@@ -238,11 +239,13 @@ describe('the presentation boundary', () => {
    * (D-050), and no odds, posture or AI (D-001, D-060). Its one setting is how the GM shows a rating.
    */
   it('farmViewsBuild.ts reads the specialists only through their public modules', () => {
-    const allowed = new Set(['org', 'dataStatus', 'farmConsequence', 'farmOperations', 'history', 'scoutedDevelopment', 'settings', 'valuation']);
+    // N11: the evidence module, for one thing only: whether a player's grades are OSA's view filling in (the rows' mark)
+    const allowed = new Set(['org', 'dataStatus', 'farmConsequence', 'farmOperations', 'history', 'scoutedDevelopment', 'scoutedEvidence', 'settings', 'valuation']);
     const outside = valueImports('farmViewsBuild.ts').filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
       .filter((m) => !allowed.has(m));
     expect(outside).toEqual([]);
     const source = code('farmViewsBuild.ts');
+    expect([...source.matchAll(/import \{([^}]*)\} from '\.\/scoutedEvidence\.js'/g)].map((m) => m[1].trim())).toEqual(['ratingFillOf']);
     for (const pattern of [
       ...RATINGS,
       /developmentalContext|openDevelopmentalContext|evaluateDevelopmentProtection/,
@@ -254,6 +257,25 @@ describe('the presentation boundary', () => {
     // Its one setting is the rating display (rounded to fives or not)
     expect([...source.matchAll(/loadSettings\(\)\.(\w+)/g)].map((m) => m[1])).toEqual(['roundRatingsToFive']);
     expect(valueImports('farmViewsBuild.ts').filter((s) => ['providers', 'ai', 'chat', 'storylines'].includes(moduleName(s)))).toEqual([]);
+  });
+
+  /**
+   * The player window's reader (N11) asks each specialist through its public door: the card's dossier (`player`), Player
+   * Value's entry point (the cone, the surplus and our view, handed the viewing club's philosophy as `ourViewRoutes` hands
+   * it), Player State, the log through the data status, the rating history, and the evidence's source words. It reads
+   * no rating column, no stakes tier, and no odds or posture (D-060).
+   */
+  it('playerDossierBuild.ts reads the specialists only through their public doors', () => {
+    const allowed = new Set(['db', 'dataStatus', 'history', 'philosophy', 'player', 'playerValue', 'playerState', 'scoutedEvidence', 'settings', 'valuation']);
+    const outside = valueImports('playerDossierBuild.ts').filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
+      .filter((m) => !allowed.has(m));
+    expect(outside).toEqual([]);
+    const source = code('playerDossierBuild.ts');
+    for (const pattern of [...RATINGS, /developmentalContext|evaluateDevelopmentProtection/, /posture|playoffs|oddsModel|clubWinValue/]) {
+      expect(source, `playerDossierBuild.ts matches ${pattern}`).not.toMatch(pattern);
+    }
+    expect([...source.matchAll(/import \{([^}]*)\} from '\.\/scoutedEvidence\.js'/g)].map((m) => m[1].trim())).toEqual(['ratingSource']);
+    expect([...source.matchAll(/loadSettings\(\)\.(\w+)/g)].map((m) => m[1])).toEqual(['roundRatingsToFive']);
   });
 
   /** The farm's views name the farm's parts through its public module only (N10): no farm module reached past it. */
@@ -268,14 +290,20 @@ describe('the presentation boundary', () => {
     // N7: the attention put on the Front Office when served, and Around the League (the club reports it builds), are
     // served views over it, like the routes; no specialist calls either
     // N10: the farm's views are kept on the Front Office's inputs and built in its worker, a served view like the others
-    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
+    // N11: the player window's dossiers are kept on the Front Office's inputs and our club's built in its worker
+    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'playerViewService.ts', 'v2Routes.ts']);
     expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('playerViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('playerDossierBuild').sort()).toEqual(['frontOfficeBuild.ts', 'frontOfficeWorker.ts', 'playerViewService.ts']);
+    expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/playerDossierBuild\.js'/);
+    expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/playerDossierBuild\.js'/);
     // frontOfficeBuild.ts names the farm's two jobs in the worker's one list of jobs (`WorkerJob`), by type only
     expect(importers('farmViewsBuild').sort()).toEqual(['farmViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
     expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
     expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
     expect(importers('frontOfficeAttention').sort()).toEqual(['api.ts', 'v2Routes.ts']);
-    expect(importers('aroundTheLeague').sort()).toEqual(['frontOfficeAttention.ts', 'v2Routes.ts']);
+    // N11: the player window's notes read and write through Following's door (a note lives on the follow)
+    expect(importers('aroundTheLeague').sort()).toEqual(['frontOfficeAttention.ts', 'playerViewService.ts', 'v2Routes.ts']);
     expect(importers('frontOfficeBuild').sort()).toEqual(['frontOfficeService.ts', 'frontOfficeWorker.ts']);
   });
 
@@ -286,7 +314,9 @@ describe('the presentation boundary', () => {
     // catalog's views)
     // N10: Farm & Development's views, read in the build and kept by their service
     const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts', 'themePackStore.ts',
-      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts']);
+      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts',
+      // N11: the player window's views, read in the build and kept by their service
+      'playerDossierBuild.ts', 'playerViewService.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

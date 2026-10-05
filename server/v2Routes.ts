@@ -34,6 +34,12 @@ import {
 import type {
   FarmAffiliatesView, FarmAssignmentsView, FarmDecisionView, FarmDevelopmentDetail, FarmDevelopmentView, FarmOrganizationView, FarmProspectsView,
 } from './presentation/farm/types.js';
+import {
+  playerCompareNow, playerDossierNow, playerNotesNow, removeStaffNoteNow, restoreStaffNoteNow, setPlayerNoteNow, undoFirstNoteNow,
+} from './playerViewService.js';
+import type {
+  PlayerCompareView, PlayerDossierView, PlayerNoteChange, PlayerNotesView, StaffNoteChange,
+} from './presentation/player/types.js';
 
 export const v2Routes = Router();
 
@@ -162,6 +168,21 @@ v2Routes.get('/views/:org/majorLeague/decision', frontOffice<MlbDecisionView>((r
   context: textQuery(req.query.context),
   days: wholeQuery(req.query.days),
 })));
+
+/**
+ * The player window (N11): one player's dossier (`?org=` the club it is read for, `automatic` by default), the GM's
+ * notes on him, and two to four players side by side. Our club's players are read ahead after each import; any other on
+ * his first open; both kept until the next import (`playerViewService.ts`).
+ */
+const orgQuery = (value: unknown): string => (typeof value === 'string' && value.trim() ? value.trim() : 'automatic');
+v2Routes.get('/player/:id', frontOffice<PlayerDossierView>((req) => playerDossierNow(String(req.params.id), orgQuery(req.query.org))));
+v2Routes.get('/player/:id/notes', frontOffice<PlayerNotesView>((req) => playerNotesNow(String(req.params.id))));
+v2Routes.put('/player/:id/notes', frontOffice<PlayerNoteChange>((req) => setPlayerNoteNow(String(req.params.id), req.body)));
+v2Routes.delete('/player/:id/notes', frontOffice<PlayerNoteChange>((req) => undoFirstNoteNow(String(req.params.id))));
+v2Routes.post('/player/:id/staff-notes', frontOffice<StaffNoteChange>((req) => restoreStaffNoteNow(String(req.params.id), req.body)));
+v2Routes.delete('/player/:id/staff-notes/:noteId', frontOffice<StaffNoteChange>((req) =>
+  removeStaffNoteNow(String(req.params.id), String(req.params.noteId))));
+v2Routes.get('/compare', frontOffice<PlayerCompareView>((req) => playerCompareNow(req.query as Record<string, unknown>)));
 
 /** The club a theme route is about (a team id, or `automatic`), with its colours as the export has them. */
 function themedClub(param: string) {

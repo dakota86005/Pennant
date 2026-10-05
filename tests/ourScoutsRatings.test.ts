@@ -227,6 +227,32 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
     expect(seen).toBeGreaterThanOrEqual(2);
   });
 
+  it('marks a filled player\'s grades wherever they are shown: the player window, Major League Ops\' rows and the farm\'s (N11)', async () => {
+    setImport('osa');
+    const { buildPlayerDossiers } = await import('../server/playerDossierBuild.js');
+    const { fillMark: mlbMark } = await import('../server/presentation/majorLeague/views.js');
+    const { tableRow } = await import('../server/presentation/majorLeague/common.js');
+    const { fillMark: farmMark } = await import('../server/presentation/farm/common.js');
+    const sentence = 'OSA\'s view: our scouts haven\'t rated him.';
+    const { views } = buildPlayerDossiers({ orgId: OURS, importStamp: null, reportStamp: 'r1', playerIds: [UNRATED, RATED] });
+    const filled = views.find((v) => v.playerId === UNRATED)!;
+    const ours = views.find((v) => v.playerId === RATED)!;
+    expect(filled.header.ratingsFill).toMatchObject({ display: 'OSA', hint: sentence });
+    expect(filled.ratings.source.text).toBe(sentence);
+    const grades = filled.ratings.groups.flatMap((g) => g.rows);
+    expect(grades.length).toBeGreaterThan(0);
+    for (const r of grades) expect(r.cells.grade.hint).toBe(sentence);
+    expect(grades.find((r) => r.id === 'contact')?.now).toBe(OSA_GRADE);
+    expect(ours.header.ratingsFill).toBeNull();
+    expect(ours.ratings.groups.flatMap((g) => g.rows).find((r) => r.id === 'contact')?.now).toBe(OUR_GRADE);
+    // The departments' rows carry the same mark for him alone
+    expect(tableRow('a', {}, {}, { ratingsFill: mlbMark(UNRATED) }).ratingsFill).toMatchObject({ display: 'OSA', hint: sentence });
+    expect(tableRow('b', {}, {}, { ratingsFill: mlbMark(RATED) }).ratingsFill).toBeUndefined();
+    const farmCtx = { fill: ratingFillOf } as unknown as Parameters<typeof farmMark>[0];
+    expect(farmMark(farmCtx, UNRATED)).toMatchObject({ ratingsFill: { display: 'OSA', hint: sentence } });
+    expect(farmMark(farmCtx, RATED)).toEqual({});
+  });
+
   it('stamps a snapshot read from our scouts\' reports as their own kind, and never compares it with another kind', async () => {
     const outcome = await takeImportSnapshots({
       importFinishedAt: null, importStartedAt: '2040-07-01T12:00:00.000Z',

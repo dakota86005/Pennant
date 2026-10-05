@@ -9,7 +9,7 @@
  */
 import type { ScoutedDevelopmentPlayer } from '../../scoutedDevelopment.js';
 import { cell, claim, row, servedValue, unknownValue } from '../claim.js';
-import { decisionTarget, factBasis, factRow, headOf, judgmentBasis, lastNameKey, policyCalled, sentenceCells } from './common.js';
+import { decisionTarget, factBasis, factRow, fillMark, headOf, judgmentBasis, lastNameKey, policyCalled, sentenceCells } from './common.js';
 import type { FarmContext, ProspectEvaluationInput, ProspectInput } from './input.js';
 import type { FarmEvaluationRow, FarmFilter, FarmNextAssignment, FarmProspectCard, FarmProspectRow, FarmProspectsView } from './types.js';
 import {
@@ -172,6 +172,7 @@ export function prospectsView(
       filters,
       listLine: cell(`${player.age} · ${roleWords(player.kind, player.role)} · ${player.levelName} · ${player.team}`),
       open: decisionTarget(player.playerId),
+      ...fillMark(ctx, player.playerId),
     });
     if (p && MEETING_CALLS.has(p.decision.recommendation)) meetings.push(card(ctx, player, p, rating));
   }

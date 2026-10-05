@@ -19,6 +19,11 @@ export interface FarmContext {
   /** "Prepared by the minor league staff", as the catalog serves it. */
   preparedBy: Cell;
   department: DeptId;
+  /**
+   * Whether a player's grades are OSA's view filling in for our scouts (D-067), as the evidence says (`ratingFillOf`):
+   * the mark and its sentence, or null. Read by the build, handed in (N11).
+   */
+  fill?: (playerId: number) => { mark: string; hint: string } | null;
 }
 
 /** The major-league club at the top of the organization. */

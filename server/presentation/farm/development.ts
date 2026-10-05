@@ -11,7 +11,7 @@
 import type { Cell } from '../../contract/presentation.js';
 import type { ScoutedDevelopmentPlayer } from '../../scoutedDevelopment.js';
 import { cell, claim, row, servedValue, unknownValue } from '../claim.js';
-import { decisionTarget, factBasis, factRow, headOf, lastNameKey, sentenceCells } from './common.js';
+import { decisionTarget, factBasis, factRow, fillMark, headOf, lastNameKey, sentenceCells } from './common.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import type { DevelopmentHistoryInput, FarmContext, HistoryRowInput } from './input.js';
 import type { FarmDevelopmentDetail, FarmDevelopmentRow, FarmDevelopmentTab, FarmDevelopmentView, FarmMovementRow, FarmSnapshotRow } from './types.js';
@@ -264,6 +264,7 @@ export function developmentViews(
       levelId: String(p.level),
       listLine: cell(`${p.age} · ${p.levelName} · ${p.team}`),
       open: decisionTarget(p.playerId),
+      ...fillMark(ctx, p.playerId),
     };
   });
 

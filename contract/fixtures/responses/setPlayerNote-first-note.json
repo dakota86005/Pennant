@@ -1,0 +1,22 @@
+{
+  "done": {
+    "display": "Note saved, and following P 1019"
+  },
+  "notes": {
+    "playerId": 1019,
+    "following": true,
+    "note": "  Hits left-handers hard.\n\n  Watch his back on day games.  ",
+    "explain": {
+      "display": "Saved as you type, with your follow",
+      "hint": "Your note stays while you follow him"
+    },
+    "staff": [],
+    "staffEmpty": {
+      "display": "Nothing filed by the staff yet"
+    }
+  },
+  "undo": {
+    "note": ""
+  },
+  "undoUnfollows": true
+}

@@ -158,3 +158,9 @@ export function findingsWorstFirst<T extends { severity: string }>(findings: rea
   const rank: Record<string, number> = { critical: 0, attention: 1, noted: 2 };
   return findings.map((f, i) => ({ f, i })).sort((a, b) => (rank[a.f.severity] ?? 3) - (rank[b.f.severity] ?? 3) || a.i - b.i).map((x) => x.f);
 }
+
+/** The mark a row carries beside his grades when they are OSA's view filling in for our scouts (D-067, N11); none otherwise. */
+export function fillMark(ctx: FarmContext, playerId: number): { ratingsFill?: Cell } {
+  const fill = ctx.fill?.(playerId) ?? null;
+  return fill ? { ratingsFill: cell(fill.mark, { hint: fill.hint }) } : {};
+}

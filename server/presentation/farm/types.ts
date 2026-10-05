@@ -333,6 +333,8 @@ export interface FarmProspectRow extends Row<'player' | 'age' | 'club' | 'role' 
   /** His age, role and club as one line: "21 · SS · Double-A · Club". */
   listLine: Cell;
   open: Target;
+  /** OSA's view filling in for our scouts on his grades (D-067): the mark and its sentence; absent otherwise (N11). */
+  ratingsFill?: Cell;
 }
 
 export interface FarmNextAssignment {
@@ -411,6 +413,8 @@ export interface FarmDevelopmentRow extends Row<'player' | 'age' | 'club' | 'rol
   /** "22 · Double-A · Amarillo Sod Poodles", for the list beside the detail. */
   listLine: Cell;
   open: Target;
+  /** OSA's view filling in for our scouts on his grades (D-067): the mark and its sentence; absent otherwise (N11). */
+  ratingsFill?: Cell;
 }
 
 export interface FarmSnapshotRow extends Row<'date' | 'level' | 'current' | 'ceiling'> {}

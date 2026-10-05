@@ -351,6 +351,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     // Another club's report (N7): the league's second club, not the one the app follows
     teamId: () => String(save.clubs[1]),
     playerId: () => String(farmPlayer),
+    // N11: the player window's player (a regular hitter with a full record)
+    id: () => String(save.regular),
   };
   /**
    * A query a GET is captured with, where it takes one (N7: search needs something typed; N8: a decision needs a need,
@@ -361,6 +363,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     // N10: a farm player's decision, keyed as Major League Ops' is
     getFarmDecision: () => `?player=${farmPlayer}`,
     getMajorLeagueDecision: () => `?need=${encodeURIComponent(evidenceKey.replace(/^\d+\.majorLeague:need:/, ''))}`,
+    // N11: three players side by side, a pitcher among them
+    getPlayerCompare: () => `?players=${save.regular},${save.hitters.find((h) => h !== save.regular)},${save.reliever}`,
   };
 
   it('has an item with an evidence trail on the synthetic save, for the claims route', async () => {
@@ -494,6 +498,11 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     ],
     // The pretend save was never saved by OOTP, so nothing stands out and nothing is chosen (D-063)
     setUpAutomatically: [{ name: 'nothing-stands-out', body: {}, status: 200 }],
+    // N11: a staff note put back as it was filed (the undo of a removal); the changes below remove it again
+    restoreStaffNote: [
+      { name: 'restored', body: { source: 'Bench coach', body: 'Keep him off back-to-back day games for two weeks.', gameDate: '2040-5-3' }, status: 200 },
+      { name: 'no-body', body: { source: 'Bench coach' }, status: 400 },
+    ],
   };
 
   it('answers every POST in the contract\'s shape, for each answer it is safe to cause here', async () => {
@@ -535,7 +544,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
    */
   it('answers the desk\'s and Following\'s changes in the contract\'s shape, and puts each back (captured for the previews)', async () => {
     const changes = operations.filter((op) => op.method === 'put' || op.method === 'delete').map((op) => op.operationId).sort();
-    expect(changes).toEqual(['follow', 'setDeskStatus', 'unfollow']);
+    expect(changes).toEqual(['follow', 'removeStaffNote', 'setDeskStatus', 'setPlayerNote', 'undoFirstPlayerNote', 'unfollow']);
     const call = async (method: 'PUT' | 'DELETE', url: string, body?: unknown) => {
       const res = await fetch(`${base}${url}`, {
         method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
@@ -580,6 +589,21 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     check('unfollow', 'no-kind', await call('DELETE', `/api/v2/following?id=${club}`), 400);
     // Put back: nothing followed, nothing marked
     expect((await call('DELETE', `/api/v2/following?kind=player&id=${save.regular}`)).status).toBe(200);
+    // N11: the GM's note on a player he doesn't follow, kept exactly as typed, and its undo (which stops following him)
+    const typed = '  Hits left-handers hard.\n\n  Watch his back on day games.  ';
+    const first = await call('PUT', `/api/v2/player/${save.reliever}/notes`, { note: typed });
+    check('setPlayerNote', 'first-note', first, 200);
+    expect((first.body as { notes: { note: string; following: boolean } }).notes).toMatchObject({ note: typed, following: true });
+    expect((first.body as { undoUnfollows: boolean }).undoUnfollows).toBe(true);
+    check('setPlayerNote', 'changed', await call('PUT', `/api/v2/player/${save.reliever}/notes`, { note: 'Ready for the late innings.' }), 200);
+    check('setPlayerNote', 'not-text', await call('PUT', `/api/v2/player/${save.reliever}/notes`, { note: 5 }), 400);
+    check('setPlayerNote', 'not-in-this-save', await call('PUT', '/api/v2/player/99999999/notes', { note: 'Nobody' }), 404);
+    check('undoFirstPlayerNote', 'unfollows', await call('DELETE', `/api/v2/player/${save.reliever}/notes`), 200);
+    // A staff note (put there by the POST above) removed, then gone
+    const notes = (await (await fetch(`${base}/api/v2/player/${save.regular}/notes`)).json()) as { staff: Array<{ id: number }> };
+    expect(notes.staff.length, 'the staff note the POST put back is there').toBeGreaterThan(0);
+    check('removeStaffNote', 'removed', await call('DELETE', `/api/v2/player/${save.regular}/staff-notes/${notes.staff[0].id}`), 200);
+    check('removeStaffNote', 'gone', await call('DELETE', `/api/v2/player/${save.regular}/staff-notes/${notes.staff[0].id}`), 404);
   }, SLOW);
 
   /**

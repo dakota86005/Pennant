@@ -7,10 +7,12 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { buildClubReport, buildDecision, buildFrontOffice, buildTrail, type WorkerJob } from './frontOfficeBuild.js';
 import { buildFarmDecision, buildFarmViews } from './farmViewsBuild.js';
+import { buildPlayerDossiers } from './playerDossierBuild.js';
 
 async function run(job: WorkerJob): Promise<unknown> {
   if (job.kind === 'farmViews') return buildFarmViews(job.request);
   if (job.kind === 'farmDecision') return buildFarmDecision(job.request);
+  if (job.kind === 'playerDossiers') return buildPlayerDossiers(job.request);
   if (job.kind === 'build') return buildFrontOffice(job.request);
   if (job.kind === 'club') return buildClubReport(job.request);
   if (job.kind === 'decision') return buildDecision(job.request);

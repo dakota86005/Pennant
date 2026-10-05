@@ -63,6 +63,8 @@ export interface MlbRow extends Row<string> {
   player: MlbPlayer | null;
   detail: MlbBlock[];
   actions: MlbAction[];
+  /** OSA's view filling in for our scouts on this row's grades (D-067): the mark ("OSA") and its sentence; absent otherwise (N11). */
+  ratingsFill?: Cell;
 }
 
 /** A table, ready to show: its columns, its rows in the specialist's own order, and its sentence when it has none. */

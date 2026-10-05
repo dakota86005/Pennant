@@ -213,6 +213,12 @@ function readClaim(v: OverviewContext, h: Holder) {
  * sentence in its hint, and his detail opens with it as a quiet line, so the Mac can draw the mark ("OSA") beside them.
  * Nothing changes for a player our scouts rate.
  */
+/** The mark a row carries beside his grades when they are OSA's view filling in for our scouts (N11), or null. */
+export function fillMark(playerId: number): Cell | null {
+  const fill = ratingFillOf(playerId);
+  return fill ? cell(fill.mark, { hint: fill.hint }) : null;
+}
+
 function markFill(playerId: number, cells: Record<string, Cell>, ratingKeys: readonly string[], detail: MlbBlock[]): MlbBlock[] {
   const note = ratingFillOf(playerId)?.hint ?? null;
   if (!note) return detail;
@@ -357,6 +363,7 @@ export function positionPlayersView(v: OverviewContext): MlbPositionPlayersView 
     };
     return tableRow(`spot-${sp.position}`, cells, sort, {
       player: player(v, r.playerId, r.name),
+      ratingsFill: fillMark(r.playerId),
       detail: markFill(r.playerId, cells, ['estimate', 'bat', 'glove', 'run'],
         h ? hitterDetail(v, h, sp) : [block(null, [line('The review has no read on him.', { quiet: true })])]),
       actions: h ? hitterActions(h) : [],
@@ -404,7 +411,7 @@ function armTable(v: OverviewContext, g: RoleGroupReview, relief: boolean): MlbT
     }
     const actions = h.strength === 'strong' || h.strength === 'moderate' ? [action('Replacement options', decision(`mlb:role_holder_review:${h.playerId}`))] : [];
     const detail = markFill(h.playerId, cells, ['estimate', 'tools'], armDetail(h));
-    return tableRow(`arm-${h.playerId}`, cells, sort, { player: player(v, h.playerId, h.name), detail, actions, claim: readClaim(v, h) });
+    return tableRow(`arm-${h.playerId}`, cells, sort, { player: player(v, h.playerId, h.name), detail, actions, claim: readClaim(v, h), ratingsFill: fillMark(h.playerId) });
   });
   return { columns, rows, empty: rows.length ? null : cell('No arms to review.', { tone: 'unknown' }) };
 }
@@ -509,6 +516,7 @@ export function benchView(v: OverviewContext): MlbBenchView {
     ));
     return tableRow(`bench-${r.playerId}`, cells, sort, {
       player: player(v, r.playerId, r.name),
+      ratingsFill: fillMark(r.playerId),
       detail: markFill(r.playerId, cells, ['canPlay', 'bat'], [block('Where he can play', reads.length ? reads : [line('No visible grade at any position.', { quiet: true })])]),
     });
   });

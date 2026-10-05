@@ -476,6 +476,67 @@
         }
       }
     },
+    "/api/v2/compare": {
+      "get": {
+        "operationId": "getPlayerCompare",
+        "summary": "Two to four players side by side, each figure as his own dossier serves it; ranges compared only by overlap, no verdict or combined score.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "players",
+            "in": "query",
+            "required": true,
+            "description": "Two to four player ids, comma-separated.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "org",
+            "in": "query",
+            "required": false,
+            "description": "A team id, or `automatic` (the default).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerCompareView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/data-status": {
       "get": {
         "operationId": "getDataStatusWords",
@@ -821,6 +882,322 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FrontOfficeSummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/player/{id}": {
+      "get": {
+        "operationId": "getPlayerDossier",
+        "summary": "One player's dossier in sections (header, overview, ratings, value, contract and rights, history), read for a club; our club's players read ahead after each import, any other on his first open, kept until the next import.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "org",
+            "in": "query",
+            "required": false,
+            "description": "A team id, or `automatic` (the default) for the club the app follows.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerDossierView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/player/{id}/notes": {
+      "get": {
+        "operationId": "getPlayerNotes",
+        "summary": "The GM's note on a player (kept on his follow, as typed) and the notes the staff filed on him.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerNotesView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setPlayerNote",
+        "summary": "Sets the GM's note as typed (an empty note clears it); a note on a player he doesn't follow follows him. Answers with the request that undoes it.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayerNoteUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerNoteChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "undoFirstPlayerNote",
+        "summary": "The undo of a first note: stops following the player the note followed, the note with him.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerNoteChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/player/{id}/staff-notes": {
+      "post": {
+        "operationId": "restoreStaffNote",
+        "summary": "Puts a removed staff note back as it was filed (the undo of a removal).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffNoteRestore"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffNoteChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/player/{id}/staff-notes/{noteId}": {
+      "delete": {
+        "operationId": "removeStaffNote",
+        "summary": "Removes a staff note on a player; answers with the note as filed, to put it back.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "noteId",
+            "in": "path",
+            "required": true,
+            "description": "The note's id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffNoteChange"
                 }
               }
             }
@@ -2625,6 +3002,119 @@
           "openWire"
         ],
         "description": "Another club's report (`GET /api/v2/club/:teamId`): the same masthead, \"How they win and lose\" and roster map as ours (the same modules, D-059), under our organization's scouting, with their recent moves, their injuries, their record against us and their next series with us. Nothing ranks the club or reads it as a buyer or a seller (D-060)."
+      },
+      "CompareCell": {
+        "type": "object",
+        "properties": {
+          "display": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "range": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "low": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              },
+              "mid": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "low",
+              "high",
+              "mid"
+            ]
+          }
+        },
+        "required": [
+          "display",
+          "range"
+        ],
+        "description": "One player's figure on a compared line: as served for him, with its range for drawing where it has one."
+      },
+      "ComparePlayer": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "playerId",
+          "name",
+          "line",
+          "open"
+        ],
+        "description": "One player in a comparison: his name, his line and where he opens."
+      },
+      "CompareRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompareCell"
+            }
+          },
+          "reading": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "cells"
+        ],
+        "description": "One line of the comparison: the same field for every player, and what the ranges allow saying, if anything."
+      },
+      "CompareSection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompareRow"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "rows"
+        ]
       },
       "ConfigAccepted": {
         "type": "object",
@@ -5267,6 +5757,10 @@
           },
           "open": {
             "$ref": "#/components/schemas/Target"
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts on his grades (D-067): the mark and its sentence; absent otherwise (N11)."
           }
         },
         "required": [
@@ -6562,6 +7056,10 @@
           },
           "open": {
             "$ref": "#/components/schemas/Target"
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts on his grades (D-067): the mark and its sentence; absent otherwise (N11)."
           }
         },
         "required": [
@@ -9529,6 +10027,10 @@
             "items": {
               "$ref": "#/components/schemas/MlbAction"
             }
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts on this row's grades (D-067): the mark (\"OSA\") and its sentence; absent otherwise (N11)."
           }
         },
         "required": [
@@ -10027,6 +10529,869 @@
         ],
         "description": "A league place, stated (D-057): `rank` among `of` clubs that have the figure, `tiedWith` the number of other clubs on the same figure, and, for a Player Value place, `overlap`: how many clubs' ranges overlap this one."
       },
+      "PlayerAssignmentView": {
+        "type": "object",
+        "properties": {
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "claim",
+          "lines"
+        ],
+        "description": "Why he is where he is, as the export and the transaction log establish it, with its source."
+      },
+      "PlayerColumn": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "numeric": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "numeric"
+        ],
+        "description": "A served table's column: its id (a key of each row's cells), its title and whether it holds numbers."
+      },
+      "PlayerCompareView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComparePlayer"
+            }
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompareSection"
+            }
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "players",
+          "note",
+          "sections"
+        ],
+        "description": "Two to four players side by side (`GET /api/v2/compare?players=`): no verdict, no combined score (D-052)."
+      },
+      "PlayerConeSeason": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "established": {
+            "type": "boolean"
+          },
+          "expected": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "outer": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "low": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ]
+          },
+          "inner": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "low": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ]
+          },
+          "banked": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "control": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The season's detail: its figures and what they rest on."
+          }
+        },
+        "required": [
+          "season",
+          "label",
+          "established",
+          "expected",
+          "outer",
+          "inner",
+          "banked",
+          "control",
+          "detail"
+        ],
+        "description": "One season of the production cone: its two ranges and expected wins, or a slot with its reason (no range, no zero)."
+      },
+      "PlayerConeView": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "established": {
+            "type": "boolean"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Why there is no cone, when there isn't."
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerConeSeason"
+            }
+          },
+          "legend": {
+            "type": "object",
+            "properties": {
+              "outer": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "inner": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "expected": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "outer",
+              "inner",
+              "expected"
+            ]
+          },
+          "axis": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "description": "The chart's axis, in wins."
+          },
+          "checked": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "established",
+          "seasons",
+          "legend",
+          "axis",
+          "notes",
+          "summary"
+        ],
+        "description": "Expected production by season (the cone), with the words for its two ranges."
+      },
+      "PlayerContactView": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerFact"
+            }
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "reading": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "title",
+          "figures",
+          "line"
+        ],
+        "description": "Contact quality: every batted ball's numbers against the league's."
+      },
+      "PlayerContractView": {
+        "type": "object",
+        "properties": {
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerFact"
+            }
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/PlayerTable"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rightsNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerRightsAction"
+            }
+          },
+          "rightsFacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerFact"
+            }
+          }
+        },
+        "required": [
+          "facts",
+          "rights",
+          "rightsFacts"
+        ],
+        "description": "Contract & rights: his deal, the seasons it covers and what Player Rights says may be done with him."
+      },
+      "PlayerDossierView": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "orgId": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The club the window reads him for (our view, our scouts)."
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          },
+          "header": {
+            "$ref": "#/components/schemas/PlayerHeaderView"
+          },
+          "overview": {
+            "$ref": "#/components/schemas/PlayerOverview"
+          },
+          "ratings": {
+            "$ref": "#/components/schemas/PlayerRatingsView"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PlayerValueView"
+          },
+          "contract": {
+            "$ref": "#/components/schemas/PlayerContractView"
+          },
+          "history": {
+            "$ref": "#/components/schemas/PlayerHistoryView"
+          }
+        },
+        "required": [
+          "playerId",
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "name",
+          "open",
+          "header",
+          "overview",
+          "ratings",
+          "value",
+          "contract",
+          "history"
+        ],
+        "description": "The player window's payload: one dossier, every section, served from the per-import cache."
+      },
+      "PlayerFact": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "value": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "description": "One labelled fact (\"Bats / throws\" · \"R / R\"), with its basis where it has one."
+      },
+      "PlayerHeaderView": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"#27\", when he wears a number."
+          },
+          "nickname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "His nickname as the export writes it (a name, not Pennant's words)."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"SS · Two-way · Bats R, throws R · Age 27\"."
+          },
+          "club": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "His club as the export places him (\"Reno Aces (AAA)\"), or \"No club\"."
+          },
+          "clubOpen": {
+            "$ref": "#/components/schemas/Target",
+            "description": "His organization's club window, when the export names one."
+          },
+          "injury": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "tiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerTile"
+            }
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the data is (\"As of May 16, 2026\"), with what may be out of date."
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts (D-067): the mark (\"OSA\") and its sentence, null when our scouts rate him."
+          }
+        },
+        "required": [
+          "name",
+          "nickname",
+          "line",
+          "club",
+          "tiles",
+          "freshness"
+        ],
+        "description": "The window's header: who he is, where he plays, and the three tiles (his deal, his value, his scouted tools)."
+      },
+      "PlayerHistoryPoint": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "date": {
+            "$ref": "#/components/schemas/GameDate"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "now": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ceiling": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "index",
+          "date",
+          "label",
+          "now",
+          "ceiling"
+        ],
+        "description": "One snapshot on the rating-history chart, in the order taken (a game date is never parsed by the app)."
+      },
+      "PlayerHistoryView": {
+        "type": "object",
+        "properties": {
+          "now": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerFact"
+            }
+          },
+          "nowSource": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "log": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerLogEntry"
+            }
+          },
+          "logNote": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerTable"
+            }
+          },
+          "contact": {
+            "$ref": "#/components/schemas/PlayerContactView"
+          }
+        },
+        "required": [
+          "now",
+          "nowSource",
+          "log",
+          "tables"
+        ],
+        "description": "History: where he is now (the export), what happened (the log), and his record, kept apart (D-020)."
+      },
+      "PlayerLogEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "date": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "line"
+        ],
+        "description": "One line of the transaction log about him, in the log's own words, with its date."
+      },
+      "PlayerNoteChange": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "notes": {
+            "$ref": "#/components/schemas/PlayerNotesView"
+          },
+          "undo": {
+            "$ref": "#/components/schemas/PlayerNoteUpdate"
+          },
+          "undoUnfollows": {
+            "type": "boolean",
+            "description": "Whether undoing it also stops following him (the note was what followed him)."
+          }
+        },
+        "required": [
+          "done",
+          "notes",
+          "undo",
+          "undoUnfollows"
+        ],
+        "description": "What a note change answers: the words, the notes now, and the request that undoes it."
+      },
+      "PlayerNoteUpdate": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "description": "`PUT /api/v2/player/:id/notes`: the note as typed (an empty one clears it)."
+      },
+      "PlayerNotesView": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "following": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The GM's note exactly as he typed it; null when there is none."
+          },
+          "explain": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerStaffNote"
+            }
+          },
+          "staffEmpty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "playerId",
+          "following",
+          "note",
+          "explain",
+          "staff"
+        ],
+        "description": "The GM's notes on a player: his own note (on his follow) and the staff's."
+      },
+      "PlayerOurView": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "leans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "title",
+          "figures",
+          "leans"
+        ],
+        "description": "\"Our view\": the same figures through the club's philosophy, every lean named with its amount."
+      },
+      "PlayerOverview": {
+        "type": "object",
+        "properties": {
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerFact"
+            }
+          },
+          "assignment": {
+            "$ref": "#/components/schemas/PlayerAssignmentView"
+          },
+          "thisSeason": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "This season's line at his highest level (\"AAA · 312 PA · .281/.355/.470 · 14 HR\")."
+          },
+          "honours": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "His honours in a line (\"3× All-Star · MVP 2031\")."
+          },
+          "rights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerRightsAction"
+            },
+            "description": "The roster moves worth knowing about, from Player Rights (the full statement is on Contract & rights)."
+          }
+        },
+        "required": [
+          "facts",
+          "rights"
+        ],
+        "description": "The overview: the facts a GM reads first, why he is where he is, and this season's line."
+      },
+      "PlayerRatingGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerRatingRow"
+            }
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "rows"
+        ],
+        "description": "A group of grades (Batting, Pitching, Arsenal, Positions, Fielding)."
+      },
+      "PlayerRatingHistory": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerHistoryPoint"
+            }
+          },
+          "table": {
+            "$ref": "#/components/schemas/PlayerTable"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "sourceSwitch": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "summary": {
+            "type": "string",
+            "description": "The chart's served words for VoiceOver (each snapshot's figures)."
+          }
+        },
+        "required": [
+          "title",
+          "points",
+          "summary"
+        ],
+        "description": "His rating history in this save: the points, a table of them, and a change of source said (D-067)."
+      },
+      "PlayerRatingRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "grade": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "tool",
+              "grade"
+            ]
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "grade": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "tool",
+              "grade"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "now": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ceiling": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "ceiling",
+          "cells",
+          "id",
+          "now",
+          "sort"
+        ],
+        "description": "One grade: the tool, and the grade now and at its ceiling as served. Bars are drawn from `now` and `ceiling`."
+      },
+      "PlayerRatingsView": {
+        "type": "object",
+        "properties": {
+          "scale": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "$ref": "#/components/schemas/Integer"
+              },
+              "high": {
+                "$ref": "#/components/schemas/Integer"
+              },
+              "words": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "low",
+              "high",
+              "words"
+            ],
+            "description": "The scale's ends, for the bars and the chart's axis (\"On the 20–80 scale\")."
+          },
+          "source": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Whose reports these are (\"Your scouts' reports\", or OSA's view for him, D-067), with its basis."
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "velocity": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerRatingGroup"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "history": {
+            "$ref": "#/components/schemas/PlayerRatingHistory"
+          }
+        },
+        "required": [
+          "scale",
+          "source",
+          "groups",
+          "history"
+        ],
+        "description": "The Ratings section: whose grades they are, every group, and the history."
+      },
       "PlayerRef": {
         "type": "object",
         "properties": {
@@ -10046,6 +11411,260 @@
           "name",
           "short"
         ]
+      },
+      "PlayerRightsAction": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "action",
+          "status",
+          "claim"
+        ],
+        "description": "One roster move Player Rights states for him: what it is, whether it can be done now, and why."
+      },
+      "PlayerStaffNote": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "who": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "when": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "body": {
+            "type": "string",
+            "description": "The note as filed: the staff's words, not Pennant's."
+          }
+        },
+        "required": [
+          "id",
+          "who",
+          "body"
+        ],
+        "description": "One note the staff filed on him (from a chat), as written, with who and when."
+      },
+      "PlayerTable": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerColumn"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerTableRow"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "One quiet line under it (what the table leaves out, how to read it)."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "columns",
+          "rows"
+        ],
+        "description": "A table, ready to show: its rows in the served order, and its sentence when it has none."
+      },
+      "PlayerTableRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "sort": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              ]
+            }
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "cells",
+          "id",
+          "sort"
+        ],
+        "description": "A table row: a cell and a raw sort key per column (null is unknown and sorts last both ways)."
+      },
+      "PlayerTile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "figure": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "figure",
+          "lines"
+        ],
+        "description": "A small tile in the header: what it is (its hover says more), the figure as a claim, and its lines."
+      },
+      "PlayerValueTotal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "contract",
+                  "keeping",
+                  "wins"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "couldBe": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "established": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The known seasons only, when the total isn't valued over his control."
+          },
+          "gloss": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "known": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "headline",
+          "gloss",
+          "known"
+        ],
+        "description": "A value total (\"Contract value\" · \"Most likely $28.0M\" · \"could be $9.0M to $41.0M\"), or why it isn't valued."
+      },
+      "PlayerValueView": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "valued",
+                  "wins_only",
+                  "unknown",
+                  "not_held"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerValueTotal"
+            }
+          },
+          "ourView": {
+            "$ref": "#/components/schemas/PlayerOurView"
+          },
+          "cone": {
+            "$ref": "#/components/schemas/PlayerConeView"
+          },
+          "breakdown": {
+            "$ref": "#/components/schemas/PlayerTable"
+          },
+          "seasonNotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "Seasons not valued, or that depend on how they go, each with its reason in the basis."
+          },
+          "restsOn": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "totals",
+          "cone",
+          "seasonNotes",
+          "restsOn"
+        ],
+        "description": "The Value section: the totals, our view, the cone and the season-by-season breakdown."
       },
       "ProbableStarter": {
         "type": "object",
@@ -12172,6 +13791,51 @@
           "lines"
         ],
         "description": "A staff member's memo (the later AI pass fills it; never part of a decision, D-001)."
+      },
+      "StaffNoteChange": {
+        "type": "object",
+        "properties": {
+          "done": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "notes": {
+            "$ref": "#/components/schemas/PlayerNotesView"
+          },
+          "undo": {
+            "$ref": "#/components/schemas/StaffNoteRestore"
+          }
+        },
+        "required": [
+          "done",
+          "notes"
+        ],
+        "description": "What removing a staff note answers: the words, the notes now, and the request that puts it back."
+      },
+      "StaffNoteRestore": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "gameDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "body",
+          "gameDate"
+        ],
+        "description": "A staff note put back (the undo of a removal), as it was filed."
       },
       "StaffPitcher": {
         "type": "object",
