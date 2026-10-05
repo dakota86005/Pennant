@@ -52,6 +52,19 @@ export function computeRoster(teamId: number): Computed<ClubRoster> {
   return answer(rosterOf(teamId));
 }
 
+/** A roster row as the export's `players` table gives it (a column the export lacks is null). */
+interface RosterRow {
+  player_id: number;
+  first_name: string | null;
+  last_name: string | null;
+  age: number | null;
+  position: number | null;
+  role: number | null;
+  bats: number | null;
+  throws: number | null;
+  uniform_number: number | null;
+}
+
 function rosterOf(teamId: number) {
   const cols = tableColumns('players');
   const pick = (...names: string[]) => names.find((n) => cols.includes(n));
@@ -91,7 +104,7 @@ function rosterOf(teamId: number) {
         : // An export without the table behaves as it always did
           `SELECT ${select} FROM players WHERE team_id = ?`
     )
-    .all(teamId) as Record<string, unknown>[];
+    .all(teamId) as Array<RosterRow & Record<string, unknown>>;
 
   // Attach ratings from wherever they live in this export's schema
   const ratingSources = new Map<string, [string, string]>();

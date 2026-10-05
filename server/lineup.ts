@@ -357,6 +357,11 @@ export function lineupAskOf(query: Record<string, unknown>): LineupAsk {
   };
 }
 
+/** What the expected-runs search did to the card, reported so the page can show it rather than assert it. */
+export interface RunSearchNote {
+  seededRuns: number; optimisedRuns: number; gain: number; evaluations: number; moved: boolean;
+}
+
 /** A club's lineup card (`GET /api/lineup/:teamId`): the order, the bench, who is out and who is not scouted. */
 export type LineupCard = Exclude<ReturnType<typeof cardOf>, string>;
 
@@ -703,7 +708,7 @@ function cardOf(teamId: number, ask: LineupAsk) {
     vs,
     style,
     /** Null when the search was skipped, or moved nobody worth moving. */
-    runSearch: searchNote,
+    runSearch: searchNote as RunSearchNote | null,
     usesDH: dh,
     leagueUsesDH,
     dhOverridden: dh !== leagueUsesDH,

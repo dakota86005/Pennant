@@ -156,7 +156,8 @@ describe('the next game, only as the export schedules it', () => {
     expect(t.ours?.playerId).toBe(material.facts.projected.find((p) => p.teamId === save.org)!.starters[0]);
     expect(t.ours?.line.display).toMatch(/ERA|innings/);
     expect(t.opponent.record?.display).toMatch(/^\d+–\d+$/);
-    expect(t.open).toEqual({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans' });
+    // N9: Tonight opens the schedule on this game, its plan beneath
+    expect(t.open).toEqual({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans', key: String(t.gameId) });
   });
 
   it('says the starters are not known when the export projects none, and names no one', () => {

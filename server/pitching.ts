@@ -51,11 +51,19 @@ function currentDateKey(leagueId: number): number | null {
  * score. Thresholds follow common bullpen practice: back-to-back days are fine,
  * three in a row or 45+ pitches in three days is a red flag.
  */
+/**
+ * What the availability reading rests on, as a code with its count (N9: the Mac app words it, `presentation/clubhouse`),
+ * beside the label this route has always served.
+ */
+export type BullpenCode =
+  | 'injured' | 'two_straight' | 'heavy_three_days' | 'heavy_today' | 'back_to_back' | 'heavy_yesterday' | 'busy_three_days'
+  | 'pitched_yesterday' | 'no_appearances' | 'rested';
+
 function bullpenStatus(
   recent: Appearance[],
   todayKey: number,
   injury: Health | null
-): { label: string; tone: 'ok' | 'warn' | 'bad' } {
+): { label: string; tone: 'ok' | 'warn' | 'bad'; code: BullpenCode; count: number | null } {
   /*
    * Health outranks workload. A man on the injured list has not thrown in
    * weeks, so every test below would find him beautifully rested and this
@@ -67,6 +75,8 @@ function bullpenStatus(
     return {
       label: injury.daysLeft ? `Out about ${injury.daysLeft} more days` : 'Out — on the injured list',
       tone: 'bad',
+      code: 'injured',
+      count: injury.daysLeft ?? null,
     };
   }
   const on = (d: number) => recent.find((a) => daysBetween(todayKey, a.dateKey) === d);
@@ -79,18 +89,19 @@ function bullpenStatus(
 
   // Everything is phrased as availability for the NEXT game, which is the only
   // question a manager is actually asking on this screen.
-  if (today && yesterday) return { label: 'Two straight — sit him', tone: 'bad' };
-  if (pitches3 >= 50) return { label: `${pitches3} pitches in 3 days`, tone: 'bad' };
-  if (today && today.pitches >= 30) return { label: `${today.pitches} pitches today`, tone: 'bad' };
-  if (today) return { label: `Would be back-to-back (${today.pitches} today)`, tone: 'warn' };
+  if (today && yesterday) return { label: 'Two straight — sit him', tone: 'bad', code: 'two_straight', count: null };
+  if (pitches3 >= 50) return { label: `${pitches3} pitches in 3 days`, tone: 'bad', code: 'heavy_three_days', count: pitches3 };
+  if (today && today.pitches >= 30) return { label: `${today.pitches} pitches today`, tone: 'bad', code: 'heavy_today', count: today.pitches };
+  if (today) return { label: `Would be back-to-back (${today.pitches} today)`, tone: 'warn', code: 'back_to_back', count: today.pitches };
   if (yesterday && yesterday.pitches >= 30) {
-    return { label: `${yesterday.pitches} pitches yesterday`, tone: 'warn' };
+    return { label: `${yesterday.pitches} pitches yesterday`, tone: 'warn', code: 'heavy_yesterday', count: yesterday.pitches };
   }
-  if (pitches3 >= 40) return { label: `${pitches3} pitches in 3 days`, tone: 'warn' };
-  if (yesterday) return { label: `Available (${yesterday.pitches} yesterday)`, tone: 'ok' };
+  if (pitches3 >= 40) return { label: `${pitches3} pitches in 3 days`, tone: 'warn', code: 'busy_three_days', count: pitches3 };
+  if (yesterday) return { label: `Available (${yesterday.pitches} yesterday)`, tone: 'ok', code: 'pitched_yesterday', count: yesterday.pitches };
   const last = recent[0];
-  if (!last) return { label: 'No appearances yet', tone: 'ok' };
-  return { label: `Rested ${daysBetween(todayKey, last.dateKey)}d`, tone: 'ok' };
+  if (!last) return { label: 'No appearances yet', tone: 'ok', code: 'no_appearances', count: null };
+  const rest = daysBetween(todayKey, last.dateKey);
+  return { label: `Rested ${rest}d`, tone: 'ok', code: 'rested', count: rest };
 }
 
 /** A club's pitching staff (`GET /api/pitching/:teamId`): rotation, depth and bullpen with rest and workload. */
@@ -231,6 +242,10 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
       // OSA's view filling in for our scouts (D-067): a quiet mark and its sentence for the grades; null otherwise
       ratingsFill: ratingFillOf(p.player_id),
       lastOuting: last ? { date: last.date, pitches: last.pitches, outs: last.outs } : null,
+      // N9: each outing in the calendar's days (today and the four before it), for the Mac app's rest calendar
+      recentOutings: todayKey === null
+        ? []
+        : apps.filter((a) => daysBetween(todayKey, a.dateKey) <= 4).map((a) => ({ daysAgo: daysBetween(todayKey, a.dateKey), pitches: a.pitches, outs: a.outs })),
       daysRest: last && todayKey !== null ? daysBetween(todayKey, last.dateKey) : null,
       stats,
     };
@@ -270,7 +285,7 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
       const apps = appearances.get(p.player_id) ?? [];
       const status = todayKey !== null
         ? bullpenStatus(apps, todayKey, d.injury)
-        : { label: '—', tone: 'ok' as const };
+        : { label: '—', tone: 'ok' as const, code: null, count: null };
       // Same window bullpenStatus uses: today, yesterday, the day before
       const last3 = todayKey !== null
         ? apps.filter((a) => daysBetween(todayKey, a.dateKey) <= 2)
@@ -280,6 +295,9 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
         isCloser: p.role === ROLE_CLOSER,
         status: status.label,
         tone: status.tone,
+        // N9: what the reading rests on, for the Mac app's words (null when no game has been played)
+        statusCode: status.code,
+        statusCount: status.count,
         pitchesLast3: last3.reduce((sum, a) => sum + a.pitches, 0),
         appearancesLast3: last3.length,
       };
@@ -292,6 +310,8 @@ function staffOf(teamId: number, team: { league_id: number; level: number }) {
 
   return {
     today: todayKey,
+    // N9: whether the export carries the game-by-game pitching log the rest and workload are read from
+    gameLog: tableExists('players_game_pitching_stats'),
     rotation: activeRotation,
     starterDepth,
     bullpen,

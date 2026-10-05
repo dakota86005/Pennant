@@ -245,7 +245,8 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
     opponent: { teamId: oppId, name: oppName, abbr: opp?.abbr ?? null, record: oppRecord },
     matchup,
     ours, theirs, starters,
-    open: target({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans' }),
+    // N9: Tonight opens the schedule on this game, its plan beneath
+    open: target({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans', key: String(next.gameId) }),
     claim: claim({
       text: `${day}: ${matchup.display}`,
       tone: 'neutral',

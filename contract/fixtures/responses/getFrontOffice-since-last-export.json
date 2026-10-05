@@ -1878,7 +1878,8 @@
       "open": {
         "kind": "view",
         "department": "majorLeague",
-        "view": "scheduleGamePlans"
+        "view": "scheduleGamePlans",
+        "key": "61"
       },
       "claim": {
         "text": "Tonight: at Club 4 N",
@@ -5001,7 +5002,8 @@
           "open": {
             "kind": "view",
             "department": "majorLeague",
-            "view": "scheduleGamePlans"
+            "view": "scheduleGamePlans",
+            "key": "55"
           }
         },
         {
@@ -5053,7 +5055,8 @@
           "open": {
             "kind": "view",
             "department": "majorLeague",
-            "view": "scheduleGamePlans"
+            "view": "scheduleGamePlans",
+            "key": "57"
           }
         },
         {
@@ -5105,7 +5108,8 @@
           "open": {
             "kind": "view",
             "department": "majorLeague",
-            "view": "scheduleGamePlans"
+            "view": "scheduleGamePlans",
+            "key": "59"
           }
         }
       ]

@@ -1,0 +1,1484 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Lineup"
+  },
+  "lede": {
+    "text": "The staff's card for the next game; your choices only change the card shown here",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "The staff's batting order against the hand you choose, with each slot's reason. It is advice: Pennant never writes a lineup to OOTP, and changing a choice here builds the card again without touching your save."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The lineup card",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "query": {
+    "vs": "r",
+    "style": "saber",
+    "dh": "auto",
+    "sort": "talent"
+  },
+  "tonight": {
+    "title": {
+      "display": "Next game · May 6"
+    },
+    "player": null,
+    "chips": [],
+    "claims": [],
+    "lines": [
+      {
+        "text": {
+          "display": "at Club 4 N"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Their probable: P 1091, right-handed"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1091,
+            "name": "P 1091",
+            "open": {
+              "kind": "player",
+              "playerId": 1091,
+              "teamId": 4
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "Ours: P 1013"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1013,
+            "name": "P 1013",
+            "open": {
+              "kind": "player",
+              "playerId": 1013,
+              "teamId": 1
+            }
+          }
+        ]
+      }
+    ],
+    "collapsed": false
+  },
+  "againstTonight": null,
+  "choices": [
+    {
+      "title": {
+        "display": "Against"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "Right-handers"
+          },
+          "selected": true,
+          "query": {
+            "vs": "r",
+            "style": "saber",
+            "dh": "auto",
+            "sort": "talent"
+          }
+        },
+        {
+          "text": {
+            "display": "Left-handers"
+          },
+          "selected": false,
+          "query": {
+            "vs": "l",
+            "style": "saber",
+            "dh": "auto",
+            "sort": "talent"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "display": "Order"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "Sabermetric",
+            "hint": "Best three hitters bat first, second and fourth"
+          },
+          "selected": true,
+          "query": {
+            "vs": "r",
+            "style": "saber",
+            "dh": "auto",
+            "sort": "talent"
+          }
+        },
+        {
+          "text": {
+            "display": "Traditional",
+            "hint": "Speed leads off, best hitter third, power cleanup"
+          },
+          "selected": false,
+          "query": {
+            "vs": "r",
+            "style": "trad",
+            "dh": "auto",
+            "sort": "talent"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "display": "Built from"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "Scouts' Grades",
+            "hint": "Your scouts' view of each bat against this hand"
+          },
+          "selected": true,
+          "query": {
+            "vs": "r",
+            "style": "saber",
+            "dh": "auto",
+            "sort": "talent"
+          }
+        },
+        {
+          "text": {
+            "display": "This Season",
+            "hint": "This season's hitting, steadied by playing time"
+          },
+          "selected": false,
+          "query": {
+            "vs": "r",
+            "style": "saber",
+            "dh": "auto",
+            "sort": "production"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "display": "Designated hitter"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "With DH"
+          },
+          "selected": true,
+          "query": {
+            "vs": "r",
+            "style": "saber",
+            "dh": "auto",
+            "sort": "talent"
+          }
+        },
+        {
+          "text": {
+            "display": "No DH"
+          },
+          "selected": false,
+          "query": {
+            "vs": "r",
+            "style": "saber",
+            "dh": "off",
+            "sort": "talent"
+          }
+        }
+      ]
+    }
+  ],
+  "headline": {
+    "text": "Staff's view: the card against right-handers",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How the order is written",
+          "value": "Ordering per The Book (Tango et al.): your three best hitters bat first, second and fourth, not third, fourth and fifth."
+        },
+        {
+          "label": "What it is built from",
+          "value": "Ranked on your scouts' view of each bat against right-handers: a projection from their grades, not this season's results."
+        },
+        {
+          "label": "The bat",
+          "value": "What your scouts' hitting grades against right-handed pitching say he'd hit, in points of wOBA above an average major-league hitter: +20 is a good regular, −20 a bench bat. It reads contact, power, eye and gap power the way they have predicted results in this league's history, and the order is built from it. Where a hitter has no split grades it is read on his overall grades, and says so. It isn't this season's production (read it beside OPS+ and wRC+), and it isn't OOTP's own valuation, which your front office can't see."
+        },
+        {
+          "label": "The glove",
+          "value": "Your scouts' 20–80 grade for him at the position he's assigned. Positions are chosen on the bat adjusted for the glove: the best bat plays a spot he can actually field, and a player only plays where the game has shown a grade for him."
+        },
+        {
+          "label": "OPS+ and wRC+",
+          "value": "OPS adjusted for league run environment and ballpark, scaled so 100 = league average. 130 means 30% better than average. Weighted Runs Created Plus — the most complete rate stat here. Total offense per plate appearance, park- and league-adjusted, where 100 = league average."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The lineup card",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A new export, a different opposing hand, or another way of ordering."
+      ],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff writes a card: stated, not fitted"
+    },
+    "links": [],
+    "hint": "Built from your scouts' grades"
+  },
+  "notes": [],
+  "order": {
+    "columns": [
+      {
+        "id": "slot",
+        "title": {
+          "display": "#"
+        },
+        "numeric": true
+      },
+      {
+        "id": "player",
+        "title": {
+          "display": "Player"
+        },
+        "numeric": false
+      },
+      {
+        "id": "position",
+        "title": {
+          "display": "Pos"
+        },
+        "numeric": false
+      },
+      {
+        "id": "glove",
+        "title": {
+          "display": "Glove"
+        },
+        "numeric": true
+      },
+      {
+        "id": "bats",
+        "title": {
+          "display": "B"
+        },
+        "numeric": false
+      },
+      {
+        "id": "bat",
+        "title": {
+          "display": "Bat vs RHP"
+        },
+        "numeric": true
+      },
+      {
+        "id": "pa",
+        "title": {
+          "display": "PA"
+        },
+        "numeric": true
+      },
+      {
+        "id": "ops",
+        "title": {
+          "display": "OPS"
+        },
+        "numeric": true
+      },
+      {
+        "id": "opsPlus",
+        "title": {
+          "display": "OPS+"
+        },
+        "numeric": true
+      },
+      {
+        "id": "wrcPlus",
+        "title": {
+          "display": "wRC+"
+        },
+        "numeric": true
+      },
+      {
+        "id": "war",
+        "title": {
+          "display": "WAR"
+        },
+        "numeric": true
+      },
+      {
+        "id": "why",
+        "title": {
+          "display": "Why here"
+        },
+        "numeric": false
+      }
+    ],
+    "rows": [
+      {
+        "id": "slot-1",
+        "cells": {
+          "slot": {
+            "display": "1"
+          },
+          "player": {
+            "display": "P 1003"
+          },
+          "position": {
+            "display": "SS"
+          },
+          "glove": {
+            "display": "61",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "L"
+          },
+          "bat": {
+            "display": "+25 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "120"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "0.6"
+          },
+          "why": {
+            "display": "3rd-best bat — most plate appearances over a season"
+          }
+        },
+        "sort": {
+          "slot": 1,
+          "player": "P 1003",
+          "position": "SS",
+          "glove": 61,
+          "bats": "L",
+          "bat": 24.7,
+          "pa": 120,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": 0.6,
+          "why": 1
+        },
+        "player": {
+          "playerId": 1003,
+          "name": "P 1003",
+          "open": {
+            "kind": "player",
+            "playerId": 1003,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "3rd-best bat — most plate appearances over a season"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+25 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-2",
+        "cells": {
+          "slot": {
+            "display": "2"
+          },
+          "player": {
+            "display": "P 1005"
+          },
+          "position": {
+            "display": "DH"
+          },
+          "glove": {
+            "display": "Doesn't field",
+            "tone": "unknown",
+            "hint": "A designated hitter doesn't field"
+          },
+          "bats": {
+            "display": "S"
+          },
+          "bat": {
+            "display": "+98 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "110"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "1.0"
+          },
+          "why": {
+            "display": "best hitter — The Book: the 2-hole gets prime situations AND more PA than 3rd"
+          }
+        },
+        "sort": {
+          "slot": 2,
+          "player": "P 1005",
+          "position": "DH",
+          "glove": null,
+          "bats": "S",
+          "bat": 97.5,
+          "pa": 110,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": 1,
+          "why": 2
+        },
+        "player": {
+          "playerId": 1005,
+          "name": "P 1005",
+          "open": {
+            "kind": "player",
+            "playerId": 1005,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "best hitter — The Book: the 2-hole gets prime situations AND more PA than 3rd"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+98 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-3",
+        "cells": {
+          "slot": {
+            "display": "3"
+          },
+          "player": {
+            "display": "P 1001"
+          },
+          "position": {
+            "display": "2B"
+          },
+          "glove": {
+            "display": "45",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "L"
+          },
+          "bat": {
+            "display": "+22 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "99"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "-0.1"
+          },
+          "why": {
+            "display": "5th-best bat — the 3-hole bats with two outs and bases empty more than any other slot"
+          }
+        },
+        "sort": {
+          "slot": 3,
+          "player": "P 1001",
+          "position": "2B",
+          "glove": 45,
+          "bats": "L",
+          "bat": 22.4,
+          "pa": 99,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": -0.1,
+          "why": 3
+        },
+        "player": {
+          "playerId": 1001,
+          "name": "P 1001",
+          "open": {
+            "kind": "player",
+            "playerId": 1001,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "5th-best bat — the 3-hole bats with two outs and bases empty more than any other slot"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+22 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-4",
+        "cells": {
+          "slot": {
+            "display": "4"
+          },
+          "player": {
+            "display": "P 1002"
+          },
+          "position": {
+            "display": "CF"
+          },
+          "glove": {
+            "display": "69",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "R"
+          },
+          "bat": {
+            "display": "+45 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "113"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "0.0"
+          },
+          "why": {
+            "display": "2nd-best bat — cleanup drives in the top of the order"
+          }
+        },
+        "sort": {
+          "slot": 4,
+          "player": "P 1002",
+          "position": "CF",
+          "glove": 69,
+          "bats": "R",
+          "bat": 45.3,
+          "pa": 113,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": 0,
+          "why": 4
+        },
+        "player": {
+          "playerId": 1002,
+          "name": "P 1002",
+          "open": {
+            "kind": "player",
+            "playerId": 1002,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "2nd-best bat — cleanup drives in the top of the order"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+45 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-5",
+        "cells": {
+          "slot": {
+            "display": "5"
+          },
+          "player": {
+            "display": "P 1004"
+          },
+          "position": {
+            "display": "3B"
+          },
+          "glove": {
+            "display": "52",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "L"
+          },
+          "bat": {
+            "display": "+23 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "98"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "0.0"
+          },
+          "why": {
+            "display": "4th-best bat"
+          }
+        },
+        "sort": {
+          "slot": 5,
+          "player": "P 1004",
+          "position": "3B",
+          "glove": 52,
+          "bats": "L",
+          "bat": 23,
+          "pa": 98,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": 0,
+          "why": 5
+        },
+        "player": {
+          "playerId": 1004,
+          "name": "P 1004",
+          "open": {
+            "kind": "player",
+            "playerId": 1004,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "4th-best bat"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+23 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-6",
+        "cells": {
+          "slot": {
+            "display": "6"
+          },
+          "player": {
+            "display": "P 1007"
+          },
+          "position": {
+            "display": "LF"
+          },
+          "glove": {
+            "display": "70",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "R"
+          },
+          "bat": {
+            "display": "+21 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "114"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "1.0"
+          },
+          "why": {
+            "display": "descending offense"
+          }
+        },
+        "sort": {
+          "slot": 6,
+          "player": "P 1007",
+          "position": "LF",
+          "glove": 70,
+          "bats": "R",
+          "bat": 21,
+          "pa": 114,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": 1,
+          "why": 6
+        },
+        "player": {
+          "playerId": 1007,
+          "name": "P 1007",
+          "open": {
+            "kind": "player",
+            "playerId": 1007,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "descending offense"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+21 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-7",
+        "cells": {
+          "slot": {
+            "display": "7"
+          },
+          "player": {
+            "display": "P 1010"
+          },
+          "position": {
+            "display": "1B"
+          },
+          "glove": {
+            "display": "38",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "R"
+          },
+          "bat": {
+            "display": "+10 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "50"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "-0.1"
+          },
+          "why": {
+            "display": "descending offense"
+          }
+        },
+        "sort": {
+          "slot": 7,
+          "player": "P 1010",
+          "position": "1B",
+          "glove": 38,
+          "bats": "R",
+          "bat": 10.3,
+          "pa": 50,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": -0.1,
+          "why": 7
+        },
+        "player": {
+          "playerId": 1010,
+          "name": "P 1010",
+          "open": {
+            "kind": "player",
+            "playerId": 1010,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "descending offense"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+10 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-8",
+        "cells": {
+          "slot": {
+            "display": "8"
+          },
+          "player": {
+            "display": "P 1008"
+          },
+          "position": {
+            "display": "RF"
+          },
+          "glove": {
+            "display": "74",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "R"
+          },
+          "bat": {
+            "display": "+6 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "115"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "0.2"
+          },
+          "why": {
+            "display": "descending offense"
+          }
+        },
+        "sort": {
+          "slot": 8,
+          "player": "P 1008",
+          "position": "RF",
+          "glove": 74,
+          "bats": "R",
+          "bat": 6,
+          "pa": 115,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": 0.2,
+          "why": 8
+        },
+        "player": {
+          "playerId": 1008,
+          "name": "P 1008",
+          "open": {
+            "kind": "player",
+            "playerId": 1008,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "descending offense"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "+6 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      },
+      {
+        "id": "slot-9",
+        "cells": {
+          "slot": {
+            "display": "9"
+          },
+          "player": {
+            "display": "P 1012"
+          },
+          "position": {
+            "display": "C"
+          },
+          "glove": {
+            "display": "41",
+            "hint": "Your scouts' 20–80 grade at this position"
+          },
+          "bats": {
+            "display": "L"
+          },
+          "bat": {
+            "display": "−29 overall",
+            "hint": "No split grades against right-handers: his overall grades"
+          },
+          "pa": {
+            "display": "41"
+          },
+          "ops": {
+            "display": ".000"
+          },
+          "opsPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "wrcPlus": {
+            "display": "No line",
+            "tone": "unknown",
+            "hint": "No line at this level this season"
+          },
+          "war": {
+            "display": "0.5"
+          },
+          "why": {
+            "display": "descending offense"
+          }
+        },
+        "sort": {
+          "slot": 9,
+          "player": "P 1012",
+          "position": "C",
+          "glove": 41,
+          "bats": "L",
+          "bat": -28.6,
+          "pa": 41,
+          "ops": 0,
+          "opsPlus": null,
+          "wrcPlus": null,
+          "war": 0.5,
+          "why": 9
+        },
+        "player": {
+          "playerId": 1012,
+          "name": "P 1012",
+          "open": {
+            "kind": "player",
+            "playerId": 1012,
+            "teamId": 1
+          }
+        },
+        "detail": [
+          {
+            "title": {
+              "display": "Why he bats here"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "descending offense"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "His bat"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "−29 against right-handers, in points of wOBA above an average major-league hitter"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "No split grades against right-handers for him in the export, so this reads his overall grades."
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": []
+      }
+    ],
+    "empty": {
+      "display": "No card: nobody is available to play."
+    }
+  },
+  "bench": {
+    "text": {
+      "display": "Bench: P 1000 (3B), P 1009 (LF), P 1006 (1B), P 1011 (3B)"
+    },
+    "quiet": true,
+    "chips": [],
+    "players": [
+      {
+        "playerId": 1000,
+        "name": "P 1000",
+        "open": {
+          "kind": "player",
+          "playerId": 1000,
+          "teamId": 1
+        }
+      },
+      {
+        "playerId": 1009,
+        "name": "P 1009",
+        "open": {
+          "kind": "player",
+          "playerId": 1009,
+          "teamId": 1
+        }
+      },
+      {
+        "playerId": 1006,
+        "name": "P 1006",
+        "open": {
+          "kind": "player",
+          "playerId": 1006,
+          "teamId": 1
+        }
+      },
+      {
+        "playerId": 1011,
+        "name": "P 1011",
+        "open": {
+          "kind": "player",
+          "playerId": 1011,
+          "teamId": 1
+        }
+      }
+    ]
+  },
+  "notScouted": null,
+  "unavailable": null,
+  "empty": null
+}

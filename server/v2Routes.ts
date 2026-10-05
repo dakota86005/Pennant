@@ -34,6 +34,14 @@ import {
 import type {
   FarmAffiliatesView, FarmAssignmentsView, FarmDecisionView, FarmDevelopmentDetail, FarmDevelopmentView, FarmOrganizationView, FarmProspectsView,
 } from './presentation/farm/types.js';
+import {
+  clubhouseDepthNow, clubhouseFortyManNow, clubhouseGamePlanNow, clubhouseLineupNow, clubhousePitchingNow, clubhouseRostersNow,
+  clubhouseScheduleNow, clubhouseTrendsNow,
+} from './clubhouseViewService.js';
+import type {
+  MlbDepthChartView, MlbFortyManView, MlbGamePlanView, MlbLineupView, MlbPitchingAvailabilityView, MlbRostersView, MlbScheduleView,
+  MlbSeasonTrendsView,
+} from './presentation/clubhouse/types.js';
 
 export const v2Routes = Router();
 
@@ -162,6 +170,28 @@ v2Routes.get('/views/:org/majorLeague/decision', frontOffice<MlbDecisionView>((r
   context: textQuery(req.query.context),
   days: wholeQuery(req.query.days),
 })));
+
+/**
+ * Major League Ops' clubhouse tools (N9, D-069): each a payload of its own, built in the worker after every import and
+ * served from the cache; a card asked another way, another game's plan or an affiliate's roster is read on its first
+ * open and kept until the next import.
+ */
+v2Routes.get('/views/:org/majorLeague/lineup', frontOffice<MlbLineupView>((req) =>
+  clubhouseLineupNow(String(req.params.org), req.query as Record<string, unknown>)));
+v2Routes.get('/views/:org/majorLeague/pitchingAvailability', frontOffice<MlbPitchingAvailabilityView>((req) =>
+  clubhousePitchingNow(String(req.params.org))));
+v2Routes.get('/views/:org/majorLeague/scheduleGamePlans', frontOffice<MlbScheduleView>((req) =>
+  clubhouseScheduleNow(String(req.params.org))));
+v2Routes.get('/views/:org/majorLeague/scheduleGamePlans/plan', frontOffice<MlbGamePlanView>((req) =>
+  clubhouseGamePlanNow(String(req.params.org), req.query.game)));
+v2Routes.get('/views/:org/majorLeague/depthChart', frontOffice<MlbDepthChartView>((req) =>
+  clubhouseDepthNow(String(req.params.org))));
+v2Routes.get('/views/:org/majorLeague/fortyManOptions', frontOffice<MlbFortyManView>((req) =>
+  clubhouseFortyManNow(String(req.params.org))));
+v2Routes.get('/views/:org/majorLeague/rosters', frontOffice<MlbRostersView>((req) =>
+  clubhouseRostersNow(String(req.params.org), req.query.team)));
+v2Routes.get('/views/:org/majorLeague/seasonTrends', frontOffice<MlbSeasonTrendsView>((req) =>
+  clubhouseTrendsNow(String(req.params.org))));
 
 /** The club a theme route is about (a team id, or `automatic`), with its colours as the export has them. */
 function themedClub(param: string) {

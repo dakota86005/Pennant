@@ -1,0 +1,390 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Game Plan"
+  },
+  "lede": {
+    "text": "The staff's preparation for one game",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Who is starting against us, the card to send up against his hand, how our hitters have actually fared against that man and that club, and which of their bats to be careful with. Every head-to-head line carries its sample: a .667 average in three at-bats is noise."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The game plan",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "rowId": "game-61",
+  "query": {
+    "game": 61
+  },
+  "game": {
+    "display": "May 6 · at Club 4 N"
+  },
+  "starter": {
+    "text": {
+      "display": "Their starter: P 1091, right-handed, 31 (projected, and liable to change)"
+    },
+    "quiet": false,
+    "chips": [],
+    "players": [
+      {
+        "playerId": 1091,
+        "name": "P 1091",
+        "open": {
+          "kind": "player",
+          "playerId": 1091,
+          "teamId": 4
+        }
+      }
+    ]
+  },
+  "missing": null,
+  "card": {
+    "title": {
+      "display": "Staff's view: our card against right-handers"
+    },
+    "player": null,
+    "chips": [],
+    "claims": [],
+    "lines": [
+      {
+        "text": {
+          "display": "1. P 1003, SS"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1003,
+            "name": "P 1003",
+            "open": {
+              "kind": "player",
+              "playerId": 1003,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "2. P 1005, DH"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1005,
+            "name": "P 1005",
+            "open": {
+              "kind": "player",
+              "playerId": 1005,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "3. P 1001, 2B"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1001,
+            "name": "P 1001",
+            "open": {
+              "kind": "player",
+              "playerId": 1001,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "4. P 1002, CF"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1002,
+            "name": "P 1002",
+            "open": {
+              "kind": "player",
+              "playerId": 1002,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "5. P 1004, 3B"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1004,
+            "name": "P 1004",
+            "open": {
+              "kind": "player",
+              "playerId": 1004,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "6. P 1007, LF"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1007,
+            "name": "P 1007",
+            "open": {
+              "kind": "player",
+              "playerId": 1007,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "7. P 1010, 1B"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1010,
+            "name": "P 1010",
+            "open": {
+              "kind": "player",
+              "playerId": 1010,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "8. P 1008, RF"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1008,
+            "name": "P 1008",
+            "open": {
+              "kind": "player",
+              "playerId": 1008,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "9. P 1012, C"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": [
+          {
+            "playerId": 1012,
+            "name": "P 1012",
+            "open": {
+              "kind": "player",
+              "playerId": 1012,
+              "teamId": 1
+            }
+          }
+        ]
+      },
+      {
+        "text": {
+          "display": "The lineup card's order for this starter's hand, injured players left out: the card Lineup gives for this matchup."
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      }
+    ],
+    "collapsed": false
+  },
+  "sections": [
+    {
+      "id": "vsPitcher",
+      "title": {
+        "display": "Our hitters against him"
+      },
+      "summary": null,
+      "table": {
+        "columns": [
+          {
+            "id": "player",
+            "title": {
+              "display": "Hitter"
+            },
+            "numeric": false
+          },
+          {
+            "id": "position",
+            "title": {
+              "display": "Pos"
+            },
+            "numeric": false
+          },
+          {
+            "id": "line",
+            "title": {
+              "display": "H–AB"
+            },
+            "numeric": true
+          },
+          {
+            "id": "avg",
+            "title": {
+              "display": "AVG"
+            },
+            "numeric": true
+          },
+          {
+            "id": "hr",
+            "title": {
+              "display": "HR"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "Nobody on this roster has faced him."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "vsTeam",
+      "title": {
+        "display": "Our hitters against Club 4 N"
+      },
+      "summary": null,
+      "table": {
+        "columns": [
+          {
+            "id": "player",
+            "title": {
+              "display": "Hitter"
+            },
+            "numeric": false
+          },
+          {
+            "id": "position",
+            "title": {
+              "display": "Pos"
+            },
+            "numeric": false
+          },
+          {
+            "id": "line",
+            "title": {
+              "display": "H–AB"
+            },
+            "numeric": true
+          },
+          {
+            "id": "avg",
+            "title": {
+              "display": "AVG"
+            },
+            "numeric": true
+          },
+          {
+            "id": "hr",
+            "title": {
+              "display": "HR"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "No history against this club yet."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "dangerous",
+      "title": {
+        "display": "Be careful with",
+        "hint": "Their hitters by barrel rate, from every batted ball"
+      },
+      "summary": null,
+      "table": {
+        "columns": [
+          {
+            "id": "player",
+            "title": {
+              "display": "Hitter"
+            },
+            "numeric": false
+          },
+          {
+            "id": "position",
+            "title": {
+              "display": "Pos"
+            },
+            "numeric": false
+          },
+          {
+            "id": "barrel",
+            "title": {
+              "display": "Brl%"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ev",
+            "title": {
+              "display": "EV"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "Not enough batted-ball data on this club yet."
+        }
+      },
+      "note": null
+    }
+  ]
+}

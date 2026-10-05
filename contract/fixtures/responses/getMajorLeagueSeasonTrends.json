@@ -1,0 +1,942 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Season Trends"
+  },
+  "lede": {
+    "text": "The season game by game: run differential, scoring and winning percentage",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "How the season has gone, one game at a time: the run differential as it built, runs scored and allowed smoothed over a rolling window so single blowouts don't swing them, and the winning percentage to date."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The season's games",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "summary": {
+    "text": "30 games played · 5.37 runs scored a game, 5.90 allowed",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Runs scored",
+          "value": "161"
+        },
+        {
+          "label": "Runs allowed",
+          "value": "177"
+        },
+        {
+          "label": "Smoothing",
+          "value": "The scoring lines are a rolling 10-game average, so single blowouts don't swing them."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The season's games",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "charts": [
+    {
+      "id": "differential",
+      "title": {
+        "display": "Run differential"
+      },
+      "headline": {
+        "display": "−16 on the season",
+        "tone": "bad"
+      },
+      "caption": {
+        "text": "Every game moves the line by that game's margin",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "How to read it",
+              "value": "A line drifting down while the record looks fine is the classic sign of a club winning close games, which rarely holds."
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "The season's games",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "axis": {
+        "display": "Run differential"
+      },
+      "baseline": 0,
+      "series": [
+        {
+          "id": "differential",
+          "title": {
+            "display": "Run differential"
+          },
+          "role": "main",
+          "points": [
+            {
+              "game": 1,
+              "date": "Apr 1",
+              "value": 8,
+              "display": "+8"
+            },
+            {
+              "game": 2,
+              "date": "Apr 3",
+              "value": 5,
+              "display": "+5"
+            },
+            {
+              "game": 3,
+              "date": "Apr 4",
+              "value": 12,
+              "display": "+12"
+            },
+            {
+              "game": 4,
+              "date": "Apr 5",
+              "value": 10,
+              "display": "+10"
+            },
+            {
+              "game": 5,
+              "date": "Apr 6",
+              "value": 14,
+              "display": "+14"
+            },
+            {
+              "game": 6,
+              "date": "Apr 7",
+              "value": 13,
+              "display": "+13"
+            },
+            {
+              "game": 7,
+              "date": "Apr 8",
+              "value": 18,
+              "display": "+18"
+            },
+            {
+              "game": 8,
+              "date": "Apr 10",
+              "value": 15,
+              "display": "+15"
+            },
+            {
+              "game": 9,
+              "date": "Apr 11",
+              "value": 20,
+              "display": "+20"
+            },
+            {
+              "game": 10,
+              "date": "Apr 12",
+              "value": 18,
+              "display": "+18"
+            },
+            {
+              "game": 11,
+              "date": "Apr 13",
+              "value": 20,
+              "display": "+20"
+            },
+            {
+              "game": 12,
+              "date": "Apr 14",
+              "value": 8,
+              "display": "+8"
+            },
+            {
+              "game": 13,
+              "date": "Apr 15",
+              "value": 16,
+              "display": "+16"
+            },
+            {
+              "game": 14,
+              "date": "Apr 16",
+              "value": 13,
+              "display": "+13"
+            },
+            {
+              "game": 15,
+              "date": "Apr 18",
+              "value": 15,
+              "display": "+15"
+            },
+            {
+              "game": 16,
+              "date": "Apr 19",
+              "value": 12,
+              "display": "+12"
+            },
+            {
+              "game": 17,
+              "date": "Apr 20",
+              "value": 14,
+              "display": "+14"
+            },
+            {
+              "game": 18,
+              "date": "Apr 21",
+              "value": 11,
+              "display": "+11"
+            },
+            {
+              "game": 19,
+              "date": "Apr 22",
+              "value": 13,
+              "display": "+13"
+            },
+            {
+              "game": 20,
+              "date": "Apr 23",
+              "value": 6,
+              "display": "+6"
+            },
+            {
+              "game": 21,
+              "date": "Apr 24",
+              "value": 7,
+              "display": "+7"
+            },
+            {
+              "game": 22,
+              "date": "Apr 26",
+              "value": -7,
+              "display": "−7"
+            },
+            {
+              "game": 23,
+              "date": "Apr 27",
+              "value": -6,
+              "display": "−6"
+            },
+            {
+              "game": 24,
+              "date": "Apr 28",
+              "value": -14,
+              "display": "−14"
+            },
+            {
+              "game": 25,
+              "date": "Apr 29",
+              "value": -13,
+              "display": "−13"
+            },
+            {
+              "game": 26,
+              "date": "Apr 30",
+              "value": -22,
+              "display": "−22"
+            },
+            {
+              "game": 27,
+              "date": "May 1",
+              "value": -20,
+              "display": "−20"
+            },
+            {
+              "game": 28,
+              "date": "May 3",
+              "value": -24,
+              "display": "−24"
+            },
+            {
+              "game": 29,
+              "date": "May 4",
+              "value": -14,
+              "display": "−14"
+            },
+            {
+              "game": 30,
+              "date": "May 5",
+              "value": -16,
+              "display": "−16"
+            }
+          ]
+        }
+      ],
+      "summary": "Run differential over 30 games, ending at −16."
+    },
+    {
+      "id": "scoring",
+      "title": {
+        "display": "Scoring and run prevention"
+      },
+      "headline": null,
+      "caption": {
+        "text": "The lines start once 10 games are in the books",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "Each point is the average of the last 10 games; a rolling average has nothing to say before then."
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "The season's games",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "axis": {
+        "display": "Runs per game"
+      },
+      "baseline": null,
+      "series": [
+        {
+          "id": "scored",
+          "title": {
+            "display": "Runs scored (10-game average)"
+          },
+          "role": "scored",
+          "points": [
+            {
+              "game": 1,
+              "date": "Apr 1",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 2,
+              "date": "Apr 3",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 3,
+              "date": "Apr 4",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 4,
+              "date": "Apr 5",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 5,
+              "date": "Apr 6",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 6,
+              "date": "Apr 7",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 7,
+              "date": "Apr 8",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 8,
+              "date": "Apr 10",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 9,
+              "date": "Apr 11",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 10,
+              "date": "Apr 12",
+              "value": 6.7,
+              "display": "6.7"
+            },
+            {
+              "game": 11,
+              "date": "Apr 13",
+              "value": 6.2,
+              "display": "6.2"
+            },
+            {
+              "game": 12,
+              "date": "Apr 14",
+              "value": 5.8,
+              "display": "5.8"
+            },
+            {
+              "game": 13,
+              "date": "Apr 15",
+              "value": 6,
+              "display": "6.0"
+            },
+            {
+              "game": 14,
+              "date": "Apr 16",
+              "value": 5.9,
+              "display": "5.9"
+            },
+            {
+              "game": 15,
+              "date": "Apr 18",
+              "value": 5.9,
+              "display": "5.9"
+            },
+            {
+              "game": 16,
+              "date": "Apr 19",
+              "value": 5.6,
+              "display": "5.6"
+            },
+            {
+              "game": 17,
+              "date": "Apr 20",
+              "value": 5.2,
+              "display": "5.2"
+            },
+            {
+              "game": 18,
+              "date": "Apr 21",
+              "value": 5.3,
+              "display": "5.3"
+            },
+            {
+              "game": 19,
+              "date": "Apr 22",
+              "value": 5,
+              "display": "5.0"
+            },
+            {
+              "game": 20,
+              "date": "Apr 23",
+              "value": 4.9,
+              "display": "4.9"
+            },
+            {
+              "game": 21,
+              "date": "Apr 24",
+              "value": 5,
+              "display": "5.0"
+            },
+            {
+              "game": 22,
+              "date": "Apr 26",
+              "value": 5.1,
+              "display": "5.1"
+            },
+            {
+              "game": 23,
+              "date": "Apr 27",
+              "value": 4.7,
+              "display": "4.7"
+            },
+            {
+              "game": 24,
+              "date": "Apr 28",
+              "value": 4.4,
+              "display": "4.4"
+            },
+            {
+              "game": 25,
+              "date": "Apr 29",
+              "value": 4.1,
+              "display": "4.1"
+            },
+            {
+              "game": 26,
+              "date": "Apr 30",
+              "value": 3.9,
+              "display": "3.9"
+            },
+            {
+              "game": 27,
+              "date": "May 1",
+              "value": 3.6,
+              "display": "3.6"
+            },
+            {
+              "game": 28,
+              "date": "May 3",
+              "value": 3.3,
+              "display": "3.3"
+            },
+            {
+              "game": 29,
+              "date": "May 4",
+              "value": 4,
+              "display": "4.0"
+            },
+            {
+              "game": 30,
+              "date": "May 5",
+              "value": 4.5,
+              "display": "4.5"
+            }
+          ]
+        },
+        {
+          "id": "allowed",
+          "title": {
+            "display": "Runs allowed (10-game average)"
+          },
+          "role": "allowed",
+          "points": [
+            {
+              "game": 1,
+              "date": "Apr 1",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 2,
+              "date": "Apr 3",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 3,
+              "date": "Apr 4",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 4,
+              "date": "Apr 5",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 5,
+              "date": "Apr 6",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 6,
+              "date": "Apr 7",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 7,
+              "date": "Apr 8",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 8,
+              "date": "Apr 10",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 9,
+              "date": "Apr 11",
+              "value": null,
+              "display": "No point yet"
+            },
+            {
+              "game": 10,
+              "date": "Apr 12",
+              "value": 4.9,
+              "display": "4.9"
+            },
+            {
+              "game": 11,
+              "date": "Apr 13",
+              "value": 5,
+              "display": "5.0"
+            },
+            {
+              "game": 12,
+              "date": "Apr 14",
+              "value": 5.5,
+              "display": "5.5"
+            },
+            {
+              "game": 13,
+              "date": "Apr 15",
+              "value": 5.6,
+              "display": "5.6"
+            },
+            {
+              "game": 14,
+              "date": "Apr 16",
+              "value": 5.6,
+              "display": "5.6"
+            },
+            {
+              "game": 15,
+              "date": "Apr 18",
+              "value": 5.8,
+              "display": "5.8"
+            },
+            {
+              "game": 16,
+              "date": "Apr 19",
+              "value": 5.7,
+              "display": "5.7"
+            },
+            {
+              "game": 17,
+              "date": "Apr 20",
+              "value": 5.6,
+              "display": "5.6"
+            },
+            {
+              "game": 18,
+              "date": "Apr 21",
+              "value": 5.7,
+              "display": "5.7"
+            },
+            {
+              "game": 19,
+              "date": "Apr 22",
+              "value": 5.7,
+              "display": "5.7"
+            },
+            {
+              "game": 20,
+              "date": "Apr 23",
+              "value": 6.1,
+              "display": "6.1"
+            },
+            {
+              "game": 21,
+              "date": "Apr 24",
+              "value": 6.3,
+              "display": "6.3"
+            },
+            {
+              "game": 22,
+              "date": "Apr 26",
+              "value": 6.6,
+              "display": "6.6"
+            },
+            {
+              "game": 23,
+              "date": "Apr 27",
+              "value": 6.9,
+              "display": "6.9"
+            },
+            {
+              "game": 24,
+              "date": "Apr 28",
+              "value": 7.1,
+              "display": "7.1"
+            },
+            {
+              "game": 25,
+              "date": "Apr 29",
+              "value": 6.9,
+              "display": "6.9"
+            },
+            {
+              "game": 26,
+              "date": "Apr 30",
+              "value": 7.3,
+              "display": "7.3"
+            },
+            {
+              "game": 27,
+              "date": "May 1",
+              "value": 7,
+              "display": "7.0"
+            },
+            {
+              "game": 28,
+              "date": "May 3",
+              "value": 6.8,
+              "display": "6.8"
+            },
+            {
+              "game": 29,
+              "date": "May 4",
+              "value": 6.7,
+              "display": "6.7"
+            },
+            {
+              "game": 30,
+              "date": "May 5",
+              "value": 6.7,
+              "display": "6.7"
+            }
+          ]
+        }
+      ],
+      "summary": "Runs scored and allowed a game, averaged over 10 games, across 30 games: 5.37 scored and 5.90 allowed on the season."
+    },
+    {
+      "id": "winning",
+      "title": {
+        "display": "Winning percentage"
+      },
+      "headline": null,
+      "caption": {
+        "text": "Season to date, not a rolling window; the rule marks .500",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "How to read it",
+              "value": "Each point is the share of games won up to that game."
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "The season's games",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "axis": {
+        "display": "Win percentage"
+      },
+      "baseline": 50,
+      "series": [
+        {
+          "id": "winning",
+          "title": {
+            "display": "Win %"
+          },
+          "role": "main",
+          "points": [
+            {
+              "game": 1,
+              "date": "Apr 1",
+              "value": 100,
+              "display": "100%"
+            },
+            {
+              "game": 2,
+              "date": "Apr 3",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 3,
+              "date": "Apr 4",
+              "value": 66.66666666666666,
+              "display": "67%"
+            },
+            {
+              "game": 4,
+              "date": "Apr 5",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 5,
+              "date": "Apr 6",
+              "value": 60,
+              "display": "60%"
+            },
+            {
+              "game": 6,
+              "date": "Apr 7",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 7,
+              "date": "Apr 8",
+              "value": 57.14285714285714,
+              "display": "57%"
+            },
+            {
+              "game": 8,
+              "date": "Apr 10",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 9,
+              "date": "Apr 11",
+              "value": 55.55555555555556,
+              "display": "56%"
+            },
+            {
+              "game": 10,
+              "date": "Apr 12",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 11,
+              "date": "Apr 13",
+              "value": 54.54545454545454,
+              "display": "55%"
+            },
+            {
+              "game": 12,
+              "date": "Apr 14",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 13,
+              "date": "Apr 15",
+              "value": 53.84615384615385,
+              "display": "54%"
+            },
+            {
+              "game": 14,
+              "date": "Apr 16",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 15,
+              "date": "Apr 18",
+              "value": 53.333333333333336,
+              "display": "53%"
+            },
+            {
+              "game": 16,
+              "date": "Apr 19",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 17,
+              "date": "Apr 20",
+              "value": 52.94117647058824,
+              "display": "53%"
+            },
+            {
+              "game": 18,
+              "date": "Apr 21",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 19,
+              "date": "Apr 22",
+              "value": 52.63157894736842,
+              "display": "53%"
+            },
+            {
+              "game": 20,
+              "date": "Apr 23",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 21,
+              "date": "Apr 24",
+              "value": 52.38095238095239,
+              "display": "52%"
+            },
+            {
+              "game": 22,
+              "date": "Apr 26",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 23,
+              "date": "Apr 27",
+              "value": 52.17391304347826,
+              "display": "52%"
+            },
+            {
+              "game": 24,
+              "date": "Apr 28",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 25,
+              "date": "Apr 29",
+              "value": 52,
+              "display": "52%"
+            },
+            {
+              "game": 26,
+              "date": "Apr 30",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 27,
+              "date": "May 1",
+              "value": 51.85185185185185,
+              "display": "52%"
+            },
+            {
+              "game": 28,
+              "date": "May 3",
+              "value": 50,
+              "display": "50%"
+            },
+            {
+              "game": 29,
+              "date": "May 4",
+              "value": 51.724137931034484,
+              "display": "52%"
+            },
+            {
+              "game": 30,
+              "date": "May 5",
+              "value": 50,
+              "display": "50%"
+            }
+          ]
+        }
+      ],
+      "summary": "Winning percentage over 30 games, ending at 50%."
+    }
+  ],
+  "empty": null
+}

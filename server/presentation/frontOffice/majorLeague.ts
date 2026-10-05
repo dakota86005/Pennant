@@ -146,6 +146,8 @@ function fortyManItem(ctx: DepartmentContext, player: CrunchIssues['players'][nu
   });
   return item(ctx, {
     key: `majorLeague:fortyMan:${player.playerId}:${issue.kind}`,
+    // N9: a clock or an option note opens 40-Man & Options on him
+    open: target({ kind: 'view', department: 'majorLeague', view: 'fortyManOptions', key: String(player.playerId) }),
     severity,
     shading: [],
     headline,

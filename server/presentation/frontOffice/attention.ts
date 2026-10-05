@@ -393,7 +393,7 @@ export function sinceLastExport(input: ChangesInput): {
   const t = games.length - w - l;
   const record = t ? `${w}–${l}–${t}` : `${w}–${l}`;
   const resultItems: ChangeItem[] = games.map((g) => ({
-    key: `game:${g.gameId}`, department: null, line: gameLine(g, input, results!.how), open: target({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans' }),
+    key: `game:${g.gameId}`, department: null, line: gameLine(g, input, results!.how), open: target({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans', key: String(g.gameId) }),
   }));
 
   const byDepartment = new Map<DeptId, { changes: ReportChange[] | null; note: Cell | null }>();

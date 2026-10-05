@@ -1,0 +1,779 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Depth Chart"
+  },
+  "lede": {
+    "text": "Who plays each position at every level of the organization",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Every player in the organization at his listed position, club by club from the major league club down, deepest first by the scouts' grade of him now. Signings nobody has assigned yet have a column of their own rather than being hidden."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The depth chart",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "clubs": [
+    {
+      "teamId": 1,
+      "title": {
+        "display": "Club 1 N"
+      },
+      "level": {
+        "display": "MLB"
+      },
+      "positions": [
+        {
+          "id": "SP",
+          "title": {
+            "display": "Starting pitchers"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1013,
+                "name": "P 1013",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1013,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "28 · 73",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1017,
+                "name": "P 1017",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1017,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "29 · 67",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1015,
+                "name": "P 1015",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1015,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 57 → 67",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1016,
+                "name": "P 1016",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1016,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "25 · 45 → 51",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1014,
+                "name": "P 1014",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1014,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "30 · 42",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "RP",
+          "title": {
+            "display": "Relief pitchers"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1020,
+                "name": "P 1020",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1020,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 52 → 60",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1021,
+                "name": "P 1021",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1021,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "33 · 45",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1023,
+                "name": "P 1023",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1023,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 45 → 55",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1019,
+                "name": "P 1019",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1019,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "30 · 35",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1018,
+                "name": "P 1018",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1018,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 34 → 44",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1022,
+                "name": "P 1022",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1022,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 34",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1024,
+                "name": "P 1024",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1024,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 34 → 42",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1025,
+                "name": "P 1025",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1025,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "25 · 21 → 27",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "C",
+          "title": {
+            "display": "Catcher"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1012,
+                "name": "P 1012",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1012,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "28 · 43",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "1B",
+          "title": {
+            "display": "First base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1010,
+                "name": "P 1010",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1010,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 51",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1006,
+                "name": "P 1006",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1006,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 41",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "2B",
+          "title": {
+            "display": "Second base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1001,
+                "name": "P 1001",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1001,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 51",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "3B",
+          "title": {
+            "display": "Third base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1000,
+                "name": "P 1000",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1000,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "33 · 54",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1004,
+                "name": "P 1004",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1004,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "32 · 54",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1011,
+                "name": "P 1011",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1011,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "30 · 40",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "SS",
+          "title": {
+            "display": "Shortstop"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1003,
+                "name": "P 1003",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1003,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "26 · 55 → 59",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "LF",
+          "title": {
+            "display": "Left field"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1007,
+                "name": "P 1007",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1007,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "27 · 56 → 58",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1009,
+                "name": "P 1009",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1009,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 45 → 53",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "CF",
+          "title": {
+            "display": "Center field"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1005,
+                "name": "P 1005",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1005,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 71 → 78",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1002,
+                "name": "P 1002",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1002,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "28 · 62",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "RF",
+          "title": {
+            "display": "Right field"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "DH",
+          "title": {
+            "display": "Designated hitter"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1008,
+                "name": "P 1008",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1008,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 47 → 55",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        }
+      ]
+    },
+    {
+      "teamId": 101,
+      "title": {
+        "display": "Farm 1 F"
+      },
+      "level": {
+        "display": "AAA"
+      },
+      "positions": [
+        {
+          "id": "SP",
+          "title": {
+            "display": "Starting pitchers"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "RP",
+          "title": {
+            "display": "Relief pitchers"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1109,
+                "name": "P 1109",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1109,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 70 → 80",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1107,
+                "name": "P 1107",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1107,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "20 · 58 → 77",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1105,
+                "name": "P 1105",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1105,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 51 → 61",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "C",
+          "title": {
+            "display": "Catcher"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "1B",
+          "title": {
+            "display": "First base"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "2B",
+          "title": {
+            "display": "Second base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1104,
+                "name": "P 1104",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1104,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "22 · 80",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "3B",
+          "title": {
+            "display": "Third base"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "SS",
+          "title": {
+            "display": "Shortstop"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1106,
+                "name": "P 1106",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1106,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "21 · 62 → 78",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "LF",
+          "title": {
+            "display": "Left field"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "CF",
+          "title": {
+            "display": "Center field"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1108,
+                "name": "P 1108",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1108,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "22 · 40 → 54",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "empty": null
+        },
+        {
+          "id": "RF",
+          "title": {
+            "display": "Right field"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "DH",
+          "title": {
+            "display": "Designated hitter"
+          },
+          "players": [],
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        }
+      ]
+    }
+  ],
+  "note": {
+    "text": "Deepest first by the scouts' grade now",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Position",
+          "value": "His listed position in the export; a pitcher is a starter or a reliever by his listed role."
+        },
+        {
+          "label": "Order",
+          "value": "The scouts' grade of him now, highest first; a player the scouts haven't graded comes after every graded one."
+        },
+        {
+          "label": "Unassigned",
+          "value": "A signing nobody has assigned yet sits on the parent club in the export with no roster spot, so he is listed apart."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The depth chart",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "A grade the scouts haven't given is not known, never low."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "empty": null
+}

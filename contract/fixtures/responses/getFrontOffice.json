@@ -1769,7 +1769,8 @@
       "open": {
         "kind": "view",
         "department": "majorLeague",
-        "view": "scheduleGamePlans"
+        "view": "scheduleGamePlans",
+        "key": "61"
       },
       "claim": {
         "text": "Tonight: at Club 4 N",

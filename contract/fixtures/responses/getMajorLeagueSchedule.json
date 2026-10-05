@@ -1,0 +1,3411 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Schedule & Game Plans"
+  },
+  "lede": {
+    "text": "The season game by game; choose a game for the staff's plan",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Every game of the season with its result or its probable starters, how the club has done against each opponent, and for any game the staff's preparation: their starter, our card against his hand, how our hitters have done against him and his club, and their most dangerous bats."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The schedule",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "record": [
+    {
+      "text": "Record",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Won",
+            "value": "15"
+          },
+          {
+            "label": "Lost",
+            "value": "15"
+          }
+        ],
+        "source": {
+          "department": "majorLeague",
+          "specialist": "The schedule",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 15,
+        "unit": "wins",
+        "display": "15–15"
+      }
+    },
+    {
+      "text": "Home and away",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "At home",
+            "value": "0-15"
+          },
+          {
+            "label": "Away",
+            "value": "15-0"
+          }
+        ],
+        "source": {
+          "department": "majorLeague",
+          "specialist": "The schedule",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 15,
+        "unit": "wins",
+        "display": "0-15 home · 15-0 away"
+      }
+    },
+    {
+      "text": "Runs",
+      "tone": "bad",
+      "basis": {
+        "because": [
+          {
+            "label": "Scored",
+            "value": "161"
+          },
+          {
+            "label": "Allowed",
+            "value": "177"
+          }
+        ],
+        "source": {
+          "department": "majorLeague",
+          "specialist": "The schedule",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": -16,
+        "unit": "runs",
+        "display": "161 scored · 177 allowed (−16)"
+      }
+    }
+  ],
+  "headToHead": {
+    "id": "headToHead",
+    "title": {
+      "display": "Against each opponent"
+    },
+    "summary": null,
+    "table": {
+      "columns": [
+        {
+          "id": "opponent",
+          "title": {
+            "display": "Opponent"
+          },
+          "numeric": false
+        },
+        {
+          "id": "record",
+          "title": {
+            "display": "W–L"
+          },
+          "numeric": true
+        },
+        {
+          "id": "runs",
+          "title": {
+            "display": "Runs"
+          },
+          "numeric": true
+        },
+        {
+          "id": "diff",
+          "title": {
+            "display": "+/−"
+          },
+          "numeric": true
+        }
+      ],
+      "rows": [
+        {
+          "id": "club-4",
+          "cells": {
+            "opponent": {
+              "display": "Club 4 N"
+            },
+            "record": {
+              "display": "5–5",
+              "tone": "neutral"
+            },
+            "runs": {
+              "display": "55–56",
+              "hint": "Runs scored and allowed against them"
+            },
+            "diff": {
+              "display": "−1",
+              "tone": "bad"
+            }
+          },
+          "sort": {
+            "opponent": "Club 4 N",
+            "record": 0,
+            "runs": 55,
+            "diff": -1
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "club-2",
+          "cells": {
+            "opponent": {
+              "display": "Club 2 N"
+            },
+            "record": {
+              "display": "5–5",
+              "tone": "neutral"
+            },
+            "runs": {
+              "display": "53–59",
+              "hint": "Runs scored and allowed against them"
+            },
+            "diff": {
+              "display": "−6",
+              "tone": "bad"
+            }
+          },
+          "sort": {
+            "opponent": "Club 2 N",
+            "record": 0,
+            "runs": 53,
+            "diff": -6
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "club-3",
+          "cells": {
+            "opponent": {
+              "display": "Club 3 N"
+            },
+            "record": {
+              "display": "5–5",
+              "tone": "neutral"
+            },
+            "runs": {
+              "display": "53–62",
+              "hint": "Runs scored and allowed against them"
+            },
+            "diff": {
+              "display": "−9",
+              "tone": "bad"
+            }
+          },
+          "sort": {
+            "opponent": "Club 3 N",
+            "record": 0,
+            "runs": 53,
+            "diff": -9
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        }
+      ],
+      "empty": null
+    },
+    "note": null
+  },
+  "games": {
+    "id": "games",
+    "title": {
+      "display": "Games"
+    },
+    "summary": {
+      "display": "30 games played · 30 to play"
+    },
+    "table": {
+      "columns": [
+        {
+          "id": "date",
+          "title": {
+            "display": "Date"
+          },
+          "numeric": true
+        },
+        {
+          "id": "opponent",
+          "title": {
+            "display": "Opponent"
+          },
+          "numeric": false
+        },
+        {
+          "id": "oppRecord",
+          "title": {
+            "display": "Their W–L"
+          },
+          "numeric": true
+        },
+        {
+          "id": "result",
+          "title": {
+            "display": "Result"
+          },
+          "numeric": true
+        },
+        {
+          "id": "innings",
+          "title": {
+            "display": "By inning"
+          },
+          "numeric": false
+        },
+        {
+          "id": "ourStarter",
+          "title": {
+            "display": "Our starter"
+          },
+          "numeric": false
+        },
+        {
+          "id": "theirStarter",
+          "title": {
+            "display": "Their starter"
+          },
+          "numeric": false
+        },
+        {
+          "id": "series",
+          "title": {
+            "display": "Series"
+          },
+          "numeric": true
+        }
+      ],
+      "rows": [
+        {
+          "id": "game-1",
+          "cells": {
+            "date": {
+              "display": "Apr 1"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 9–1",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400401,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": 8,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 0
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-3",
+          "cells": {
+            "date": {
+              "display": "Apr 3"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 5–8",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400403,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": -3,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 100
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-5",
+          "cells": {
+            "date": {
+              "display": "Apr 4"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 9–2",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400404,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": 7,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 200
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-7",
+          "cells": {
+            "date": {
+              "display": "Apr 5"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 5–7",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400405,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": -2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 300
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-9",
+          "cells": {
+            "date": {
+              "display": "Apr 6"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 9–5",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400406,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": 4,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 400
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-11",
+          "cells": {
+            "date": {
+              "display": "Apr 7"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 7–8",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400407,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": -1,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 500
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-13",
+          "cells": {
+            "date": {
+              "display": "Apr 8"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 11–6",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400408,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": 5,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 600
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-15",
+          "cells": {
+            "date": {
+              "display": "Apr 10"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 3–6",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400410,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": -3,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 700
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-17",
+          "cells": {
+            "date": {
+              "display": "Apr 11"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 7–2",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400411,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": 5,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 800
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-19",
+          "cells": {
+            "date": {
+              "display": "Apr 12"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 2–4",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400412,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": -2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 900
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-21",
+          "cells": {
+            "date": {
+              "display": "Apr 13"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 4–2",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400413,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": 2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1000
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-23",
+          "cells": {
+            "date": {
+              "display": "Apr 14"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 1–13",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400414,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": -12,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1100
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-25",
+          "cells": {
+            "date": {
+              "display": "Apr 15"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 11–3",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400415,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": 8,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1200
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-27",
+          "cells": {
+            "date": {
+              "display": "Apr 16"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 4–7",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400416,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": -3,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1300
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-29",
+          "cells": {
+            "date": {
+              "display": "Apr 18"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 9–7",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400418,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": 2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1400
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-31",
+          "cells": {
+            "date": {
+              "display": "Apr 19"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 4–7",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400419,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": -3,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1500
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-33",
+          "cells": {
+            "date": {
+              "display": "Apr 20"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 7–5",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400420,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": 2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1600
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-35",
+          "cells": {
+            "date": {
+              "display": "Apr 21"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 4–7",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400421,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": -3,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1700
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-37",
+          "cells": {
+            "date": {
+              "display": "Apr 22"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 4–2",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400422,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": 2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1800
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-39",
+          "cells": {
+            "date": {
+              "display": "Apr 23"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 1–8",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400423,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": -7,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 1900
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-41",
+          "cells": {
+            "date": {
+              "display": "Apr 24"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 5–4",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400424,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": 1,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2000
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-43",
+          "cells": {
+            "date": {
+              "display": "Apr 26"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 2–16",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400426,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": -14,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2100
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-45",
+          "cells": {
+            "date": {
+              "display": "Apr 27"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 7–6",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400427,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": 1,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2200
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-47",
+          "cells": {
+            "date": {
+              "display": "Apr 28"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 1–9",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400428,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": -8,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2300
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-49",
+          "cells": {
+            "date": {
+              "display": "Apr 29"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 6–5",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400429,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": 1,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2400
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-51",
+          "cells": {
+            "date": {
+              "display": "Apr 30"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 2–11",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400430,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": -9,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2500
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-53",
+          "cells": {
+            "date": {
+              "display": "May 1"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 4–2",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400501,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": 2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2600
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-55",
+          "cells": {
+            "date": {
+              "display": "May 3"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 1–5",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400503,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": -4,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2700
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-57",
+          "cells": {
+            "date": {
+              "display": "May 4"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "W 11–1",
+              "tone": "good"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400504,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": 10,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2800
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-59",
+          "cells": {
+            "date": {
+              "display": "May 5"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "L 6–8",
+              "tone": "bad"
+            },
+            "innings": {
+              "display": "Not read",
+              "tone": "unknown",
+              "hint": "Innings are read for the last 24 games played"
+            },
+            "ourStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "theirStarter": {
+              "display": "Not in the export",
+              "tone": "unknown"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400505,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": -2,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 2900
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-61",
+          "cells": {
+            "date": {
+              "display": "May 6"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1013 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1091 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1 · next up"
+            }
+          },
+          "sort": {
+            "date": 20400506,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1013",
+            "theirStarter": "P 1091",
+            "series": 3000
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-63",
+          "cells": {
+            "date": {
+              "display": "May 7"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1014 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1040 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400507,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1014",
+            "theirStarter": "P 1040",
+            "series": 3100
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-65",
+          "cells": {
+            "date": {
+              "display": "May 8"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1015 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1067 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400508,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1015",
+            "theirStarter": "P 1067",
+            "series": 3200
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-67",
+          "cells": {
+            "date": {
+              "display": "May 9"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1016 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1094 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400509,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1016",
+            "theirStarter": "P 1094",
+            "series": 3300
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-69",
+          "cells": {
+            "date": {
+              "display": "May 11"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1017 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1043 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400511,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1017",
+            "theirStarter": "P 1043",
+            "series": 3400
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-71",
+          "cells": {
+            "date": {
+              "display": "May 12"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1013 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1065 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400512,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1013",
+            "theirStarter": "P 1065",
+            "series": 3500
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-73",
+          "cells": {
+            "date": {
+              "display": "May 13"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1014 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1092 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400513,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1014",
+            "theirStarter": "P 1092",
+            "series": 3600
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-75",
+          "cells": {
+            "date": {
+              "display": "May 14"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "P 1015 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "theirStarter": {
+              "display": "P 1041 (R)",
+              "hint": "Projected: it can change as the season is simmed"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400514,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": "P 1015",
+            "theirStarter": "P 1041",
+            "series": 3700
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-77",
+          "cells": {
+            "date": {
+              "display": "May 15"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400515,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 3800
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-79",
+          "cells": {
+            "date": {
+              "display": "May 16"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400516,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 3900
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-81",
+          "cells": {
+            "date": {
+              "display": "May 17"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400517,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4000
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-83",
+          "cells": {
+            "date": {
+              "display": "May 19"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400519,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4100
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-85",
+          "cells": {
+            "date": {
+              "display": "May 20"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400520,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4200
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-87",
+          "cells": {
+            "date": {
+              "display": "May 21"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400521,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4300
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-89",
+          "cells": {
+            "date": {
+              "display": "May 22"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400522,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4400
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-91",
+          "cells": {
+            "date": {
+              "display": "May 23"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400523,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4500
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-93",
+          "cells": {
+            "date": {
+              "display": "May 24"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400524,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4600
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-95",
+          "cells": {
+            "date": {
+              "display": "May 26"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400526,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4700
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-97",
+          "cells": {
+            "date": {
+              "display": "May 27"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400527,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4800
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-99",
+          "cells": {
+            "date": {
+              "display": "May 28"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400528,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 4900
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-101",
+          "cells": {
+            "date": {
+              "display": "May 29"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400529,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5000
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-103",
+          "cells": {
+            "date": {
+              "display": "May 30"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400530,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5100
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-105",
+          "cells": {
+            "date": {
+              "display": "May 31"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400531,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5200
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-107",
+          "cells": {
+            "date": {
+              "display": "Jun 1"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400601,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5300
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-109",
+          "cells": {
+            "date": {
+              "display": "Jun 3"
+            },
+            "opponent": {
+              "display": "at Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400603,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5400
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-111",
+          "cells": {
+            "date": {
+              "display": "Jun 4"
+            },
+            "opponent": {
+              "display": "vs Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400604,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5500
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-113",
+          "cells": {
+            "date": {
+              "display": "Jun 5"
+            },
+            "opponent": {
+              "display": "at Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400605,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5600
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-115",
+          "cells": {
+            "date": {
+              "display": "Jun 6"
+            },
+            "opponent": {
+              "display": "vs Club 4 N"
+            },
+            "oppRecord": {
+              "display": "11–19",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400606,
+            "opponent": "Club 4 N",
+            "oppRecord": 0.36666666666666664,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5700
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-117",
+          "cells": {
+            "date": {
+              "display": "Jun 7"
+            },
+            "opponent": {
+              "display": "at Club 2 N"
+            },
+            "oppRecord": {
+              "display": "15–15",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400607,
+            "opponent": "Club 2 N",
+            "oppRecord": 0.5,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5800
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "game-119",
+          "cells": {
+            "date": {
+              "display": "Jun 8"
+            },
+            "opponent": {
+              "display": "vs Club 3 N"
+            },
+            "oppRecord": {
+              "display": "19–11",
+              "hint": "Their record in the standings"
+            },
+            "result": {
+              "display": "To play",
+              "tone": "neutral"
+            },
+            "innings": {
+              "display": "–",
+              "hint": "Not played yet"
+            },
+            "ourStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "theirStarter": {
+              "display": "Not named yet",
+              "tone": "unknown",
+              "hint": "Past the starts OOTP has projected"
+            },
+            "series": {
+              "display": "Game 1 of 1"
+            }
+          },
+          "sort": {
+            "date": 20400608,
+            "opponent": "Club 3 N",
+            "oppRecord": 0.6333333333333333,
+            "result": null,
+            "innings": null,
+            "ourStarter": null,
+            "theirStarter": null,
+            "series": 5900
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        }
+      ],
+      "empty": {
+        "display": "No games scheduled for this club."
+      }
+    },
+    "note": null
+  },
+  "filters": [
+    {
+      "text": {
+        "display": "Full Season"
+      },
+      "rows": [
+        "game-1",
+        "game-3",
+        "game-5",
+        "game-7",
+        "game-9",
+        "game-11",
+        "game-13",
+        "game-15",
+        "game-17",
+        "game-19",
+        "game-21",
+        "game-23",
+        "game-25",
+        "game-27",
+        "game-29",
+        "game-31",
+        "game-33",
+        "game-35",
+        "game-37",
+        "game-39",
+        "game-41",
+        "game-43",
+        "game-45",
+        "game-47",
+        "game-49",
+        "game-51",
+        "game-53",
+        "game-55",
+        "game-57",
+        "game-59",
+        "game-61",
+        "game-63",
+        "game-65",
+        "game-67",
+        "game-69",
+        "game-71",
+        "game-73",
+        "game-75",
+        "game-77",
+        "game-79",
+        "game-81",
+        "game-83",
+        "game-85",
+        "game-87",
+        "game-89",
+        "game-91",
+        "game-93",
+        "game-95",
+        "game-97",
+        "game-99",
+        "game-101",
+        "game-103",
+        "game-105",
+        "game-107",
+        "game-109",
+        "game-111",
+        "game-113",
+        "game-115",
+        "game-117",
+        "game-119"
+      ]
+    },
+    {
+      "text": {
+        "display": "Still to Play"
+      },
+      "rows": [
+        "game-61",
+        "game-63",
+        "game-65",
+        "game-67",
+        "game-69",
+        "game-71",
+        "game-73",
+        "game-75",
+        "game-77",
+        "game-79",
+        "game-81",
+        "game-83",
+        "game-85",
+        "game-87",
+        "game-89",
+        "game-91",
+        "game-93",
+        "game-95",
+        "game-97",
+        "game-99",
+        "game-101",
+        "game-103",
+        "game-105",
+        "game-107",
+        "game-109",
+        "game-111",
+        "game-113",
+        "game-115",
+        "game-117",
+        "game-119"
+      ]
+    },
+    {
+      "text": {
+        "display": "Played"
+      },
+      "rows": [
+        "game-1",
+        "game-3",
+        "game-5",
+        "game-7",
+        "game-9",
+        "game-11",
+        "game-13",
+        "game-15",
+        "game-17",
+        "game-19",
+        "game-21",
+        "game-23",
+        "game-25",
+        "game-27",
+        "game-29",
+        "game-31",
+        "game-33",
+        "game-35",
+        "game-37",
+        "game-39",
+        "game-41",
+        "game-43",
+        "game-45",
+        "game-47",
+        "game-49",
+        "game-51",
+        "game-53",
+        "game-55",
+        "game-57",
+        "game-59"
+      ]
+    }
+  ],
+  "nextRow": "game-61",
+  "note": {
+    "text": "How the schedule is read",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Series",
+          "value": "Grouped from consecutive games against the same opponent at the same venue."
+        },
+        {
+          "label": "Starters",
+          "value": "For games already played, the actual ones; for games to come, each club's projected rotation, read at the game's place among that club's own games still to play. They change as the season is simmed."
+        },
+        {
+          "label": "Past the projection",
+          "value": "OOTP projects a club's next several starts; a game further out has no starter named yet."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The schedule",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "empty": null
+}

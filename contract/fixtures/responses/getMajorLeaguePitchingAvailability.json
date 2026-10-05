@@ -1,0 +1,1886 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Pitching Availability"
+  },
+  "lede": {
+    "text": "Who can pitch tonight, from each arm's actual pitch counts game by game",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Rotation order comes from the save's own projected starters. Bullpen availability is worked out from the pitches each arm actually threw, game by game, so it reflects who can really pitch tonight rather than who has the best season line. \"Today\" is the last game played."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The pitching staff's workload",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "through": {
+    "display": "Counting back from May 5, the last game played"
+  },
+  "sections": [
+    {
+      "id": "bullpen",
+      "title": {
+        "display": "Bullpen"
+      },
+      "summary": {
+        "display": "1 of 8 limited or unavailable",
+        "tone": "caution"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "pitcher",
+            "title": {
+              "display": "Pitcher"
+            },
+            "numeric": false
+          },
+          {
+            "id": "role",
+            "title": {
+              "display": "Role"
+            },
+            "numeric": false
+          },
+          {
+            "id": "throws",
+            "title": {
+              "display": "T"
+            },
+            "numeric": false
+          },
+          {
+            "id": "day4",
+            "title": {
+              "display": "May 1"
+            },
+            "numeric": true
+          },
+          {
+            "id": "day3",
+            "title": {
+              "display": "May 2"
+            },
+            "numeric": true
+          },
+          {
+            "id": "day2",
+            "title": {
+              "display": "May 3"
+            },
+            "numeric": true
+          },
+          {
+            "id": "day1",
+            "title": {
+              "display": "May 4"
+            },
+            "numeric": true
+          },
+          {
+            "id": "day0",
+            "title": {
+              "display": "May 5"
+            },
+            "numeric": true
+          },
+          {
+            "id": "p3",
+            "title": {
+              "display": "P/3d"
+            },
+            "numeric": true
+          },
+          {
+            "id": "apps3",
+            "title": {
+              "display": "G/3d"
+            },
+            "numeric": true
+          },
+          {
+            "id": "tonight",
+            "title": {
+              "display": "Tonight"
+            },
+            "numeric": false
+          },
+          {
+            "id": "ip",
+            "title": {
+              "display": "IP"
+            },
+            "numeric": true
+          },
+          {
+            "id": "era",
+            "title": {
+              "display": "ERA"
+            },
+            "numeric": true
+          },
+          {
+            "id": "eraPlus",
+            "title": {
+              "display": "ERA+"
+            },
+            "numeric": true
+          },
+          {
+            "id": "fip",
+            "title": {
+              "display": "FIP"
+            },
+            "numeric": true
+          },
+          {
+            "id": "sv",
+            "title": {
+              "display": "SV"
+            },
+            "numeric": true
+          },
+          {
+            "id": "hld",
+            "title": {
+              "display": "HLD"
+            },
+            "numeric": true
+          },
+          {
+            "id": "health",
+            "title": {
+              "display": "Health"
+            },
+            "numeric": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "pen-1018",
+            "cells": {
+              "pitcher": {
+                "display": "P 1018"
+              },
+              "role": {
+                "display": "Closer"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Rested 6 days",
+                "tone": "good"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "0",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "12.0"
+              },
+              "era": {
+                "display": "3.00"
+              },
+              "eraPlus": {
+                "display": "167",
+                "tone": "good"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "0"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day1": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day0": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1018",
+              "role": 0,
+              "throws": "R",
+              "tonight": 0,
+              "p3": 0,
+              "apps3": 0,
+              "ip": 12,
+              "era": 3,
+              "eraPlus": 167,
+              "fip": 5.01,
+              "sv": 0,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1018,
+              "name": "P 1018",
+              "open": {
+                "kind": "player",
+                "playerId": 1018,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Rested 6 days",
+                      "tone": "good"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing Apr 29 (6 days before the last game played): 0 pitches, 11 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "pen-1022",
+            "cells": {
+              "pitcher": {
+                "display": "P 1022"
+              },
+              "role": {
+                "display": "Reliever"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Available (0 yesterday)",
+                "tone": "good"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "1",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "11.0"
+              },
+              "era": {
+                "display": "3.27"
+              },
+              "eraPlus": {
+                "display": "153",
+                "tone": "good"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "2"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day1": {
+                "display": "0",
+                "hint": "0 pitches, 8 outs"
+              },
+              "day0": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1022",
+              "role": 1,
+              "throws": "R",
+              "tonight": 0,
+              "p3": 0,
+              "apps3": 1,
+              "ip": 11,
+              "era": 3.27,
+              "eraPlus": 153,
+              "fip": 5.01,
+              "sv": 2,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1022,
+              "name": "P 1022",
+              "open": {
+                "kind": "player",
+                "playerId": 1022,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Available (0 yesterday)",
+                      "tone": "good"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing May 4 (1 day before the last game played): 0 pitches, 8 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "pen-1020",
+            "cells": {
+              "pitcher": {
+                "display": "P 1020"
+              },
+              "role": {
+                "display": "Reliever"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Rested 4 days",
+                "tone": "good"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "0",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "10.7"
+              },
+              "era": {
+                "display": "3.38"
+              },
+              "eraPlus": {
+                "display": "149",
+                "tone": "good"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "2"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "0",
+                "hint": "0 pitches, 11 outs"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day1": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day0": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1020",
+              "role": 1,
+              "throws": "R",
+              "tonight": 0,
+              "p3": 0,
+              "apps3": 0,
+              "ip": 10.7,
+              "era": 3.38,
+              "eraPlus": 149,
+              "fip": 5.01,
+              "sv": 2,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1020,
+              "name": "P 1020",
+              "open": {
+                "kind": "player",
+                "playerId": 1020,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Rested 4 days",
+                      "tone": "good"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing May 1 (4 days before the last game played): 0 pitches, 11 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "pen-1025",
+            "cells": {
+              "pitcher": {
+                "display": "P 1025"
+              },
+              "role": {
+                "display": "Reliever"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Rested 7 days",
+                "tone": "good"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "0",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "13.3"
+              },
+              "era": {
+                "display": "4.73"
+              },
+              "eraPlus": {
+                "display": "106"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "0"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day1": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day0": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1025",
+              "role": 1,
+              "throws": "R",
+              "tonight": 0,
+              "p3": 0,
+              "apps3": 0,
+              "ip": 13.3,
+              "era": 4.73,
+              "eraPlus": 106,
+              "fip": 5.01,
+              "sv": 0,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1025,
+              "name": "P 1025",
+              "open": {
+                "kind": "player",
+                "playerId": 1025,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Rested 7 days",
+                      "tone": "good"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing Apr 28 (7 days before the last game played): 0 pitches, 10 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "pen-1024",
+            "cells": {
+              "pitcher": {
+                "display": "P 1024"
+              },
+              "role": {
+                "display": "Reliever"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Rested 8 days",
+                "tone": "good"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "0",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "10.7"
+              },
+              "era": {
+                "display": "5.06"
+              },
+              "eraPlus": {
+                "display": "99"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "2"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day1": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day0": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1024",
+              "role": 1,
+              "throws": "R",
+              "tonight": 0,
+              "p3": 0,
+              "apps3": 0,
+              "ip": 10.7,
+              "era": 5.06,
+              "eraPlus": 99,
+              "fip": 5.01,
+              "sv": 2,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1024,
+              "name": "P 1024",
+              "open": {
+                "kind": "player",
+                "playerId": 1024,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Rested 8 days",
+                      "tone": "good"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing Apr 27 (8 days before the last game played): 0 pitches, 10 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "pen-1019",
+            "cells": {
+              "pitcher": {
+                "display": "P 1019"
+              },
+              "role": {
+                "display": "Reliever"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Rested 5 days",
+                "tone": "good"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "0",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "12.3"
+              },
+              "era": {
+                "display": "8.03"
+              },
+              "eraPlus": {
+                "display": "62",
+                "tone": "bad"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "0"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day1": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day0": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1019",
+              "role": 1,
+              "throws": "R",
+              "tonight": 0,
+              "p3": 0,
+              "apps3": 0,
+              "ip": 12.3,
+              "era": 8.03,
+              "eraPlus": 62,
+              "fip": 5.01,
+              "sv": 0,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1019,
+              "name": "P 1019",
+              "open": {
+                "kind": "player",
+                "playerId": 1019,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Rested 5 days",
+                      "tone": "good"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing Apr 30 (5 days before the last game played): 0 pitches, 10 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "pen-1021",
+            "cells": {
+              "pitcher": {
+                "display": "P 1021"
+              },
+              "role": {
+                "display": "Reliever"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Rested 2 days",
+                "tone": "good"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "1",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "11.0"
+              },
+              "era": {
+                "display": "9.00"
+              },
+              "eraPlus": {
+                "display": "56",
+                "tone": "bad"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "0"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "0",
+                "hint": "0 pitches, 11 outs"
+              },
+              "day1": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day0": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1021",
+              "role": 1,
+              "throws": "R",
+              "tonight": 0,
+              "p3": 0,
+              "apps3": 1,
+              "ip": 11,
+              "era": 9,
+              "eraPlus": 56,
+              "fip": 5.01,
+              "sv": 0,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1021,
+              "name": "P 1021",
+              "open": {
+                "kind": "player",
+                "playerId": 1021,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Rested 2 days",
+                      "tone": "good"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing May 3 (2 days before the last game played): 0 pitches, 11 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "pen-1023",
+            "cells": {
+              "pitcher": {
+                "display": "P 1023"
+              },
+              "role": {
+                "display": "Reliever"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "tonight": {
+                "display": "Would be back-to-back (0 today)",
+                "tone": "caution"
+              },
+              "p3": {
+                "display": "0",
+                "hint": "Pitches over the last three days"
+              },
+              "apps3": {
+                "display": "1",
+                "hint": "Games pitched in the last three days"
+              },
+              "ip": {
+                "display": "12.7"
+              },
+              "era": {
+                "display": "11.37"
+              },
+              "eraPlus": {
+                "display": "44",
+                "tone": "bad"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "sv": {
+                "display": "0"
+              },
+              "hld": {
+                "display": "0"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              },
+              "day4": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day3": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day2": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day1": {
+                "display": "–",
+                "hint": "Didn't pitch"
+              },
+              "day0": {
+                "display": "0",
+                "hint": "0 pitches, 11 outs"
+              }
+            },
+            "sort": {
+              "pitcher": "P 1023",
+              "role": 1,
+              "throws": "R",
+              "tonight": 1,
+              "p3": 0,
+              "apps3": 1,
+              "ip": 12.7,
+              "era": 11.37,
+              "eraPlus": 44,
+              "fip": 5.01,
+              "sv": 0,
+              "hld": 0,
+              "health": 0,
+              "day4": 0,
+              "day3": 0,
+              "day2": 0,
+              "day1": 0,
+              "day0": 0
+            },
+            "player": {
+              "playerId": 1023,
+              "name": "P 1023",
+              "open": {
+                "kind": "player",
+                "playerId": 1023,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "Tonight"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Would be back-to-back (0 today)",
+                      "tone": "caution"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  },
+                  {
+                    "text": {
+                      "display": "Last outing May 5 (the last game played): 0 pitches, 11 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "No relievers on the roster."
+        }
+      },
+      "note": {
+        "text": "How availability is read",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Down",
+              "value": "He pitched the last two days, threw 50 or more pitches over three days, or 30 or more in the last game; or he is on the injured list."
+            },
+            {
+              "label": "Limited",
+              "value": "He pitched in the last game, threw 30 or more the game before, or 40 or more over three days."
+            },
+            {
+              "label": "Rested",
+              "value": "Anything lighter; the days since he last pitched are counted from the last game played."
+            },
+            {
+              "label": "Day-to-day",
+              "value": "OOTP lets a manager use a day-to-day arm, so his workload is read like anyone's."
+            }
+          ],
+          "source": {
+            "department": "majorLeague",
+            "specialist": "The pitching staff's workload",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Common bullpen practice: stated, not fitted"
+        },
+        "links": []
+      }
+    },
+    {
+      "id": "rotation",
+      "title": {
+        "display": "Rotation"
+      },
+      "summary": null,
+      "table": {
+        "columns": [
+          {
+            "id": "slot",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "pitcher",
+            "title": {
+              "display": "Pitcher"
+            },
+            "numeric": false
+          },
+          {
+            "id": "throws",
+            "title": {
+              "display": "T"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "wl",
+            "title": {
+              "display": "W-L"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ip",
+            "title": {
+              "display": "IP"
+            },
+            "numeric": true
+          },
+          {
+            "id": "era",
+            "title": {
+              "display": "ERA"
+            },
+            "numeric": true
+          },
+          {
+            "id": "eraPlus",
+            "title": {
+              "display": "ERA+"
+            },
+            "numeric": true
+          },
+          {
+            "id": "fip",
+            "title": {
+              "display": "FIP"
+            },
+            "numeric": true
+          },
+          {
+            "id": "whip",
+            "title": {
+              "display": "WHIP"
+            },
+            "numeric": true
+          },
+          {
+            "id": "k9",
+            "title": {
+              "display": "K/9"
+            },
+            "numeric": true
+          },
+          {
+            "id": "stamina",
+            "title": {
+              "display": "Stam"
+            },
+            "numeric": true
+          },
+          {
+            "id": "rest",
+            "title": {
+              "display": "Rest"
+            },
+            "numeric": true
+          },
+          {
+            "id": "next",
+            "title": {
+              "display": "Next start"
+            },
+            "numeric": true
+          },
+          {
+            "id": "health",
+            "title": {
+              "display": "Health"
+            },
+            "numeric": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "rotation-1013",
+            "cells": {
+              "slot": {
+                "display": "1"
+              },
+              "pitcher": {
+                "display": "P 1013"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "age": {
+                "display": "28"
+              },
+              "wl": {
+                "display": "3-3"
+              },
+              "ip": {
+                "display": "33.7"
+              },
+              "era": {
+                "display": "5.61"
+              },
+              "eraPlus": {
+                "display": "89",
+                "tone": "bad"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "whip": {
+                "display": "0.00"
+              },
+              "k9": {
+                "display": "0.0"
+              },
+              "stamina": {
+                "display": "65",
+                "hint": "Your scouts' stamina grade"
+              },
+              "rest": {
+                "display": "5 days",
+                "hint": "Days since he last pitched"
+              },
+              "next": {
+                "display": "Next game",
+                "hint": "A five-day turn from his last start"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              }
+            },
+            "sort": {
+              "slot": 1,
+              "pitcher": "P 1013",
+              "throws": "R",
+              "age": 28,
+              "wl": 3,
+              "ip": 33.7,
+              "era": 5.61,
+              "eraPlus": 89,
+              "fip": 5.01,
+              "whip": 0,
+              "k9": 0,
+              "stamina": 65,
+              "rest": 5,
+              "next": 0,
+              "health": 0
+            },
+            "player": {
+              "playerId": 1013,
+              "name": "P 1013",
+              "open": {
+                "kind": "player",
+                "playerId": 1013,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "His turn"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Last outing Apr 30 (5 days before the last game played): 0 pitches, 17 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "rotation-1014",
+            "cells": {
+              "slot": {
+                "display": "2"
+              },
+              "pitcher": {
+                "display": "P 1014"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "age": {
+                "display": "30"
+              },
+              "wl": {
+                "display": "3-3"
+              },
+              "ip": {
+                "display": "31.3"
+              },
+              "era": {
+                "display": "9.19"
+              },
+              "eraPlus": {
+                "display": "55",
+                "tone": "bad"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "whip": {
+                "display": "0.00"
+              },
+              "k9": {
+                "display": "0.0"
+              },
+              "stamina": {
+                "display": "65",
+                "hint": "Your scouts' stamina grade"
+              },
+              "rest": {
+                "display": "4 days",
+                "hint": "Days since he last pitched"
+              },
+              "next": {
+                "display": "In 1 day",
+                "hint": "A five-day turn from his last start"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              }
+            },
+            "sort": {
+              "slot": 2,
+              "pitcher": "P 1014",
+              "throws": "R",
+              "age": 30,
+              "wl": 3,
+              "ip": 31.3,
+              "era": 9.19,
+              "eraPlus": 55,
+              "fip": 5.01,
+              "whip": 0,
+              "k9": 0,
+              "stamina": 65,
+              "rest": 4,
+              "next": 1,
+              "health": 0
+            },
+            "player": {
+              "playerId": 1014,
+              "name": "P 1014",
+              "open": {
+                "kind": "player",
+                "playerId": 1014,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "His turn"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Last outing May 1 (4 days before the last game played): 0 pitches, 16 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "rotation-1015",
+            "cells": {
+              "slot": {
+                "display": "3"
+              },
+              "pitcher": {
+                "display": "P 1015"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "age": {
+                "display": "23"
+              },
+              "wl": {
+                "display": "3-3"
+              },
+              "ip": {
+                "display": "32.0"
+              },
+              "era": {
+                "display": "5.34"
+              },
+              "eraPlus": {
+                "display": "94"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "whip": {
+                "display": "0.00"
+              },
+              "k9": {
+                "display": "0.0"
+              },
+              "stamina": {
+                "display": "65",
+                "hint": "Your scouts' stamina grade"
+              },
+              "rest": {
+                "display": "2 days",
+                "hint": "Days since he last pitched"
+              },
+              "next": {
+                "display": "In 3 days",
+                "hint": "A five-day turn from his last start"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              }
+            },
+            "sort": {
+              "slot": 3,
+              "pitcher": "P 1015",
+              "throws": "R",
+              "age": 23,
+              "wl": 3,
+              "ip": 32,
+              "era": 5.34,
+              "eraPlus": 94,
+              "fip": 5.01,
+              "whip": 0,
+              "k9": 0,
+              "stamina": 65,
+              "rest": 2,
+              "next": 3,
+              "health": 0
+            },
+            "player": {
+              "playerId": 1015,
+              "name": "P 1015",
+              "open": {
+                "kind": "player",
+                "playerId": 1015,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "His turn"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Last outing May 3 (2 days before the last game played): 0 pitches, 16 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "rotation-1016",
+            "cells": {
+              "slot": {
+                "display": "4"
+              },
+              "pitcher": {
+                "display": "P 1016"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "age": {
+                "display": "25"
+              },
+              "wl": {
+                "display": "3-3"
+              },
+              "ip": {
+                "display": "32.0"
+              },
+              "era": {
+                "display": "5.06"
+              },
+              "eraPlus": {
+                "display": "99"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "whip": {
+                "display": "0.00"
+              },
+              "k9": {
+                "display": "0.0"
+              },
+              "stamina": {
+                "display": "65",
+                "hint": "Your scouts' stamina grade"
+              },
+              "rest": {
+                "display": "1 day",
+                "hint": "Days since he last pitched"
+              },
+              "next": {
+                "display": "In 4 days",
+                "hint": "A five-day turn from his last start"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              }
+            },
+            "sort": {
+              "slot": 4,
+              "pitcher": "P 1016",
+              "throws": "R",
+              "age": 25,
+              "wl": 3,
+              "ip": 32,
+              "era": 5.06,
+              "eraPlus": 99,
+              "fip": 5.01,
+              "whip": 0,
+              "k9": 0,
+              "stamina": 65,
+              "rest": 1,
+              "next": 4,
+              "health": 0
+            },
+            "player": {
+              "playerId": 1016,
+              "name": "P 1016",
+              "open": {
+                "kind": "player",
+                "playerId": 1016,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "His turn"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Last outing May 4 (1 day before the last game played): 0 pitches, 19 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "rotation-1017",
+            "cells": {
+              "slot": {
+                "display": "5"
+              },
+              "pitcher": {
+                "display": "P 1017"
+              },
+              "throws": {
+                "display": "R"
+              },
+              "age": {
+                "display": "29"
+              },
+              "wl": {
+                "display": "3-3"
+              },
+              "ip": {
+                "display": "38.3"
+              },
+              "era": {
+                "display": "5.40"
+              },
+              "eraPlus": {
+                "display": "93"
+              },
+              "fip": {
+                "display": "5.01"
+              },
+              "whip": {
+                "display": "0.00"
+              },
+              "k9": {
+                "display": "0.0"
+              },
+              "stamina": {
+                "display": "65",
+                "hint": "Your scouts' stamina grade"
+              },
+              "rest": {
+                "display": "0 days",
+                "hint": "Days since he last pitched"
+              },
+              "next": {
+                "display": "In 5 days",
+                "hint": "A five-day turn from his last start"
+              },
+              "health": {
+                "display": "Healthy",
+                "tone": "good"
+              }
+            },
+            "sort": {
+              "slot": 5,
+              "pitcher": "P 1017",
+              "throws": "R",
+              "age": 29,
+              "wl": 3,
+              "ip": 38.3,
+              "era": 5.4,
+              "eraPlus": 93,
+              "fip": 5.01,
+              "whip": 0,
+              "k9": 0,
+              "stamina": 65,
+              "rest": 0,
+              "next": 5,
+              "health": 0
+            },
+            "player": {
+              "playerId": 1017,
+              "name": "P 1017",
+              "open": {
+                "kind": "player",
+                "playerId": 1017,
+                "teamId": 1
+              }
+            },
+            "detail": [
+              {
+                "title": {
+                  "display": "His turn"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [
+                  {
+                    "text": {
+                      "display": "Last outing May 5 (the last game played): 0 pitches, 16 outs"
+                    },
+                    "quiet": false,
+                    "chips": [],
+                    "players": []
+                  }
+                ],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "No projected rotation in this save."
+        }
+      },
+      "note": null
+    }
+  ],
+  "empty": null
+}
