@@ -328,6 +328,19 @@ final class PennantUITests: XCTestCase {
         }
     }
 
+    /// Scrolls a list until the target lies wholly inside it, 20 points clear of either edge.
+    @MainActor
+    private func within(_ target: XCUIElement, in container: XCUIElement) {
+        let leading = container.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.5))
+        for _ in 0..<10 {
+            guard target.exists else { return }
+            let (t, c) = (target.frame, container.frame)
+            if t.minY >= c.minY + 20 && t.maxY <= c.maxY - 20 { return }
+            leading.scroll(byDeltaX: 0, deltaY: t.minY < c.minY + 20 ? 120 : -120)
+            _ = target.waitForExistence(timeout: 0.5)
+        }
+    }
+
     /// A served table's first row, whether the table's identifier is on the table itself or on a container around it.
     @MainActor
     private func firstRow(of table: XCUIElement) -> XCUIElement {
@@ -1060,9 +1073,12 @@ final class PennantUITests: XCTestCase {
         let up = { (step: String) in
             XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
             let front = NSWorkspace.shared.frontmostApplication
-            if app.state == .runningBackground, let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
-                print("[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back")
+            if let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
+                let note = "[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back"
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
                 app.activate()
+                _ = app.wait(for: .runningForeground, timeout: 5)
             }
         }
         let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
@@ -1078,8 +1094,15 @@ final class PennantUITests: XCTestCase {
         for round in 1...3 {
             for view in views {
                 let item = element(app, "sidebar.majorLeague.\(view.view)")
-                if !item.isHittable { reveal(item, in: element(app, "sidebar")) }
+                let sidebar = element(app, "sidebar")
+                up("before \(view.view), round \(round)")
+                if !item.isHittable { reveal(item, in: sidebar) }
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                // Wholly inside the sidebar before the click, so XCTest has no scrolling of its own to do (its
+                // scroll-to-visible found no hit point for the sidebar's list mid-run, a test-side failure)
+                within(item, in: sidebar)
+                // A click on a window in the background only brings it forward: the app is in front first
+                up("before \(view.view), round \(round)")
                 item.click()
                 let shown = element(app, view.shows)
                 // One click draws the view: no second click (N9 review, M3)
@@ -1105,7 +1128,7 @@ final class PennantUITests: XCTestCase {
                     // By position: a table of one position across the organization, a row chosen; then by club, and back
                     let mode = element(app, "depthChart.mode").radioButtons
                     if mode.element(boundBy: 0).isSelected == false { mode.element(boundBy: 0).click() }
-                    let table = app.tables.matching(NSPredicate(format: "identifier BEGINSWITH 'table.depthChart.'")).firstMatch
+                    let table = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.depthChart.'")).firstMatch
                     XCTAssertTrue(table.waitForExistence(timeout: 10), "round \(round): the depth by position did not draw")
                     let row = firstRow(of: table)
                     XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): the depth by position has no row")
@@ -1166,7 +1189,7 @@ final class PennantUITests: XCTestCase {
                 if row.waitForExistence(timeout: 10) { row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
             }
             if view.view == "depthChart" {
-                let table = app.tables.matching(NSPredicate(format: "identifier BEGINSWITH 'table.depthChart.'")).firstMatch
+                let table = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'table.depthChart.'")).firstMatch
                 XCTAssertTrue(table.waitForExistence(timeout: 10), "the depth by position did not draw")
                 keep(window.screenshot(), named: "\(prefix)-depthChart-by-position")
                 element(app, "depthChart.mode").radioButtons.element(boundBy: 1).click()

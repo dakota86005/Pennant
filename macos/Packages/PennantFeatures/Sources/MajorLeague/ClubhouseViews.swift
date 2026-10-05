@@ -182,8 +182,9 @@ struct LineupHead: View {
     }
 }
 
-/// The GM's choices in the window's toolbar: the opposing hand as a segmented control, the other groups in the "Card"
-/// pull-down, each inline with its choice checked. Choosing one asks the server for that card.
+/// The GM's choices in the window's toolbar: the opposing hand as a segmented control, the other groups behind the
+/// "Card" button, each a labelled radio group in its popover (a toolbar pull-down was found by the audit with no action
+/// to press; N8's choice popover pattern). Choosing one asks the server for that card.
 struct LineupChoices: ToolbarContent {
     let view: Components.Schemas.MlbLineupView
     let choose: (Components.Schemas.MlbLineupQuery) -> Void
@@ -193,18 +194,39 @@ struct LineupChoices: ToolbarContent {
             if let hand = view.choices.first {
                 ChoicePicker(group: hand, id: "lineup.choice.0", choose: choose).pickerStyle(.segmented)
             }
-            if view.choices.count > 1 {
-                Menu {
-                    ForEach(Array(view.choices.enumerated().dropFirst()), id: \.offset) { index, group in
-                        ChoicePicker(group: group, id: "lineup.choice.\(index)", choose: choose).pickerStyle(.inline)
-                    }
-                } label: {
-                    Label("Card", systemImage: "slider.horizontal.3")
-                }
-                .help(Text("Card"))
-                .accessibilityIdentifier("lineup.card")
-            }
+            if view.choices.count > 1 { CardChoices(view: view, choose: choose) }
         }
+    }
+}
+
+/// The card's other choices (the order, what it is built from, the DH): a toolbar button and its popover.
+struct CardChoices: View {
+    let view: Components.Schemas.MlbLineupView
+    let choose: (Components.Schemas.MlbLineupQuery) -> Void
+    @State private var open = false
+
+    var body: some View {
+        Button { open.toggle() } label: { Label("Card", systemImage: "slider.horizontal.3") }
+            .help(Text("Card"))
+            .accessibilityIdentifier("lineup.card")
+            .popover(isPresented: $open, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(view.choices.enumerated().dropFirst()), id: \.offset) { index, group in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(verbatim: group.title.display).font(.headline)
+                            ChoicePicker(group: group, id: "lineup.choice.\(index)") { query in
+                                open = false
+                                choose(query)
+                            }
+                            .pickerStyle(.radioGroup)
+                            .labelsHidden()
+                        }
+                    }
+                }
+                .padding(16)
+                .frame(minWidth: 240, alignment: .leading)
+                .background(Color.readablePage)
+            }
     }
 }
 

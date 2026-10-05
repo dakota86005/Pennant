@@ -134,16 +134,13 @@ struct PaneDivider: View {
                     }
                     .onEnded { _ in start = nil }
             )
-            .accessibilityElement()
-            .accessibilityLabel(Text("Details Height"))
-            .accessibilityValue(Text(verbatim: "\(Int(height))"))
-            .accessibilityAdjustableAction { direction in
-                let step: CGFloat = 40
-                switch direction {
-                case .increment: set(min(height + step, range.upperBound))
-                case .decrement: set(max(height - step, range.lowerBound))
-                @unknown default: break
-                }
+            // To VoiceOver an adjustable slider (a role it can name), a step at a time
+            .accessibilityRepresentation {
+                Slider(
+                    value: Binding(get: { Double(height) }, set: { set(CGFloat($0).rounded()) }),
+                    in: Double(range.lowerBound)...Double(max(range.upperBound, range.lowerBound + 1)),
+                    step: 40
+                ) { Text("Details Height") }
             }
             .accessibilityIdentifier("tablePane.divider")
     }
