@@ -184,6 +184,15 @@ request that fails shows the server's sentence, or one of three structural lines
   USBL (the first after a start 0.8 s and 0.34 s: that league's reads, cold on the server's thread), 1.1 / 2.0 ms after;
   USBL's longest career (97 seasons' rows) 0.13 s first, 1.2 / 1.6 ms after, 71 kB; Compare of three 0.7–1.0 / 1.4–1.8
   ms; notes 0.3–0.6 / 0.6–1.2 ms.
+- **Verified:** `playerDossier.test.ts`, `playerCompare.test.ts`, `playerNotes.test.ts`, `playerViews.test.ts`, the
+  contract test (fixtures `getPlayerDossier`, `getPlayerNotes`, `getPlayerCompare`, the note and staff-note changes; the
+  fuller `contract/fixtures/player/`), `routeExtractions.test.ts`, `ourScoutsRatings.test.ts` (the mark end to end);
+  `PlayerFeatureTests` and `PlayerSnapshotTests` (`n11-*` in `build/macos-snapshots/`, light and dark); XCUITests
+  `testPlayerWindows` (palette, a table's row twice, Following, a decision's player; every section; audited),
+  `testCompareByMenuAndDrag` (two chosen rows by the menu, a third dropped, one removed; audited),
+  `testPlayerWindowRestored` and `testPlayerNarrowWindow` (520 × 480, every section five rounds, five runs in a row;
+  audited), each at no finding and no new set-aside. PennantKit's live-pipe test signals the process it waits for (the
+  flake: 50 consecutive runs of the suite with the real server).
 - *Left for later:* the React card's hover card (a summary on resting over a name) is not drawn: the name opens the
   window; the season-by-season breakdown's row hover (the season's control) is in the cone's season detail instead; the
   farm's tables compare the right-clicked player (several chosen only in Major League Ops' tables).
