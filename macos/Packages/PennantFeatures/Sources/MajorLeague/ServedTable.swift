@@ -109,8 +109,9 @@ struct ServedTable: View {
                     .accessibilityIdentifier("table.\(id)")
                     .onAppear {
                         guard let reveal else { return }
-                        // After the first layout, so the row is there to scroll to
-                        AfterNextFrame.run { proxy.scrollTo(reveal, anchor: .center) }
+                        // After the first layout, so the row is there to scroll to; to the middle of the table's height
+                        // and its leading edge, so the columns are never scrolled sideways under the sidebar
+                        AfterNextFrame.run { proxy.scrollTo(reveal, anchor: UnitPoint(x: 0, y: 0.5)) }
                     }
             }
         }

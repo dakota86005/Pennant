@@ -1053,7 +1053,12 @@ final class PennantUITests: XCTestCase {
         let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
         XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
-        let up = { (step: String) in XCTAssertEqual(app.state, .runningForeground, "the app stopped at \(step)") }
+        // Running is what matters here (a crash stops it); another process brought to the front (a test run beside this
+        // one draws its own windows) only sends the app back, so it is brought to the front again
+        let up = { (step: String) in
+            XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
+            if app.state == .runningBackground { app.activate() }
+        }
         let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
         // Each view, and what shows it drew: a table (a row is chosen in it) or another element
         let views: [(view: String, shows: String, table: Bool)] = [
@@ -1071,6 +1076,9 @@ final class PennantUITests: XCTestCase {
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
                 item.click()
                 let shown = element(app, view.shows)
+                // A click on the sidebar while a table holds the keyboard focus can be taken by the focus change alone:
+                // asked once more, as a person would click again
+                if !shown.waitForExistence(timeout: 8) { item.click() }
                 if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n9-narrow-900-missing-\(view.view)") }
                 XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
                 if view.table {

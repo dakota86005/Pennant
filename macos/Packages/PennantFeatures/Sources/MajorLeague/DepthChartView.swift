@@ -170,7 +170,9 @@ struct DepthEntryLine: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             PlayerNameText(player: entry.player, font: font).lineLimit(1).truncationMode(.tail).layoutPriority(-1)
-            Text(verbatim: entry.line.display).font(.caption).monospacedDigit().foregroundStyle(.readableSecondary)
+            // In the label colour at the footnote size: the secondary colour at the caption size was read by the audit
+            // as only nearly passing, though its pixels read at 7.7:1; the name's weight keeps the order of the two
+            Text(verbatim: entry.line.display).font(.footnote).monospacedDigit().foregroundStyle(.primary)
                 .lineLimit(1).fixedSize()
                 .help(detail: entry.line.hint)
         }

@@ -10537,7 +10537,7 @@
                 "rows"
               ]
             },
-            "description": "The filters (full season, still to play, played), each naming the rows it keeps."
+            "description": "The filters (full season, still to play, played), each naming the rows it keeps in its own order (played: the latest first)."
           },
           "nextRow": {
             "type": [

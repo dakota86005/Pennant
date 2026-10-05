@@ -171,7 +171,8 @@ export function scheduleView(v: ClubhouseContext, input: ScheduleInput): MlbSche
     filters: [
       { text: cell('Full Season'), rows: rows.map((r) => r.id) },
       { text: cell('Still to Play'), rows: upcoming },
-      { text: cell('Played'), rows: played },
+      // The latest first, so the games just played open at the top
+      { text: cell('Played'), rows: [...played].reverse() },
     ],
     nextRow: nextGame ? gameRowId(nextGame.game_id) : null,
     note,

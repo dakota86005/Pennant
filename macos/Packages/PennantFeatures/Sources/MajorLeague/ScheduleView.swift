@@ -12,7 +12,7 @@ import SwiftUI
 struct ScheduleView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.currentRoute) private var currentRoute
-    @State private var filter = 0
+    @State private var filter: Int?
     @State private var section = 0
     @State private var selection: ServedRow.ID?
 
@@ -25,10 +25,16 @@ struct ScheduleView: View {
             let index = min(section, sections.count - 1)
             let shown = sections[index]
             let isGames = shown.id == view.games.id
-            let keep = isGames && view.filters.indices.contains(filter) ? Set(view.filters[filter].rows) : nil
+            // Opened on the games still to play (the next one first), or on the filter that holds the game it was opened
+            // on (a game just played is at the top of Played, the latest first): the game is in view with no scrolling
+            let opensOn = opened.flatMap { id in [1, 2].first { view.filters.indices.contains($0) && view.filters[$0].rows.contains(id) } }
+                ?? [1, 2].first { view.filters.indices.contains($0) && !view.filters[$0].rows.isEmpty } ?? 0
+            let chosen = min(filter ?? opensOn, max(view.filters.count - 1, 0))
+            let byId = Dictionary(shown.table.rows.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
             let table = Components.Schemas.MlbTable(
                 columns: shown.table.columns,
-                rows: keep.map { keep in shown.table.rows.filter { keep.contains($0.id) } } ?? shown.table.rows,
+                // The filter's rows in its own served order
+                rows: isGames && view.filters.indices.contains(chosen) ? view.filters[chosen].rows.compactMap { byId[$0] } : shown.table.rows,
                 empty: shown.table.empty
             )
             TablePane(detailShare: isGames ? 0.5 : 0.3) {
@@ -40,15 +46,15 @@ struct ScheduleView: View {
                             SectionChoice(titles: sections.map(\.title.display), selection: $section, id: "schedule.sections")
                         }
                         if isGames, view.filters.count > 1 {
-                            SectionChoice(titles: view.filters.map(\.text.display), selection: $filter, id: "schedule.filters")
+                            SectionChoice(titles: view.filters.map(\.text.display), selection: Binding(get: { chosen }, set: { filter = $0 }), id: "schedule.filters")
                         }
                     }
                     SectionSummary(summary: shown.summary)
                     if let empty = view.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary) }
                 }
             } table: {
-                ServedTable(table, id: "schedule.\(shown.id)", name: shown.title.display, selection: $selection, reveal: isGames ? (selection ?? initial) : nil)
-                    .id("\(index)-\(filter)")
+                ServedTable(table, id: "schedule.\(shown.id)", name: shown.title.display, selection: $selection)
+                    .id("\(index)-\(chosen)")
             } detail: {
                 VStack(alignment: .leading, spacing: 14) {
                     if isGames, let row = selection.flatMap(gameId) {
@@ -60,7 +66,7 @@ struct ScheduleView: View {
                 }
             }
             .onAppear { if selection == nil { selection = initial } }
-            .onChange(of: opened) { _, next in if let next { selection = next; section = 0; filter = 0 } }
+            .onChange(of: opened) { _, next in if let next { selection = next; section = 0; filter = nil } }
         }
         .task(id: model.storeKey) { await store.loadSchedule(client: model.client, key: model.storeKey) }
     }

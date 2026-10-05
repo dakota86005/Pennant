@@ -100,7 +100,7 @@ export interface MlbScheduleView extends MlbViewHead {
   record: Claim[];
   headToHead: MlbTableSection | null;
   games: MlbTableSection;
-  /** The filters (full season, still to play, played), each naming the rows it keeps. */
+  /** The filters (full season, still to play, played), each naming the rows it keeps in its own order (played: the latest first). */
   filters: Array<{ text: Cell; rows: string[] }>;
   /** The row the view opens on: the next game to play; null when the season is over or unscheduled. */
   nextRow: string | null;

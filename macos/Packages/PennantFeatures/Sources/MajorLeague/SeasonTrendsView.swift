@@ -74,8 +74,13 @@ struct TrendChartView: View {
             .chartXAxisLabel { Text("Game") }
             .chartYAxisLabel { Text(verbatim: chart.axis.display) }
             .frame(height: 220)
-            .accessibilityChartDescriptor(TrendDescriptor(chart: chart))
+            // One image element with its audio graph and the served summary: the chart's own per-range elements carry
+            // no role the accessibility audit (or VoiceOver) can name
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isImage)
             .accessibilityLabel(Text(verbatim: chart.title.display))
+            .accessibilityValue(Text(verbatim: chart.summary))
+            .accessibilityChartDescriptor(TrendDescriptor(chart: chart))
             .accessibilityIdentifier("trend.\(chart.id)")
             ClaimLine(chart.caption, font: .callout)
         }
