@@ -1,5 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { computePlayerDossier, type PlayerDossierBody } from '../server/player.js';
+import { resolvePhilosophy } from '../server/philosophy.js';
+import { computePlayerDossier, dossierShared, type PlayerDossierBody } from '../server/player.js';
+import { lensPhilosophyFrom, ourViewOf, playerValue, productionCone } from '../server/playerValue.js';
+import { playerState } from '../server/playerState.js';
+import { compareView } from '../server/presentation/player/compare.js';
+import { philosophyForOrg } from '../server/settings.js';
 import { buildPlayerDossiers } from '../server/playerDossierBuild.js';
 import { dossierView } from '../server/presentation/player/dossier.js';
 import type { DossierInput } from '../server/presentation/player/input.js';
@@ -164,5 +171,70 @@ describe('contract & rights and history keep their sources apart (D-020, D-023)'
     const [built] = buildPlayerDossiers({ orgId: save.org, importStamp: null, reportStamp: 'r1', playerIds: [save.regular] }).views;
     expect(built.history.now.map((f) => f.label.display)).toEqual(['Club', 'Active roster', '40-man roster', 'Injured list']);
     expect(built.history.nowSource.display).toMatch(/as the export states it/);
+  });
+});
+
+/*
+ * Fuller player payloads than the contract's synthetic save makes (no rating history, no log, no honours), worded by the
+ * real words from the synthetic save's own dossier with those facts added, for the Mac app's previews and snapshots
+ * (`contract/fixtures/player/`). Written with `npm run contract:fixtures`, checked here otherwise.
+ */
+describe('fixtures for the Mac app\'s player previews (N11)', () => {
+  const FOLDER = path.join(process.cwd(), 'contract', 'fixtures', 'player');
+  const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
+  const fixture = (name: string, value: unknown): void => {
+    const file = path.join(FOLDER, name);
+    if (process.env.CONTRACT_FIXTURES === 'write') {
+      fs.mkdirSync(FOLDER, { recursive: true });
+      fs.writeFileSync(file, json(value));
+      return;
+    }
+    expect(fs.existsSync(file), `${name} is missing: run npm run contract:fixtures`).toBe(true);
+    expect(fs.readFileSync(file, 'utf8'), `${name} differs: run npm run contract:fixtures`).toBe(json(value));
+  };
+  const rich = (fill: boolean): PlayerDossierView => {
+    const valuation = playerValue(save.regular, { currentState: 'current' });
+    const shared = dossierShared([save.regular]);
+    return view((input) => {
+      input.state = playerState(save.regular);
+      input.cone = valuation ? productionCone(valuation.production, valuation.control) : null;
+      input.surplus = valuation?.surplus ?? null;
+      input.ourView = input.surplus ? ourViewOf({ neutral: input.surplus, philosophy: lensPhilosophyFrom(resolvePhilosophy(philosophyForOrg(save.org))), ours: true }) : null;
+      input.body = computePlayerDossier(save.regular, shared).ok ? (computePlayerDossier(save.regular, shared) as { body: PlayerDossierBody }).body : input.body;
+      const body = input.body as PlayerDossierBody & { awards: unknown[]; leagueLeader: unknown[]; ratingsFill: unknown };
+      body.awards = [{ year: 2039, award: 'All-Star', positionName: null, rank: 6 }, { year: 2038, award: 'All-Star', positionName: null, rank: 6 }, { year: 2039, award: 'Silver Slugger', positionName: '3B', rank: 5 }];
+      body.leagueLeader = [{ year: 2039, place: 2, category: 'Doubles', amount: 41 }];
+      if (fill) body.ratingsFill = { mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' };
+      input.history = {
+        rows: [['2039-6-1', 50, 56], ['2039-9-28', 52, 56], ['2040-4-30', 54, 57]].map(([d, cur, pot]) => ({
+          game_date: d as string, player_id: save.regular, team_id: save.org, org_id: save.org, level: 1, age: 32, cur: cur as number, pot: pot as number,
+          con: null, gap: null, pow: null, eye: null, avk: null, spd: null, stu: null, mov: null, ctl: null,
+        })),
+        sourceSwitch: fill ? 'His ratings came from your scouts\' full reports, then from OSA\'s view' : null,
+      };
+      input.chronology = [
+        { id: 'team_transactions:2', provenance: 'explicit_log', kind: 'activated', supported: true, date: '2040-04-20', rawDate: '2040-4-20', season: 2040, playerId: save.regular, playerName: 'P', position: '3B', from: null, to: null, details: {}, text: 'Activated P from the 10-day injured list.', rawText: '', sources: [] },
+        { id: 'team_transactions:1', provenance: 'explicit_log', kind: 'injured_list', supported: true, date: '2040-04-08', rawDate: '2040-4-8', season: 2040, playerId: save.regular, playerName: 'P', position: '3B', from: null, to: null, details: {}, text: 'Placed P on the 10-day injured list with a strained hamstring.', rawText: '', sources: [] },
+      ] as unknown as DossierInput['chronology'];
+    });
+  };
+
+  it('a dossier with his rating history, the log, his honours and his value', () => {
+    const v = rich(false);
+    expect(bannedInPayload(v, 'getPlayerDossier')).toEqual([]);
+    fixture('dossier-rich.json', v);
+  });
+
+  it('a dossier whose grades are OSA\'s view filling in, with a change of source in his history (D-067)', () => {
+    const v = rich(true);
+    expect(v.header.ratingsFill?.display).toBe('OSA');
+    fixture('dossier-filled.json', v);
+  });
+
+  it('three players side by side, one whose grades are OSA\'s view', () => {
+    const others = buildPlayerDossiers({ orgId: save.org, importStamp: base.importStamp, reportStamp: 'r1', playerIds: [save.hitters.find((h) => h !== save.regular)!, save.reliever] }).views;
+    const c = compareView([rich(false), ...others.map((o, i) => (i === 0 ? { ...o, header: { ...o.header, ratingsFill: { display: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' } } } : o))], save.org, base.importStamp);
+    expect(bannedInPayload(c, 'getPlayerCompare')).toEqual([]);
+    fixture('compare-three.json', c);
   });
 });

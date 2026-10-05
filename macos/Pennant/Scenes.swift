@@ -3,6 +3,7 @@ import PennantAPI
 import PennantDesign
 import PennantKit
 import FrontOffice
+import Player
 import Setup
 import Shell
 import SwiftUI
@@ -55,6 +56,13 @@ struct MainWindowScene: View {
             // …or with a club's window open beside it (`-PennantDebugOpenClub <team id>`), for its captures
             if let club = defaults.string(forKey: "PennantDebugOpenClub").flatMap(Int.init) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: ClubRef(id: club)) }
+            }
+            // …or a player's (`-PennantDebugOpenPlayer <player id>`), or players compared (`-PennantDebugCompare 1,2`) (N11)
+            if let player = defaults.string(forKey: "PennantDebugOpenPlayer").flatMap(Int.init) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: PlayerRef(id: player)) }
+            }
+            if let ids = defaults.string(forKey: "PennantDebugCompare")?.split(separator: ",").compactMap({ Int($0) }), !ids.isEmpty {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: ComparisonRef(players: ids.map(PlayerRef.init(id:)))) }
             }
             #endif
             window = restored
@@ -162,6 +170,26 @@ struct ClubWindowScene: View {
     var body: some View {
         if let club {
             ClubReportView(teamId: club.id)
+                .environment(\.claimActions, ClaimActions(
+                    detach: { openWindow(value: $0) },
+                    departmentName: { [catalog = model.catalog] id in AppRegistry.shared.name(of: id, catalog: catalog) }
+                ))
+        } else {
+            Text("Nothing to show").padding()
+        }
+    }
+}
+
+/// A player's dossier in his own window (N11): opened from his name anywhere, restored at relaunch since its value is his
+/// id. A basis detaches into its own panel; there is no inspector to pin to here.
+struct PlayerWindowScene: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+    let player: PlayerRef?
+
+    var body: some View {
+        if let player {
+            PlayerWindowView(playerId: player.id)
                 .environment(\.claimActions, ClaimActions(
                     detach: { openWindow(value: $0) },
                     departmentName: { [catalog = model.catalog] id in AppRegistry.shared.name(of: id, catalog: catalog) }

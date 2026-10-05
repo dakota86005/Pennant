@@ -43,11 +43,11 @@ struct CellText: View {
 }
 
 extension Components.Schemas.MlbPlayer {
-    /// The club his name opens (his organization's, the nearest view until player windows), when served.
+    /// His organization's club (Open His Club), when served; his name opens his own window (N11).
     var club: ClubRef? { open?.teamId.map { ClubRef(id: $0) } }
 }
 
-/// A player's served name: opens his club on a double-click or Return, follows and copies from its context menu, and
+/// A player's served name: opens his window on a double-click or Return, follows and copies from its context menu, and
 /// drags as a player (the app's player-name behaviour, `playerName`).
 struct PlayerNameText: View {
     let player: MlbPlayer

@@ -662,7 +662,8 @@ function cone(ctx: DossierInput): PlayerConeView {
         text: 'Expected production not yet established', tone: 'unknown',
         basis: valueBasis(ctx, [{ label: 'From', value: PLAYER_VALUE }], [reason]),
       }),
-      seasons: [], legend: { outer: cell('80% range'), inner: cell('50% range'), expected: cell('Expected wins') },
+      seasons: [], legend: { outer: cell('80% range'), inner: cell('50% range'), expected: cell('Expected wins'), replacement: cell('Replacement level') },
+      pending: null,
       axis: { low: -1, high: 1 }, checked: null, notes: [], summary: `Expected production not yet established: ${plain(reason)}`,
     };
   }
@@ -721,7 +722,11 @@ function cone(ctx: DossierInput): PlayerConeView {
   ];
   return {
     title, established: true, empty: null, seasons: all,
-    legend: { outer: cell(words.outer, { hint: 'Meant to hold 8 seasons in 10' }), inner: cell(words.inner, { hint: 'Meant to hold 5 seasons in 10' }), expected: cell('Expected wins') },
+    legend: {
+      outer: cell(words.outer, { hint: 'Meant to hold 8 seasons in 10' }), inner: cell(words.inner, { hint: 'Meant to hold 5 seasons in 10' }),
+      expected: cell('Expected wins'), replacement: cell('Replacement level', { hint: 'A minimum-salary player adds no wins above it' }),
+    },
+    pending: pending.length ? cell('Production not established', { hint: 'No range is drawn: those seasons are not projected yet' }) : null,
     axis: { low: Math.min(0, ...lows), high: Math.max(0, ...highs) },
     checked: claim({
       text: checked ? "Checked against this save's own seasons" : "Not yet checked against this save's own seasons",
@@ -1017,6 +1022,7 @@ function contact(ctx: DossierInput): PlayerContactView | null {
 }
 
 function historyView(ctx: DossierInput): PlayerHistoryView {
+  const tables = statTables(ctx);
   return {
     now: historyNow(ctx),
     nowSource: cell('Where he is now, as the export states it', { hint: 'The export outranks the log about where he is now' }),
@@ -1025,7 +1031,8 @@ function historyView(ctx: DossierInput): PlayerHistoryView {
       ? cell(plain(ctx.chronologyNote ?? 'The OOTP transaction log is unavailable, so no transaction history is shown.'), { tone: 'unknown' })
       : ctx.chronologyNote ? cell(plain(ctx.chronologyNote), { tone: 'caution' })
         : (ctx.chronology.length ? null : cell('The transaction log has no lines about him this season')),
-    tables: statTables(ctx),
+    tables,
+    tablesEmpty: tables.length ? null : cell('No record of him in the export yet'),
     contact: contact(ctx),
   };
 }

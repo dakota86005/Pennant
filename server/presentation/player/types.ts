@@ -172,7 +172,9 @@ export interface PlayerConeView {
   /** Why there is no cone, when there isn't. */
   empty: Claim | null;
   seasons: PlayerConeSeason[];
-  legend: { outer: Cell; inner: Cell; expected: Cell };
+  legend: { outer: Cell; inner: Cell; expected: Cell; replacement: Cell };
+  /** The words over the seasons not established (no range is drawn there), when there are any. */
+  pending: Cell | null;
   /** The chart's axis, in wins. */
   axis: { low: number; high: number };
   checked: Claim | null;
@@ -232,6 +234,8 @@ export interface PlayerHistoryView {
   log: PlayerLogEntry[];
   logNote: Cell | null;
   tables: PlayerTable[];
+  /** Said when the export has no record of him at all (no table to choose). */
+  tablesEmpty: Cell | null;
   contact: PlayerContactView | null;
 }
 

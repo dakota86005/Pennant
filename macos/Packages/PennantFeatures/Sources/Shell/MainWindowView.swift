@@ -120,10 +120,12 @@ struct ShellSplitView: View {
 }
 
 extension ShellSplitView {
-    /// A served result: its view in this window, or a club's window (a player's for now: his club's); the field clears.
+    /// A served result: its view in this window, a player's own window (N11), or a club's; the field clears.
     func openSearchResult(_ target: Components.Schemas.Target) {
         if let route = route(target) {
             window.go(to: route)
+        } else if let player = playerRef(opening: target) {
+            openWindow(value: player)
         } else if let club = clubRef(opening: target) {
             openWindow(value: club)
         }
@@ -230,10 +232,12 @@ struct PaletteOverlay: View {
         }
     }
 
-    /// A served target: a view in this window, or a club's window (a player's for now: his club's).
+    /// A served target: a view in this window, a player's own window (N11), or a club's.
     private func open(_ target: Components.Schemas.Target) {
         if let route = route(target) {
             window.go(to: route)
+        } else if let player = playerRef(opening: target) {
+            openWindow(value: player)
         } else if let club = clubRef(opening: target) {
             openWindow(value: club)
         }

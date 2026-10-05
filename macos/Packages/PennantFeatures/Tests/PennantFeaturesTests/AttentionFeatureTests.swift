@@ -176,11 +176,14 @@ struct AttentionFeatureTests {
         #expect(failed.entries.contains { $0.id == "command.refreshData" })
         let offline = PaletteIndex(registry: registry, catalog: nil, can: can, inspectorShown: false)
         #expect(offline.entries.contains { $0.id.hasPrefix("view.") })
-        // A free agent: a player target with no club to open
+        // A target this build can't open (a view of no department); a free agent, with no club, opens his own window (N11)
         var answer = try #require(PreviewFixtures.search)
         var group = try #require(answer.groups.first)
         var result = try #require(group.results.first)
-        result.open = .init(kind: .init(value1: .player, value2: "player"), playerId: 1000)
+        result.open = .init(kind: .init(value1: .view, value2: "view"), view: "nowhere")
+        var freeAgent = result
+        freeAgent.open = .init(kind: .init(value1: .player, value2: "player"), playerId: 1000)
+        #expect(PaletteIndex.opens(try #require(freeAgent.open)))
         group.results = [result] + group.results
         answer.groups = [group] + answer.groups.dropFirst()
         let index = PaletteIndex(registry: registry, catalog: nil, can: can, inspectorShown: false, search: answer)

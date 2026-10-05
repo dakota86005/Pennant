@@ -1,6 +1,7 @@
 import FeatureCore
 import PennantAPI
 import PennantKit
+import Player
 import Shell
 import SwiftUI
 
@@ -41,6 +42,26 @@ struct PennantApp: App {
         }
         .defaultSize(width: 1180, height: 820)
         // A club window opens only for a club (never File ▸ New Club Window with none)
+        .commandsRemoved()
+
+        // A player's dossier, one window per player (N11): opened or brought forward from his name anywhere, restored at
+        // relaunch (its value is his id)
+        WindowGroup("Player", for: PlayerRef.self) { player in
+            PlayerWindowScene(player: player.wrappedValue)
+                .environment(appDelegate.model)
+                .environment(appDelegate.routing)
+        }
+        .defaultSize(width: 920, height: 780)
+        // A player window opens only for a player (never File ▸ New Player Window with none)
+        .commandsRemoved()
+
+        // Two to four players side by side (N11): drop players on it or choose Compare; restored with its players
+        WindowGroup("Compare", for: ComparisonRef.self) { comparison in
+            CompareWindowView(value: comparison)
+                .environment(appDelegate.model)
+                .environment(appDelegate.routing)
+        }
+        .defaultSize(width: 980, height: 760)
         .commandsRemoved()
 
         Window("Set Up Pennant", id: SceneID.setup) {

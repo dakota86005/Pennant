@@ -17,7 +17,7 @@ public struct PaletteIndex: Sendable {
     public enum Action: Sendable, Hashable {
         case route(AppRoute)
         case command(Command)
-        /// A served search result's target: a view, a club's window, or a player's nearest view (his club's window).
+        /// A served search result's target: a view, a club's window, or a player's own window (N11).
         case served(Components.Schemas.Target)
     }
 
@@ -87,10 +87,9 @@ public struct PaletteIndex: Sendable {
 
     public func action(for entry: PaletteEntry) -> Action? { actions[entry.id] }
 
-    /// Whether a served target opens anything here: a view, or a club's window (a player with no club served opens
-    /// nothing until player windows).
+    /// Whether a served target opens anything here: a view, a player's own window (N11), or a club's window.
     static func opens(_ target: Components.Schemas.Target) -> Bool {
-        route(target) != nil || clubRef(opening: target) != nil
+        route(target) != nil || playerRef(opening: target) != nil || clubRef(opening: target) != nil
     }
 
     /// A served result's symbol by its kind.

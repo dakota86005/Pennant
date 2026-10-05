@@ -23,7 +23,7 @@ let package = Package(
     name: "PennantFeatures",
     platforms: [.macOS(.v26)],
     products: [
-        .library(name: "PennantFeatures", targets: ["FeatureCore", "Shell", "Setup"] + departments),
+        .library(name: "PennantFeatures", targets: ["FeatureCore", "Shell", "Setup", "Player"] + departments),
     ],
     dependencies: [
         .package(path: "../PennantAPI"),
@@ -65,9 +65,20 @@ let package = Package(
             ],
             swiftSettings: concurrency
         ),
+        // N11: the player window and Compare (not a department: any view opens a player, `WindowGroup(for: PlayerRef.self)`)
+        .target(
+            name: "Player",
+            dependencies: [
+                "FeatureCore",
+                .product(name: "PennantAPI", package: "PennantAPI"),
+                .product(name: "PennantKit", package: "PennantKit"),
+                .product(name: "PennantDesign", package: "PennantDesign"),
+            ],
+            swiftSettings: concurrency
+        ),
         .testTarget(
             name: "PennantFeaturesTests",
-            dependencies: ["FeatureCore", "Shell", "Setup"] + departments.map { .target(name: $0) } + [
+            dependencies: ["FeatureCore", "Shell", "Setup", "Player"] + departments.map { .target(name: $0) } + [
                 .product(name: "PennantAPI", package: "PennantAPI"),
                 .product(name: "PennantKit", package: "PennantKit"),
                 .product(name: "PennantDesign", package: "PennantDesign"),

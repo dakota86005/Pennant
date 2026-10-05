@@ -50,7 +50,7 @@ struct ProspectsBoard: View {
         } table: {
                 Table(of: Components.Schemas.FarmProspectRow.self, selection: $selection, sortOrder: $order, columnCustomization: $columns) {
                     TableColumn("Player", sortUsing: ServedColumnSort("player") { .served($0.sort.player?.value1, $0.sort.player?.value2) }) {
-                        CellText($0.cells.player).fontWeight(.medium)
+                        FarmPlayerCell(cell: $0.cells.player, fill: $0.ratingsFill)
                     }
                     .width(min: 90, ideal: 150).customizationID("player")
                     TableColumn("Age", sortUsing: ServedColumnSort("age") { .served($0.sort.age?.value1, $0.sort.age?.value2) }) { CellText($0.cells.age).monospacedDigit() }

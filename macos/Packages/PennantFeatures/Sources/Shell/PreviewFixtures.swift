@@ -182,6 +182,26 @@ nonisolated public enum PreviewFixtures {
         )
     }
 
+    /// The player windows (N11): the captured dossier, notes and comparison, and the fuller ones the player tests word from
+    /// the synthetic save with history, a log and honours added (`contract/fixtures/player/`).
+    @MainActor
+    public static var players: PlayerStore {
+        let dossiers = [
+            decode(Components.Schemas.PlayerDossierView.self, "getPlayerDossier"),
+            playerFixture(Components.Schemas.PlayerDossierView.self, "dossier-rich"),
+        ].compactMap { $0 }
+        let notes = decode(Components.Schemas.StaffNoteChange.self, "restoreStaffNote-restored")?.notes
+        let comparisons = [decode(Components.Schemas.PlayerCompareView.self, "getPlayerCompare"), playerFixture(Components.Schemas.PlayerCompareView.self, "compare-three")]
+        // The rich dossier is the regular's own (it replaces the captured one in the store, by his id)
+        return .preview(dossiers: dossiers, notes: notes.map { [$0] } ?? [], comparisons: comparisons.compactMap { $0 })
+    }
+
+    /// A player payload the player tests word for the previews (`contract/fixtures/player/<name>.json`).
+    public static func playerFixture<T: Decodable>(_ type: T.Type, _ name: String) -> T? {
+        guard let data = try? Data(contentsOf: repositoryRoot.appending(path: "contract/fixtures/player/\(name).json")) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
     /// A farm payload the farm's tests word for the previews (`contract/fixtures/farm/<name>.json`).
     public static func farmFixture<T: Decodable>(_ type: T.Type, _ name: String) -> T? {
         guard let data = try? Data(contentsOf: repositoryRoot.appending(path: "contract/fixtures/farm/\(name).json")) else { return nil }
@@ -259,7 +279,8 @@ nonisolated public enum PreviewFixtures {
         since: Bool = false,
         following: FollowingStore? = nil,
         clubOwed: Components.Schemas.ClubOwed? = nil,
-        farm: FarmStore? = nil
+        farm: FarmStore? = nil,
+        players: PlayerStore? = nil
     ) -> AppModel {
         var status = status(configured: configured)
         if let clubOwed { status?.clubOwed = clubOwed }
@@ -296,7 +317,8 @@ nonisolated public enum PreviewFixtures {
             following: configured ? (following ?? Self.following()) : nil,
             league: configured ? league : nil,
             farm: configured ? (farm ?? Self.farm) : nil,
-            majorLeague: configured ? majorLeague : nil
+            majorLeague: configured ? majorLeague : nil,
+            players: configured ? (players ?? Self.players) : nil
         )
     }
 

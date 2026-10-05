@@ -10719,13 +10719,21 @@
               },
               "expected": {
                 "$ref": "#/components/schemas/Cell"
+              },
+              "replacement": {
+                "$ref": "#/components/schemas/Cell"
               }
             },
             "required": [
               "outer",
               "inner",
-              "expected"
+              "expected",
+              "replacement"
             ]
+          },
+          "pending": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The words over the seasons not established (no range is drawn there), when there are any."
           },
           "axis": {
             "type": "object",
@@ -11027,6 +11035,10 @@
             "items": {
               "$ref": "#/components/schemas/PlayerTable"
             }
+          },
+          "tablesEmpty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Said when the export has no record of him at all (no table to choose)."
           },
           "contact": {
             "$ref": "#/components/schemas/PlayerContactView"

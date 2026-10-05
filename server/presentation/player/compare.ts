@@ -132,7 +132,8 @@ function scoutedRows(views: readonly PlayerDossierView[]): CompareRow[] {
       id: `grade-${o.group}-${o.id}`, label: o.label,
       cells: views.map((v) => {
         const r = v.ratings.groups.find((g) => g.id === o.group)?.rows.find((x) => x.id === o.id);
-        return r ? shown(r.cells.grade, r.now === null ? null : { low: r.now, high: r.ceiling ?? r.now, mid: r.now }) : dash(`No ${o.group} grades for him`);
+        // A grade is a point on the scale, not a range: no bar (its words, and the OSA mark's hint, are the cell)
+        return r ? shown(r.cells.grade) : dash(`No ${o.group} grades for him`);
       }),
       reading: null,
     });

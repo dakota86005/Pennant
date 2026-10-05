@@ -69,6 +69,8 @@ public final class AppModel {
     public private(set) var farm: FarmStore
     /// Major League Ops' views and decisions (`MajorLeagueStore`, N8), loaded on `storeKey`.
     public private(set) var majorLeague: MajorLeagueStore
+    /// The player windows and Compare (N11): each player's dossier, the GM's notes, comparisons.
+    public private(set) var players: PlayerStore
     /// The club question still open for the chosen save, as the server last said on the status or the settings (N7,
     /// D-063's club question): while it is set the window holds the report and asks, across a relaunch. Nil when none.
     public private(set) var clubOwed: Components.Schemas.ClubOwed?
@@ -132,6 +134,7 @@ public final class AppModel {
         league = LeagueStore { line in log.write(line, source: "app") }
         farm = FarmStore { line in log.write(line, source: "app") }
         majorLeague = MajorLeagueStore { line in log.write(line, source: "app") }
+        players = PlayerStore { line in log.write(line, source: "app") }
     }
 
     #if DEBUG
@@ -152,7 +155,8 @@ public final class AppModel {
         following: FollowingStore? = nil,
         league: LeagueStore? = nil,
         farm: FarmStore? = nil,
-        majorLeague: MajorLeagueStore? = nil
+        majorLeague: MajorLeagueStore? = nil,
+        players: PlayerStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -174,6 +178,7 @@ public final class AppModel {
             model.majorLeague = majorLeague
             majorLeague.previewAdopt(model.storeKey)
         }
+        if let players { model.players = players }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }

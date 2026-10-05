@@ -1,8 +1,8 @@
 {
   "playerId": 1000,
   "orgId": 1,
-  "importStamp": null,
-  "reportStamp": "rstamp",
+  "importStamp": "2040-05-06T12:00:00.000Z",
+  "reportStamp": "r1",
   "name": "P 1000",
   "open": {
     "kind": "player",
@@ -16,7 +16,7 @@
     },
     "nickname": null,
     "line": {
-      "display": "3B · Bats L, throws R · Age 33"
+      "display": "LF · Bats S, throws R · Age 30"
     },
     "club": {
       "display": "Club 1 N (MLB)",
@@ -35,7 +35,7 @@
           "hint": "His deal as the export states it"
         },
         "figure": {
-          "text": "$1.3M in 2040",
+          "text": "$700K in 2040",
           "tone": "neutral",
           "basis": {
             "because": [
@@ -45,7 +45,7 @@
               },
               {
                 "label": "This season",
-                "value": "$1.3M in 2040"
+                "value": "$700K in 2040"
               },
               {
                 "label": "Term",
@@ -53,18 +53,18 @@
               },
               {
                 "label": "After this season",
-                "value": "Controlled through 2046 at least"
+                "value": "Free agent after 2045"
               },
               {
                 "label": "Why",
-                "value": "Under contract at $1,301,000. Between pre-arbitration and arbitration: which one is not yet established. The Super Two cutoff for the winter after 2043 depends on that season's class, which the export does not hold yet. Past the start of the year before arbitration (2 years 0 days) by 2044 if he stays on the major-league roster for the rest of 2040; not until 2045 if he is optioned or outrighted. He needs 240 more days and 34 remain this season."
+                "value": "Under contract at $700,000."
               }
             ],
             "source": {
               "department": "finance",
               "specialist": "Player Value",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [
               "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
@@ -76,9 +76,9 @@
           },
           "links": [],
           "value": {
-            "n": 1301000,
+            "n": 700000,
             "unit": "dollars",
-            "display": "$1.3M"
+            "display": "$700K"
           }
         },
         "lines": [
@@ -86,7 +86,7 @@
             "display": "Signed through 2041"
           },
           {
-            "display": "Controlled through 2046 at least",
+            "display": "Free agent after 2045",
             "hint": "Why: see the basis"
           },
           {
@@ -102,7 +102,7 @@
           "hint": "His projected wins above a minimum-salary player"
         },
         "figure": {
-          "text": "Most likely 1.5 wins",
+          "text": "Most likely 0.1 wins",
           "tone": "neutral",
           "basis": {
             "because": [
@@ -112,14 +112,14 @@
               },
               {
                 "label": "The range",
-                "value": "Could be −2.0 wins to 6.0 wins (2040–2046). The range covers every reasonable combination of how he plays, what a win costs and what he'll be paid. It is deliberately wide: a range of outcomes, not a forecast."
+                "value": "Could be −3.7 wins to 6.5 wins (2040–2045). The range covers every reasonable combination of how he plays, what a win costs and what he'll be paid. It is deliberately wide: a range of outcomes, not a forecast."
               }
             ],
             "source": {
               "department": "finance",
               "specialist": "Player Value",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [],
             "wouldChange": [],
@@ -130,16 +130,16 @@
           },
           "links": [],
           "value": {
-            "n": 1.4529498034972397,
+            "n": 0.14051342082919246,
             "unit": "wins",
-            "display": "1.5 wins",
-            "low": -1.979844272529143,
-            "high": 5.952035388841629
+            "display": "0.1 wins",
+            "low": -3.6607444649746896,
+            "high": 6.4979026860840605
           }
         },
         "lines": [
           {
-            "display": "could be −2.0 wins to 6.0 wins (2040–2046)",
+            "display": "could be −3.7 wins to 6.5 wins (2040–2045)",
             "hint": "A range of outcomes, not a forecast"
           }
         ]
@@ -151,7 +151,7 @@
           "hint": "Your scouts' grades for his tools, averaged"
         },
         "figure": {
-          "text": "54 → 54",
+          "text": "34 → 34",
           "tone": "neutral",
           "basis": {
             "because": [
@@ -161,22 +161,22 @@
               },
               {
                 "label": "Whose grades",
-                "value": "Which kind of ratings the export carries isn't known. This import was made before Pennant recorded which kind of ratings the export carries."
+                "value": "OSA's view: our scouts haven't rated him."
               },
               {
                 "label": "Now",
-                "value": "54"
+                "value": "34"
               },
               {
                 "label": "Ceiling",
-                "value": "54"
+                "value": "34"
               }
             ],
             "source": {
               "department": "scouting",
               "specialist": "Our scouts",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [],
             "wouldChange": [
@@ -212,8 +212,8 @@
         "source": {
           "department": "frontOffice",
           "specialist": "Data status",
-          "asOf": null,
-          "gameDate": "2040-05-06"
+          "asOf": "2040-05-06T12:00:00.000Z",
+          "gameDate": "2040-5-6"
         },
         "unknown": [
           "The export's freshness could not be checked against the save."
@@ -227,7 +227,10 @@
       },
       "links": []
     },
-    "ratingsFill": null
+    "ratingsFill": {
+      "display": "OSA",
+      "hint": "OSA's view: our scouts haven't rated him."
+    }
   },
   "overview": {
     "facts": [
@@ -236,7 +239,7 @@
           "display": "Position"
         },
         "value": {
-          "display": "3B"
+          "display": "LF"
         },
         "claim": null
       },
@@ -245,7 +248,7 @@
           "display": "Bats / throws"
         },
         "value": {
-          "display": "L / R"
+          "display": "S / R"
         },
         "claim": null
       },
@@ -254,7 +257,7 @@
           "display": "Age"
         },
         "value": {
-          "display": "33"
+          "display": "30"
         },
         "claim": null
       },
@@ -263,7 +266,7 @@
           "display": "Born"
         },
         "value": {
-          "display": "May 23, 2007"
+          "display": "May 5, 2010"
         },
         "claim": null
       },
@@ -290,14 +293,14 @@
           "display": "Major-league service"
         },
         "value": {
-          "display": "0 years"
+          "display": "1 year"
         },
         "claim": null
       }
     ],
     "assignment": null,
     "thisSeason": {
-      "text": "2040: 124 PA · .000/.000/.000 · 0 HR",
+      "text": "2040: 108 PA · .000/.000/.000 · 0 HR",
       "tone": "neutral",
       "basis": {
         "because": [
@@ -309,8 +312,8 @@
         "source": {
           "department": "league",
           "specialist": "Statistics",
-          "asOf": null,
-          "gameDate": "2040-05-06"
+          "asOf": "2040-05-06T12:00:00.000Z",
+          "gameDate": "2040-5-6"
         },
         "unknown": [],
         "wouldChange": [],
@@ -320,7 +323,9 @@
       },
       "links": []
     },
-    "honours": null,
+    "honours": {
+      "display": "Silver Slugger (3B) · 2× All-Star"
+    },
     "rights": [
       {
         "action": "option",
@@ -335,14 +340,14 @@
             "because": [
               {
                 "label": "Observed in OOTP and documented",
-                "value": "0 of 3 option years used and 0 years of service: OOTP allowed an option in every observed case like this."
+                "value": "0 of 3 option years used and 1 years of service: OOTP allowed an option in every observed case like this."
               }
             ],
             "source": {
               "department": "majorLeague",
               "specialist": "Player Rights",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [
               "An option year is charged at the next day rollover once he has spent a day off the active roster; a same-day round trip costs none."
@@ -374,8 +379,8 @@
             "source": {
               "department": "majorLeague",
               "specialist": "Player Rights",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [
               "Whether the waivers will be irrevocable is not predicted; read the flag once he is designated."
@@ -399,13 +404,13 @@
       }
     },
     "source": {
-      "text": "Not known",
-      "tone": "neutral",
+      "text": "OSA's view: our scouts haven't rated him.",
+      "tone": "caution",
       "basis": {
         "because": [
           {
             "label": "Whose grades",
-            "value": "Which kind of ratings the export carries isn't known. This import was made before Pennant recorded which kind of ratings the export carries."
+            "value": "OSA's view: our scouts haven't rated him."
           },
           {
             "label": "The scale",
@@ -415,10 +420,12 @@
         "source": {
           "department": "scouting",
           "specialist": "Our scouts",
-          "asOf": null,
-          "gameDate": "2040-05-06"
+          "asOf": "2040-05-06T12:00:00.000Z",
+          "gameDate": "2040-5-6"
         },
-        "unknown": [],
+        "unknown": [
+          "Our scouts haven't filed a report on him, so these are OSA's grades, the league's shared scouting service."
+        ],
         "wouldChange": [
           "A new scouting report on him."
         ],
@@ -428,7 +435,10 @@
       },
       "links": []
     },
-    "ratingsFill": null,
+    "ratingsFill": {
+      "display": "OSA",
+      "hint": "OSA's view: our scouts haven't rated him."
+    },
     "velocity": null,
     "groups": [
       {
@@ -444,15 +454,16 @@
                 "display": "Contact"
               },
               "grade": {
-                "display": "51"
+                "display": "33",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
               "tool": "Contact",
-              "grade": 51
+              "grade": 33
             },
-            "now": 51,
-            "ceiling": 51
+            "now": 33,
+            "ceiling": 33
           },
           {
             "id": "gap",
@@ -461,15 +472,16 @@
                 "display": "Gap power"
               },
               "grade": {
-                "display": "58"
+                "display": "29",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
               "tool": "Gap power",
-              "grade": 58
+              "grade": 29
             },
-            "now": 58,
-            "ceiling": 58
+            "now": 29,
+            "ceiling": 29
           },
           {
             "id": "power",
@@ -478,15 +490,16 @@
                 "display": "Power"
               },
               "grade": {
-                "display": "53"
+                "display": "39",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
               "tool": "Power",
-              "grade": 53
+              "grade": 39
             },
-            "now": 53,
-            "ceiling": 53
+            "now": 39,
+            "ceiling": 39
           },
           {
             "id": "eye",
@@ -495,15 +508,16 @@
                 "display": "Eye"
               },
               "grade": {
-                "display": "49"
+                "display": "30",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
               "tool": "Eye",
-              "grade": 49
+              "grade": 30
             },
-            "now": 49,
-            "ceiling": 49
+            "now": 30,
+            "ceiling": 30
           },
           {
             "id": "avoidK",
@@ -512,15 +526,16 @@
                 "display": "Avoiding strikeouts"
               },
               "grade": {
-                "display": "59"
+                "display": "39",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
               "tool": "Avoiding strikeouts",
-              "grade": 59
+              "grade": 39
             },
-            "now": 59,
-            "ceiling": 59
+            "now": 39,
+            "ceiling": 39
           },
           {
             "id": "speed",
@@ -529,7 +544,8 @@
                 "display": "Speed"
               },
               "grade": {
-                "display": "50"
+                "display": "50",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
@@ -547,7 +563,8 @@
               },
               "grade": {
                 "display": "Not scouted",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
@@ -565,7 +582,8 @@
               },
               "grade": {
                 "display": "Not scouted",
-                "tone": "unknown"
+                "tone": "unknown",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
@@ -586,21 +604,21 @@
         },
         "rows": [
           {
-            "id": "pos-5",
+            "id": "pos-7",
             "cells": {
               "tool": {
-                "display": "3B · listed"
+                "display": "LF · listed"
               },
               "grade": {
-                "display": "58 → 60",
-                "hint": "Now, then his ceiling"
+                "display": "67",
+                "hint": "OSA's view: our scouts haven't rated him."
               }
             },
             "sort": {
-              "tool": "3B · listed",
-              "grade": 58
+              "tool": "LF · listed",
+              "grade": 67
             },
-            "now": 58,
+            "now": 67,
             "ceiling": 60
           }
         ],
@@ -615,13 +633,172 @@
         "display": "Rating history",
         "hint": "Your scouts' average grades at each import"
       },
-      "points": [],
-      "table": null,
-      "empty": {
-        "display": "No rating history for him in this save yet"
+      "points": [
+        {
+          "index": 0,
+          "date": "2039-6-1",
+          "label": {
+            "display": "June 1, 2039"
+          },
+          "now": 50,
+          "ceiling": 56
+        },
+        {
+          "index": 1,
+          "date": "2039-9-28",
+          "label": {
+            "display": "September 28, 2039"
+          },
+          "now": 52,
+          "ceiling": 56
+        },
+        {
+          "index": 2,
+          "date": "2040-4-30",
+          "label": {
+            "display": "April 30, 2040"
+          },
+          "now": 54,
+          "ceiling": 57
+        }
+      ],
+      "table": {
+        "id": "ratingHistory",
+        "title": {
+          "display": "Snapshots"
+        },
+        "columns": [
+          {
+            "id": "date",
+            "title": {
+              "display": "Date"
+            },
+            "numeric": false
+          },
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": false
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "0",
+            "cells": {
+              "date": {
+                "display": "June 1, 2039"
+              },
+              "level": {
+                "display": "MLB"
+              },
+              "now": {
+                "display": "50"
+              },
+              "ceiling": {
+                "display": "56"
+              }
+            },
+            "sort": {
+              "date": 0,
+              "level": 1,
+              "now": 50,
+              "ceiling": 56
+            }
+          },
+          {
+            "id": "1",
+            "cells": {
+              "date": {
+                "display": "September 28, 2039"
+              },
+              "level": {
+                "display": "MLB"
+              },
+              "now": {
+                "display": "52"
+              },
+              "ceiling": {
+                "display": "56"
+              }
+            },
+            "sort": {
+              "date": 1,
+              "level": 1,
+              "now": 52,
+              "ceiling": 56
+            }
+          },
+          {
+            "id": "2",
+            "cells": {
+              "date": {
+                "display": "April 30, 2040"
+              },
+              "level": {
+                "display": "MLB"
+              },
+              "now": {
+                "display": "54"
+              },
+              "ceiling": {
+                "display": "57"
+              }
+            },
+            "sort": {
+              "date": 2,
+              "level": 1,
+              "now": 54,
+              "ceiling": 57
+            }
+          }
+        ],
+        "empty": null,
+        "note": null
       },
-      "sourceSwitch": null,
-      "summary": "No rating history for him in this save yet."
+      "empty": null,
+      "sourceSwitch": {
+        "text": "His ratings came from your scouts' full reports, then from OSA's view",
+        "tone": "unknown",
+        "basis": {
+          "because": [
+            {
+              "label": "What changed",
+              "value": "His ratings came from your scouts' full reports, then from OSA's view"
+            }
+          ],
+          "source": {
+            "department": "scouting",
+            "specialist": "Rating history",
+            "asOf": "2040-05-06T12:00:00.000Z",
+            "gameDate": "2040-5-6"
+          },
+          "unknown": [
+            "His snapshots from the other source are left out of the chart: a change of source isn't development."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
+        },
+        "links": []
+      },
+      "summary": "Scouted now and ceiling at each snapshot: June 1, 2039, 50 now, 56 ceiling; September 28, 2039, 52 now, 56 ceiling; April 30, 2040, 54 now, 57 ceiling."
     }
   },
   "value": {
@@ -635,7 +812,7 @@
           "hint": "His wins over a minimum-salary replacement"
         },
         "headline": {
-          "text": "Most likely 1.5 wins",
+          "text": "Most likely 0.1 wins",
           "tone": "neutral",
           "basis": {
             "because": [
@@ -649,14 +826,14 @@
               },
               {
                 "label": "Seasons",
-                "value": "2040–2046"
+                "value": "2040–2045"
               }
             ],
             "source": {
               "department": "finance",
               "specialist": "Player Value",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [],
             "wouldChange": [],
@@ -667,15 +844,15 @@
           },
           "links": [],
           "value": {
-            "n": 1.4529498034972397,
+            "n": 0.14051342082919246,
             "unit": "wins",
-            "display": "1.5 wins",
-            "low": -1.979844272529143,
-            "high": 5.952035388841629
+            "display": "0.1 wins",
+            "low": -3.6607444649746896,
+            "high": 6.4979026860840605
           }
         },
         "couldBe": {
-          "display": "could be −2.0 wins to 6.0 wins (2040–2046)",
+          "display": "could be −3.7 wins to 6.5 wins (2040–2045)",
           "hint": "A range of outcomes, not a forecast"
         },
         "established": null,
@@ -687,17 +864,17 @@
     ],
     "ourView": {
       "title": {
-        "display": "Our view · Club 1 N",
+        "display": "Our view · Club 1",
         "hint": "The same figures read through our philosophy"
       },
       "figures": [
         {
-          "display": "Wins above replacement: 1.5 wins (neutral 1.5 wins)"
+          "display": "Wins above replacement: 0.1 wins (neutral 0.1 wins)"
         }
       ],
       "leans": [],
       "line": {
-        "display": "The Club 1 N's philosophy doesn't lean on him: our view is the same as above"
+        "display": "The Club 1's philosophy doesn't lean on him: our view is the same as above"
       }
     },
     "cone": {
@@ -712,75 +889,76 @@
           "season": 2040,
           "label": {
             "display": "2040",
-            "hint": "age 33 · Signed"
+            "hint": "age 30 · Signed"
           },
           "established": true,
-          "expected": 0.4939823328316202,
+          "expected": 0.03248509885432944,
           "outer": {
-            "low": -0.2794450231536445,
-            "high": 0.9891871705436296
+            "low": -0.5953987789400577,
+            "high": 0.6702008987300296
           },
           "inner": {
-            "low": 0.023995008640964738,
-            "high": 0.9486960837479713
+            "low": -0.38893485582799114,
+            "high": 0.5199774937765608
           },
-          "banked": 0.1,
+          "banked": 0,
           "control": {
             "display": "Signed"
           },
           "cost": {
-            "display": "$1.3M"
+            "display": "$700K"
           },
           "detail": {
-            "text": "2040: 0.5 wins expected (<0.1 to 0.9 half the time)",
+            "text": "2040: <0.1 wins expected (−0.4 to 0.5 half the time)",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "Season",
-                  "value": "2040 · age 33 · Signed"
+                  "value": "2040 · age 30 · Signed"
                 },
                 {
                   "label": "Expected",
-                  "value": "0.5 wins"
+                  "value": "<0.1 wins"
                 },
                 {
                   "label": "80% range (not yet checked)",
-                  "value": "−0.3 to 1.0 (80% target · not measured on this save)"
+                  "value": "−0.6 to 0.7 (80% target · not measured on this save)"
                 },
                 {
                   "label": "50% range",
-                  "value": "<0.1 to 0.9 (50% target · not measured on this save)"
+                  "value": "−0.4 to 0.5 (50% target · not measured on this save)"
                 },
                 {
                   "label": "Banked",
-                  "value": "0.1 so far this season"
+                  "value": "0.0 so far this season"
                 },
                 {
                   "label": "Playing time",
-                  "value": "about 115 PA (98–130)"
+                  "value": "about 85 PA (66–123)"
                 },
                 {
                   "label": "Cost",
-                  "value": "$1.3M"
+                  "value": "$700K"
                 },
                 {
                   "label": "Control",
-                  "value": "Under contract at $1,301,000."
+                  "value": "Under contract at $700,000."
                 },
                 {
                   "label": "Rests on",
-                  "value": "Major-league results 2039–2040: 348 PA as a hitter (scouted ratings 58% of his rate)"
+                  "value": "Major-league results 2038–2040: 524 PA as a hitter (scouted ratings 52% of his rate)"
                 }
               ],
               "source": {
                 "department": "finance",
                 "specialist": "Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-06"
+                "asOf": "2040-05-06T12:00:00.000Z",
+                "gameDate": "2040-5-6"
               },
               "unknown": [
                 "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
+                "How much playing time holds within this season is not measured on this season's games: the rest of 2040 is read from next season's attrition, scaled to what is left, and keeping his pace is inside the band.",
                 "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
               ],
               "wouldChange": [],
@@ -791,11 +969,11 @@
             },
             "links": [],
             "value": {
-              "n": 0.4939823328316202,
+              "n": 0.03248509885432944,
               "unit": "wins",
-              "display": "0.5 wins",
-              "low": -0.2794450231536445,
-              "high": 0.9891871705436296
+              "display": "<0.1 wins",
+              "low": -0.5953987789400577,
+              "high": 0.6702008987300296
             }
           }
         },
@@ -803,297 +981,33 @@
           "season": 2041,
           "label": {
             "display": "2041",
-            "hint": "age 34 · Signed"
+            "hint": "age 31 · Signed"
           },
           "established": true,
-          "expected": 0.5268357457726895,
+          "expected": 0.1331921639414426,
           "outer": {
-            "low": -0.4692256207580093,
-            "high": 1.8796979837658168
+            "low": -0.7673086379264611,
+            "high": 1.5959204361278594
           },
           "inner": {
-            "low": -0.10715658832162395,
-            "high": 1.1455924886811653
+            "low": -0.5068764330888618,
+            "high": 0.6904834353405465
           },
           "banked": null,
           "control": {
             "display": "Signed"
           },
           "cost": {
-            "display": "$1.3M"
+            "display": "$700K"
           },
           "detail": {
-            "text": "2041: 0.5 wins expected (−0.1 to 1.1 half the time)",
+            "text": "2041: 0.1 wins expected (−0.5 to 0.7 half the time)",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "Season",
-                  "value": "2041 · age 34 · Signed"
-                },
-                {
-                  "label": "Expected",
-                  "value": "0.5 wins"
-                },
-                {
-                  "label": "80% range (not yet checked)",
-                  "value": "−0.5 to 1.9 (80% target · not measured on this save)"
-                },
-                {
-                  "label": "50% range",
-                  "value": "−0.1 to 1.1 (50% target · not measured on this save)"
-                },
-                {
-                  "label": "Playing time",
-                  "value": "about 154 PA (32–238)"
-                },
-                {
-                  "label": "Cost",
-                  "value": "$1.3M"
-                },
-                {
-                  "label": "Control",
-                  "value": "Under contract at $1,301,000. Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
-                },
-                {
-                  "label": "Rests on",
-                  "value": "Major-league results 2039–2040: 348 PA as a hitter (scouted ratings 58% of his rate)"
-                }
-              ],
-              "source": {
-                "department": "finance",
-                "specialist": "Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-06"
-              },
-              "unknown": [
-                "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
-                "The league has no major-league season 2038, 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
-                "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
-              ],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "policy",
-              "called": "A line chosen and stated",
-              "stamp": "Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
-            },
-            "links": [],
-            "value": {
-              "n": 0.5268357457726895,
-              "unit": "wins",
-              "display": "0.5 wins",
-              "low": -0.4692256207580093,
-              "high": 1.8796979837658168
-            }
-          }
-        },
-        {
-          "season": 2042,
-          "label": {
-            "display": "2042",
-            "hint": "age 35 · Pre-arbitration"
-          },
-          "established": true,
-          "expected": 0.34495815774879623,
-          "outer": {
-            "low": -0.4695532267393958,
-            "high": 1.5961992565113052
-          },
-          "inner": {
-            "low": -0.11378201997951631,
-            "high": 0.8411529440212343
-          },
-          "banked": null,
-          "control": {
-            "display": "Pre-arbitration"
-          },
-          "cost": {
-            "display": "$700K–$11.8M"
-          },
-          "detail": {
-            "text": "2042: 0.3 wins expected (−0.1 to 0.8 half the time)",
-            "tone": "neutral",
-            "basis": {
-              "because": [
-                {
-                  "label": "Season",
-                  "value": "2042 · age 35 · Pre-arbitration"
-                },
-                {
-                  "label": "Expected",
-                  "value": "0.3 wins"
-                },
-                {
-                  "label": "80% range (not yet checked)",
-                  "value": "−0.5 to 1.6 (80% target · not measured on this save)"
-                },
-                {
-                  "label": "50% range",
-                  "value": "−0.1 to 0.8 (50% target · not measured on this save)"
-                },
-                {
-                  "label": "Playing time",
-                  "value": "about 113 PA (0–217)"
-                },
-                {
-                  "label": "Cost",
-                  "value": "$700K–$11.8M"
-                },
-                {
-                  "label": "Control",
-                  "value": "1 year 0 days to 1 year 35 days of service by then, more than a year short of the arbitration line of 3 years."
-                },
-                {
-                  "label": "Rests on",
-                  "value": "Major-league results 2039–2040: 348 PA as a hitter (scouted ratings 58% of his rate)"
-                }
-              ],
-              "source": {
-                "department": "finance",
-                "specialist": "Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-06"
-              },
-              "unknown": [
-                "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
-                "The league has no major-league season 2038, 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
-                "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
-              ],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "policy",
-              "called": "A line chosen and stated",
-              "stamp": "Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
-            },
-            "links": [],
-            "value": {
-              "n": 0.34495815774879623,
-              "unit": "wins",
-              "display": "0.3 wins",
-              "low": -0.4695532267393958,
-              "high": 1.5961992565113052
-            }
-          }
-        },
-        {
-          "season": 2043,
-          "label": {
-            "display": "2043",
-            "hint": "age 36 · Pre-arbitration"
-          },
-          "established": true,
-          "expected": 0.17385713494771102,
-          "outer": {
-            "low": -0.44088852742032925,
-            "high": 1.204159215591732
-          },
-          "inner": {
-            "low": 0.007984307832400311,
-            "high": 0.384442499395391
-          },
-          "banked": null,
-          "control": {
-            "display": "Pre-arbitration"
-          },
-          "cost": {
-            "display": "$700K–$11.8M"
-          },
-          "detail": {
-            "text": "2043: 0.2 wins expected (<0.1 to 0.4 half the time)",
-            "tone": "neutral",
-            "basis": {
-              "because": [
-                {
-                  "label": "Season",
-                  "value": "2043 · age 36 · Pre-arbitration"
-                },
-                {
-                  "label": "Expected",
-                  "value": "0.2 wins"
-                },
-                {
-                  "label": "80% range (not yet checked)",
-                  "value": "−0.4 to 1.2 (80% target · not measured on this save)"
-                },
-                {
-                  "label": "50% range",
-                  "value": "<0.1 to 0.4 (50% target · not measured on this save)"
-                },
-                {
-                  "label": "Playing time",
-                  "value": "about 72 PA (0–194)"
-                },
-                {
-                  "label": "Cost",
-                  "value": "$700K–$11.8M"
-                },
-                {
-                  "label": "Control",
-                  "value": "1 year 68 days to 1 year 104 days of service by then, more than a year short of the arbitration line of 3 years."
-                },
-                {
-                  "label": "Rests on",
-                  "value": "Major-league results 2039–2040: 348 PA as a hitter (scouted ratings 58% of his rate)"
-                }
-              ],
-              "source": {
-                "department": "finance",
-                "specialist": "Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-06"
-              },
-              "unknown": [
-                "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
-                "The league has no major-league season 2038, 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
-                "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
-              ],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "policy",
-              "called": "A line chosen and stated",
-              "stamp": "Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
-            },
-            "links": [],
-            "value": {
-              "n": 0.17385713494771102,
-              "unit": "wins",
-              "display": "0.2 wins",
-              "low": -0.44088852742032925,
-              "high": 1.204159215591732
-            }
-          }
-        },
-        {
-          "season": 2044,
-          "label": {
-            "display": "2044",
-            "hint": "age 37 · Control not established"
-          },
-          "established": true,
-          "expected": 0.08148477071244352,
-          "outer": {
-            "low": -0.3407904463735407,
-            "high": 0.7816138138943605
-          },
-          "inner": {
-            "low": 0.005161004657932136,
-            "high": 0.0856441695485448
-          },
-          "banked": null,
-          "control": {
-            "display": "Control not established"
-          },
-          "cost": {
-            "display": "not established"
-          },
-          "detail": {
-            "text": "2044: 0.1 wins expected (<0.1 to 0.1 half the time)",
-            "tone": "neutral",
-            "basis": {
-              "because": [
-                {
-                  "label": "Season",
-                  "value": "2044 · age 37 · Control not established"
+                  "value": "2041 · age 31 · Signed"
                 },
                 {
                   "label": "Expected",
@@ -1101,38 +1015,38 @@
                 },
                 {
                   "label": "80% range (not yet checked)",
-                  "value": "−0.3 to 0.8 (80% target · not measured on this save)"
+                  "value": "−0.8 to 1.6 (80% target · not measured on this save)"
                 },
                 {
                   "label": "50% range",
-                  "value": "<0.1 to 0.1 (50% target · not measured on this save)"
+                  "value": "−0.5 to 0.7 (50% target · not measured on this save)"
                 },
                 {
                   "label": "Playing time",
-                  "value": "about 47 PA (0–176)"
+                  "value": "about 126 PA (37–207)"
                 },
                 {
                   "label": "Cost",
-                  "value": "not established"
+                  "value": "$700K"
                 },
                 {
                   "label": "Control",
-                  "value": "Between pre-arbitration and arbitration: which one is not yet established. Between pre-arbitration and arbitration. The Super Two cutoff for the winter after 2043 depends on that season's class, which the export does not hold yet. Past the start of the year before arbitration (2 years 0 days) by 2044 if he stays on the major-league roster for the rest of 2040; not until 2045 if he is optioned or outrighted. He needs 240 more days and 34 remain this season."
+                  "value": "Under contract at $700,000. Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Rests on",
-                  "value": "Major-league results 2039–2040: 348 PA as a hitter (scouted ratings 58% of his rate)"
+                  "value": "Major-league results 2038–2040: 524 PA as a hitter (scouted ratings 52% of his rate)"
                 }
               ],
               "source": {
                 "department": "finance",
                 "specialist": "Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-06"
+                "asOf": "2040-05-06T12:00:00.000Z",
+                "gameDate": "2040-5-6"
               },
               "unknown": [
                 "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
-                "The league has no major-league season 2038, 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
+                "The league has no major-league season 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
                 "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
               ],
               "wouldChange": [],
@@ -1143,11 +1057,275 @@
             },
             "links": [],
             "value": {
-              "n": 0.08148477071244352,
+              "n": 0.1331921639414426,
               "unit": "wins",
               "display": "0.1 wins",
-              "low": -0.3407904463735407,
-              "high": 0.7816138138943605
+              "low": -0.7673086379264611,
+              "high": 1.5959204361278594
+            }
+          }
+        },
+        {
+          "season": 2042,
+          "label": {
+            "display": "2042",
+            "hint": "age 32 · Control not established"
+          },
+          "established": true,
+          "expected": 0.08250804837082507,
+          "outer": {
+            "low": -0.7922533291372948,
+            "high": 1.5462746199536614
+          },
+          "inner": {
+            "low": -0.5120542228520499,
+            "high": 0.4463375027723333
+          },
+          "banked": null,
+          "control": {
+            "display": "Control not established"
+          },
+          "cost": {
+            "display": "not established"
+          },
+          "detail": {
+            "text": "2042: 0.1 wins expected (−0.5 to 0.4 half the time)",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Season",
+                  "value": "2042 · age 32 · Control not established"
+                },
+                {
+                  "label": "Expected",
+                  "value": "0.1 wins"
+                },
+                {
+                  "label": "80% range (not yet checked)",
+                  "value": "−0.8 to 1.5 (80% target · not measured on this save)"
+                },
+                {
+                  "label": "50% range",
+                  "value": "−0.5 to 0.4 (50% target · not measured on this save)"
+                },
+                {
+                  "label": "Playing time",
+                  "value": "about 105 PA (0–203)"
+                },
+                {
+                  "label": "Cost",
+                  "value": "not established"
+                },
+                {
+                  "label": "Control",
+                  "value": "Between pre-arbitration and arbitration: which one is not yet established. Between pre-arbitration and arbitration. The Super Two cutoff for the winter after 2041 depends on that season's class, which the export does not hold yet."
+                },
+                {
+                  "label": "Rests on",
+                  "value": "Major-league results 2038–2040: 524 PA as a hitter (scouted ratings 52% of his rate)"
+                }
+              ],
+              "source": {
+                "department": "finance",
+                "specialist": "Player Value",
+                "asOf": "2040-05-06T12:00:00.000Z",
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [
+                "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
+                "The league has no major-league season 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
+                "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
+              ],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
+            },
+            "links": [],
+            "value": {
+              "n": 0.08250804837082507,
+              "unit": "wins",
+              "display": "0.1 wins",
+              "low": -0.7922533291372948,
+              "high": 1.5462746199536614
+            }
+          }
+        },
+        {
+          "season": 2043,
+          "label": {
+            "display": "2043",
+            "hint": "age 33 · Arbitration 1–2"
+          },
+          "established": true,
+          "expected": -0.0015275611807932924,
+          "outer": {
+            "low": -0.7306275354150755,
+            "high": 1.5304681697379579
+          },
+          "inner": {
+            "low": -0.4140358903625758,
+            "high": 0.2213733025007666
+          },
+          "banked": null,
+          "control": {
+            "display": "Arbitration 1–2"
+          },
+          "cost": {
+            "display": "not established"
+          },
+          "detail": {
+            "text": "2043: −<0.1 wins expected (−0.4 to 0.2 half the time)",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Season",
+                  "value": "2043 · age 33 · Arbitration 1–2"
+                },
+                {
+                  "label": "Expected",
+                  "value": "−<0.1 wins"
+                },
+                {
+                  "label": "80% range (not yet checked)",
+                  "value": "−0.7 to 1.5 (80% target · not measured on this save)"
+                },
+                {
+                  "label": "50% range",
+                  "value": "−0.4 to 0.2 (50% target · not measured on this save)"
+                },
+                {
+                  "label": "Playing time",
+                  "value": "about 83 PA (0–196)"
+                },
+                {
+                  "label": "Cost",
+                  "value": "not established"
+                },
+                {
+                  "label": "Control",
+                  "value": "3 years 1 day to 3 years 138 days of service by then, past the arbitration line of 3 years. Each winter in arbitration is one trip: this is his first to second, as the winters before it are counted."
+                },
+                {
+                  "label": "Rests on",
+                  "value": "Major-league results 2038–2040: 524 PA as a hitter (scouted ratings 52% of his rate)"
+                }
+              ],
+              "source": {
+                "department": "finance",
+                "specialist": "Player Value",
+                "asOf": "2040-05-06T12:00:00.000Z",
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [
+                "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
+                "The league has no major-league season 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
+                "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
+              ],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
+            },
+            "links": [],
+            "value": {
+              "n": -0.0015275611807932924,
+              "unit": "wins",
+              "display": "−<0.1 wins",
+              "low": -0.7306275354150755,
+              "high": 1.5304681697379579
+            }
+          }
+        },
+        {
+          "season": 2044,
+          "label": {
+            "display": "2044",
+            "hint": "age 34 · Arbitration 2–3"
+          },
+          "established": true,
+          "expected": -0.04850446558619393,
+          "outer": {
+            "low": -0.6544899710813359,
+            "high": 1.284037842727083
+          },
+          "inner": {
+            "low": -0.2691313331676024,
+            "high": -0.027412161542268484
+          },
+          "banked": null,
+          "control": {
+            "display": "Arbitration 2–3"
+          },
+          "cost": {
+            "display": "not established"
+          },
+          "detail": {
+            "text": "2044: −<0.1 wins expected (−0.3 to −<0.1 half the time)",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Season",
+                  "value": "2044 · age 34 · Arbitration 2–3"
+                },
+                {
+                  "label": "Expected",
+                  "value": "−<0.1 wins"
+                },
+                {
+                  "label": "80% range (not yet checked)",
+                  "value": "−0.7 to 1.3 (80% target · not measured on this save)"
+                },
+                {
+                  "label": "50% range",
+                  "value": "−0.3 to −<0.1 (50% target · not measured on this save)"
+                },
+                {
+                  "label": "Playing time",
+                  "value": "about 67 PA (0–190)"
+                },
+                {
+                  "label": "Cost",
+                  "value": "not established"
+                },
+                {
+                  "label": "Control",
+                  "value": "4 years 1 day to 4 years 138 days of service by then, past the arbitration line of 3 years. Each winter in arbitration is one trip: this is his second to third, as the winters before it are counted."
+                },
+                {
+                  "label": "Rests on",
+                  "value": "Major-league results 2038–2040: 524 PA as a hitter (scouted ratings 52% of his rate)"
+                }
+              ],
+              "source": {
+                "department": "finance",
+                "specialist": "Player Value",
+                "asOf": "2040-05-06T12:00:00.000Z",
+                "gameDate": "2040-5-6"
+              },
+              "unknown": [
+                "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
+                "The league has no major-league season 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
+                "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
+              ],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
+            },
+            "links": [],
+            "value": {
+              "n": -0.04850446558619393,
+              "unit": "wins",
+              "display": "−<0.1 wins",
+              "low": -0.6544899710813359,
+              "high": 1.284037842727083
             }
           }
         },
@@ -1155,49 +1333,49 @@
           "season": 2045,
           "label": {
             "display": "2045",
-            "hint": "age 38 · Control not established"
+            "hint": "age 35 · Arbitration 3–4"
           },
           "established": true,
-          "expected": 0.027180679751867963,
+          "expected": -0.06692090658546497,
           "outer": {
-            "low": -0.08627530146590685,
-            "high": 0.1720962801373044
+            "low": -0.5697121491232304,
+            "high": 0.6723500294087152
           },
           "inner": {
-            "low": 0.003062311095730009,
-            "high": 0.0296486824086342
+            "low": -0.07102535797849865,
+            "high": -0.060623766280176176
           },
           "banked": null,
           "control": {
-            "display": "Control not established"
+            "display": "Arbitration 3–4"
           },
           "cost": {
             "display": "not established"
           },
           "detail": {
-            "text": "2045: <0.1 wins expected (<0.1 to <0.1 half the time)",
+            "text": "2045: −0.1 wins expected (−0.1 to −0.1 half the time)",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "Season",
-                  "value": "2045 · age 38 · Control not established"
+                  "value": "2045 · age 35 · Arbitration 3–4 · free agent after"
                 },
                 {
                   "label": "Expected",
-                  "value": "<0.1 wins"
+                  "value": "−0.1 wins"
                 },
                 {
                   "label": "80% range (not yet checked)",
-                  "value": "−0.1 to 0.2 (80% target · not measured on this save)"
+                  "value": "−0.6 to 0.7 (80% target · not measured on this save)"
                 },
                 {
                   "label": "50% range",
-                  "value": "<0.1 to <0.1 (50% target · not measured on this save)"
+                  "value": "−0.1 to −0.1 (50% target · not measured on this save)"
                 },
                 {
                   "label": "Playing time",
-                  "value": "about 28 PA (0–139)"
+                  "value": "about 51 PA (0–179)"
                 },
                 {
                   "label": "Cost",
@@ -1205,22 +1383,22 @@
                 },
                 {
                   "label": "Control",
-                  "value": "Between pre-arbitration and arbitration: which one is not yet established. Between pre-arbitration and arbitration. The Super Two cutoff for the winter after 2044 depends on that season's class, which the export does not hold yet."
+                  "value": "5 years 1 day to 5 years 138 days of service by then, past the arbitration line of 3 years. Each winter in arbitration is one trip: this is his third to fourth, as the winters before it are counted."
                 },
                 {
                   "label": "Rests on",
-                  "value": "Major-league results 2039–2040: 348 PA as a hitter (scouted ratings 58% of his rate)"
+                  "value": "Major-league results 2038–2040: 524 PA as a hitter (scouted ratings 52% of his rate)"
                 }
               ],
               "source": {
                 "department": "finance",
                 "specialist": "Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-06"
+                "asOf": "2040-05-06T12:00:00.000Z",
+                "gameDate": "2040-5-6"
               },
               "unknown": [
                 "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
-                "The league has no major-league season 2038, 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
+                "The league has no major-league season 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
                 "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
               ],
               "wouldChange": [],
@@ -1231,99 +1409,11 @@
             },
             "links": [],
             "value": {
-              "n": 0.027180679751867963,
+              "n": -0.06692090658546497,
               "unit": "wins",
-              "display": "<0.1 wins",
-              "low": -0.08627530146590685,
-              "high": 0.1720962801373044
-            }
-          }
-        },
-        {
-          "season": 2046,
-          "label": {
-            "display": "2046",
-            "hint": "age 39 · Control not established"
-          },
-          "established": true,
-          "expected": 0.0077901061811365,
-          "outer": {
-            "low": 0.001614948108828459,
-            "high": 0.009091638291536967
-          },
-          "inner": {
-            "low": 0.001614948108828459,
-            "high": 0.009091638291536967
-          },
-          "banked": null,
-          "control": {
-            "display": "Control not established"
-          },
-          "cost": {
-            "display": "not established"
-          },
-          "detail": {
-            "text": "2046: <0.1 wins expected (<0.1 to <0.1 half the time)",
-            "tone": "neutral",
-            "basis": {
-              "because": [
-                {
-                  "label": "Season",
-                  "value": "2046 · age 39 · Control not established"
-                },
-                {
-                  "label": "Expected",
-                  "value": "<0.1 wins"
-                },
-                {
-                  "label": "80% range (not yet checked)",
-                  "value": "<0.1 to <0.1 (80% target · not measured on this save)"
-                },
-                {
-                  "label": "50% range",
-                  "value": "<0.1 to <0.1 (50% target · not measured on this save)"
-                },
-                {
-                  "label": "Playing time",
-                  "value": "about 15 PA (0–61)"
-                },
-                {
-                  "label": "Cost",
-                  "value": "not established"
-                },
-                {
-                  "label": "Control",
-                  "value": "Between pre-arbitration and arbitration: which one is not yet established. Between pre-arbitration and arbitration. The Super Two cutoff for the winter after 2045 depends on that season's class, which the export does not hold yet."
-                },
-                {
-                  "label": "Rests on",
-                  "value": "Major-league results 2039–2040: 348 PA as a hitter (scouted ratings 58% of his rate)"
-                }
-              ],
-              "source": {
-                "department": "finance",
-                "specialist": "Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-06"
-              },
-              "unknown": [
-                "Not measured on this save: the fallback prior was not tested on its held-out seasons.",
-                "The league has no major-league season 2038, 2037: his playing time there is not known, never nothing; the central reads his pace, the band reaches the reading with nothing.",
-                "His scouted his running is not known: the central uses what is known, and the band reaches the blend with it anywhere from the scale's low end to its high end (never a midpoint)."
-              ],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "policy",
-              "called": "A line chosen and stated",
-              "stamp": "Owner decision (2026-09-24): the neutral view discounts at 5% a season, a time preference (a season s seasons from now weighs 1/1.05^s; this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
-            },
-            "links": [],
-            "value": {
-              "n": 0.0077901061811365,
-              "unit": "wins",
-              "display": "<0.1 wins",
-              "low": 0.001614948108828459,
-              "high": 0.009091638291536967
+              "display": "−0.1 wins",
+              "low": -0.5697121491232304,
+              "high": 0.6723500294087152
             }
           }
         }
@@ -1347,8 +1437,8 @@
       },
       "pending": null,
       "axis": {
-        "low": -0.4695532267393958,
-        "high": 1.8796979837658168
+        "low": -0.7922533291372948,
+        "high": 1.5959204361278594
       },
       "checked": {
         "text": "Not yet checked against this save's own seasons",
@@ -1365,14 +1455,14 @@
             },
             {
               "label": "Detail",
-              "value": "not yet calibrated on this save (0 seasons): the starting fallback prior, rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: hitter mean 2.00, starter mean 1.73, reliever mean -0.21); no fit has been made on this save yet"
+              "value": "not yet calibrated on this save (0 seasons): the starting fallback prior, rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: hitter mean 1.70, starter mean 1.12, reliever mean -1.15); no fit has been made on this save yet"
             }
           ],
           "source": {
             "department": "finance",
             "specialist": "Player Value",
-            "asOf": null,
-            "gameDate": "2040-05-06"
+            "asOf": "2040-05-06T12:00:00.000Z",
+            "gameDate": "2040-5-6"
           },
           "unknown": [],
           "wouldChange": [],
@@ -1385,10 +1475,10 @@
       },
       "notes": [
         {
-          "display": "Held through 2046 at least: the seasons after it aren't settled."
+          "display": "Free agent after 2045."
         }
       ],
-      "summary": "Expected wins above replacement per season. 2040, signed: 0.5 wins expected; 80% range −0.3 to 1.0, 50% range <0.1 to 0.9. 2041, signed: 0.5 wins expected; 80% range −0.5 to 1.9, 50% range −0.1 to 1.1. 2042, pre-arbitration: 0.3 wins expected; 80% range −0.5 to 1.6, 50% range −0.1 to 0.8. 2043, pre-arbitration: 0.2 wins expected; 80% range −0.4 to 1.2, 50% range <0.1 to 0.4. 2044, control not established: 0.1 wins expected; 80% range −0.3 to 0.8, 50% range <0.1 to 0.1. 2045, control not established: <0.1 wins expected; 80% range −0.1 to 0.2, 50% range <0.1 to <0.1. 2046, control not established: <0.1 wins expected; 80% range <0.1 to <0.1, 50% range <0.1 to <0.1."
+      "summary": "Expected wins above replacement per season. 2040, signed: <0.1 wins expected; 80% range −0.6 to 0.7, 50% range −0.4 to 0.5. 2041, signed: 0.1 wins expected; 80% range −0.8 to 1.6, 50% range −0.5 to 0.7. 2042, control not established: 0.1 wins expected; 80% range −0.8 to 1.5, 50% range −0.5 to 0.4. 2043, arbitration 1–2: −<0.1 wins expected; 80% range −0.7 to 1.5, 50% range −0.4 to 0.2. 2044, arbitration 2–3: −<0.1 wins expected; 80% range −0.7 to 1.3, 50% range −0.3 to −<0.1. 2045, arbitration 3–4: −0.1 wins expected; 80% range −0.6 to 0.7, 50% range −0.1 to −0.1."
     },
     "breakdown": {
       "id": "valueSeasons",
@@ -1455,13 +1545,13 @@
               "display": "2040 (rest of season, 50%)"
             },
             "wins": {
-              "display": "0.4 (−0.4 to 0.9)"
+              "display": "<0.1 (−0.6 to 0.7)"
             },
             "price": {
               "display": "not known"
             },
             "cost": {
-              "display": "$651K"
+              "display": "$350K"
             },
             "counts": {
               "display": "100%"
@@ -1475,9 +1565,9 @@
           },
           "sort": {
             "season": 2040,
-            "wins": 0.3939823328316202,
+            "wins": 0.03248509885432944,
             "price": null,
-            "cost": 650500,
+            "cost": 350000,
             "counts": 1,
             "contract": null,
             "keeping": null
@@ -1490,13 +1580,13 @@
               "display": "2041"
             },
             "wins": {
-              "display": "0.5 (−0.5 to 1.9)"
+              "display": "0.1 (−0.8 to 1.6)"
             },
             "price": {
               "display": "not known"
             },
             "cost": {
-              "display": "$1.3M"
+              "display": "$700K"
             },
             "counts": {
               "display": "95%"
@@ -1510,9 +1600,9 @@
           },
           "sort": {
             "season": 2041,
-            "wins": 0.5268357457726895,
+            "wins": 0.1331921639414426,
             "price": null,
-            "cost": 1301000,
+            "cost": 700000,
             "counts": 0.9523809523809523,
             "contract": null,
             "keeping": null
@@ -1525,13 +1615,13 @@
               "display": "2042"
             },
             "wins": {
-              "display": "0.3 (−0.5 to 1.6)"
+              "display": "0.1 (−0.8 to 1.5)"
             },
             "price": {
               "display": "not known"
             },
             "cost": {
-              "display": "$2.1M ($700K to $11.8M)"
+              "display": "not known"
             },
             "counts": {
               "display": "91%"
@@ -1545,9 +1635,9 @@
           },
           "sort": {
             "season": 2042,
-            "wins": 0.34495815774879623,
+            "wins": 0.08250804837082507,
             "price": null,
-            "cost": 2050500,
+            "cost": null,
             "counts": 0.9070294784580498,
             "contract": null,
             "keeping": null
@@ -1560,13 +1650,13 @@
               "display": "2043"
             },
             "wins": {
-              "display": "0.2 (−0.4 to 1.2)"
+              "display": "−<0.1 (−0.7 to 1.5)"
             },
             "price": {
               "display": "not known"
             },
             "cost": {
-              "display": "$2.1M ($700K to $11.8M)"
+              "display": "not known"
             },
             "counts": {
               "display": "86%"
@@ -1580,9 +1670,9 @@
           },
           "sort": {
             "season": 2043,
-            "wins": 0.17385713494771102,
+            "wins": -0.0015275611807932924,
             "price": null,
-            "cost": 2050500,
+            "cost": null,
             "counts": 0.863837598531476,
             "contract": null,
             "keeping": null
@@ -1595,7 +1685,7 @@
               "display": "2044"
             },
             "wins": {
-              "display": "0.1 (−0.3 to 0.8)"
+              "display": "−<0.1 (−0.7 to 1.3)"
             },
             "price": {
               "display": "not known"
@@ -1615,7 +1705,7 @@
           },
           "sort": {
             "season": 2044,
-            "wins": 0.08148477071244352,
+            "wins": -0.04850446558619393,
             "price": null,
             "cost": null,
             "counts": 0.8227024747918819,
@@ -1630,7 +1720,7 @@
               "display": "2045"
             },
             "wins": {
-              "display": "<0.1 (−0.1 to 0.2)"
+              "display": "−0.1 (−0.6 to 0.7)"
             },
             "price": {
               "display": "not known"
@@ -1650,45 +1740,10 @@
           },
           "sort": {
             "season": 2045,
-            "wins": 0.027180679751867963,
+            "wins": -0.06692090658546497,
             "price": null,
             "cost": null,
             "counts": 0.7835261664684589,
-            "contract": null,
-            "keeping": null
-          }
-        },
-        {
-          "id": "2046",
-          "cells": {
-            "season": {
-              "display": "2046"
-            },
-            "wins": {
-              "display": "<0.1 (<0.1 to <0.1)"
-            },
-            "price": {
-              "display": "not known"
-            },
-            "cost": {
-              "display": "not known"
-            },
-            "counts": {
-              "display": "75%"
-            },
-            "contract": {
-              "display": "not known"
-            },
-            "keeping": {
-              "display": "not known"
-            }
-          },
-          "sort": {
-            "season": 2046,
-            "wins": 0.0077901061811365,
-            "price": null,
-            "cost": null,
-            "counts": 0.7462153966366274,
             "contract": null,
             "keeping": null
           }
@@ -1700,7 +1755,10 @@
     "seasonNotes": [],
     "restsOn": [
       {
-        "display": "Already banked in 2040: 0.1 wins and $651K of salary. That's spent either way, so it isn't counted; the rest of 2040 counts 50% of his salary."
+        "display": "Already banked in 2040: 0.0 wins and $350K of salary. That's spent either way, so it isn't counted; the rest of 2040 counts 50% of his salary."
+      },
+      {
+        "display": "He is a free agent from 2046: control ends, and nothing after it is counted."
       },
       {
         "display": "Seasons further out count 5% less for each year."
@@ -1720,7 +1778,7 @@
           "display": "This season"
         },
         "value": {
-          "display": "$1.3M in 2040"
+          "display": "$700K in 2040"
         },
         "claim": null
       },
@@ -1738,23 +1796,23 @@
           "display": "After this season"
         },
         "value": {
-          "display": "Controlled through 2046 at least"
+          "display": "Free agent after 2045"
         },
         "claim": {
-          "text": "Controlled through 2046 at least",
+          "text": "Free agent after 2045",
           "tone": "neutral",
           "basis": {
             "because": [
               {
                 "label": "Why",
-                "value": "Under contract at $1,301,000. Between pre-arbitration and arbitration: which one is not yet established. The Super Two cutoff for the winter after 2043 depends on that season's class, which the export does not hold yet. Past the start of the year before arbitration (2 years 0 days) by 2044 if he stays on the major-league roster for the rest of 2040; not until 2045 if he is optioned or outrighted. He needs 240 more days and 34 remain this season."
+                "value": "Under contract at $700,000."
               }
             ],
             "source": {
               "department": "finance",
               "specialist": "Player Value",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [],
             "wouldChange": [],
@@ -1786,8 +1844,8 @@
             "source": {
               "department": "finance",
               "specialist": "Player Value",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [
               "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
@@ -1837,7 +1895,7 @@
               "display": "2040"
             },
             "salary": {
-              "display": "$1.3M"
+              "display": "$700K"
             },
             "terms": {
               "display": "—"
@@ -1845,7 +1903,7 @@
           },
           "sort": {
             "year": 2040,
-            "salary": 1301000,
+            "salary": 700000,
             "terms": null
           }
         },
@@ -1856,7 +1914,7 @@
               "display": "2041"
             },
             "salary": {
-              "display": "$1.3M"
+              "display": "$700K"
             },
             "terms": {
               "display": "—"
@@ -1864,7 +1922,7 @@
           },
           "sort": {
             "year": 2041,
-            "salary": 1301000,
+            "salary": 700000,
             "terms": null
           }
         }
@@ -1888,14 +1946,14 @@
             "because": [
               {
                 "label": "Observed in OOTP and documented",
-                "value": "0 of 3 option years used and 0 years of service: OOTP allowed an option in every observed case like this."
+                "value": "0 of 3 option years used and 1 years of service: OOTP allowed an option in every observed case like this."
               }
             ],
             "source": {
               "department": "majorLeague",
               "specialist": "Player Rights",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [
               "An option year is charged at the next day rollover once he has spent a day off the active roster; a same-day round trip costs none."
@@ -1927,8 +1985,8 @@
             "source": {
               "department": "majorLeague",
               "specialist": "Player Rights",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [
               "Whether the waivers will be irrevocable is not predicted; read the flag once he is designated."
@@ -1960,8 +2018,8 @@
             "source": {
               "department": "majorLeague",
               "specialist": "Player Rights",
-              "asOf": null,
-              "gameDate": "2040-05-06"
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
             },
             "unknown": [
               "Inferred from one observed refusal (a 7-day injury); not measured for a healthy player directly."
@@ -2030,11 +2088,77 @@
       "display": "Where he is now, as the export states it",
       "hint": "The export outranks the log about where he is now"
     },
-    "log": [],
-    "logNote": {
-      "display": "The OOTP transaction log is unavailable, so no transaction history is shown.",
-      "tone": "unknown"
-    },
+    "log": [
+      {
+        "id": "team_transactions:2",
+        "date": {
+          "display": "April 20, 2040"
+        },
+        "line": {
+          "text": "Activated P from the 10-day injured list.",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "The log says",
+                "value": "Activated P from the 10-day injured list."
+              },
+              {
+                "label": "On",
+                "value": "April 20, 2040"
+              }
+            ],
+            "source": {
+              "department": "league",
+              "specialist": "OOTP transaction log",
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": []
+        }
+      },
+      {
+        "id": "team_transactions:1",
+        "date": {
+          "display": "April 8, 2040"
+        },
+        "line": {
+          "text": "Placed P on the 10-day injured list with a strained hamstring.",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "The log says",
+                "value": "Placed P on the 10-day injured list with a strained hamstring."
+              },
+              {
+                "label": "On",
+                "value": "April 8, 2040"
+              }
+            ],
+            "source": {
+              "department": "league",
+              "specialist": "OOTP transaction log",
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": []
+        }
+      }
+    ],
+    "logNote": null,
     "tables": [
       {
         "id": "batting",
@@ -2134,7 +2258,7 @@
                 "display": "MLB"
               },
               "pa": {
-                "display": "124"
+                "display": "108"
               },
               "hr": {
                 "display": "—"
@@ -2155,21 +2279,21 @@
                 "display": ".000"
               },
               "war": {
-                "display": "0.1"
+                "display": "0.0"
               }
             },
             "sort": {
               "year": 2040,
               "team": "C1",
               "level": "MLB",
-              "pa": 124,
+              "pa": 108,
               "hr": null,
               "rbi": null,
               "sb": null,
               "avg": 0,
               "obp": 0,
               "slg": 0,
-              "war": 0.1
+              "war": 0
             }
           },
           {
@@ -2185,7 +2309,7 @@
                 "display": "MLB"
               },
               "pa": {
-                "display": "224"
+                "display": "199"
               },
               "hr": {
                 "display": "—"
@@ -2206,21 +2330,72 @@
                 "display": ".000"
               },
               "war": {
-                "display": "1.5"
+                "display": "0.5"
               }
             },
             "sort": {
               "year": 2039,
               "team": "C1",
               "level": "MLB",
-              "pa": 224,
+              "pa": 199,
               "hr": null,
               "rbi": null,
               "sb": null,
               "avg": 0,
               "obp": 0,
               "slg": 0,
-              "war": 1.5
+              "war": 0.5
+            }
+          },
+          {
+            "id": "b2",
+            "cells": {
+              "year": {
+                "display": "2038"
+              },
+              "team": {
+                "display": "C1"
+              },
+              "level": {
+                "display": "MLB"
+              },
+              "pa": {
+                "display": "217"
+              },
+              "hr": {
+                "display": "—"
+              },
+              "rbi": {
+                "display": "—"
+              },
+              "sb": {
+                "display": "—"
+              },
+              "avg": {
+                "display": ".000"
+              },
+              "obp": {
+                "display": ".000"
+              },
+              "slg": {
+                "display": ".000"
+              },
+              "war": {
+                "display": "0.0"
+              }
+            },
+            "sort": {
+              "year": 2038,
+              "team": "C1",
+              "level": "MLB",
+              "pa": 217,
+              "hr": null,
+              "rbi": null,
+              "sb": null,
+              "avg": 0,
+              "obp": 0,
+              "slg": 0,
+              "war": 0
             }
           }
         ],
@@ -2228,9 +2403,80 @@
         "note": null
       },
       {
-        "id": "fielding",
+        "id": "honours",
         "title": {
-          "display": "Fielding"
+          "display": "Honours"
+        },
+        "columns": [
+          {
+            "id": "award",
+            "title": {
+              "display": "Award"
+            },
+            "numeric": false
+          },
+          {
+            "id": "times",
+            "title": {
+              "display": "Times"
+            },
+            "numeric": true
+          },
+          {
+            "id": "years",
+            "title": {
+              "display": "Seasons"
+            },
+            "numeric": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "h0",
+            "cells": {
+              "award": {
+                "display": "Silver Slugger (3B)"
+              },
+              "times": {
+                "display": "1"
+              },
+              "years": {
+                "display": "2039"
+              }
+            },
+            "sort": {
+              "award": 5,
+              "times": 1,
+              "years": 2039
+            }
+          },
+          {
+            "id": "h1",
+            "cells": {
+              "award": {
+                "display": "All-Star"
+              },
+              "times": {
+                "display": "2"
+              },
+              "years": {
+                "display": "2039, 2038"
+              }
+            },
+            "sort": {
+              "award": 6,
+              "times": 2,
+              "years": 2039
+            }
+          }
+        ],
+        "empty": null,
+        "note": null
+      },
+      {
+        "id": "leader",
+        "title": {
+          "display": "Led the league"
         },
         "columns": [
           {
@@ -2241,126 +2487,49 @@
             "numeric": false
           },
           {
-            "id": "level",
+            "id": "place",
             "title": {
-              "display": "Level"
+              "display": "Place"
+            },
+            "numeric": true
+          },
+          {
+            "id": "category",
+            "title": {
+              "display": "Category"
             },
             "numeric": false
           },
           {
-            "id": "pos",
+            "id": "amount",
             "title": {
-              "display": "Pos"
-            },
-            "numeric": false
-          },
-          {
-            "id": "g",
-            "title": {
-              "display": "G"
-            },
-            "numeric": true
-          },
-          {
-            "id": "inn",
-            "title": {
-              "display": "Inn"
-            },
-            "numeric": true
-          },
-          {
-            "id": "po",
-            "title": {
-              "display": "PO"
-            },
-            "numeric": true
-          },
-          {
-            "id": "a",
-            "title": {
-              "display": "A"
-            },
-            "numeric": true
-          },
-          {
-            "id": "e",
-            "title": {
-              "display": "E"
-            },
-            "numeric": true
-          },
-          {
-            "id": "dp",
-            "title": {
-              "display": "DP"
-            },
-            "numeric": true
-          },
-          {
-            "id": "fpct",
-            "title": {
-              "display": "FPCT"
-            },
-            "numeric": true
-          },
-          {
-            "id": "rf9",
-            "title": {
-              "display": "RF/9"
+              "display": "Figure"
             },
             "numeric": true
           }
         ],
         "rows": [
           {
-            "id": "f0",
+            "id": "l0",
             "cells": {
               "year": {
-                "display": "2040"
+                "display": "2039"
               },
-              "level": {
-                "display": "MLB"
+              "place": {
+                "display": "2nd"
               },
-              "pos": {
-                "display": "3B"
+              "category": {
+                "display": "Doubles"
               },
-              "g": {
-                "display": "30"
-              },
-              "inn": {
-                "display": "248"
-              },
-              "po": {
-                "display": "—"
-              },
-              "a": {
-                "display": "—"
-              },
-              "e": {
-                "display": "—"
-              },
-              "dp": {
-                "display": "—"
-              },
-              "fpct": {
-                "display": "—"
-              },
-              "rf9": {
-                "display": "0.00"
+              "amount": {
+                "display": "41"
               }
             },
             "sort": {
-              "year": 2040,
-              "level": "MLB",
-              "pos": "3B",
-              "g": 30,
-              "inn": 248,
-              "po": null,
-              "a": null,
-              "e": null,
-              "dp": null,
-              "fpct": null,
-              "rf9": 0
+              "year": 2039,
+              "place": 2,
+              "category": "Doubles",
+              "amount": 41
             }
           }
         ],

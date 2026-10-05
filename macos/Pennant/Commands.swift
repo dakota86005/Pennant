@@ -15,6 +15,8 @@ struct PennantCommands: Commands {
     @FocusedValue(\.deskItem) private var deskItem
     /// The club or player name the keyboard focus is on (Follow or Unfollow, by key).
     @FocusedValue(\.followable) private var followable
+    /// The player whose name, row or window has the focus (N11: the Player menu acts on him).
+    @FocusedValue(\.player) private var player
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
@@ -86,6 +88,16 @@ struct PennantCommands: Commands {
             Button { followable?.toggle() } label: { followable?.following == true ? Text("Unfollow") : Text("Follow") }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
                 .disabled(followable == nil)
+        }
+
+        // N11: the player in focus (his name, his row, his window), as section 3.6's Player menu
+        CommandMenu("Player") {
+            Button("Open Player") { if let player { openWindow(value: player) } }
+                .keyboardShortcut("o", modifiers: [.command, .option])
+                .disabled(player == nil)
+            Button("Compare") { if let player { CompareRouter.shared.compare([player]) { openWindow(value: $0) } } }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+                .disabled(player == nil)
         }
 
         CommandMenu("Club") {

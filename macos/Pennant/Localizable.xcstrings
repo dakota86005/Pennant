@@ -1026,6 +1026,102 @@
     },
     "No Clubs": {
       "extractionState": "manual"
+    },
+    "Open Player": {
+      "extractionState": "manual"
+    },
+    "Compare": {
+      "extractionState": "manual"
+    },
+    "Remove from Compare": {
+      "extractionState": "manual"
+    },
+    "Compare Players": {
+      "extractionState": "manual"
+    },
+    "Record": {
+      "extractionState": "manual"
+    },
+    "Your Note": {
+      "extractionState": "manual"
+    },
+    "Saving…": {
+      "extractionState": "manual"
+    },
+    "Remove": {
+      "extractionState": "manual"
+    },
+    "Staff Notes": {
+      "extractionState": "manual"
+    },
+    "Remove Staff Note": {
+      "extractionState": "manual"
+    },
+    "Overview": {
+      "extractionState": "manual"
+    },
+    "Ratings": {
+      "extractionState": "manual"
+    },
+    "Contract & Rights": {
+      "extractionState": "manual"
+    },
+    "History": {
+      "extractionState": "manual"
+    },
+    "Notes": {
+      "extractionState": "manual"
+    },
+    "Who He Is": {
+      "extractionState": "manual"
+    },
+    "Why He Is Where He Is": {
+      "extractionState": "manual"
+    },
+    "Roster Moves": {
+      "extractionState": "manual"
+    },
+    "Honours": {
+      "extractionState": "manual"
+    },
+    "Rating History": {
+      "extractionState": "manual"
+    },
+    "His Deal": {
+      "extractionState": "manual"
+    },
+    "Where He Is Now": {
+      "extractionState": "manual"
+    },
+    "What the Log Says": {
+      "extractionState": "manual"
+    },
+    "Now": {
+      "extractionState": "manual"
+    },
+    "Snapshot": {
+      "extractionState": "manual"
+    },
+    "Grade": {
+      "extractionState": "manual"
+    },
+    "Season": {
+      "extractionState": "manual"
+    },
+    "Wins": {
+      "extractionState": "manual"
+    },
+    "Player Window": {
+      "extractionState": "manual"
+    },
+    "Compare Window": {
+      "extractionState": "manual"
+    },
+    "Drop two to four players here": {
+      "extractionState": "manual"
+    },
+    "Compare holds four players at most": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

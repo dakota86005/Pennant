@@ -43,8 +43,9 @@ nonisolated struct ServedSort: SortComparator, Hashable, Sendable {
 
 /// A served table as a native `Table` (SWIFTUI_REBUILD.md section 3.6): the served columns (each can be hidden, moved
 /// and resized, and the window remembers how), sorting by the served keys with unknowns last, keyboard navigation, a
-/// player's row that drags as the player, and a context menu (and double-click or Return) that opens his club, follows
-/// him, copies his name, or opens the decisions the row offers. It fills the space it is given and scrolls by itself:
+/// player's row that drags as the player, and a context menu that opens his window (also a double-click or Return, N11)
+/// or his club, compares the selected players, follows him, copies his name, or opens the decisions the row offers. A
+/// filled player's grades carry the OSA mark beside his name (D-067). It fills the space it is given and scrolls by itself:
 /// it is only ever placed in a `TablePane`, never inside a page's scroll view (the N8 crash; see `TablePane`).
 struct ServedTable: View {
     let table: Components.Schemas.MlbTable
@@ -52,7 +53,8 @@ struct ServedTable: View {
     let id: String
     /// What the table is, as served (the view's or the group's title), for VoiceOver.
     let name: String
-    @Binding var selection: ServedRow.ID?
+    /// Several rows can be chosen (N11: Compare takes the chosen players); the detail beneath shows one.
+    @Binding var selection: Set<ServedRow.ID>
     @State private var sortOrder: [ServedSort] = []
     @SceneStorage private var customization: TableColumnCustomization<ServedRow>
     @Environment(\.openWindow) private var openWindow
@@ -70,7 +72,7 @@ struct ServedTable: View {
         return column.numeric ? 64 : 104
     }
 
-    init(_ table: Components.Schemas.MlbTable, id: String, name: String, selection: Binding<ServedRow.ID?>) {
+    init(_ table: Components.Schemas.MlbTable, id: String, name: String, selection: Binding<Set<ServedRow.ID>>) {
         self.table = table
         self.id = id
         self.name = name
@@ -106,9 +108,16 @@ struct ServedTable: View {
             TableColumnForEach(table.columns, id: \.id) { column in
                 TableColumn(Text(verbatim: column.title.display), sortUsing: ServedSort(column: column.id)) { row in
                     if let cell = row.cell(column.id) {
-                        CellText(cell)
-                            .monospacedDigit()
-                            .lineLimit(1)
+                        if let fill = row.row.ratingsFill, ["player", "pitcher"].contains(column.id) {
+                            HStack(spacing: 4) {
+                                CellText(cell).monospacedDigit().lineLimit(1)
+                                RatingFillMark(fill)
+                            }
+                        } else {
+                            CellText(cell)
+                                .monospacedDigit()
+                                .lineLimit(1)
+                        }
                     }
                 }
                 // A readable minimum: past it the table scrolls sideways. The window's content column reports no minimum
@@ -129,18 +138,22 @@ struct ServedTable: View {
         .scrollContentBackground(.hidden)
         .background(Color.readablePage)
         .contextMenu(forSelectionType: ServedRow.ID.self) { ids in
-            if let row = table.rows.first(where: { ids.contains($0.id) }) { menu(for: row) }
+            if let row = table.rows.first(where: { ids.contains($0.id) }) {
+                menu(for: row, chosen: table.rows.filter { ids.contains($0.id) }.compactMap { $0.player.map { PlayerRef(id: $0.playerId) } })
+            }
         } primaryAction: { ids in
-            if let player = table.rows.first(where: { ids.contains($0.id) })?.player, let club = player.club { openWindow(value: club) }
+            if let player = table.rows.first(where: { ids.contains($0.id) })?.player { openWindow(value: PlayerRef(id: player.playerId)) }
         }
     }
 
     @ViewBuilder
-    private func menu(for row: Components.Schemas.MlbRow) -> some View {
+    private func menu(for row: Components.Schemas.MlbRow, chosen: [PlayerRef]) -> some View {
         if let player = row.player {
+            OpenPlayerMenuItem(PlayerRef(id: player.playerId))
             if let club = player.club {
                 Button("Open His Club", systemImage: "macwindow.badge.plus") { openWindow(value: club) }
             }
+            CompareMenuItem(chosen)
             FollowMenuItem(kind: "player", id: player.playerId)
             Button("Copy Name", systemImage: "doc.on.doc") { copy(player.name) }
         }
@@ -164,7 +177,7 @@ struct ServedTablePane<Head: View, Notes: View>: View {
     let detailShare: CGFloat
     let head: Head
     let notes: Notes
-    @State private var selection: ServedRow.ID?
+    @State private var selection: Set<ServedRow.ID> = []
 
     init(
         _ table: Components.Schemas.MlbTable,
@@ -189,7 +202,7 @@ struct ServedTablePane<Head: View, Notes: View>: View {
             ServedTable(table, id: id, name: name, selection: $selection)
         } detail: {
             VStack(alignment: .leading, spacing: 16) {
-                if let row = table.rows.first(where: { $0.id == selection }) {
+                if let row = table.rows.first(where: { selection.contains($0.id) }) {
                     RowDetail(row: row)
                 } else if !table.rows.isEmpty {
                     Text("Select a row to see the staff's read.")

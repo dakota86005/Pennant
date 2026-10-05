@@ -1,12 +1,12 @@
 {
   "orgId": 1,
-  "importStamp": null,
+  "importStamp": "2040-05-06T12:00:00.000Z",
   "players": [
     {
       "playerId": 1000,
       "name": "P 1000",
       "line": {
-        "display": "3B · Bats L, throws R · Age 33"
+        "display": "LF · Bats S, throws R · Age 30"
       },
       "open": {
         "kind": "player",
@@ -19,20 +19,23 @@
       "playerId": 1001,
       "name": "P 1001",
       "line": {
-        "display": "2B · Bats L, throws R · Age 31"
+        "display": "3B · Bats R, throws R · Age 29"
       },
       "open": {
         "kind": "player",
         "playerId": 1001,
         "teamId": 1
       },
-      "ratingsFill": null
+      "ratingsFill": {
+        "display": "OSA",
+        "hint": "OSA's view: our scouts haven't rated him."
+      }
     },
     {
       "playerId": 1019,
       "name": "P 1019",
       "line": {
-        "display": "RP · Bats S, throws R · Age 30"
+        "display": "RP · Bats L, throws R · Age 28"
       },
       "open": {
         "kind": "player",
@@ -61,13 +64,13 @@
           "cells": [
             {
               "display": {
-                "display": "3B"
+                "display": "LF"
               },
               "range": null
             },
             {
               "display": {
-                "display": "2B"
+                "display": "3B"
               },
               "range": null
             },
@@ -88,19 +91,19 @@
           "cells": [
             {
               "display": {
-                "display": "33"
-              },
-              "range": null
-            },
-            {
-              "display": {
-                "display": "31"
-              },
-              "range": null
-            },
-            {
-              "display": {
                 "display": "30"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "29"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "28"
               },
               "range": null
             }
@@ -142,19 +145,19 @@
           "cells": [
             {
               "display": {
-                "display": "L / R"
-              },
-              "range": null
-            },
-            {
-              "display": {
-                "display": "L / R"
-              },
-              "range": null
-            },
-            {
-              "display": {
                 "display": "S / R"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "R / R"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "L / R"
               },
               "range": null
             }
@@ -169,19 +172,19 @@
           "cells": [
             {
               "display": {
-                "display": "0 years"
+                "display": "1 year"
               },
               "range": null
             },
             {
               "display": {
-                "display": "0 years"
+                "display": "1 year"
               },
               "range": null
             },
             {
               "display": {
-                "display": "0 years"
+                "display": "1 year"
               },
               "range": null
             }
@@ -196,19 +199,19 @@
           "cells": [
             {
               "display": {
+                "display": "2040: 108 PA · .000/.000/.000 · 0 HR"
+              },
+              "range": null
+            },
+            {
+              "display": {
                 "display": "2040: 124 PA · .000/.000/.000 · 0 HR"
               },
               "range": null
             },
             {
               "display": {
-                "display": "2040: 99 PA · .000/.000/.000 · 0 HR"
-              },
-              "range": null
-            },
-            {
-              "display": {
-                "display": "2040: 12.3 IP · 8.03 ERA · — K"
+                "display": "2040: 11.7 IP · 0.00 ERA · — K"
               },
               "range": null
             }
@@ -231,19 +234,19 @@
           "cells": [
             {
               "display": {
-                "display": "$1.3M in 2040"
-              },
-              "range": null
-            },
-            {
-              "display": {
-                "display": "$3.1M in 2040"
-              },
-              "range": null
-            },
-            {
-              "display": {
                 "display": "$700K in 2040"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "$7.2M in 2040"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "$1.1M in 2040"
               },
               "range": null
             }
@@ -264,7 +267,7 @@
             },
             {
               "display": {
-                "display": "Signed through 2043"
+                "display": "Signed through 2041"
               },
               "range": null
             },
@@ -285,19 +288,19 @@
           "cells": [
             {
               "display": {
-                "display": "Controlled through 2046 at least"
+                "display": "Free agent after 2045"
               },
               "range": null
             },
             {
               "display": {
-                "display": "Controlled through 2046 at least"
+                "display": "Free agent after 2045"
               },
               "range": null
             },
             {
               "display": {
-                "display": "Controlled through 2046 at least"
+                "display": "Free agent after 2045"
               },
               "range": null
             }
@@ -321,35 +324,35 @@
           "cells": [
             {
               "display": {
-                "display": "Most likely 1.5 wins",
-                "hint": "could be −2.0 wins to 6.0 wins (2040–2046)"
+                "display": "Most likely 0.1 wins",
+                "hint": "could be −3.7 wins to 6.5 wins (2040–2045)"
               },
               "range": {
-                "low": -1.979844272529143,
-                "high": 5.952035388841629,
-                "mid": 1.4529498034972397
+                "low": -3.6607444649746896,
+                "high": 6.4979026860840605,
+                "mid": 0.14051342082919246
               }
             },
             {
               "display": {
-                "display": "Most likely 0.8 wins",
-                "hint": "could be −2.6 wins to 5.8 wins (2040–2046)"
+                "display": "Most likely 1.1 wins",
+                "hint": "could be −3.1 wins to 8.3 wins (2040–2045)"
               },
               "range": {
-                "low": -2.6031704095517867,
-                "high": 5.782440558636016,
-                "mid": 0.7680524576098291
+                "low": -3.069471235731062,
+                "high": 8.30062081109993,
+                "mid": 1.092531819034006
               }
             },
             {
               "display": {
-                "display": "Most likely −0.6 wins",
-                "hint": "could be −1.9 wins to 0.6 wins (2040–2046)"
+                "display": "Most likely −0.4 wins",
+                "hint": "could be −1.7 wins to 0.8 wins (2040–2045)"
               },
               "range": {
-                "low": -1.9347817669226914,
-                "high": 0.6188942969983721,
-                "mid": -0.560499179205723
+                "low": -1.698297290522805,
+                "high": 0.805500789856603,
+                "mid": -0.4120356322303309
               }
             }
           ],
@@ -360,15 +363,15 @@
               "because": [
                 {
                   "label": "P 1000",
-                  "value": "−2.0 wins to 6.0 wins"
+                  "value": "−3.7 wins to 6.5 wins"
                 },
                 {
                   "label": "P 1001",
-                  "value": "−2.6 wins to 5.8 wins"
+                  "value": "−3.1 wins to 8.3 wins"
                 },
                 {
                   "label": "P 1019",
-                  "value": "−1.9 wins to 0.6 wins"
+                  "value": "−1.7 wins to 0.8 wins"
                 },
                 {
                   "label": "How it is read",
@@ -401,54 +404,54 @@
           "cells": [
             {
               "display": {
-                "display": "0.5 wins",
-                "hint": "Half the time <0.1 to 0.9"
+                "display": "<0.1 wins",
+                "hint": "Half the time −0.4 to 0.5"
               },
               "range": {
-                "low": -0.2794450231536445,
-                "high": 0.9891871705436296,
-                "mid": 0.4939823328316202
+                "low": -0.5953987789400577,
+                "high": 0.6702008987300296,
+                "mid": 0.03248509885432944
               }
             },
             {
               "display": {
-                "display": "0.1 wins",
-                "hint": "Half the time −0.3 to 0.5"
+                "display": "−0.1 wins",
+                "hint": "Half the time −0.6 to 0.4"
               },
               "range": {
-                "low": -0.4374358078625863,
-                "high": 0.5736786431946522,
-                "mid": 0.0962958776496125
+                "low": -0.7615780823498841,
+                "high": 0.5135755923875684,
+                "mid": -0.10596159280226736
               }
             },
             {
               "display": {
-                "display": "−0.6 wins",
-                "hint": "Half the time −0.7 to −0.5"
+                "display": "0.2 wins",
+                "hint": "Half the time 0.1 to 0.3"
               },
               "range": {
-                "low": -0.7869851307166034,
-                "high": -0.42376496221184357,
-                "mid": -0.5603590610231219
+                "low": -0.030293306901074513,
+                "high": 0.30131715576073215,
+                "mid": 0.19198089513348743
               }
             }
           ],
           "reading": {
-            "text": "P 1000's range sits wholly above P 1019's; P 1001's range sits wholly above P 1019's; the rest overlap",
-            "tone": "neutral",
+            "text": "Can't tell apart: every range overlaps",
+            "tone": "unknown",
             "basis": {
               "because": [
                 {
                   "label": "P 1000",
-                  "value": "<0.1 to 0.9"
+                  "value": "−0.4 to 0.5"
                 },
                 {
                   "label": "P 1001",
-                  "value": "−0.3 to 0.5"
+                  "value": "−0.6 to 0.4"
                 },
                 {
                   "label": "P 1019",
-                  "value": "−0.7 to −0.5"
+                  "value": "0.1 to 0.3"
                 },
                 {
                   "label": "How it is read",
@@ -481,35 +484,35 @@
           "cells": [
             {
               "display": {
-                "display": "0.5 wins",
-                "hint": "Half the time −0.1 to 1.1"
+                "display": "0.1 wins",
+                "hint": "Half the time −0.5 to 0.7"
               },
               "range": {
-                "low": -0.4692256207580093,
-                "high": 1.8796979837658168,
-                "mid": 0.5268357457726895
+                "low": -0.7673086379264611,
+                "high": 1.5959204361278594,
+                "mid": 0.1331921639414426
               }
             },
             {
               "display": {
-                "display": "0.3 wins",
-                "hint": "Half the time −0.2 to 0.8"
+                "display": "0.4 wins",
+                "hint": "Half the time −0.3 to 1.0"
               },
               "range": {
-                "low": -0.4483856664364514,
-                "high": 1.5135634481963156,
-                "mid": 0.2969326648779345
+                "low": -0.5790086656426523,
+                "high": 1.9768198029027437,
+                "mid": 0.39381547722193033
               }
             },
             {
               "display": {
-                "display": "−0.2 wins",
+                "display": "−0.1 wins",
                 "hint": "Half the time −0.3 to −<0.1"
               },
               "range": {
-                "low": -0.4231347472083363,
-                "high": 0.11751652212521087,
-                "mid": -0.15734619447356804
+                "low": -0.3889435268608303,
+                "high": 0.12830404786854793,
+                "mid": -0.12824276856686892
               }
             }
           ],
@@ -520,11 +523,11 @@
               "because": [
                 {
                   "label": "P 1000",
-                  "value": "−0.1 to 1.1"
+                  "value": "−0.5 to 0.7"
                 },
                 {
                   "label": "P 1001",
-                  "value": "−0.2 to 0.8"
+                  "value": "−0.3 to 1.0"
                 },
                 {
                   "label": "P 1019",
@@ -561,24 +564,24 @@
           "cells": [
             {
               "display": {
-                "display": "0.3 wins",
-                "hint": "Half the time −0.1 to 0.8"
+                "display": "0.1 wins",
+                "hint": "Half the time −0.5 to 0.4"
               },
               "range": {
-                "low": -0.4695532267393958,
-                "high": 1.5961992565113052,
-                "mid": 0.34495815774879623
+                "low": -0.7922533291372948,
+                "high": 1.5462746199536614,
+                "mid": 0.08250804837082507
               }
             },
             {
               "display": {
-                "display": "0.2 wins",
-                "hint": "Half the time −0.3 to 0.5"
+                "display": "0.3 wins",
+                "hint": "Half the time −0.4 to 0.7"
               },
               "range": {
-                "low": -0.5077667316556513,
-                "high": 1.3835837729998641,
-                "mid": 0.2030216527325906
+                "low": -0.6397458098858422,
+                "high": 1.8830130502944729,
+                "mid": 0.30106947296935643
               }
             },
             {
@@ -587,9 +590,9 @@
                 "hint": "Half the time −0.2 to −<0.1"
               },
               "range": {
-                "low": -0.3461866611148084,
-                "high": 0.22575350852499645,
-                "mid": -0.09895500292209505
+                "low": -0.3183370350691806,
+                "high": 0.2529705362295498,
+                "mid": -0.07399850075744194
               }
             }
           ],
@@ -600,11 +603,11 @@
               "because": [
                 {
                   "label": "P 1000",
-                  "value": "−0.1 to 0.8"
+                  "value": "−0.5 to 0.4"
                 },
                 {
                   "label": "P 1001",
-                  "value": "−0.3 to 0.5"
+                  "value": "−0.4 to 0.7"
                 },
                 {
                   "label": "P 1019",
@@ -649,19 +652,20 @@
           "cells": [
             {
               "display": {
-                "display": "54 → 54"
+                "display": "34 → 34"
               },
               "range": null
             },
             {
               "display": {
-                "display": "51 → 51"
+                "display": "49 → 49",
+                "hint": "OSA's view: our scouts haven't rated him."
               },
               "range": null
             },
             {
               "display": {
-                "display": "35 → 35"
+                "display": "32 → 32"
               },
               "range": null
             }
@@ -676,7 +680,7 @@
           "cells": [
             {
               "display": {
-                "display": "51"
+                "display": "33"
               },
               "range": null
             },
@@ -705,13 +709,13 @@
           "cells": [
             {
               "display": {
-                "display": "58"
+                "display": "29"
               },
               "range": null
             },
             {
               "display": {
-                "display": "50"
+                "display": "54"
               },
               "range": null
             },
@@ -734,13 +738,13 @@
           "cells": [
             {
               "display": {
-                "display": "53"
+                "display": "39"
               },
               "range": null
             },
             {
               "display": {
-                "display": "57"
+                "display": "54"
               },
               "range": null
             },
@@ -763,13 +767,13 @@
           "cells": [
             {
               "display": {
-                "display": "49"
+                "display": "30"
               },
               "range": null
             },
             {
               "display": {
-                "display": "56"
+                "display": "47"
               },
               "range": null
             },
@@ -792,13 +796,13 @@
           "cells": [
             {
               "display": {
-                "display": "59"
+                "display": "39"
               },
               "range": null
             },
             {
               "display": {
-                "display": "42"
+                "display": "41"
               },
               "range": null
             },
@@ -928,7 +932,7 @@
             },
             {
               "display": {
-                "display": "27"
+                "display": "33"
               },
               "range": null
             }
@@ -959,7 +963,7 @@
             },
             {
               "display": {
-                "display": "33"
+                "display": "32"
               },
               "range": null
             }
@@ -990,7 +994,7 @@
             },
             {
               "display": {
-                "display": "44"
+                "display": "30"
               },
               "range": null
             }

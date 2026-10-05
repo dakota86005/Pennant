@@ -238,7 +238,8 @@ struct FarmPlayerModifier: ViewModifier {
     }
 }
 
-/// A farm player's menu: Open Decision (where the served target leads), Follow or Unfollow, Copy Name.
+/// A farm player's menu: Open Decision (where the served target leads), Open Player and Compare (N11), Follow or
+/// Unfollow, Copy Name.
 struct FarmPlayerMenu: View {
     let id: Int
     let name: String
@@ -249,11 +250,26 @@ struct FarmPlayerMenu: View {
         if let r = route(open), opener?.canOpen(r) ?? false {
             Button("Open Decision", systemImage: "checkmark.seal") { opener?.open(r) }
         }
+        OpenPlayerMenuItem(PlayerRef(id: id))
+        CompareMenuItem([PlayerRef(id: id)])
         FollowMenuItem(kind: "player", id: id)
         Divider()
         Button("Copy Name", systemImage: "doc.on.doc") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(name, forType: .string)
+        }
+    }
+}
+
+/// A farm row's player: his served name, and the OSA mark beside it when his grades are OSA's view (D-067, N11).
+struct FarmPlayerCell: View {
+    let cell: Components.Schemas.Cell
+    let fill: Components.Schemas.Cell?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            CellText(cell).fontWeight(.medium)
+            if let fill { RatingFillMark(fill) }
         }
     }
 }
