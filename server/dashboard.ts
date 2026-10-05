@@ -7,6 +7,7 @@ import { healthOf, HURT_SQL } from './health.js';
 import { computeContracts } from './contracts.js';
 import { computeFarmSystem } from './farmOperations.js';
 import { mlbOverview } from './mlbOperations.js';
+import { projectedStarters } from './probableStarters.js';
 
 export const dashboardRoutes = Router();
 
@@ -97,20 +98,36 @@ dashboardRoutes.get('/injuries/:orgId', (req, res) => {
   res.json(orgInjuries(Number(req.params.orgId)));
 });
 
-dashboardRoutes.get('/next-game/:teamId', (req, res) => {
-  const teamId = Number(req.params.teamId);
-  if (!tableExists('games')) return res.json(null);
+/** A club's next game (`GET /api/next-game/:teamId`): when, where, and each side's projected starter; null with none. */
+export type NextGame = {
+  date: string; isHome: boolean; opponent: string; oppId: number; gameId: number;
+  ourStarter: ReturnType<typeof playerName>; theirStarter: ReturnType<typeof playerName>;
+} | null;
+
+/**
+ * A club's next game, or null when it has none (or the export has no games): the route's own answer (SWIFTUI_REBUILD.md
+ * N9). Each side's starter is its projection at this game's place among its own games still to play (`probableStarters.ts`).
+ */
+export function computeNextGame(teamId: number): NextGame {
+  if (!tableExists('games')) return null;
   const [game] = nextGames(teamId, 1);
-  if (!game) return res.json(null);
+  if (!game) return null;
   const isHome = game.home_team === teamId;
   const oppId = isHome ? game.away_team : game.home_team;
-  res.json({
+  const starters = projectedStarters([teamId, oppId]);
+  return {
     date: game.date,
     isHome,
     opponent: isHome ? game.away_label : game.home_label,
-    ourStarter: probableStarter(teamId, 0),
-    theirStarter: probableStarter(oppId, 0),
-  });
+    oppId,
+    gameId: game.game_id,
+    ourStarter: playerName(starters.starterOf(teamId, game.game_id)),
+    theirStarter: playerName(starters.starterOf(oppId, game.game_id)),
+  };
+}
+
+dashboardRoutes.get('/next-game/:teamId', (req, res) => {
+  res.json(computeNextGame(Number(req.params.teamId)));
 });
 
 dashboardRoutes.get('/dashboard/:orgId', (req, res) => {

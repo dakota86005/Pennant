@@ -10,6 +10,7 @@ import { expectedWobaRaw, type ToolsParams } from './toolsModel.js';
 import { majorLeagueOfClub, toolsParamsFor } from './toolsCalibration.js';
 import { computeBatting, leagueBaseline } from './stats.js';
 import { climb, expectedRuns, outcomesFrom, type BattingLine } from './runs.js';
+import { answer, refuse, type Computed } from './computed.js';
 
 export const lineupRoutes = Router();
 
@@ -325,26 +326,58 @@ export function chooseFielders(
   return assigned;
 }
 
+/** What the card is built for: the opposing hand, the ordering style, the DH and what the order is built from. */
+export interface LineupAsk {
+  vs: 'r' | 'l';
+  style: 'saber' | 'trad';
+  dh: 'auto' | 'on' | 'off';
+  sort: 'talent' | 'production';
+}
+
+/** The ask a request's query names (anything unknown is the default), as `/lineup/:teamId` has always read it. */
+export function lineupAskOf(query: Record<string, unknown>): LineupAsk {
+  return {
+    vs: query.vs === 'l' ? 'l' : 'r',
+    style: query.style === 'trad' ? 'trad' : 'saber',
+    // 'auto' follows the league; on/off let a manager see the other card without
+    // changing his save — useful for interleague, and for judging how much the
+    // rule is actually worth to this roster.
+    dh: query.dh === 'on' ? 'on' : query.dh === 'off' ? 'off' : 'auto',
+    /*
+     * What to build the order from. Talent is the scouts' view of each bat against
+     * this hand (phase 6d; it was OOTP's own valuation) and stays the default: it is
+     * a projection, and over the rest of a season a projection beats a third of a
+     * season of results. Production is here because plenty of
+     * managers want the card to say what has actually happened — a man hitting
+     * .274 on-base batting cleanup on the strength of his ratings is correct and
+     * still hard to look at. Neither is the better answer; they answer different
+     * questions.
+     */
+    sort: query.sort === 'production' ? 'production' : 'talent',
+  };
+}
+
+/** A club's lineup card (`GET /api/lineup/:teamId`): the order, the bench, who is out and who is not scouted. */
+export type LineupCard = Exclude<ReturnType<typeof cardOf>, string>;
+
+/** A club's lineup card for an ask, or why it cannot be built (the route's own answer; SWIFTUI_REBUILD.md N9). */
+export function computeLineup(teamId: number, ask: LineupAsk): Computed<LineupCard> {
+  const card = cardOf(teamId, ask);
+  return typeof card === 'string' ? refuse(400, card) : answer(card);
+}
+
 lineupRoutes.get('/lineup/:teamId', (req, res) => {
-  const teamId = Number(req.params.teamId);
-  const vs = req.query.vs === 'l' ? 'l' : 'r';
-  const style = req.query.style === 'trad' ? 'trad' : 'saber';
-  // 'auto' follows the league; on/off let a manager see the other card without
-  // changing his save — useful for interleague, and for judging how much the
-  // rule is actually worth to this roster.
-  const dhParam = req.query.dh === 'on' ? 'on' : req.query.dh === 'off' ? 'off' : 'auto';
-  /*
-   * What to build the order from. Talent is the scouts' view of each bat against
-   * this hand (phase 6d; it was OOTP's own valuation) and stays the default: it is
-   * a projection, and over the rest of a season a projection beats a third of a
-   * season of results. Production is here because plenty of
-   * managers want the card to say what has actually happened — a man hitting
-   * .274 on-base batting cleanup on the strength of his ratings is correct and
-   * still hard to look at. Neither is the better answer; they answer different
-   * questions.
-   */
-  const sortBy = req.query.sort === 'production' ? 'production' : 'talent';
-  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+  const card = computeLineup(Number(req.params.teamId), lineupAskOf(req.query));
+  if (!card.ok) return res.status(card.status).json({ error: card.error });
+  res.json(card.body);
+});
+
+/** The card, or the sentence the route refuses with. */
+function cardOf(teamId: number, ask: LineupAsk) {
+  const { vs, style } = ask;
+  const dhParam = ask.dh;
+  const sortBy = ask.sort;
+  if (!tableExists('players')) return 'No data imported yet';
 
   const raw = db
     .prepare(
@@ -481,7 +514,7 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
     backfilled.add(c.player_id);
   }
   if (starters.length < fieldersNeeded) {
-    return res.status(400).json({ error: 'Not enough position players on this roster to fill a lineup' });
+    return 'Not enough position players on this roster to fill a lineup';
   }
 
   // The man who actually bats ninth in a no-DH league is tonight's starter
@@ -666,7 +699,7 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
   const shownBat = (c: Candidate): number | null =>
     (c.batBasis && centre !== null && Number.isFinite(c.off) ? c.off / 10 : null);
 
-  res.json({
+  return {
     vs,
     style,
     /** Null when the search was skipped, or moved nobody worth moving. */
@@ -715,5 +748,5 @@ lineupRoutes.get('/lineup/:teamId', (req, res) => {
         positionName: POSITION_NAMES[p.position] ?? '?',
         reason: "His hitting tools haven't been graded by your scouts, so his bat can't be ranked against the others.",
       })),
-  });
-});
+  };
+}
