@@ -1,15 +1,21 @@
 /**
- * Who is projected to start a game that has not been played (SWIFTUI_REBUILD.md N9): one reading for the schedule, a
- * game's plan and the next game, so the three never disagree about who is pitching.
+ * Who is projected to start a game that has not been played (SWIFTUI_REBUILD.md N9, D-069): one reading for the
+ * schedule, a game's plan, the next game, the dashboard and the Morning Report's Tonight, so they never disagree about
+ * who is pitching.
  *
- * OOTP's `projected_starting_pitchers` is a club's next starts in order, `starter_0` for its next game, `starter_1` for
- * the one after, and so on (an export carries eight: a five-man rotation's five and the first three again). So a game's
- * projected starter is the slot of its place among the club's own games still to play, counted across every opponent,
- * not within one series; a game past the projection's last slot has no projected starter yet (unknown, D-018), never
- * the last slot repeated.
+ * What OOTP's `projected_starting_pitchers` is, as far as the exports show it: per club, `starter_0` … `starter_7`, and
+ * the observed pattern is a five-man turn and then its first three again. Pennant reads `starter_N` as the club's
+ * starter N games from now, counted along the club's own games still to play across every opponent, not within one
+ * series. That is a reading of the observed pattern, not a documented rule: OOTP does not say how it fills the slots,
+ * off days are not modelled (whether a day off lets the turn skip a fifth starter is not known), and a game past the
+ * last slot has no projected starter yet (unknown, D-018), never the last slot repeated.
+ *
+ * Which games count: the regular season's (`game_type` 0, the schedule's and the next game's own filter). A club with an
+ * unplayed game of another type ahead of a regular one (an exhibition, say) has its later games read as not projected,
+ * because whether OOTP's turn counts that game is not known; a guessed place would name the wrong man.
  */
 import { db, tableColumns, tableExists } from './db.js';
-import { DATE_KEY } from './dashboard.js';
+import { DATE_KEY } from './dataFreshness.js';
 
 /** The projection's slots in this export (`starter_0` … `starter_N`), in order; none without the table. */
 function slots(): string[] {
@@ -21,19 +27,28 @@ function slots(): string[] {
   return out;
 }
 
-/** Every club's games still to play, in order: the club, then each game's place among them (0 is its next game). */
+/**
+ * Every club's regular-season games still to play, in order: the club, then each game's place among them (0 is its next
+ * game). A club's games after an unplayed game of another type get no place (not known; see the head of this file).
+ */
 function upcomingPlaces(teams: ReadonlySet<number>): Map<number, Map<number, number>> {
   const places = new Map<number, Map<number, number>>();
   if (!tableExists('games') || teams.size === 0) return places;
+  const typed = tableColumns('games').includes('game_type');
   const rows = db
     .prepare(
-      `SELECT game_id, home_team, away_team FROM games WHERE played = 0
+      `SELECT game_id, home_team, away_team, ${typed ? 'COALESCE(game_type, 0)' : '0'} AS game_type FROM games WHERE played = 0
        ORDER BY ${DATE_KEY('date')}, time, game_id`,
     )
-    .all() as Array<{ game_id: number; home_team: number; away_team: number }>;
+    .all() as Array<{ game_id: number; home_team: number; away_team: number; game_type: number }>;
+  const stopped = new Set<number>();
   for (const g of rows) {
     for (const team of [g.home_team, g.away_team]) {
-      if (!teams.has(team)) continue;
+      if (!teams.has(team) || stopped.has(team)) continue;
+      if (g.game_type !== 0) {
+        stopped.add(team);
+        continue;
+      }
       const mine = places.get(team) ?? new Map<number, number>();
       mine.set(g.game_id, mine.size);
       places.set(team, mine);

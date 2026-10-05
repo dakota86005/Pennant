@@ -311,3 +311,17 @@ describe('built after each import and served from the cache (N9)', () => {
     await expect(clubhouseRostersNow(org, String(save.clubs.find((c) => c !== save.org)))).rejects.toThrow(NOT_OUR_CLUB);
   });
 });
+
+describe('a game plan with no starter says so (D-069, D-018)', () => {
+  it('says the export doesn\'t name a played game\'s starter, and a game past the projection gets the right-handers\' card, said as such', async () => {
+    const org = String(save.org);
+    const schedule = await clubhouseScheduleNow(org);
+    const playedGame = schedule.filters[2].rows[0].replace(/^game-/, '');
+    const played = await clubhouseGamePlanNow(org, playedGame);
+    expect(played.starter.text.display).toBe('The export doesn\'t name who started this game.');
+    const late = await clubhouseGamePlanNow(org, schedule.filters[1].rows.at(-1)!.replace(/^game-/, ''));
+    expect(late.starter.text.display).toBe('No starter projected for this game yet.');
+    expect(late.card.title?.display).toBe('Staff\'s view: our card against right-handers');
+    expect(late.card.lines.at(-1)?.text.display).toMatch(/^No starter is known for this game, so this is the card against right-handers, not one built for him\.$/);
+  });
+});

@@ -193,3 +193,13 @@ export function assessFreshness(input: FreshnessInputs): FreshnessAssessment {
   }
   return result('current', 'Current', [], null);
 }
+
+/**
+ * A game date column as a sortable SQL number (OOTP dates are unpadded, 2026-4-9, so lexicographic ORDER BY is wrong).
+ * Kept here, a leaf, so a reader of the schedule (`probableStarters.ts`) needs nothing heavier (N9 review).
+ */
+export const DATE_KEY = (col: string) => `(
+  CAST(substr(${col}, 1, 4) AS INTEGER) * 10000 +
+  CAST(substr(${col}, 6, CASE WHEN substr(${col}, 7, 1) = '-' THEN 1 ELSE 2 END) AS INTEGER) * 100 +
+  CAST(substr(${col}, 6 + CASE WHEN substr(${col}, 7, 1) = '-' THEN 2 ELSE 3 END) AS INTEGER)
+)`;

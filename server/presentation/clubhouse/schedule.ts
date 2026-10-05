@@ -235,7 +235,10 @@ export function gamePlanView(v: ClubhouseContext, input: GamePlanInput): MlbGame
     ? line(`Their starter: ${s.name}, ${HAND_WORDS[s.throws] ?? 'hand not in the export'}, ${s.age}${s.confirmed ? '' : ' (projected, and liable to change)'}`, {
       players: [player(s.player_id, s.name, oppId)],
     })
-    : line('No starter named or projected for this game yet.', { quiet: true });
+    : plan.game.played
+      // A played game's starter is a fact the export gives or doesn't; a projection is never read for it (D-069, D-018)
+      ? line('The export doesn\'t name who started this game.', { quiet: true })
+      : line('No starter projected for this game yet.', { quiet: true });
   const hand = plan.lineupVs === 'l' ? 'left-handers' : 'right-handers';
   const card = input.card;
   const cardLines = card === null
@@ -244,7 +247,10 @@ export function gamePlanView(v: ClubhouseContext, input: GamePlanInput): MlbGame
       ? [line(`${card}.`, { quiet: true })]
       : [
         ...card.lineup.map((l) => line(`${l.slot}. ${l.name}, ${l.positionName}`, { players: [player(l.player_id, l.name, orgId)] })),
-        line('The lineup card\'s order for this starter\'s hand, injured players left out: the card Lineup gives for this matchup.', { quiet: true }),
+        s
+          ? line('The lineup card\'s order for this starter\'s hand, injured players left out: the card Lineup gives for this matchup.', { quiet: true })
+          // The route falls back to the right-handers' card with nobody to read a hand from: say so, never imply a matchup
+          : line('No starter is known for this game, so this is the card against right-handers, not one built for him.', { quiet: true }),
       ];
   const dangerous: MlbTableSection = {
     id: 'dangerous',

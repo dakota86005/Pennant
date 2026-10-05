@@ -15,7 +15,7 @@ import { computeGamePlan } from '../server/gameplan.js';
 import { computeNextGame } from '../server/dashboard.js';
 import { projectedStarters } from '../server/probableStarters.js';
 import type { Computed } from '../server/computed.js';
-import { buildSave, type BuiltSave } from './syntheticSave';
+import { buildSave, exec, type BuiltSave } from './syntheticSave';
 
 /**
  * The route extractions (SWIFTUI_REBUILD.md milestone N4, V2 plan R7): `/standings`, `/trends`, `/roster-crunch` and
@@ -188,5 +188,30 @@ describe('a club\'s record as the export states it', () => {
     const row = db.prepare('SELECT w, l FROM team_record WHERE team_id = ?').get(save.org) as { w: number; l: number };
     expect(record).toMatchObject({ w: row.w, l: row.l });
     expect(clubRecord(999_999)).toBeNull();
+  });
+});
+
+describe('a played game the export names no starter for (D-069, D-018)', () => {
+  it('has no starter in its plan, never the projected rotation\'s man, with or without the named-starter columns', async () => {
+    const played = db.prepare('SELECT game_id, home_team, away_team FROM games WHERE played = 1 AND (home_team = ? OR away_team = ?) ORDER BY game_id LIMIT 1')
+      .get(save.org, save.org) as { game_id: number; home_team: number; away_team: number };
+    const oppId = played.home_team === save.org ? played.away_team : played.home_team;
+    // The opponent has a projection: the route used to read it for a played game
+    expect(db.prepare('SELECT starter_0 FROM projected_starting_pitchers WHERE team_id = ?').get(oppId)).toBeTruthy();
+    const starterOf = async () => ((await (await fetch(`${base}/api/game-plan/${save.org}/${played.game_id}`)).json()) as { starter: unknown; game: { played: boolean } });
+    // This synthetic export's games.csv has no named-starter columns at all
+    let plan = await starterOf();
+    expect(plan.game.played).toBe(true);
+    expect(plan.starter).toBeNull();
+    // An export with the columns, empty for this game
+    exec('ALTER TABLE games ADD COLUMN starter0 INTEGER');
+    exec('ALTER TABLE games ADD COLUMN starter1 INTEGER');
+    plan = await starterOf();
+    expect(plan.starter).toBeNull();
+    // And one that names him: the named man, confirmed
+    const theirs = (db.prepare('SELECT player_id FROM players WHERE team_id = ? AND position = 1 LIMIT 1').get(oppId) as { player_id: number }).player_id;
+    exec(`UPDATE games SET ${played.home_team === save.org ? 'starter0' : 'starter1'} = ${theirs} WHERE game_id = ${played.game_id}`);
+    plan = await starterOf();
+    expect(plan.starter).toMatchObject({ player_id: theirs, confirmed: true });
   });
 });

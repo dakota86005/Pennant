@@ -2843,13 +2843,25 @@ what its module computes (`tests/routeExtractions.test.ts`), and never re-derive
   export does not state is not known and sorts last, never "?/3" or zero. A 40-man item on the desk opens the view on
   its player.
 - **No odds or posture** (D-060), not even in the schedule: an opponent's record is the standings' fact.
-- **A game still to play names the starter its club projects for that game.** OOTP's projected starters are a club's
-  next starts in order (an export carries eight: a five-man turn and its first three again), so a game's starter is the
-  slot at its place among the club's own games still to play, across series and opponents; past the last slot nobody is
-  named. The schedule (and the game plan, which matched it) restarted the count at every series and repeated the last
-  slot for the rest of the season; both routes, the next game and the v2 views now read one projection
-  (`probableStarters.ts`). BEHAVIOR_CASES.md "Pennant for Mac", the `routeExtractions.test.ts` row.
-
+- **A game still to play names the starter its club projects for that game, and every reading names the same man.**
+  What the export shows of OOTP's projected starters is a pattern, not a rule: eight slots per club, observed as a
+  five-man turn and then its first three again. Pennant reads slot N as the club's starter N games from now, counted
+  along the club's own regular-season games still to play (`game_type` 0, the schedule's and the next game's filter),
+  across series and opponents. That reading is an inference from the observed pattern: OOTP does not document how it
+  fills the slots, off days are not modelled (whether a day off lets a turn skip its fifth man is not known), past the
+  last slot nobody is named, and a club with an unplayed game of another type (an exhibition) ahead of a regular one has
+  its later games read as not projected, since whether OOTP's turn counts that game is not known. The schedule (and the
+  game plan, which matched it) restarted the count at every series and repeated the last slot for the rest of the
+  season; the Morning Report's Tonight and `/api/dashboard`'s upcoming games took each club's first slot, so when the
+  opponent played a game before ours (our off day, a doubleheader) Tonight named one man and the schedule row it opens
+  another, and the Lineup opened against the wrong hand. All of them (both routes, the next game, the dashboard, Tonight
+  and the v2 views) now read one projection at the game's place (`probableStarters.ts`). BEHAVIOR_CASES.md "MLB
+  Operations", the `probableStarters.test.ts` row.
+- **A played game the export names no starter for names none** (D-018). `/api/game-plan` used to project a starter for
+  any game whose `games.csv` row named none, played or not; a played game now has no starter in its plan, said as the
+  export not naming him, because who started a played game is a fact the export gives or doesn't and a projection is
+  about games still to play. A plan with no starter shows the card against right-handers and says that is what it is,
+  not a card built for him. BEHAVIOR_CASES.md "MLB Operations", the `routeExtractions.test.ts` row.
 The builder's calls (for the owner's review):
 1. *The schedule opens on the games still to play* (the next first, its plan beneath), with Played (latest first) and the
    full season one click away, rather than the full season scrolled to the current series as React did: a table

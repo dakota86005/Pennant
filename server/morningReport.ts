@@ -84,6 +84,11 @@ export interface MorningMaterial {
   /** Tonight's probable starters' season lines. */
   starters: PitcherLine[];
   /**
+   * Who each side is projected to start in the next game: its projection at that game's place among its own games still
+   * to play (`probableStarters.ts`, D-069), the schedule's reading; null for a side projected to no one that far ahead.
+   */
+  tonightStarters: { ours: number | null; theirs: number | null };
+  /**
    * What Pennant keeps of this import's season (N7, D-058): every club's line in the standings, and the club's own games
    * played, in order (their opponents named), for "since the last export".
    */
@@ -268,9 +273,10 @@ export function readMorning(orgId: number, status: DataStatus, needs: readonly M
     map = failed('The roster map', err);
   }
   let starters: PitcherLine[] = [];
+  // Each side's man at the next game's place in its own turn (D-069), as the season's facts read it
+  const tonightStarters = facts.nextStarters;
   if (facts.next && facts.leagueId !== null) {
-    const opponent = facts.next.home === orgId ? facts.next.away : facts.next.home;
-    const ids = [orgId, opponent].map((t) => facts.projected.find((p) => p.teamId === t)?.starters[0] ?? null).filter((id): id is number => id !== null);
+    const ids = [tonightStarters.ours, tonightStarters.theirs].filter((id): id is number => id !== null);
     starters = [...pitcherLines(ids, facts.leagueId, facts.season).values()];
   }
   let memory: SeasonMemory = { gameDate: facts.currentDate, standings: [], games: null };
@@ -286,5 +292,5 @@ export function readMorning(orgId: number, status: DataStatus, needs: readonly M
   } catch (err) {
     console.error('[front office] the season\'s standings could not be kept:', err);
   }
-  return { facts, division: divisionPlace(facts), profile, map, starters, memory, ms };
+  return { facts, division: divisionPlace(facts), profile, map, starters, tonightStarters, memory, ms };
 }

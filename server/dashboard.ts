@@ -18,12 +18,10 @@ const HAND: Record<number, string> = { 1: 'R', 2: 'L', 3: 'S' };
 
 const teamLabel = `CASE WHEN t.name = t.nickname THEN t.name ELSE t.name || ' ' || t.nickname END`;
 
-/** OOTP dates are unpadded (2026-4-9), so lexicographic ORDER BY is wrong. */
-export const DATE_KEY = (col: string) => `(
-  CAST(substr(${col}, 1, 4) AS INTEGER) * 10000 +
-  CAST(substr(${col}, 6, CASE WHEN substr(${col}, 7, 1) = '-' THEN 1 ELSE 2 END) AS INTEGER) * 100 +
-  CAST(substr(${col}, 6 + CASE WHEN substr(${col}, 7, 1) = '-' THEN 2 ELSE 3 END) AS INTEGER)
-)`;
+import { DATE_KEY } from './dataFreshness.js';
+
+/** OOTP dates are unpadded (2026-4-9), so lexicographic ORDER BY is wrong: order by `DATE_KEY` (in `dataFreshness.ts`). */
+export { DATE_KEY };
 
 function playerName(id: number | null): { player_id: number; name: string; throws: string } | null {
   if (!id) return null;
@@ -31,15 +29,6 @@ function playerName(id: number | null): { player_id: number; name: string; throw
     .prepare(`SELECT player_id, first_name || ' ' || last_name AS name, throws FROM players WHERE player_id = ?`)
     .get(id) as { player_id: number; name: string; throws: number } | undefined;
   return p ? { player_id: p.player_id, name: p.name, throws: HAND[p.throws] ?? '?' } : null;
-}
-
-function probableStarter(teamId: number, gameIndex: number) {
-  if (!tableExists('projected_starting_pitchers')) return null;
-  const row = db
-    .prepare(`SELECT * FROM projected_starting_pitchers WHERE team_id = ?`)
-    .get(teamId) as Record<string, number> | undefined;
-  if (!row) return null;
-  return playerName(row[`starter_${Math.min(gameIndex, 7)}`] ?? null);
 }
 
 export function nextGames(teamId: number, limit: number) {
@@ -179,16 +168,20 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
     };
   });
 
-  // Next 5 games with our probable starters (and theirs for the next game)
-  const upcoming = nextGames(orgId, 5).map((g, i) => {
+  // Next 5 games with our probable starters (and theirs for the next game). Each side's starter is its projection at the
+  // game's place among its own games still to play (`probableStarters.ts`, D-069), the schedule's and the Report's reading:
+  // the opponent's next game is not always ours, and a game past the projection names nobody (it once repeated the last slot)
+  const ahead = nextGames(orgId, 5);
+  const projected = projectedStarters([orgId, ...ahead.map((g) => (g.home_team === orgId ? g.away_team : g.home_team))]);
+  const upcoming = ahead.map((g, i) => {
     const isHome = g.home_team === orgId;
     const oppId = isHome ? g.away_team : g.home_team;
     return {
       date: g.date,
       isHome,
       opponent: isHome ? g.away_label : g.home_label,
-      ourStarter: probableStarter(orgId, i),
-      theirStarter: i === 0 ? probableStarter(oppId, 0) : null,
+      ourStarter: playerName(projected.starterOf(orgId, g.game_id)),
+      theirStarter: i === 0 ? playerName(projected.starterOf(oppId, g.game_id)) : null,
     };
   });
 
