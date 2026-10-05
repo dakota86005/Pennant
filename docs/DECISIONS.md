@@ -2868,10 +2868,17 @@ The builder's calls (for the owner's review):
    scrolled programmatically left rows under its header, and the next game is what the page is opened for.
 2. *The pen shows its arms on the injured list*, last, marked "Out about N more days", instead of React's hide toggle (a
    setting in `settings.json`): nothing to set, and no arm quietly missing.
-3. *Depth Chart shows one of the organization's clubs at a time*, on the roster diagram's flat field (the eight fielders
-   and the DH, three to a plate with the rest a click away; the starters and relievers beside it), stacking as cards on a
-   narrow column, rather than React's grid of every club at every position, which needed scrolling both ways.
+3. *Depth Chart reads two ways* (revised after the review): **by position**, the default, one position across every
+   level in a native table (who is behind a man reads straight down, the React page's main use, without its grid of
+   every club at every position that needed scrolling both ways), and **by club**, one club at a time on the roster
+   diagram's flat field (the eight fielders and the DH, three to a plate with the rest a click away; the starters and
+   relievers beside it), stacking as cards on a narrow column. Both are served from one build.
 4. *Rosters puts every season line the React picker offered in the table*, React's defaults shown and the rest hidden
    until the GM shows them from the table header's own menu (the window remembers), instead of a separate picker.
 5. *The rest calendar is five days* (today, the last game played, and the four before it), the three-day load the
    availability reading uses beside it.
+6. *Lineup's choices are the window's toolbar* (after the review), as Calendar's and Finder's view choices are: the
+   opposing hand, the one asked most, a segmented control; the order, what the card is built from and the DH a "Card"
+   pull-down with each group inline and checked, rather than four menus that overflow a narrow toolbar.
+7. *The boundary between a table and its detail is the GM's to move*, as in Mail, remembered per view; the table keeps
+   at least 120 points.

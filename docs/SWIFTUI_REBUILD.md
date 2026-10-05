@@ -1178,8 +1178,8 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   on a local disk; inside OOTP's container each stat is the cost the owner's /farm-operations paid, about 45 ms).
 - **Mac.** `ClubhouseStore` (PennantKit, `AppModel.clubhouse`) reads each tool once per key and ask, never another club's.
   Lineup, Pitching Availability, 40-Man & Options and Rosters are N8's `TablePane` with the served sections as a segmented
-  control; Lineup's choices are labelled segmented controls that ask the server again exactly as served (the card shown
-  stays, drawn as updating); Rosters' club is a popover of choices and its other season lines are shown from the table
+  control; Lineup's choices ask the server again exactly as served (the card shown stays, drawn as updating; in the
+  toolbar since the review, below); Rosters' club is a popover of choices and its other season lines are shown from the table
   header's menu (`defaultVisibility`, remembered in scene storage). The schedule opens on the games still to play (or on
   the filter holding the game it was opened on, Played latest first), the chosen game's plan beneath in its own pane,
   its sections as short grids. Depth Chart is one club at a time on the roster diagram's flat field (`FieldGeometry`,
@@ -1200,6 +1200,20 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   leading edge), Swift Charts' per-range elements had no role (the chart is one image element), a caption-size line in the
   secondary colour read "nearly passed". N8's Decision candidates' group pop-up now truncates with its full title in a
   help tag instead of being clipped at 900 points.
+- **After the review (2026-10-05).** Every reading of the probable starters (the schedule, a plan, the next game, the
+  dashboard, the Morning Report's Tonight) reads one projection at the game's place, regular-season games only (D-069).
+  Each part of the build is read on its own: a part that throws is logged, worded "couldn't be read this time", and kept
+  for the import like the rest; an asked view is kept only when the generation and the inputs key held. Lineup's choices
+  moved into the window's toolbar (the opposing hand a segmented control, the rest a "Card" pull-down with each group
+  inline), its staff's view one line with the basis a click away, and the next game and notes into the pane beneath.
+  `TablePane`'s boundary between table and detail is the GM's to drag, as in Mail, remembered per view
+  (`TablePane.detailHeight.<view>`), VoiceOver adjusting it a step at a time; the table never drops below
+  `tableMinimum`. Depth Chart reads by position (one position across every level in a native table, served as
+  `byPosition` from the same build) or by club (the field), chosen in the head and remembered by the window. Position
+  badges draw `readableHeadingText` on `readableHeadingFill` in the system's colours. Runs allowed are dashed in Season
+  Trends; a mark-only cell (the rest calendar's dash) reads its served hint to VoiceOver. The narrow test clicks the
+  sidebar once (no second click), brings the app back only when another process is frontmost (logged), asserts the
+  Lineup's table keeps 120 pt, and reads the depth both ways.
 - *Left for later:* the per-view sidebar counts; a player opens his club until N11's player windows land (the views use
   the served `open`, so N11's window takes over).
 
