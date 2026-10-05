@@ -1039,6 +1039,73 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Every Major League Ops view at 900 × 700 with the inspector open (N9; BEHAVIOR_CASES.md "Pennant for Mac",
+    /// `testMajorLeagueNarrowWindow`): the five N8 views and the seven clubhouse tools, round after round, a row chosen
+    /// in each table, a lineup asked another way, a game's plan drawn beneath the schedule, and each clubhouse tool
+    /// audited on its first visit. Nothing may stop the app: the window's columns take no minimum from what they draw.
+    @MainActor
+    func testClubhouseNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30), "⌘2 did not open Major League Ops")
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in XCTAssertEqual(app.state, .runningForeground, "the app stopped at \(step)") }
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        // Each view, and what shows it drew: a table (a row is chosen in it) or another element
+        let views: [(view: String, shows: String, table: Bool)] = [
+            ("report", "report.content", false), ("positionPlayers", "table.lineup", true), ("pitchingStaff", "table.pitching.0", true),
+            ("benchBackups", "table.bench", true), ("decision", "detail.majorLeague.decision", false), ("lineup", "table.lineup.order", true),
+            ("pitchingAvailability", "table.pitchingAvailability.bullpen", true), ("scheduleGamePlans", "table.schedule.games", true),
+            ("depthChart", "depthChart.club", false), ("fortyManOptions", "table.fortyMan.fortyMan", true), ("rosters", "table.rosters.hitters", true),
+            ("seasonTrends", "trend.differential", false),
+        ]
+        let clubhouse: Set<String> = ["lineup", "pitchingAvailability", "scheduleGamePlans", "depthChart", "fortyManOptions", "rosters", "seasonTrends"]
+        for round in 1...3 {
+            for view in views {
+                let item = element(app, "sidebar.majorLeague.\(view.view)")
+                if !item.isHittable { reveal(item, in: element(app, "sidebar")) }
+                XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                item.click()
+                let shown = element(app, view.shows)
+                if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n9-narrow-900-missing-\(view.view)") }
+                XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
+                if view.table {
+                    let row = firstRow(of: shown)
+                    XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                    leading(row)
+                }
+                switch view.view {
+                case "lineup":
+                    // The card against left-handers, asked of the server and drawn
+                    let hand = element(app, "lineup.choice.0").radioButtons.element(boundBy: 1)
+                    XCTAssertTrue(hand.waitForExistence(timeout: 10), "round \(round): the lineup offers no choice of hand")
+                    hand.click()
+                    XCTAssertTrue(element(app, "table.lineup.order").waitForExistence(timeout: 20), "round \(round): the card asked another way did not draw")
+                case "scheduleGamePlans":
+                    XCTAssertTrue(element(app, "schedule.plan").waitForExistence(timeout: 20), "round \(round): the chosen game's plan did not draw")
+                case "rosters":
+                    let pitchers = element(app, "rosters.sections").radioButtons.element(boundBy: 1)
+                    if pitchers.exists {
+                        pitchers.click()
+                        XCTAssertTrue(element(app, "table.rosters.pitchers").waitForExistence(timeout: 10), "round \(round): the pitchers did not draw")
+                    }
+                default:
+                    break
+                }
+                if round == 1 { keep(window.screenshot(), named: "n9-narrow-900-\(view.view)") }
+                up("\(view.view), round \(round)")
+                if round == 1, clubhouse.contains(view.view) {
+                    try audit(app, named: "accessibility-audit-n9-narrow-\(view.view)")
+                }
+            }
+        }
+        quitCleanly(app)
+    }
+
     /// Following by drag (D-058): a club's name dragged from around the league onto the sidebar's Following section is
     /// followed (the server's answer redraws the section), and ⌘Z unfollows it again.
     @MainActor

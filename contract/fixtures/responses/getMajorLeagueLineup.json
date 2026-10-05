@@ -296,7 +296,7 @@
         "title": {
           "display": "Glove"
         },
-        "numeric": true
+        "numeric": false
       },
       {
         "id": "bats",
@@ -310,7 +310,7 @@
         "title": {
           "display": "Bat vs RHP"
         },
-        "numeric": true
+        "numeric": false
       },
       {
         "id": "pa",
@@ -386,14 +386,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "0.6"
@@ -506,14 +506,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "1.0"
@@ -625,14 +625,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "-0.1"
@@ -744,14 +744,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "0.0"
@@ -863,14 +863,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "0.0"
@@ -982,14 +982,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "1.0"
@@ -1101,14 +1101,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "-0.1"
@@ -1220,14 +1220,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "0.2"
@@ -1339,14 +1339,14 @@
             "display": ".000"
           },
           "opsPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "wrcPlus": {
-            "display": "No line",
+            "display": "Not known",
             "tone": "unknown",
-            "hint": "No line at this level this season"
+            "hint": "Not in his line this season"
           },
           "war": {
             "display": "0.5"

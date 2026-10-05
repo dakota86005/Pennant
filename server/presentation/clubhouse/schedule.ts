@@ -77,6 +77,8 @@ function gameRows(s: Full): { rows: MlbRow[]; played: string[]; upcoming: string
   const rows: MlbRow[] = [];
   const played: string[] = [];
   const upcoming: string[] = [];
+  // Whether the export carries runs by inning at all (the route reads them for its last 24 games played)
+  const anyInnings = Object.keys(s.lineScores ?? {}).length > 0;
   s.series.forEach((series, si) => {
     const next = si === s.nextSeriesIndex;
     series.games.forEach((g, gi) => {
@@ -89,7 +91,11 @@ function gameRows(s: Full): { rows: MlbRow[]; played: string[]; upcoming: string
         : g.played ? cell('Not in the export', { tone: 'unknown' }) : cell('To play', { tone: 'neutral' });
       const innings: Cell = !g.played
         ? cell('–', { hint: 'Not played yet' })
-        : ours && ours.length ? cell(ours.join(' '), { hint: 'Our runs by inning' }) : cell('Not read', { tone: 'unknown', hint: 'Innings are read for the last 24 games played' });
+        : ours && ours.length
+          ? cell(ours.join(' '), { hint: 'Our runs by inning' })
+          : anyInnings
+            ? cell('Not read', { tone: 'unknown', hint: 'Innings are read for the last 24 games played' })
+            : cell('Not in the export', { tone: 'unknown', hint: 'The export has no runs by inning' });
       const seriesWords = `Game ${gi + 1} of ${series.games.length}${next && !g.played && gi === series.games.findIndex((x) => !x.played) ? ' · next up' : ''}`;
       rows.push(tableRow(id, {
         date: cell(dayWords(g.date)),

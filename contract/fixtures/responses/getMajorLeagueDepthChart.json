@@ -123,6 +123,10 @@
               }
             }
           ],
+          "more": {
+            "display": "+2 more",
+            "hint": "P 1016, P 1014"
+          },
           "empty": null
         },
         {
@@ -252,6 +256,10 @@
               }
             }
           ],
+          "more": {
+            "display": "+5 more",
+            "hint": "P 1019, P 1018, P 1022, P 1024, P 1025"
+          },
           "empty": null
         },
         {
@@ -276,6 +284,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -315,6 +324,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -339,6 +349,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -393,6 +404,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -417,6 +429,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -456,6 +469,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -495,6 +509,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -503,6 +518,7 @@
             "display": "Right field"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }
@@ -529,6 +545,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         }
       ]
@@ -548,6 +565,7 @@
             "display": "Starting pitchers"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }
@@ -604,6 +622,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -612,6 +631,7 @@
             "display": "Catcher"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }
@@ -622,6 +642,7 @@
             "display": "First base"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }
@@ -648,6 +669,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -656,6 +678,7 @@
             "display": "Third base"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }
@@ -682,6 +705,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -690,6 +714,7 @@
             "display": "Left field"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }
@@ -716,6 +741,7 @@
               }
             }
           ],
+          "more": null,
           "empty": null
         },
         {
@@ -724,6 +750,7 @@
             "display": "Right field"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }
@@ -734,6 +761,7 @@
             "display": "Designated hitter"
           },
           "players": [],
+          "more": null,
           "empty": {
             "display": "Nobody listed here"
           }

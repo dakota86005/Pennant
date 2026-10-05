@@ -6,11 +6,13 @@
  */
 import type { DepthChart } from '../../org.js';
 import { cell } from '../claim.js';
-import { factClaim, head, player, type ClubhouseContext } from './common.js';
+import { factClaim, head, hintIf, player, type ClubhouseContext } from './common.js';
 import { fillHint, type RatingFill } from './fill.js';
 import type { MlbDepthChartView, MlbDepthClub, MlbDepthEntry, MlbDepthPosition } from './types.js';
 
 const DEPTH = 'The depth chart';
+/** How many men a position's plate on the field shows (the rest are counted, and listed in full beside it). */
+const FIELD_SHOWN = 3;
 
 type Player = DepthChart['players'][number];
 
@@ -79,7 +81,12 @@ export function depthChartView(v: ClubhouseContext, input: DepthInput): MlbDepth
     const mine = chart.players.filter((p) => p.team_id === t.team_id);
     const positions: MlbDepthPosition[] = POSITIONS.map((pos) => {
       const players = deepestFirst(mine.filter(pos.match)).map((p) => entry(p, orgId, input));
-      return { id: pos.id, title: cell(pos.title), players, empty: players.length ? null : cell('Nobody listed here') };
+      const rest = players.slice(FIELD_SHOWN).map((e) => e.player.name);
+      return {
+        id: pos.id, title: cell(pos.title), players,
+        more: rest.length ? cell(`+${rest.length} more`, hintIf(rest.join(', ')) ? { hint: hintIf(rest.join(', ')) } : { hint: 'Click for the whole depth' }) : null,
+        empty: players.length ? null : cell('Nobody listed here'),
+      };
     });
     return { teamId: t.team_id, title: cell(t.label.trim() || t.name), level: cell(t.levelName === 'ORG' ? 'Not assigned' : t.levelName), positions };
   });

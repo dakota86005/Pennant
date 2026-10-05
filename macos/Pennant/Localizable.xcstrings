@@ -100,6 +100,9 @@
     "Ceiling Change": {
       "extractionState": "manual"
     },
+    "Choose a game for the staff's plan.": {
+      "extractionState": "manual"
+    },
     "Choose a player to decide on": {
       "extractionState": "manual"
     },
@@ -244,6 +247,12 @@
       "extractionState": "manual"
     },
     "Full development evidence": {
+      "extractionState": "manual"
+    },
+    "Game": {
+      "extractionState": "manual"
+    },
+    "Game Plan": {
       "extractionState": "manual"
     },
     "GM Briefing": {
@@ -495,6 +504,9 @@
       "extractionState": "manual"
     },
     "Position Players": {
+      "extractionState": "manual"
+    },
+    "Positions": {
       "extractionState": "manual"
     },
     "Prospects": {

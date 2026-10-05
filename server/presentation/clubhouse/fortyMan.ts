@@ -65,7 +65,7 @@ function statusCell(p: CrunchPlayer): Cell {
   const where = p.on26 ? 'Active' : 'On the 40-man';
   const a = p.assignment;
   const extra = a && ROW_KINDS.has(a.kind) ? ` · ${a.kind === 'rehab_assignment' ? 'Rehab' : a.label}` : '';
-  return cell(`${where}${extra}`, { tone: p.on26 ? 'good' : 'neutral', ...(a && ROW_KINDS.has(a.kind) ? { hint: hintIf(`${a.label}, from ${a.source}`) } : {}) });
+  return cell(`${where}${extra}`, { tone: 'neutral', ...(a && ROW_KINDS.has(a.kind) ? { hint: hintIf(`${a.label}, from ${a.source}`) } : {}) });
 }
 
 function optionsCell(rights: Rights | null): { cell: Cell; sort: number | null } {
@@ -77,7 +77,7 @@ function optionsCell(rights: Rights | null): { cell: Cell; sort: number | null }
 }
 
 const RULE5: Record<string, [string, Tone]> = {
-  protected_by_forty_man: ['Protected', 'good'],
+  protected_by_forty_man: ['Protected', 'neutral'],
   not_applicable: ['Doesn\'t apply', 'neutral'],
   indeterminate: ['Not known', 'unknown'],
 };

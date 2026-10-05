@@ -134,7 +134,11 @@ export function plusTone(def: StatDef, value: number | null | undefined): Tone |
 /** A season line's cell: its value, or the served words for a line he does not have (never a zero). */
 export function statCell(def: StatDef, value: number | null | undefined, raw: Record<string, number | null> | null, none: string): Cell {
   const text = statText(def, value, raw);
-  if (text === null) return cell(none, { tone: 'unknown', hint: raw ? 'Not in his line this season' : 'No line at this level this season' });
+  if (text === null) {
+    // He has a line, but not this part of it: not known. No line at all at this level is said as such (never a zero)
+    const known = raw !== null || none !== 'No line';
+    return cell(known ? 'Not known' : none, { tone: 'unknown', hint: known ? 'Not in his line this season' : 'No line at this level this season' });
+  }
   const tone = plusTone(def, value);
   return cell(text, tone ? { tone } : {});
 }

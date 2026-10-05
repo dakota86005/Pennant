@@ -135,6 +135,8 @@ export interface MlbDepthPosition {
   id: string;
   title: Cell;
   players: MlbDepthEntry[];
+  /** How many more there are past the first three (a plate on the field shows three), with their names; null with none. */
+  more: Cell | null;
   /** The sentence when nobody plays it here. */
   empty: Cell | null;
 }

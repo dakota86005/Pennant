@@ -9468,6 +9468,10 @@
               "$ref": "#/components/schemas/MlbDepthEntry"
             }
           },
+          "more": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How many more there are past the first three (a plate on the field shows three), with their names; null with none."
+          },
           "empty": {
             "$ref": "#/components/schemas/Cell",
             "description": "The sentence when nobody plays it here."

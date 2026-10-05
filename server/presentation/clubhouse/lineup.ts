@@ -118,6 +118,8 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
       : cell(String(l.defRating), { hint: 'Your scouts\' 20–80 grade at this position' });
     const name = l.dayToDay ? `${l.name} (day-to-day)` : l.name;
     const fill = fills.get(l.player_id) ?? null;
+    // A line he has whose league-relative part can't be worked out is not known; no line at all is said as such
+    const none = l.pa === null ? 'No line' : 'Not known';
     const cells: Record<string, Cell> = {
       slot: cell(String(l.slot)),
       player: cell(name, l.dayToDay ? { tone: 'caution', hint: 'Day-to-day: OOTP will let him play, so check him first' } : {}),
@@ -125,11 +127,11 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
       glove,
       bats: cell(l.bats),
       bat,
-      pa: statCell(stat('pa'), l.pa, null, 'No line'),
-      ops: statCell(stat('ops'), l.ops, null, 'No line'),
-      opsPlus: statCell(stat('opsPlus'), l.opsPlus, null, 'No line'),
-      wrcPlus: statCell(stat('wrcPlus'), l.wrcPlus, null, 'No line'),
-      war: statCell(stat('war'), l.war, null, 'No line'),
+      pa: statCell(stat('pa'), l.pa, null, none),
+      ops: statCell(stat('ops'), l.ops, null, none),
+      opsPlus: statCell(stat('opsPlus'), l.opsPlus, null, none),
+      wrcPlus: statCell(stat('wrcPlus'), l.wrcPlus, null, none),
+      war: statCell(stat('war'), l.war, null, none),
       why: cell(l.why),
     };
     const why: MlbLine[] = [line(l.why)];
@@ -248,8 +250,8 @@ export function lineupView(v: ClubhouseContext, input: LineupInput): MlbLineupVi
     notes: built ? notes(v, built) : [],
     order: {
       columns: [
-        column('slot', '#', true), column('player', 'Player'), column('position', 'Pos'), column('glove', 'Glove', true),
-        column('bats', 'B'), column('bat', `Bat vs ${ask.vs === 'r' ? 'RHP' : 'LHP'}`, true), column('pa', 'PA', true),
+        column('slot', '#', true), column('player', 'Player'), column('position', 'Pos'), column('glove', 'Glove'),
+        column('bats', 'B'), column('bat', `Bat vs ${ask.vs === 'r' ? 'RHP' : 'LHP'}`), column('pa', 'PA', true),
         column('ops', 'OPS', true), column('opsPlus', 'OPS+', true), column('wrcPlus', 'wRC+', true), column('war', 'WAR', true),
         column('why', 'Why here'),
       ],

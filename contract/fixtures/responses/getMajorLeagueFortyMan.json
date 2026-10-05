@@ -295,7 +295,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -303,7 +303,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -472,7 +472,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -480,7 +480,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -649,7 +649,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -657,7 +657,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -826,7 +826,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -834,7 +834,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -1003,7 +1003,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -1011,7 +1011,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -1180,7 +1180,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -1188,7 +1188,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -1357,7 +1357,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -1365,7 +1365,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -1534,7 +1534,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -1542,7 +1542,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -1711,7 +1711,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -1719,7 +1719,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -1888,7 +1888,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -1896,7 +1896,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -2065,7 +2065,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -2073,7 +2073,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -2242,7 +2242,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -2250,7 +2250,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -2419,7 +2419,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -2427,7 +2427,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -2596,7 +2596,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -2604,7 +2604,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -2773,7 +2773,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -2781,7 +2781,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -2950,7 +2950,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -2958,7 +2958,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -3127,7 +3127,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -3135,7 +3135,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -3304,7 +3304,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -3312,7 +3312,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -3481,7 +3481,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -3489,7 +3489,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -3658,7 +3658,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -3666,7 +3666,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -3835,7 +3835,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -3843,7 +3843,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -4012,7 +4012,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -4020,7 +4020,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -4189,7 +4189,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -4197,7 +4197,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -4366,7 +4366,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -4374,7 +4374,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -4543,7 +4543,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -4551,7 +4551,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -4720,7 +4720,7 @@
               },
               "status": {
                 "display": "Active",
-                "tone": "good"
+                "tone": "neutral"
               },
               "options": {
                 "display": "0 used · 3 left",
@@ -4728,7 +4728,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -4905,7 +4905,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -5119,7 +5119,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -5333,7 +5333,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -5547,7 +5547,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -5761,7 +5761,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {
@@ -5975,7 +5975,7 @@
               },
               "rule5": {
                 "display": "Protected",
-                "tone": "good",
+                "tone": "neutral",
                 "hint": "On the 40-man, so not exposed to the Rule 5 draft."
               },
               "now": {

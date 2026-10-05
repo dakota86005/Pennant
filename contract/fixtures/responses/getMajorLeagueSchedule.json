@@ -348,9 +348,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -396,9 +396,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -444,9 +444,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -492,9 +492,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -540,9 +540,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -588,9 +588,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -636,9 +636,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -684,9 +684,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -732,9 +732,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -780,9 +780,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -828,9 +828,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -876,9 +876,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -924,9 +924,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -972,9 +972,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1020,9 +1020,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1068,9 +1068,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1116,9 +1116,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1164,9 +1164,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1212,9 +1212,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1260,9 +1260,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1308,9 +1308,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1356,9 +1356,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1404,9 +1404,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1452,9 +1452,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1500,9 +1500,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1548,9 +1548,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1596,9 +1596,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1644,9 +1644,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1692,9 +1692,9 @@
               "tone": "good"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
@@ -1740,9 +1740,9 @@
               "tone": "bad"
             },
             "innings": {
-              "display": "Not read",
+              "display": "Not in the export",
               "tone": "unknown",
-              "hint": "Innings are read for the last 24 games played"
+              "hint": "The export has no runs by inning"
             },
             "ourStarter": {
               "display": "Not in the export",
