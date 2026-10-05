@@ -146,6 +146,48 @@ served `theme` and applies it to every window once saved; AI lists each provider
 request that fails shows the server's sentence, or one of three structural lines ("Couldn't reach the Pennant server",
 "The Pennant server isn't running", "The request failed") with the raw error in the help tag and the log, never as text.
 
+**As built at N11 (2026-10-04): the player window and Compare.** Branch `feature/swiftui-n11-player`; D-070 (BEHAVIOR_CASES.md
+"Player card", the N11 rows).
+- **Served** (`server/presentation/player/`, `server/playerDossierBuild.ts`, `server/playerViewService.ts`): `GET
+  /api/v2/player/:id[?org=]`, one `PlayerDossierView` in sections (header with three tiles and how current the data is;
+  overview; ratings with the scale, whose grades they are, every group, the rating history; value with the totals, our
+  view, the production cone and the season-by-season breakdown; contract and rights; history with where he is now, the
+  log's lines and his record as tables). Read by `computePlayerDossier` (the React card's `/api/player/:id`, extracted,
+  byte-identical on the owner's export and USBL, 126 requests; pinned in `routeExtractions.test.ts`) with Player Value's
+  cone, surplus and our view, Player Rights, Player State, the log and `playerRatingHistory` (the organization's history
+  filter, shared). `GET|PUT|DELETE /api/v2/player/:id/notes` (the GM's note on his follow, as typed; a first note follows
+  him and its undo stops following), `POST|DELETE /api/v2/player/:id/staff-notes[/:noteId]` (the staff's notes; a removal
+  undone), `GET /api/v2/compare?players=` (two to four, each figure his own dossier's, ranges read by overlap only). Our
+  club's players are read ahead in the Front Office's worker after each kept build (`playerDossiers`, a `WorkerJob`); any
+  other on his first open; kept on the Front Office's key and the rating-snapshot writes. The React card's playoff-odds
+  line is not served (D-060). Major League Ops' and the farm's rows carry `ratingsFill`, the OSA mark (D-067).
+- **Drawn** (PennantFeatures' Player target, `PlayerStore` in PennantKit): `WindowGroup("Player", for: PlayerRef.self)`
+  and `WindowGroup("Compare", for: ComparisonRef.self)`, both restored at relaunch by their values and offering no empty
+  window from File. The sections are chosen with a segmented control centred above them, as Music's Get Info window
+  shows one album's kinds of detail (a sidebar would be a second navigation in a window of one subject; a `TabView` put
+  its tabs in the toolbar on macOS 26, where they fell into the overflow menu beside the window's buttons and were not
+  seen; on a narrow window the segments show their symbols, each still named): Overview, Ratings (grades as bars between the served scale's ends, the history as a Swift Charts line
+  with an `AXChartDescriptor`), Value (the totals, our view, the cone as Swift Charts ranges with the replacement rule
+  and the seasons not established outlined, an audio-graph descriptor, each season a button opening its basis), Contract
+  & Rights, History (a native `Table` of the chosen record in a `TablePane` over where he is now and the log), Notes
+  (saved 0.6 s after the last key, undone like any text; staff notes removable with ⌘Z). Below 820 points wide the header keeps
+  to his name, line and club, and the tiles open the Overview instead, so the sections keep the room. A player's name anywhere (`playerName`), a Major League Ops row (double-click
+  or Return), the palette's player result, Following, a desk item whose headline names a player and the Player menu
+  (⌥⌘O Open Player, ⌥⌘C Compare, on the focused player) open or bring forward his window; Open His Club stays in the
+  menus. Compare takes the chosen rows (Major League Ops' tables allow several), a drop anywhere on its window, or the
+  Compare command (the window used last takes the player, `CompareRouter`); a player is removed in one click; it holds
+  four at most. The OSA mark (`RatingFillMark`) is drawn beside every grade, the header, the source line, Major League
+  Ops' and the farm's player cells and Compare's players, its sentence the help tag and the VoiceOver label.
+- **Measured** (in process over HTTP on an M4; the synthetic league, read-only scratch copies of the owner's export and
+  of USBL): our club read ahead in 0.4 s (32 players), 2.8 s (285) and 1.6 s (162); a dossier from the cache p50 / p95
+  0.8–1.9 / 1.4–3.9 ms, 43–60 kB; another club's player on his first open 0.13 s on the owner's export and 0.05 s on
+  USBL (the first after a start 0.8 s and 0.34 s: that league's reads, cold on the server's thread), 1.1 / 2.0 ms after;
+  USBL's longest career (97 seasons' rows) 0.13 s first, 1.2 / 1.6 ms after, 71 kB; Compare of three 0.7–1.0 / 1.4–1.8
+  ms; notes 0.3–0.6 / 0.6–1.2 ms.
+- *Left for later:* the React card's hover card (a summary on resting over a name) is not drawn: the name opens the
+  window; the season-by-season breakdown's row hover (the season's control) is in the cone's season detail instead; the
+  farm's tables compare the right-clicked player (several chosen only in Major League Ops' tables).
+
 ### 3.2 The main window
 
 - **Sidebar** (`NavigationSplitView`; floats as glass automatically on macOS 26+):
@@ -2335,6 +2377,9 @@ built at N8"; D-065). Left open: the items in that section's "Left for later".
 at N10"; D-066), and with the scouted-ratings work (D-067, D-068): Development tracking says a change of rating source and the
 Organization lines say a fit set aside. The farm's XCUITests (`testFarmDeskToDecision`, `testFarmViewsDark`,
 `testFarmNarrowWindow`, five runs in a row) pass on the owner's Mac and on CI. Left open: the owner's calls listed in D-066.
+
+**N11 (2026-10-04)** on `feature/swiftui-n11-player`: the player window and Compare, server and Mac (section 3.1, "As built at
+N11"; D-070), with the OSA mark drawn wherever a grade is shown and PennantKit's live-pipe test made deterministic.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

@@ -115,7 +115,7 @@ struct CompareHead: View {
                                         .playerName(id: player.id, name: shown?.name, opens: nil)
                                     if let fill = shown?.ratingsFill { RatingFillMark(fill) }
                                 }
-                                if let line = shown?.line { CellText(line, secondary: true).font(.caption) }
+                                if let line = shown?.line { FillWords(line).font(.caption) }
                             }
                             Button { remove(player) } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.readableSecondary) }
                                 .buttonStyle(.plain)

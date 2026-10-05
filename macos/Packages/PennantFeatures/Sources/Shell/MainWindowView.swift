@@ -111,7 +111,7 @@ struct ShellSplitView: View {
         .accessibilityHidden(window.paletteShown)
         // The ⌘K palette: a glass control over the whole window, keyboard first; a click outside closes it
         .overlay(alignment: .top) {
-            if window.paletteShown { PaletteOverlay(window: window) }
+            if window.paletteShown { PaletteOverlay(window: window, openOutside: openOutside) }
         }
         // The club's theme for every coloured piece in the window: the club card, the mastheads, the floating control
         .environment(\.theme, model.theme)
@@ -120,6 +120,18 @@ struct ShellSplitView: View {
 }
 
 extension ShellSplitView {
+    /// A player's or a club's window for a served target, opened by this window (which outlives the palette) once the
+    /// palette has closed, so the new window comes to the front rather than behind this one (N11).
+    func openOutside(_ target: Components.Schemas.Target) {
+        DispatchQueue.main.async {
+            if let player = playerRef(opening: target) {
+                openWindow(value: player)
+            } else if let club = clubRef(opening: target) {
+                openWindow(value: club)
+            }
+        }
+    }
+
     /// A served result: its view in this window, a player's own window (N11), or a club's; the field clears.
     func openSearchResult(_ target: Components.Schemas.Target) {
         if let route = route(target) {
@@ -179,6 +191,8 @@ struct PaletteOverlay: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @Bindable var window: MainWindowModel
+    /// Opens a player's or a club's window from the window behind the palette (the palette is gone by then).
+    let openOutside: (Components.Schemas.Target) -> Void
     /// The server's answer for the query typed, and the query it answers.
     @State private var answer: (query: String, answer: Components.Schemas.SearchAnswer)?
     /// Why the search for a query failed, and the query.
@@ -232,14 +246,12 @@ struct PaletteOverlay: View {
         }
     }
 
-    /// A served target: a view in this window, a player's own window (N11), or a club's.
+    /// A served target: a view in this window, or a player's own window (N11) or a club's, opened by the window behind.
     private func open(_ target: Components.Schemas.Target) {
         if let route = route(target) {
             window.go(to: route)
-        } else if let player = playerRef(opening: target) {
-            openWindow(value: player)
-        } else if let club = clubRef(opening: target) {
-            openWindow(value: club)
+        } else {
+            openOutside(target)
         }
     }
 }

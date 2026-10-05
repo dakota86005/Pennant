@@ -61,14 +61,14 @@ struct ValueTotalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(verbatim: total.title.display).font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).help(detail: total.title.hint)
+            Text(verbatim: total.title.display).font(.caption.weight(.semibold)).help(detail: total.title.hint)
             ClaimText(total.headline, edge: .bottom) {
                 Text(verbatim: total.headline.text).font(total.known ? .title3.weight(.semibold) : .callout.weight(.medium))
                     .monospacedDigit().fixedSize(horizontal: false, vertical: true)
             }
-            if let couldBe = total.couldBe { CellText(couldBe, secondary: true).font(.callout).fixedSize(horizontal: false, vertical: true) }
-            if let established = total.established { CellText(established, secondary: true).font(.callout).fixedSize(horizontal: false, vertical: true) }
-            CellText(total.gloss, secondary: true).font(.caption).fixedSize(horizontal: false, vertical: true)
+            if let couldBe = total.couldBe { FillWords(couldBe).font(.callout) }
+            if let established = total.established { FillWords(established).font(.callout) }
+            FillWords(total.gloss).font(.caption)
         }
         .padding(12)
         .frame(minWidth: 200, maxWidth: 360, alignment: .leading)
@@ -107,9 +107,9 @@ struct ConeView: View {
                             ClaimText(s.detail, edge: .bottom) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(verbatim: s.label.display).font(.caption.weight(.semibold)).monospacedDigit()
-                                    Text(verbatim: s.control.display).font(.caption2).foregroundStyle(.readableSecondary)
+                                    Text(verbatim: s.control.display).font(.caption2)
                                     if let cost = s.cost {
-                                        Text(verbatim: cost.display).font(.caption2).monospacedDigit().foregroundStyle(.readableSecondary)
+                                        Text(verbatim: cost.display).font(.caption2).monospacedDigit()
                                     }
                                 }
                                 .padding(6)

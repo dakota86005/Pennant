@@ -8,10 +8,13 @@ import SwiftUI
 /// worth knowing about (the full statement is on Contract & Rights).
 struct PlayerOverviewTab: View {
     let dossier: Components.Schemas.PlayerDossierView
+    /// The header's tiles drawn here (a narrow window).
+    var tiles = false
 
     var body: some View {
         let o = dossier.overview
         PlayerPage(id: "overview") {
+            if tiles { PlayerTileGrid(tiles: dossier.header.tiles) }
             PlayerSection("Who He Is") { PlayerFacts(facts: o.facts) }
             if let season = o.thisSeason {
                 PlayerSection("This Season") { PlayerClaimLine(claim: season) }

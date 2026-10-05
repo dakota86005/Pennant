@@ -93,7 +93,7 @@ struct StaffNoteRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(verbatim: note.who.display).fontWeight(.semibold)
-                if let when = note.when { Text(verbatim: when.display).foregroundStyle(.readableSecondary) }
+                if let when = note.when { Text(verbatim: when.display) }
                 Spacer(minLength: 0)
                 Button("Remove") {
                     Task { await model.removeStaffNote(playerId, noteId: note.id, undoManager: undoManager, actionName: String(localized: "Remove Staff Note")) }

@@ -40,7 +40,7 @@ final class PennantUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(arguments: [String] = [], environment: [String: String] = [:]) -> XCUIApplication {
+    private func launch(arguments: [String] = [], environment: [String: String] = [:], restoresState: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["PENNANT_DEV_DATA_DIR"] = dataFolder.path(percentEncoded: false)
         app.launchEnvironment["PENNANT_DEV_LOG_DIR"] = scratch.appending(path: "logs").path(percentEncoded: false)
@@ -49,7 +49,9 @@ final class PennantUITests: XCTestCase {
         for (name, value) in environment { app.launchEnvironment[name] = value }
         // A fresh window each time: no restored route from an earlier run; no notification permission asked of the Mac
         // running the tests (Pennant asks at the first export read while it is in front, L4)
-        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-PennantNotifiesNewExport", "NO"] + arguments
+        // (N11: a test of restoration keeps the windows open at quit and restores them at the next launch)
+        let state = restoresState ? ["-ApplePersistenceIgnoreState", "NO", "-NSQuitAlwaysKeepsWindows", "YES"] : ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchArguments += state + ["-PennantNotifiesNewExport", "NO"] + arguments
         app.launch()
         return app
     }
@@ -1414,6 +1416,229 @@ final class PennantUITests: XCTestCase {
             keep(app.windows.firstMatch.screenshot(), named: "n10-farm-\(view)-dark")
             try audit(app, named: "accessibility-audit-n10-farm-\(view)-dark")
         }
+        quitCleanly(app)
+    }
+
+    // MARK: The player window and Compare (N11)
+
+    /// The player windows open, as the identifier of his window says, and no more than one per player.
+    @MainActor
+    private func playerWindows(_ app: XCUIApplication) -> XCUIElementQuery {
+        app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'player.window.' OR identifier BEGINSWITH 'Player'"))
+    }
+
+    /// Brings a window to the front with ⌘` (the app's own window cycling), until it is the front window.
+    @MainActor
+    private func bringForward(_ app: XCUIApplication, _ window: XCUIElement) {
+        let front = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            if app.windows.firstMatch.identifier == window.identifier { return true }
+            app.typeKey("`", modifierFlags: .command)
+            return false
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [front], timeout: 10), .completed, "\(window.identifier) did not come to the front")
+    }
+
+    /// Audits the front window alone: the main window brought forward with ⌘` and closed first (as `auditClubWindow`,
+    /// whose Window-menu raise was seen to leave a player's window in front).
+    @MainActor
+    private func auditAlone(_ app: XCUIApplication, named name: String) throws {
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        if main.exists {
+            bringForward(app, main)
+            main.buttons[XCUIIdentifierCloseWindow].firstMatch.click()
+            XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
+        }
+        try audit(app, named: name)
+    }
+
+    /// A player's window, by the identifier on its content.
+    @MainActor
+    private func playerWindow(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        element(app, "player.window.\(id)")
+    }
+
+    /// Every section of a player's window in turn: the tab chosen by its name, its page drawn.
+    @MainActor
+    private func everyTab(_ app: XCUIApplication, capture prefix: String? = nil) {
+        for (tab, page) in [("Overview", "overview"), ("Ratings", "ratings"), ("Value", "value"), ("Contract & Rights", "contract"), ("History", "history"), ("Notes", "notes")] {
+            // The section's segment in the player window's own control (never another window's "Ratings")
+            let button = element(app, "player.sections").radioButtons.matching(NSPredicate(format: "label == %@ OR title == %@", tab, tab)).firstMatch
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "the player window has no \(tab) tab")
+            button.click()
+            // A segment clicked while the last section's table still held the keyboard can take a second click
+            if !element(app, "player.tab.\(page)").waitForExistence(timeout: 4) { button.click() }
+            XCTAssertTrue(element(app, "player.tab.\(page)").waitForExistence(timeout: 10), "the \(tab) tab did not draw")
+            if let prefix { keep(app.windows.firstMatch.screenshot(), named: "\(prefix)-\(page)") }
+        }
+    }
+
+    /// A player opens in his own window from anywhere (N11): the palette's served result, a table's row (a double-click),
+    /// a name in a decision opened from the desk, and Following; opening him again brings his window forward rather than
+    /// a second one. Every section draws; the window is audited alone.
+    @MainActor
+    func testPlayerWindows() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "1280x820"])
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30))
+        // From the palette: the server's player result opens his window
+        app.typeKey("k", modifierFlags: .command)
+        let query = element(app, "palette.query")
+        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        query.click()
+        query.typeText("p 1000")
+        let result = element(app, "palette.result.search.player.1000")
+        XCTAssertTrue(result.waitForExistence(timeout: 10), "the palette did not list the server's player")
+        // The answer for the whole query in (the list is asked again as each letter is typed), then his result chosen
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !self.element(app, "palette.updating").exists }, object: nil)
+        _ = XCTWaiter.wait(for: [settled], timeout: 5)
+        // Return opens the result chosen, the first (his name, the query exactly)
+        query.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(playerWindow(app, "1000").waitForExistence(timeout: 10), "the palette's player did not open his window")
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30), "his dossier did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "n11-player-window-from-palette")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(playerWindow(app, "1000").waitForNonExistence(timeout: 5), "⌘W did not close his window")
+        // From a table: the rotation's first arm (every row there is a pitcher), double-clicked; again, and his one window
+        // comes forward
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30))
+        element(app, "sidebar.majorLeague.pitchingStaff").click()
+        let lineup = element(app, "table.pitching.0")
+        XCTAssertTrue(lineup.waitForExistence(timeout: 20), "the rotation's table did not load")
+        let row = firstRow(of: lineup)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).doubleClick()
+        let opened = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'player.window.'")).firstMatch
+        XCTAssertTrue(opened.waitForExistence(timeout: 10), "a double-click on a row did not open his window")
+        let id = String(opened.identifier.dropFirst("player.window.".count))
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        bringForward(app, main)
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).doubleClick()
+        let once = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "player.window.\(id)")).count == 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [once], timeout: 10), .completed, "opening him again made a second window")
+        // Every section, and Follow (the sidebar's Following then names him)
+        everyTab(app, capture: "n11-player")
+        element(app, "player.follow").click()
+        let followed = element(app, "following.player.\(id)")
+        XCTAssertTrue(followed.waitForExistence(timeout: 10), "Follow in his window did not follow him")
+        // From Following: his one window comes forward
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(playerWindow(app, id).waitForNonExistence(timeout: 5))
+        followed.doubleClick()
+        XCTAssertTrue(playerWindow(app, id).waitForExistence(timeout: 10), "Following did not open his window")
+        app.typeKey("w", modifierFlags: .command)
+        // From the desk: the need's decision, and a player it names
+        bringForward(app, main)
+        app.typeKey("2", modifierFlags: .command)
+        let decision = element(app, "item.decision")
+        XCTAssertTrue(decision.waitForExistence(timeout: 20), "the report's need offers no decision")
+        decision.click()
+        XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision did not load")
+        let named = element(app, "detail.majorLeague.decision").descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'player.' AND NOT (identifier BEGINSWITH 'player.window')")).firstMatch
+        reveal(named, in: element(app, "detail.majorLeague.decision"))
+        XCTAssertTrue(named.waitForExistence(timeout: 10), "the decision names no player")
+        let namedId = String(named.identifier.dropFirst("player.".count))
+        named.doubleClick()
+        XCTAssertTrue(playerWindow(app, namedId).waitForExistence(timeout: 10), "a player named in the decision did not open his window")
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
+        keep(app.windows.firstMatch.screenshot(), named: "n11-player-window-from-decision")
+        // Audited alone (the main window closed, as a club's window is)
+        try auditAlone(app, named: "accessibility-audit-n11-player-window")
+        quitCleanly(app)
+    }
+
+    /// Compare (N11): two players chosen in a table compared from its context menu, a third dropped on the Compare window,
+    /// one removed in a click. Audited alone.
+    @MainActor
+    func testCompareByMenuAndDrag() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700"])
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30))
+        element(app, "sidebar.majorLeague.pitchingStaff").click()
+        let lineup = element(app, "table.pitching.0")
+        XCTAssertTrue(lineup.waitForExistence(timeout: 20))
+        XCTAssertTrue(firstRow(of: lineup).waitForExistence(timeout: 10))
+        let rows = lineup.descendants(matching: .outlineRow).allElementsBoundByIndex + lineup.tableRows.allElementsBoundByIndex
+        XCTAssertGreaterThanOrEqual(rows.count, 3, "the rotation lists fewer than three")
+        let leading = { (row: XCUIElement) in row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)) }
+        leading(rows[0]).click()
+        XCUIElement.perform(withKeyModifiers: .command) { leading(rows[1]).click() }
+        leading(rows[1]).rightClick()
+        let compare = contextMenuItem(app, "Compare")
+        XCTAssertTrue(compare.waitForExistence(timeout: 5), "the rows' context menu has no Compare")
+        compare.click()
+        let window = element(app, "compare.window")
+        XCTAssertTrue(window.waitForExistence(timeout: 10), "Compare did not open its window")
+        let players = window.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'compare.player.'"))
+        let two = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in players.count == 2 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [two], timeout: 10), .completed, "Compare did not take the two chosen players")
+        XCTAssertTrue(element(app, "compare.table").waitForExistence(timeout: 30), "the comparison did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "n11-compare-two")
+        // The main window in front, the Compare window's trailing side beside it: a third row dragged onto it
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        bringForward(app, main)
+        let compareWindow = app.windows.containing(.any, identifier: "compare.window").firstMatch
+        let drop = compareWindow.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.6))
+        leading(rows[2]).click(forDuration: 0.4, thenDragTo: drop, withVelocity: .slow, thenHoldForDuration: 0.8)
+        let three = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in players.count == 3 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [three], timeout: 10), .completed, "the dropped player did not join the comparison")
+        // Removing one is one click (the Compare window in front again)
+        bringForward(app, compareWindow)
+        let remove = window.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'compare.remove.'")).firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        remove.click()
+        let twoAgain = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in players.count == 2 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [twoAgain], timeout: 10), .completed, "removing a player did not take him out")
+        XCTAssertTrue(element(app, "compare.table").waitForExistence(timeout: 30))
+        keep(app.windows.firstMatch.screenshot(), named: "n11-compare")
+        try auditAlone(app, named: "accessibility-audit-n11-compare")
+        quitCleanly(app)
+    }
+
+    /// A player's window comes back at the next launch, on his dossier (its value is his id).
+    @MainActor
+    func testPlayerWindowRestored() throws {
+        let first = launch(arguments: ["-PennantDebugOpenPlayer", "1000"], restoresState: true)
+        waitForShell(first)
+        XCTAssertTrue(playerWindow(first, "1000").waitForExistence(timeout: 15), "the player's window did not open")
+        XCTAssertTrue(element(first, "player.header").waitForExistence(timeout: 30))
+        quitCleanly(first)
+        let again = launch(restoresState: true)
+        XCTAssertTrue(playerWindow(again, "1000").waitForExistence(timeout: 30), "his window was not restored at relaunch")
+        XCTAssertTrue(element(again, "player.header").waitForExistence(timeout: 60), "the restored window did not load his dossier")
+        keep(again.windows.firstMatch.screenshot(), named: "n11-player-window-restored")
+        // Closed, so the next launch of the app opens without it
+        again.typeKey("w", modifierFlags: .command)
+        quitCleanly(again)
+    }
+
+    /// A small player window (520 × 480): every section, five rounds, nothing cut off and the app up throughout (the N8
+    /// crash was a constraint loop on a narrow window); audited.
+    @MainActor
+    func testPlayerNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugOpenPlayer", "1000", "-PennantDebugPlayerWindowSize", "520x480"])
+        waitForShell(app)
+        let window = playerWindow(app, "1000")
+        XCTAssertTrue(window.waitForExistence(timeout: 15), "the player's window did not open")
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.windows.containing(.any, identifier: "player.window.1000").firstMatch.frame.width <= 525
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 10), .completed, "the player's window did not take the small size")
+        for round in 1...5 {
+            everyTab(app, capture: round == 1 ? "n11-player-narrow" : nil)
+            XCTAssertEqual(app.state, .runningForeground, "the app stopped in round \(round)")
+        }
+        // The header's name and the tabs are inside the window, not cut by its edge
+        let frame = app.windows.containing(.any, identifier: "player.window.1000").firstMatch.frame
+        XCTAssertTrue(frame.insetBy(dx: -1, dy: -1).contains(element(app, "player.name").frame), "his name runs past the window")
+        try auditAlone(app, named: "accessibility-audit-n11-player-narrow")
         quitCleanly(app)
     }
 }

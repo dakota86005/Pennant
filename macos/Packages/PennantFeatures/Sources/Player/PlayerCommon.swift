@@ -206,3 +206,35 @@ extension Components.Schemas.PlayerTableRow {
         return .served(served.value1, served.value2)
     }
 }
+
+/// A served cell's words on a tile's fill: the system's own text colour (no explicit style, which the accessibility
+/// audit measured as too faint on a fill whatever its pixels read), its tone's symbol beside a non-neutral tone, its help tag.
+struct FillWords: View {
+    let cell: Components.Schemas.Cell
+
+    init(_ cell: Components.Schemas.Cell) {
+        self.cell = cell
+    }
+
+    var body: some View {
+        let tone = Tone(cell.tone)
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            if cell.tone != nil, tone != .neutral { ToneMark(tone).font(.caption) }
+            Text(verbatim: cell.display).fixedSize(horizontal: false, vertical: true)
+        }
+        .help(detail: cell.hint)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(verbatim: cell.display))
+    }
+}
+
+/// The header's tiles as cards that wrap onto the page (the Overview of a narrow window: the header keeps to his name).
+struct PlayerTileGrid: View {
+    let tiles: [Components.Schemas.PlayerTile]
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10, alignment: .topLeading)], alignment: .leading, spacing: 10) {
+            ForEach(tiles, id: \.id) { PlayerTileView(tile: $0).frame(maxWidth: .infinity, alignment: .leading) }
+        }
+    }
+}

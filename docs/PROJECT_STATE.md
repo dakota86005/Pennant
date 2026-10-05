@@ -95,8 +95,14 @@ material implementation state changes.
 - With no row of our scouts' readable, true ratings in the main tables and OSA's
   rows in the file, judgments read OSA's view, said so (D-067, review L6).
 - The major league's served views (N8) carry the per-player OSA mark in their
-  hints and details. Open for the farm (N10): its Development tracking must show
-  `ratingSourceSwitches`, and its lines basis the stakes lines' `setAside`.
+  hints and details, and since N11 as a mark of its own on the row (`ratingsFill`),
+  as the farm's Prospects and Development rows and the player window do; the Mac
+  app draws it beside every grade with its sentence as the VoiceOver label.
+- The player window (N11, D-070): `GET /api/v2/player/:id` serves the card's dossier
+  in sections, read through `computePlayerDossier` (the same function
+  `/api/player/:id` answers with); our club's players are read ahead in the Front
+  Office's worker after each import, others on their first open; `/api/v2/compare`
+  lines up two to four; the GM's note is kept on his follow, as typed.
 - After an import, the snapshots run in a worker and both refits at the same
   time (a post-import hook list later milestones register into); the
   destination-fit league populations are cached once per import.

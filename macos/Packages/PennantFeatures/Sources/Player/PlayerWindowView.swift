@@ -1,3 +1,4 @@
+import AppKit
 import FeatureCore
 import PennantAPI
 import PennantDesign
@@ -10,9 +11,10 @@ public enum PlayerTab: String, CaseIterable, Codable, Hashable, Sendable {
 }
 
 /// One player's dossier in his own window (`WindowGroup("Player", for: PlayerRef.self)`; SWIFTUI_REBUILD.md section 3.1,
-/// N11): the header (who he is, where he plays, his deal, his value and his scouted tools), then the sections as tabs, as
-/// Music's Get Info window shows an album's (a document window of one subject with several kinds of detail). Opened or
-/// brought forward from his name anywhere, restored at relaunch (its value is his id). Everything drawn is served.
+/// N11): the header (who he is, where he plays, his deal, his value and his scouted tools), then the sections chosen with
+/// a segmented control above them, as Music's Get Info window shows an album's (a document window of one subject with
+/// several kinds of detail). Opened or brought forward from his name anywhere, restored at relaunch (its value is his id).
+/// Everything drawn is served.
 public struct PlayerWindowView: View {
     struct LoadKey: Hashable {
         let key: AppModel.StoreKey?
@@ -29,23 +31,35 @@ public struct PlayerWindowView: View {
         self.playerId = playerId
     }
 
+    /// Below this width the header's tiles move into the Overview (a layout width, not a judgment).
+    static let compactWidth: CGFloat = 820
+
     public var body: some View {
         let store = model.players
         let dossier = store.dossiers[playerId]
         Group {
             if let dossier {
+                // A narrow window keeps the header to his name and line, and his tiles open the Overview instead
+                GeometryReader { proxy in
+                let compact = proxy.size.width < Self.compactWidth
                 VStack(spacing: 0) {
-                    PlayerHeader(dossier: dossier, updating: model.storeKey != nil && !store.isCurrent(playerId, for: model.storeKey), problem: store.problems[playerId])
+                    PlayerHeader(dossier: dossier, compact: compact, updating: model.storeKey != nil && !store.isCurrent(playerId, for: model.storeKey), problem: store.problems[playerId])
                     Divider()
-                    TabView(selection: $tab) {
-                        Tab("Overview", systemImage: "person.text.rectangle", value: PlayerTab.overview) { PlayerOverviewTab(dossier: dossier) }
-                        Tab("Ratings", systemImage: "chart.bar", value: PlayerTab.ratings) { PlayerRatingsTab(dossier: dossier) }
-                        Tab("Value", systemImage: "chart.line.uptrend.xyaxis", value: PlayerTab.value) { PlayerValueTab(dossier: dossier) }
-                        Tab("Contract & Rights", systemImage: "signature", value: PlayerTab.contract) { PlayerContractTab(dossier: dossier) }
-                        Tab("History", systemImage: "clock", value: PlayerTab.history) { PlayerHistoryTab(dossier: dossier) }
-                        Tab("Notes", systemImage: "note.text", value: PlayerTab.notes) { PlayerNotesTab(playerId: playerId) }
+                    SectionChoice(tab: $tab)
+                    Divider()
+                    Group {
+                        switch tab {
+                        case .overview: PlayerOverviewTab(dossier: dossier, tiles: compact)
+                        case .ratings: PlayerRatingsTab(dossier: dossier)
+                        case .value: PlayerValueTab(dossier: dossier)
+                        case .contract: PlayerContractTab(dossier: dossier)
+                        case .history: PlayerHistoryTab(dossier: dossier)
+                        case .notes: PlayerNotesTab(playerId: playerId)
+                        }
                     }
-                    .accessibilityIdentifier("player.tabs")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
                 }
                 .navigationTitle(Text(verbatim: dossier.name))
                 // Kept as the window's title (VoiceOver, the Window menu) but not drawn in the toolbar, as the club
@@ -63,6 +77,10 @@ public struct PlayerWindowView: View {
         .frame(minWidth: 520, minHeight: 440)
         .background(Color.readablePage)
         .background(WindowContainerLabels(["Player", "Player Window"]))
+        #if DEBUG
+        // A Debug build's narrow-window test sizes this window (`-PennantDebugPlayerWindowSize 520x480`)
+        .background(DebugWindowSizer(key: "PennantDebugPlayerWindowSize"))
+        #endif
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if let club = dossier?.header.clubOpen?.teamId {
@@ -99,6 +117,7 @@ public struct PlayerWindowView: View {
 /// as the player (onto Compare, Following, another window).
 struct PlayerHeader: View {
     let dossier: Components.Schemas.PlayerDossierView
+    var compact = false
     let updating: Bool
     let problem: RequestProblem?
     @Environment(\.openWindow) private var openWindow
@@ -107,22 +126,13 @@ struct PlayerHeader: View {
         let h = dossier.header
         VStack(alignment: .leading, spacing: 10) {
             if let problem { ProblemLine(problem) }
-            ViewThatFits(in: .horizontal) {
+            if compact {
+                identity(h)
+            } else {
                 HStack(alignment: .top, spacing: 24) {
                     identity(h)
                     Spacer(minLength: 0)
-                    tiles(h).fixedSize(horizontal: true, vertical: false)
-                }
-                // A narrow window: the tiles in one row that scrolls sideways, so the header stays short and the tabs keep
-                // the room
-                VStack(alignment: .leading, spacing: 12) {
-                    identity(h)
-                    ScrollView(.horizontal) {
-                        HStack(alignment: .top, spacing: 10) {
-                            ForEach(h.tiles, id: \.id) { PlayerTileView(tile: $0) }
-                        }
-                    }
-                    .scrollBounceBehavior(.basedOnSize)
+                    tiles(h)
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -192,19 +202,90 @@ struct PlayerTileView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(verbatim: tile.title.display).font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary)
+            // Words on the tile's fill are the primary colour: the audit measures a secondary grey there as too faint
+            Text(verbatim: tile.title.display).font(.caption.weight(.semibold))
                 .help(detail: tile.title.hint)
             ClaimText(tile.figure, edge: .bottom) {
                 Text(verbatim: tile.figure.text).font(.headline).monospacedDigit().fixedSize(horizontal: false, vertical: true)
             }
             ForEach(Array(tile.lines.enumerated()), id: \.offset) { _, line in
-                CellText(line, secondary: true).font(.caption).fixedSize(horizontal: false, vertical: true)
+                FillWords(line).font(.caption)
             }
         }
         .padding(10)
-        .frame(minWidth: 150, maxWidth: 240, alignment: .leading)
+        .frame(minWidth: 150, maxWidth: 260, alignment: .leading)
         .background(Color.readableChipFill, in: .rect(cornerRadius: 10))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("player.tile.\(tile.id)")
+    }
+}
+
+#if DEBUG
+/// Sizes the window it is in once, from a launch argument (`WxH`), for a Debug build's tests and captures; never larger
+/// than its screen's visible frame, and wholly on it (the main window's own sizing does the same, PR #54).
+struct DebugWindowSizer: NSViewRepresentable {
+    let key: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        guard let size = UserDefaults.standard.string(forKey: key)?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 else { return view }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            guard let window = view.window else { return }
+            var frame = CGRect(origin: window.frame.origin, size: CGSize(width: size[0], height: size[1]))
+            if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
+                frame.size = CGSize(width: min(frame.width, visible.width), height: min(frame.height, visible.height))
+                frame.origin.y = window.frame.maxY - frame.height
+                frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+                frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+            }
+            window.setFrame(frame, display: true)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+#endif
+
+/// The sections' control: a segmented control centred above them, its names where the window has room for them and the
+/// sections' symbols where it does not (each still named for VoiceOver and in its help tag).
+struct SectionChoice: View {
+    @Binding var tab: PlayerTab
+
+    private static let sections: [(PlayerTab, LocalizedStringResource, String)] = [
+        (.overview, "Overview", "person.text.rectangle"), (.ratings, "Ratings", "chart.bar"), (.value, "Value", "chart.line.uptrend.xyaxis"),
+        (.contract, "Contract & Rights", "signature"), (.history, "History", "clock"), (.notes, "Notes", "note.text"),
+    ]
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            picker(iconsOnly: false)
+            picker(iconsOnly: true)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.readablePage)
+    }
+
+    private func picker(iconsOnly: Bool) -> some View {
+        Picker(selection: $tab) {
+            ForEach(Self.sections, id: \.0) { section in
+                Group {
+                    if iconsOnly {
+                        Label { Text(section.1) } icon: { Image(systemName: section.2) }.labelStyle(.iconOnly)
+                    } else {
+                        Text(section.1)
+                    }
+                }
+                .help(Text(section.1))
+                .tag(section.0)
+            }
+        } label: {
+            Text("Section")
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .accessibilityIdentifier("player.sections")
     }
 }
