@@ -158,11 +158,13 @@ function fortyManItem(ctx: DepartmentContext, player: CrunchIssues['players'][nu
 }
 
 /** A roster count against its limit as a key figure, or the sentence for a count the export lacks. */
-function countFigure(ctx: DepartmentContext, label: string, count: number | null, limit: number | null, specialist: string) {
+function countFigure(ctx: DepartmentContext, label: string, count: number | null, limit: number | null, specialist: string, opens?: string) {
   const known = count !== null;
   return claim({
     text: label,
     tone: known ? 'neutral' : 'unknown',
+    // N9: a roster count opens the clubhouse tool that lists it
+    ...(opens ? { links: [target({ kind: 'view', department: 'majorLeague', view: opens })] } : {}),
     value: known
       ? limit !== null && limit > 0
         ? servedValue(count, 'count', `${count} of ${limit}`, { whole: limit })
@@ -197,8 +199,8 @@ export function majorLeagueMaterial(ctx: DepartmentContext, input: MajorLeagueIn
   }
   const crunch = fortyMan.ok ? fortyMan.body.crunch : null;
   const figures = [
-    countFigure(ctx, 'Active roster', overview.roster.active.count, overview.roster.active.limit, NEEDS),
-    countFigure(ctx, '40-man roster', crunch?.counts.fortyMan ?? overview.roster.fortyMan.count, crunch?.limits.fortyMan ?? overview.roster.fortyMan.limit, 'Player State'),
+    countFigure(ctx, 'Active roster', overview.roster.active.count, overview.roster.active.limit, NEEDS, 'rosters'),
+    countFigure(ctx, '40-man roster', crunch?.counts.fortyMan ?? overview.roster.fortyMan.count, crunch?.limits.fortyMan ?? overview.roster.fortyMan.limit, 'Player State', 'fortyManOptions'),
     claim({
       text: 'On the injured list',
       tone: 'neutral',
