@@ -72,8 +72,11 @@ struct ValueTotalCard: View {
         }
         .padding(12)
         .frame(minWidth: 200, maxWidth: 360, alignment: .leading)
-        .background(Color.readableChipFill, in: .rect(cornerRadius: 10))
+        // An outline on the page rather than a fill: the audit can't read words on a tinted fill as their pixels read
+        .background(Color.readablePage, in: .rect(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.18)))
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(verbatim: total.title.display))
         .accessibilityIdentifier("player.value.\(total.id)")
     }
 }
@@ -113,7 +116,7 @@ struct ConeView: View {
                                     }
                                 }
                                 .padding(6)
-                                .background(Color.readableChipFill, in: .rect(cornerRadius: 6))
+                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary.opacity(0.18)))
                             }
                             .accessibilityIdentifier("player.cone.season.\(s.season)")
                         }

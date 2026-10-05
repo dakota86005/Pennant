@@ -106,7 +106,8 @@ struct StaffNoteRow: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.readableChipFill, in: .rect(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.18)))
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(verbatim: note.who.display))
     }
 }

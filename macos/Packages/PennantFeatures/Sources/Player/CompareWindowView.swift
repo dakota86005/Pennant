@@ -58,6 +58,10 @@ public struct CompareWindowView: View {
         .environment(\.theme, model.theme)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("compare.window")
+        #if DEBUG
+        // A Debug build's drop test sizes this window against the screen's trailing edge (`-PennantDebugCompareWindowSize`)
+        .background(DebugWindowSizer(key: "PennantDebugCompareWindowSize", trailing: true))
+        #endif
         .onAppear { CompareRouter.shared.register(token, value: value ?? ComparisonRef()) }
         .onDisappear { CompareRouter.shared.forget(token) }
         .onChange(of: active) { _, state in
@@ -124,8 +128,9 @@ struct CompareHead: View {
                                 .accessibilityIdentifier("compare.remove.\(player.id)")
                         }
                         .padding(8)
-                        .background(Color.readableChipFill, in: .rect(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.18)))
                         .accessibilityElement(children: .contain)
+                        .accessibilityLabel(Text(verbatim: shown?.name ?? ""))
                         .accessibilityIdentifier("compare.player.\(player.id)")
                     }
                 }

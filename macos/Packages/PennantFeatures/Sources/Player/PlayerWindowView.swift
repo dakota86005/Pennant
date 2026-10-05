@@ -8,6 +8,18 @@ import SwiftUI
 /// The player window's sections, in the served dossier's order (structural names in the String Catalog).
 public enum PlayerTab: String, CaseIterable, Codable, Hashable, Sendable {
     case overview, ratings, value, contract, history, notes
+
+    /// The section's structural name (the String Catalog's).
+    var name: LocalizedStringResource {
+        switch self {
+        case .overview: "Overview"
+        case .ratings: "Ratings"
+        case .value: "Value"
+        case .contract: "Contract & Rights"
+        case .history: "History"
+        case .notes: "Notes"
+        }
+    }
 }
 
 /// One player's dossier in his own window (`WindowGroup("Player", for: PlayerRef.self)`; SWIFTUI_REBUILD.md section 3.1,
@@ -214,8 +226,11 @@ struct PlayerTileView: View {
         }
         .padding(10)
         .frame(minWidth: 150, maxWidth: 260, alignment: .leading)
-        .background(Color.readableChipFill, in: .rect(cornerRadius: 10))
+        // An outline on the page rather than a fill: the audit can't read words on a tinted fill as their pixels read
+        .background(Color.readablePage, in: .rect(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.18)))
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(verbatim: tile.title.display))
         .accessibilityIdentifier("player.tile.\(tile.id)")
     }
 }
@@ -226,6 +241,9 @@ struct PlayerTileView: View {
 struct DebugWindowSizer: NSViewRepresentable {
     let key: String
 
+    /// Placed against the screen's trailing edge (a Compare window beside the main one, for a drop in a test).
+    var trailing = false
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         guard let size = UserDefaults.standard.string(forKey: key)?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 else { return view }
@@ -235,7 +253,7 @@ struct DebugWindowSizer: NSViewRepresentable {
             if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
                 frame.size = CGSize(width: min(frame.width, visible.width), height: min(frame.height, visible.height))
                 frame.origin.y = window.frame.maxY - frame.height
-                frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+                frame.origin.x = trailing ? visible.maxX - frame.width : min(max(frame.minX, visible.minX), visible.maxX - frame.width)
                 frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
             }
             window.setFrame(frame, display: true)

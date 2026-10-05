@@ -1556,7 +1556,8 @@ final class PennantUITests: XCTestCase {
     /// one removed in a click. Audited alone.
     @MainActor
     func testCompareByMenuAndDrag() throws {
-        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700"])
+        // The Compare window against the screen's trailing edge, so its trailing side shows beside the main window
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugCompareWindowSize", "520x600"])
         waitForShell(app)
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30))
@@ -1584,7 +1585,7 @@ final class PennantUITests: XCTestCase {
         let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
         bringForward(app, main)
         let compareWindow = app.windows.containing(.any, identifier: "compare.window").firstMatch
-        let drop = compareWindow.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.6))
+        let drop = compareWindow.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.6))
         leading(rows[2]).click(forDuration: 0.4, thenDragTo: drop, withVelocity: .slow, thenHoldForDuration: 0.8)
         let three = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in players.count == 3 }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [three], timeout: 10), .completed, "the dropped player did not join the comparison")

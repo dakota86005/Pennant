@@ -32,6 +32,7 @@ struct PlayerSection<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(title.map { Text($0) } ?? Text(verbatim: note?.display ?? ""))
     }
 }
 
@@ -52,6 +53,7 @@ struct PlayerPage<Content: View>: View {
         .scrollBounceBehavior(.basedOnSize)
         .background(Color.readablePage)
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(PlayerTab(rawValue: id)?.name ?? "Player"))
         .accessibilityIdentifier("player.tab.\(id)")
     }
 }
@@ -228,13 +230,20 @@ struct FillWords: View {
     }
 }
 
-/// The header's tiles as cards that wrap onto the page (the Overview of a narrow window: the header keeps to his name).
+/// The header's tiles as cards on the page (the Overview of a narrow window: the header keeps to his name): side by side
+/// where the column has room, else one above another. A plain stack, never a lazy grid, whose container and wrapped
+/// words VoiceOver and the audit read with the wrong frames.
 struct PlayerTileGrid: View {
     let tiles: [Components.Schemas.PlayerTile]
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 10, alignment: .topLeading)], alignment: .leading, spacing: 10) {
-            ForEach(tiles, id: \.id) { PlayerTileView(tile: $0).frame(maxWidth: .infinity, alignment: .leading) }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(tiles, id: \.id) { PlayerTileView(tile: $0) }
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(tiles, id: \.id) { PlayerTileView(tile: $0).frame(maxWidth: .infinity, alignment: .leading) }
+            }
         }
     }
 }
