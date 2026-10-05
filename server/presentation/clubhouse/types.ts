@@ -154,6 +154,11 @@ export interface MlbDepthClub {
 
 export interface MlbDepthChartView extends MlbViewHead {
   clubs: MlbDepthClub[];
+  /**
+   * The organization's depth at each position, every level in one table (N9 review): who is behind a man at his
+   * position, from the major league club down, deepest first at each club. The same reading as `clubs`.
+   */
+  byPosition: MlbTableSection[];
   /** How the depth is ordered, with what it leaves out in its basis. */
   note: Claim;
   empty: Cell | null;

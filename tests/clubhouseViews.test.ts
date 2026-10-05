@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildClubhouseViews, lineupKey } from '../server/clubhouseViewsBuild.js';
 import {
   NOT_OUR_CLUB, NOT_OUR_GAME, clubhouseFortyManNow, clubhouseGamePlanNow, clubhouseLineupNow, clubhousePitchingNow, clubhouseRostersNow,
-  clubhouseScheduleNow, clubhouseTrendsNow, clubhouseViewStats, resetClubhouseViews, warmClubhouseViews,
+  clubhouseDepthNow, clubhouseScheduleNow, clubhouseTrendsNow, clubhouseViewStats, resetClubhouseViews, warmClubhouseViews,
 } from '../server/clubhouseViewService.js';
 import { computeNextGame } from '../server/dashboard.js';
 import { db } from '../server/db.js';
@@ -444,5 +444,20 @@ describe('the clubhouse tools\' smaller words (N9 review)', () => {
     const words = JSON.stringify(depth);
     expect(words).not.toMatch(/\bnull ·/);
     expect(words).toMatch(/Age not known · /);
+  });
+});
+
+describe('the depth chart by position (N9 review)', () => {
+  it('lists every man at a position across the organization in one table, club by club down, deepest first, the same men as the field', async () => {
+    const view = await clubhouseDepthNow(String(save.org));
+    expect(view.byPosition.map((s) => s.id)).toEqual(['SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH']);
+    for (const section of view.byPosition) {
+      const fromClubs = view.clubs.flatMap((c) => c.positions.find((p) => p.id === section.id)!.players.map((e) => e.player.playerId));
+      expect(section.table.rows.map((r) => r.player?.playerId)).toEqual(fromClubs);
+      const levels = section.table.rows.map((r) => r.sort.level as number);
+      expect(levels).toEqual([...levels].sort((a, b) => a - b));
+    }
+    // At least one position runs through more than one club
+    expect(Math.max(...view.byPosition.map((s) => new Set(s.table.rows.map((r) => r.cells.club.display)).size))).toBeGreaterThan(1);
   });
 });

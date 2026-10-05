@@ -48,7 +48,7 @@ struct AffiliatesSplit: View {
     var body: some View {
         // The organization at the top, the chosen affiliate read beneath it in its own scroll area: the list fills what
         // the head leaves and scrolls itself, and nothing has a width of its own (N8's `TablePane`, the narrow window)
-        TablePane(detailShare: 0.58) {
+        TablePane(detailShare: 0.58, autosave: "farm.affiliates") {
             HStack(spacing: 8) {
                 Text(verbatim: view.order.display)
                     .font(.callout.weight(.medium)).foregroundStyle(.readableSecondary)

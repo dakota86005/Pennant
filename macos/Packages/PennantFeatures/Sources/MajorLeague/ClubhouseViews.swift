@@ -130,6 +130,11 @@ private struct LineupTask: Hashable {
 /// Lineup: the staff's card for the next game. The GM's choices (the opposing hand, the ordering, what it is built from,
 /// the DH) ask the server for that card; the card shown stays, drawn as updating, until it lands. Pennant never writes a
 /// card to OOTP: it is the staff's view.
+///
+/// The choices are the window's toolbar, as Calendar's view choice and Finder's group and sort are (N9 review, M1): the
+/// opposing hand, the one asked most, a segmented control; the rest a "Card" pull-down with each group inline, checked.
+/// The head keeps the title, the lede and the staff's view in one line (its basis a click away), so at 900 pt the table
+/// keeps its height; the next game and the card's notes are in the pane beneath the table.
 struct LineupView: View {
     @Environment(AppModel.self) private var model
     @State private var query: ClubhouseStore.LineupQuery?
@@ -137,12 +142,16 @@ struct LineupView: View {
     var body: some View {
         let store = model.clubhouse
         let name = ClubhouseStore.lineupName(query)
-        ViewState(payload: store.lineup(query) ?? store.lineup(nil), problem: store.problems[name]) { view in
+        let shown = store.lineup(query) ?? store.lineup(nil)
+        ViewState(payload: shown, problem: store.problems[name]) { view in
             ServedTablePane(view.order, id: "lineup.order", name: view.title.display, detailShare: 0.38) {
-                LineupHead(view: view, refreshing: model.clubhouseUpdating(name) || store.lineup(query) == nil) { query = .init($0) }
+                LineupHead(view: view, refreshing: model.clubhouseUpdating(name) || store.lineup(query) == nil)
             } notes: {
-                LineupNotes(view: view)
+                LineupNotes(view: view) { query = .init($0) }
             }
+        }
+        .toolbar {
+            if let shown { LineupChoices(view: shown) { query = .init($0) } }
         }
         .task(id: LineupTask(key: model.storeKey, query: query)) {
             await store.loadLineup(query, client: model.client, key: model.storeKey)
@@ -150,73 +159,100 @@ struct LineupView: View {
     }
 }
 
-/// The card's head: the title, the lede, the GM's choices, the staff's view of the card and its notes.
+/// The card's head: the title, the lede and the staff's view of the card in one line, its basis a click away.
 struct LineupHead: View {
     let view: Components.Schemas.MlbLineupView
     let refreshing: Bool
-    let choose: (Components.Schemas.MlbLineupQuery) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: nil, refreshing: refreshing)
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline, spacing: 18) { groups }
-                VStack(alignment: .leading, spacing: 8) { groups }
-            }
-            if let against = view.againstTonight {
-                Button { choose(against.query) } label: {
-                    Label { Text(verbatim: against.text.display) } icon: { Image(systemName: "arrow.triangle.2.circlepath") }
+            if let headline = view.headline {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    ToneMark(served: headline.tone)
+                    ClaimText(headline, edge: .trailing) {
+                        Text(verbatim: headline.text).font(.headline).lineLimit(1).truncationMode(.tail)
+                    }
                 }
-                .help(detail: against.text.hint)
-                .accessibilityIdentifier("lineup.againstTonight")
+                .help(detail: headline.text)
+                .accessibilityIdentifier("lineup.headline")
             }
-            if let headline = view.headline { ClaimLine(headline, font: .headline) }
-            ForEach(Array(view.notes.enumerated()), id: \.offset) { _, note in ClaimLine(note, font: .callout) }
             if let empty = view.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary) }
-        }
-    }
-
-    @ViewBuilder private var groups: some View {
-        ForEach(Array(view.choices.enumerated()), id: \.offset) { index, group in
-            ChoiceGroup(group: group, id: "lineup.choice.\(index)", choose: choose)
         }
     }
 }
 
-/// One group of served choices as a labelled segmented control: choosing one asks for its card.
-struct ChoiceGroup: View {
+/// The GM's choices in the window's toolbar: the opposing hand as a segmented control, the other groups in the "Card"
+/// pull-down, each inline with its choice checked. Choosing one asks the server for that card.
+struct LineupChoices: ToolbarContent {
+    let view: Components.Schemas.MlbLineupView
+    let choose: (Components.Schemas.MlbLineupQuery) -> Void
+
+    var body: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            if let hand = view.choices.first {
+                ChoicePicker(group: hand, id: "lineup.choice.0", choose: choose).pickerStyle(.segmented)
+            }
+            if view.choices.count > 1 {
+                Menu {
+                    ForEach(Array(view.choices.enumerated().dropFirst()), id: \.offset) { index, group in
+                        ChoicePicker(group: group, id: "lineup.choice.\(index)", choose: choose).pickerStyle(.inline)
+                    }
+                } label: {
+                    Label("Card", systemImage: "slider.horizontal.3")
+                }
+                .help(Text("Card"))
+                .accessibilityIdentifier("lineup.card")
+            }
+        }
+    }
+}
+
+/// One group of served choices as a picker (its style the caller's): choosing one asks for its card.
+struct ChoicePicker: View {
     let group: Components.Schemas.MlbLineupChoices
     let id: String
     let choose: (Components.Schemas.MlbLineupQuery) -> Void
 
     var body: some View {
         let selected = group.choices.firstIndex(where: \.selected) ?? 0
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(verbatim: group.title.display).font(.callout).foregroundStyle(.readableSecondary).fixedSize()
-            Picker(selection: Binding(get: { selected }, set: { index in
-                if group.choices.indices.contains(index), index != selected { choose(group.choices[index].query) }
-            })) {
-                ForEach(Array(group.choices.enumerated()), id: \.offset) { index, choice in
-                    Text(verbatim: choice.text.display).help(detail: choice.text.hint).tag(index)
-                }
-            } label: {
-                Text(verbatim: group.title.display)
+        Picker(selection: Binding(get: { selected }, set: { index in
+            if group.choices.indices.contains(index), index != selected { choose(group.choices[index].query) }
+        })) {
+            ForEach(Array(group.choices.enumerated()), id: \.offset) { index, choice in
+                Text(verbatim: choice.text.display).help(detail: choice.text.hint).tag(index)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .accessibilityIdentifier(id)
+        } label: {
+            Text(verbatim: group.title.display)
         }
+        .help(detail: group.title.display)
+        .accessibilityIdentifier(id)
     }
 }
 
-/// Beneath the card: the next game, the bench, who is unavailable and who the scouts haven't graded.
+/// Beneath the card: the next game (and the card against its starter's hand), the card's notes, the bench, who is
+/// unavailable and who the scouts haven't graded.
 struct LineupNotes: View {
     let view: Components.Schemas.MlbLineupView
+    let choose: (Components.Schemas.MlbLineupQuery) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let tonight = view.tonight { Card { BlockView(tonight) } }
+            if view.tonight != nil || view.againstTonight != nil {
+                Card {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let tonight = view.tonight { BlockView(tonight) }
+                        if let against = view.againstTonight {
+                            Button { choose(against.query) } label: {
+                                Label { Text(verbatim: against.text.display) } icon: { Image(systemName: "arrow.triangle.2.circlepath") }
+                            }
+                            .help(detail: against.text.hint)
+                            .accessibilityIdentifier("lineup.againstTonight")
+                        }
+                    }
+                }
+            }
+            ForEach(Array(view.notes.enumerated()), id: \.offset) { _, note in ClaimLine(note, font: .callout) }
             ForEach(Array([view.bench, view.unavailable, view.notScouted].compactMap { $0 }.enumerated()), id: \.offset) { _, block in
                 BlockView(block)
             }

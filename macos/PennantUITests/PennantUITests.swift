@@ -1040,9 +1040,11 @@ final class PennantUITests: XCTestCase {
     }
 
     /// Every Major League Ops view at 900 × 700 with the inspector open (N9; BEHAVIOR_CASES.md "Pennant for Mac",
-    /// `testMajorLeagueNarrowWindow`): the five N8 views and the seven clubhouse tools, round after round, a row chosen
-    /// in each table, a lineup asked another way, a game's plan drawn beneath the schedule, and each clubhouse tool
-    /// audited on its first visit. Nothing may stop the app: the window's columns take no minimum from what they draw.
+    /// `testClubhouseNarrowWindow`): the five N8 views and the seven clubhouse tools, round after round, a row chosen
+    /// in each table, a lineup asked another way, a game's plan drawn beneath the schedule, the depth chart by position
+    /// and by club, and each clubhouse tool audited on its first visit. Nothing may stop the app: the window's columns
+    /// take no minimum from what they draw. One click on the sidebar draws its view (N9 review, M3: a second click
+    /// hid a defect); the Lineup's table keeps at least `TablePane.tableMinimum` (120 pt) of height (M1).
     @MainActor
     func testClubhouseNarrowWindow() throws {
         let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
@@ -1053,11 +1055,15 @@ final class PennantUITests: XCTestCase {
         let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
         XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
-        // Running is what matters here (a crash stops it); another process brought to the front (a test run beside this
-        // one draws its own windows) only sends the app back, so it is brought to the front again
+        // Running is what matters here (a crash stops it). Only when another process has taken the front (a test run
+        // beside this one draws its own windows) is the app brought back, and that is logged (N9 review, M3)
         let up = { (step: String) in
             XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
-            if app.state == .runningBackground { app.activate() }
+            let front = NSWorkspace.shared.frontmostApplication
+            if app.state == .runningBackground, let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
+                print("[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back")
+                app.activate()
+            }
         }
         let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
         // Each view, and what shows it drew: a table (a row is chosen in it) or another element
@@ -1065,7 +1071,7 @@ final class PennantUITests: XCTestCase {
             ("report", "report.content", false), ("positionPlayers", "table.lineup", true), ("pitchingStaff", "table.pitching.0", true),
             ("benchBackups", "table.bench", true), ("decision", "detail.majorLeague.decision", false), ("lineup", "table.lineup.order", true),
             ("pitchingAvailability", "table.pitchingAvailability.bullpen", true), ("scheduleGamePlans", "table.schedule.games", true),
-            ("depthChart", "depthChart.club", false), ("fortyManOptions", "table.fortyMan.fortyMan", true), ("rosters", "table.rosters.hitters", true),
+            ("depthChart", "depthChart.mode", false), ("fortyManOptions", "table.fortyMan.fortyMan", true), ("rosters", "table.rosters.hitters", true),
             ("seasonTrends", "trend.differential", false),
         ]
         let clubhouse: Set<String> = ["lineup", "pitchingAvailability", "scheduleGamePlans", "depthChart", "fortyManOptions", "rosters", "seasonTrends"]
@@ -1076,9 +1082,7 @@ final class PennantUITests: XCTestCase {
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
                 item.click()
                 let shown = element(app, view.shows)
-                // A click on the sidebar while a table holds the keyboard focus can be taken by the focus change alone:
-                // asked once more, as a person would click again
-                if !shown.waitForExistence(timeout: 8) { item.click() }
+                // One click draws the view: no second click (N9 review, M3)
                 if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n9-narrow-900-missing-\(view.view)") }
                 XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
                 if view.table {
@@ -1088,13 +1092,29 @@ final class PennantUITests: XCTestCase {
                 }
                 switch view.view {
                 case "lineup":
-                    // The card against left-handers, asked of the server and drawn
+                    // The table keeps its height at 900 × 700 with the inspector open (M1)
+                    XCTAssertGreaterThanOrEqual(shown.frame.height, 120, "round \(round): the lineup's table is \(shown.frame.height) pt tall")
+                    // The card against left-handers, asked of the server from the toolbar and drawn
                     let hand = element(app, "lineup.choice.0").radioButtons.element(boundBy: 1)
                     XCTAssertTrue(hand.waitForExistence(timeout: 10), "round \(round): the lineup offers no choice of hand")
                     hand.click()
                     XCTAssertTrue(element(app, "table.lineup.order").waitForExistence(timeout: 20), "round \(round): the card asked another way did not draw")
                 case "scheduleGamePlans":
                     XCTAssertTrue(element(app, "schedule.plan").waitForExistence(timeout: 20), "round \(round): the chosen game's plan did not draw")
+                case "depthChart":
+                    // By position: a table of one position across the organization, a row chosen; then by club, and back
+                    let mode = element(app, "depthChart.mode").radioButtons
+                    if mode.element(boundBy: 0).isSelected == false { mode.element(boundBy: 0).click() }
+                    let table = app.tables.matching(NSPredicate(format: "identifier BEGINSWITH 'table.depthChart.'")).firstMatch
+                    XCTAssertTrue(table.waitForExistence(timeout: 10), "round \(round): the depth by position did not draw")
+                    let row = firstRow(of: table)
+                    XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): the depth by position has no row")
+                    leading(row)
+                    mode.element(boundBy: 1).click()
+                    XCTAssertTrue(element(app, "depthChart.field").waitForExistence(timeout: 10) || element(app, "depthChart.club").exists,
+                                  "round \(round): the depth by club did not draw")
+                    mode.element(boundBy: 0).click()
+                    XCTAssertTrue(table.waitForExistence(timeout: 10), "round \(round): the depth by position did not come back")
                 case "rosters":
                     let pitchers = element(app, "rosters.sections").radioButtons.element(boundBy: 1)
                     if pitchers.exists {

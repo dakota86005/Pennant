@@ -46,14 +46,19 @@ struct ClubhouseSnapshotTests {
         try draw(hosted(ScheduleView()), size: CGSize(width: 1180, height: 1000), dark: dark, name: "clubhouse-schedule")
     }
 
-    @Test("Depth Chart: the field and its pitchers", arguments: [false, true])
-    func depth(dark: Bool) throws {
-        try draw(hosted(DepthChartView()), size: CGSize(width: 1180, height: 900), dark: dark, name: "clubhouse-depth-chart")
+    @Test("Depth Chart by position: one position across every level in a table", arguments: [false, true])
+    func depthByPosition(dark: Bool) throws {
+        try draw(hosted(DepthChartView()), size: CGSize(width: 1180, height: 900), dark: dark, name: "clubhouse-depth-chart-by-position")
     }
 
-    @Test("Depth Chart on a narrow column: the positions as cards", arguments: [false, true])
+    @Test("Depth Chart by club: the field and its pitchers", arguments: [false, true])
+    func depth(dark: Bool) throws {
+        try draw(hosted(DepthChartView(byClub: true)), size: CGSize(width: 1180, height: 900), dark: dark, name: "clubhouse-depth-chart")
+    }
+
+    @Test("Depth Chart by club on a narrow column: the positions as cards", arguments: [false, true])
     func depthNarrow(dark: Bool) throws {
-        try draw(hosted(DepthChartView()), size: CGSize(width: 560, height: 1200), dark: dark, name: "clubhouse-depth-chart-narrow")
+        try draw(hosted(DepthChartView(byClub: true)), size: CGSize(width: 560, height: 1200), dark: dark, name: "clubhouse-depth-chart-narrow")
     }
 
     @Test("40-Man & Options, opened from a desk item on its player", arguments: [false, true])

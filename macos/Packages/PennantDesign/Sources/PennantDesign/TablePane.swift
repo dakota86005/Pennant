@@ -10,47 +10,86 @@ import SwiftUI
 /// `_NSConstraintBasedLayoutHostingView`s with no Pennant frame in it: the table's `NSScrollView` and the page's each
 /// asked the other for a size, and a narrow window never settled. A fixed width from a `GeometryReader` did not stop
 /// it. Here no table is nested in a scroll view: the table is sized by the pane and scrolls by itself, and the detail
-/// pane's height is a fixed share of the pane's own height, so no size is fed back from the content to the window.
+/// pane's height is the pane's own number (a share of its height, or where the GM left the boundary), so no size is fed
+/// back from the content to the window.
+///
+/// The boundary between the table and the detail is the GM's to move, as in Mail: drag it (or, with VoiceOver, adjust
+/// it), and the pane remembers where it was left, per view, across launches (`autosave`; N9 review, M1). The table never
+/// gets less than `tableMinimum` and the detail never less than `detailMinimum`: a remembered height that no longer
+/// fits a smaller window gives way to the table. The heights are the pane's own numbers, never fed back from the
+/// content to the window, so the constraint loop above cannot start.
 ///
 /// Use it for every table that is more than a few lines of a page (the farm adopts it). A table never goes inside a
 /// page's `ScrollView`.
 public struct TablePane<Head: View, TableContent: View, Detail: View>: View {
     private let detailShare: CGFloat
+    private let autosave: String?
     private let head: Head
     private let table: TableContent
     private let detail: Detail
+    /// The detail's height as the GM left it (0: not moved yet), kept per view when the pane has an autosave name.
+    @AppStorage private var saved: Double
+    /// The same, for a pane with no autosave name: this showing only.
+    @State private var moved: Double = 0
+    @State private var headHeight: CGFloat = 0
+    @State private var dragStart: CGFloat?
 
     /// The minimum heights that keep both panes usable on a short window.
     public static var tableMinimum: CGFloat { 120 }
     public static var detailMinimum: CGFloat { 110 }
+    /// The divider's height, its line centred in it: tall enough to grab.
+    static var dividerHeight: CGFloat { 7 }
 
     /// - Parameters:
-    ///   - detailShare: the share of the pane's height the detail beneath the table takes (0.25 to 0.6).
+    ///   - detailShare: the share of the pane's height the detail beneath the table takes until the GM moves the
+    ///     boundary (0.25 to 0.6).
+    ///   - autosave: the name the boundary's place is remembered under (each view its own); nil remembers it for this
+    ///     showing only.
     ///   - head: the view's head, at its natural height and never scrolled away.
     ///   - table: the table, which fills what is left and scrolls by itself.
     ///   - detail: the selected row's detail or the view's notes, scrolling on its own.
     public init(
         detailShare: CGFloat = 0.42,
+        autosave: String? = nil,
         @ViewBuilder head: () -> Head,
         @ViewBuilder table: () -> TableContent,
         @ViewBuilder detail: () -> Detail
     ) {
         self.detailShare = min(max(detailShare, 0.25), 0.6)
+        self.autosave = autosave
         self.head = head()
         self.table = table()
         self.detail = detail()
+        _saved = AppStorage(wrappedValue: 0, "TablePane.detailHeight.\(autosave ?? "")")
+    }
+
+    private var chosen: Double {
+        get { autosave == nil ? moved : saved }
+        nonmutating set { if autosave == nil { moved = newValue } else { saved = newValue } }
+    }
+
+    /// The detail's height in a pane of this height: the GM's (or the share's), within both minimums.
+    private func detailHeight(in height: CGFloat) -> CGFloat {
+        let most = max(Self.detailMinimum, height - headHeight - Self.tableMinimum - Self.dividerHeight)
+        let wanted = chosen > 0 ? CGFloat(chosen) : (height * detailShare).rounded()
+        return min(max(Self.detailMinimum, wanted), most)
     }
 
     public var body: some View {
         GeometryReader { proxy in
-            let detailHeight = max(Self.detailMinimum, (proxy.size.height * detailShare).rounded())
+            let height = proxy.size.height
+            let detailHeight = detailHeight(in: height)
             VStack(alignment: .leading, spacing: 0) {
                 head
                     .padding(.horizontal, 28).padding(.top, 20).padding(.bottom, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headHeight = $0 }
                 table
                     .frame(maxWidth: .infinity, minHeight: Self.tableMinimum, maxHeight: .infinity)
-                Divider()
+                PaneDivider(
+                    height: detailHeight,
+                    range: Self.detailMinimum...max(Self.detailMinimum, height - headHeight - Self.tableMinimum - Self.dividerHeight)
+                ) { chosen = Double($0) }
                 ScrollView {
                     detail
                         .padding(.horizontal, 28).padding(.vertical, 16)
@@ -69,6 +108,44 @@ public struct TablePane<Head: View, TableContent: View, Detail: View>: View {
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
         .background(Color.readablePage)
+    }
+}
+
+/// The boundary between a table and its detail: the system's divider line in a strip tall enough to grab, the row
+/// resize pointer over it, dragged up or down to move the boundary; VoiceOver adjusts it a step at a time.
+struct PaneDivider: View {
+    let height: CGFloat
+    let range: ClosedRange<CGFloat>
+    let set: (CGFloat) -> Void
+    @State private var start: CGFloat?
+
+    var body: some View {
+        Divider()
+            .frame(maxWidth: .infinity, minHeight: TablePane<EmptyView, EmptyView, EmptyView>.dividerHeight,
+                   maxHeight: TablePane<EmptyView, EmptyView, EmptyView>.dividerHeight)
+            .contentShape(Rectangle())
+            .pointerStyle(.frameResize(position: .top))
+            .gesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                    .onChanged { drag in
+                        let from = start ?? height
+                        if start == nil { start = height }
+                        set(min(max(from - drag.translation.height, range.lowerBound), range.upperBound).rounded())
+                    }
+                    .onEnded { _ in start = nil }
+            )
+            .accessibilityElement()
+            .accessibilityLabel(Text("Details Height"))
+            .accessibilityValue(Text(verbatim: "\(Int(height))"))
+            .accessibilityAdjustableAction { direction in
+                let step: CGFloat = 40
+                switch direction {
+                case .increment: set(min(height + step, range.upperBound))
+                case .decrement: set(max(height - step, range.lowerBound))
+                @unknown default: break
+                }
+            }
+            .accessibilityIdentifier("tablePane.divider")
     }
 }
 

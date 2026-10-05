@@ -35,7 +35,8 @@ struct TrendChartView: View {
     @EffectiveContrast private var contrast
 
     /// The fixed colour for a served role: the pack's accent for the main line, the tones' green and red for runs
-    /// scored and allowed (each line also named in the legend, so colour is never the only signal).
+    /// scored and allowed (each line also named in the legend and runs allowed dashed, so colour is never the only
+    /// signal).
     private func color(_ role: String) -> Color {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
         switch role {
@@ -43,6 +44,11 @@ struct TrendChartView: View {
         case "allowed": return Tone.bad.color
         default: return palette.isNeutral ? Color.accentColor : palette.accent
         }
+    }
+
+    /// A served role's stroke: dashed for runs allowed, solid otherwise.
+    private func stroke(_ role: String) -> StrokeStyle {
+        role == "allowed" ? StrokeStyle(lineWidth: 2, dash: [6, 4]) : StrokeStyle(lineWidth: 2)
     }
 
     var body: some View {
@@ -65,11 +71,14 @@ struct TrendChartView: View {
                             series: .value("Line", series.title.display)
                         )
                         .foregroundStyle(by: .value("Line", series.title.display))
+                        .lineStyle(by: .value("Line", series.title.display))
                         .interpolationMethod(.linear)
                     }
                 }
             }
             .chartForegroundStyleScale(domain: chart.series.map(\.title.display), range: chart.series.map { color($0.role) })
+            // Runs allowed dashed, runs scored solid: the two differ by more than colour, in the lines and the legend
+            .chartLineStyleScale(domain: chart.series.map(\.title.display), range: chart.series.map { stroke($0.role) })
             .chartLegend(chart.series.count > 1 ? .visible : .hidden)
             .chartXAxisLabel { Text("Game") }
             .chartYAxisLabel { Text(verbatim: chart.axis.display) }

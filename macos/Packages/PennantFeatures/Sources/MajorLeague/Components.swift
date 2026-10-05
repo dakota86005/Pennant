@@ -39,6 +39,14 @@ struct CellText: View {
             }
         }
         .help(detail: cell.hint)
+        .accessibilityLabel(Text(verbatim: spoken))
+    }
+
+    /// What VoiceOver says: the served words, or, for a cell that is only a mark (the rest calendar's dash for a day he
+    /// didn't pitch), its served hint, so it is never read as "en dash" (N9 review).
+    private var spoken: String {
+        let mark = !cell.display.contains { $0.isLetter || $0.isNumber }
+        return mark ? (cell.hint ?? cell.display) : cell.display
     }
 }
 

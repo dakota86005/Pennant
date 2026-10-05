@@ -88,10 +88,19 @@
     "Bullpen": {
       "extractionState": "manual"
     },
+    "By Club": {
+      "extractionState": "manual"
+    },
+    "By Position": {
+      "extractionState": "manual"
+    },
     "Can the club do its job?": {
       "extractionState": "manual"
     },
     "Can the club field a team?": {
+      "extractionState": "manual"
+    },
+    "Card": {
       "extractionState": "manual"
     },
     "Ceiling": {
@@ -169,6 +178,9 @@
       "extractionState": "manual"
     },
     "Details": {
+      "extractionState": "manual"
+    },
+    "Details Height": {
       "extractionState": "manual"
     },
     "Development Tracking": {

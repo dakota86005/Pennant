@@ -4,22 +4,81 @@ import PennantDesign
 import PennantKit
 import SwiftUI
 
-/// Depth Chart (N9): one of the organization's clubs at a time, its players at each position deepest first as the
-/// scouts grade them now. Drawn in the V2 roster diagram's flat field language (D-069): the eight fielders' positions
-/// on the field and the designated hitter by the dugout, each a plate listing its depth, with the starters and the
-/// relievers in two columns beside it, which reads a club's depth at a glance where React's grid of every club at every
-/// position needed scrolling both ways. On a narrow column the positions stack as cards, in the same served order.
+/// Depth Chart (N9): the organization's depth two ways, chosen in the head and remembered by the window.
+///
+/// - **By Position** (N9 review, the React page's main use): one position across every level in a native table, the
+///   clubs from the major league club down and each club's men deepest first, so who is behind a man reads straight
+///   down; sorted by served keys like any table, his row's detail beneath.
+/// - **By Club**: one of the organization's clubs at a time, drawn in the V2 roster diagram's flat field language
+///   (D-069): the eight fielders' positions on the field and the designated hitter by the dugout, each a plate listing
+///   its depth, with the starters and the relievers in two columns beside it. On a narrow column the positions stack as
+///   cards, in the same served order.
 struct DepthChartView: View {
     @Environment(AppModel.self) private var model
     @State private var team: Int?
+    @SceneStorage private var byClub: Bool
+    @SceneStorage("depthChart.position") private var position = ""
+
+    /// - Parameter byClub: the way it opens until the window remembers the GM's (by position, unless a test asks).
+    init(byClub: Bool = false) {
+        _byClub = SceneStorage(wrappedValue: byClub, "depthChart.byClub")
+    }
 
     var body: some View {
         let store = model.clubhouse
         ViewState(payload: store.depth, problem: store.problems["depth"]) { view in
-            let club = view.clubs.first { $0.teamId == team } ?? view.clubs.first
-            Page {
-                VStack(alignment: .leading, spacing: 12) {
-                    ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: nil, refreshing: model.clubhouseUpdating("depth"))
+            if byClub || view.byPosition.isEmpty {
+                clubPage(view)
+            } else {
+                positionPane(view)
+            }
+        }
+        .task(id: model.storeKey) { await store.loadDepth(client: model.client, key: model.storeKey) }
+    }
+
+    /// The two ways of reading the depth, as a segmented choice.
+    private var mode: some View {
+        Picker(selection: $byClub) {
+            Text("By Position").tag(false)
+            Text("By Club").tag(true)
+        } label: {
+            Text("Show")
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .accessibilityIdentifier("depthChart.mode")
+    }
+
+    private func positionPane(_ view: Components.Schemas.MlbDepthChartView) -> some View {
+        let index = view.byPosition.firstIndex { $0.id == position } ?? 0
+        let shown = view.byPosition[index]
+        return ServedTablePane(shown.table, id: "depthChart.\(shown.id)", name: shown.title.display) {
+            VStack(alignment: .leading, spacing: 12) {
+                ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: nil, refreshing: model.clubhouseUpdating("depth"))
+                HStack(spacing: 12) {
+                    mode
+                    ChoicePopover(
+                        current: shown.title.display,
+                        choices: view.byPosition.map { ($0.title.display, $0.summary?.display, $0.id == shown.id) },
+                        id: "depthChart.position"
+                    ) { position = view.byPosition[$0].id }
+                }
+                ClaimLine(view.note, font: .callout)
+            }
+        } notes: {
+            EmptyView()
+        }
+        .id(shown.id)
+    }
+
+    private func clubPage(_ view: Components.Schemas.MlbDepthChartView) -> some View {
+        let club = view.clubs.first { $0.teamId == team } ?? view.clubs.first
+        return Page {
+            VStack(alignment: .leading, spacing: 12) {
+                ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: nil, refreshing: model.clubhouseUpdating("depth"))
+                HStack(spacing: 12) {
+                    if !view.byPosition.isEmpty { mode }
                     if view.clubs.count > 1, let club {
                         ChoicePopover(
                             current: club.title.display,
@@ -27,13 +86,12 @@ struct DepthChartView: View {
                             id: "depthChart.club"
                         ) { team = view.clubs[$0].teamId }
                     }
-                    ClaimLine(view.note, font: .callout)
-                    if let empty = view.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary) }
                 }
-                if let club { DepthClubView(club: club).id(club.teamId) }
+                ClaimLine(view.note, font: .callout)
+                if let empty = view.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary) }
             }
+            if let club { DepthClubView(club: club).id(club.teamId) }
         }
-        .task(id: model.storeKey) { await store.loadDepth(client: model.client, key: model.storeKey) }
     }
 }
 

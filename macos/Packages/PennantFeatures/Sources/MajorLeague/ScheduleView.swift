@@ -37,7 +37,7 @@ struct ScheduleView: View {
                 rows: isGames && view.filters.indices.contains(chosen) ? view.filters[chosen].rows.compactMap { byId[$0] } : shown.table.rows,
                 empty: shown.table.empty
             )
-            TablePane(detailShare: isGames ? 0.5 : 0.3) {
+            TablePane(detailShare: isGames ? 0.5 : 0.3, autosave: "schedule.\(shown.id)") {
                 VStack(alignment: .leading, spacing: 12) {
                     ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: nil, refreshing: model.clubhouseUpdating("schedule"))
                     FiguresStrip(figures: view.record)

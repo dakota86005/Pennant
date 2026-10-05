@@ -206,7 +206,7 @@ struct ServedTablePane<Head: View, Notes: View>: View {
     }
 
     var body: some View {
-        TablePane(detailShare: detailShare) {
+        TablePane(detailShare: detailShare, autosave: id) {
             head
         } table: {
             ServedTable(table, id: id, name: name, selection: $selection, reveal: reveal)

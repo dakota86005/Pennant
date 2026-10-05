@@ -9391,6 +9391,13 @@
               "$ref": "#/components/schemas/MlbDepthClub"
             }
           },
+          "byPosition": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTableSection"
+            },
+            "description": "The organization's depth at each position, every level in one table (N9 review): who is behind a man at his position, from the major league club down, deepest first at each club. The same reading as `clubs`."
+          },
           "note": {
             "$ref": "#/components/schemas/Claim",
             "description": "How the depth is ordered, with what it leaves out in its basis."
@@ -9400,6 +9407,7 @@
           }
         },
         "required": [
+          "byPosition",
           "clubs",
           "importStamp",
           "lede",
