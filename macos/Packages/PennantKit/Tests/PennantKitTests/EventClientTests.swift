@@ -146,18 +146,17 @@ struct EventReconnectTests {
     func failuresLoggedAndSlower() async {
         let problems = SignalLog()
         let transport = RoutedTransport([:])
+        let waits = Waits(stopAfter: 6)
         let events = EventClient(
             client: client(transport), reconnectDelay: .milliseconds(20), maxReconnectDelay: .milliseconds(160),
-            onError: { problems.appendUnknown($0) }
+            onError: { problems.appendUnknown($0) }, sleep: waits.sleep
         )
-        let task = Task { await events.run { _ in } }
-        try? await Task.sleep(for: .milliseconds(400))
-        task.cancel()
-        await task.value
-        // 20 + 40 + 80 + 160 … ms: about five attempts in 400 ms, where a fixed 20 ms would make twenty
-        #expect(transport.paths.count <= 7)
-        #expect(transport.paths.count >= 3)
-        #expect(problems.unknownTypes.first?.contains("failed") == true)
+        await Task { await events.run { _ in } }.value
+        // Each attempt failed, so each wait doubled to the cap: the sequence, not a count read off the wall clock
+        #expect(waits.all == [20, 40, 80, 160, 160, 160].map { Duration.milliseconds($0) })
+        #expect(transport.paths.count == 6)
+        #expect(problems.unknownTypes.count == 6)
+        #expect(problems.unknownTypes.allSatisfy { $0.contains("failed") })
     }
 
     @Test("a stream that opened and then ended starts the wait again from the first step")
@@ -165,17 +164,16 @@ struct EventReconnectTests {
         let sse = try String(decoding: fixtureData("events.sse"), as: UTF8.self)
         let transport = RoutedTransport(["/api/v2/events": RoutedTransport.sse(sse)])
         let problems = SignalLog()
+        let waits = Waits(stopAfter: 7)
         let events = EventClient(
             client: client(transport), reconnectDelay: .milliseconds(20), maxReconnectDelay: .seconds(5),
-            onError: { problems.appendUnknown($0) }
+            onError: { problems.appendUnknown($0) }, sleep: waits.sleep
         )
-        let task = Task { await events.run { _ in } }
-        try? await Task.sleep(for: .milliseconds(600))
-        task.cancel()
-        await task.value
-        // Always connecting, so never slowed: more attempts than a backed-off client would make (20, 40, 80, 160, 320 ms
-        // gives at most five in 600 ms) — a lower bound with room for a loaded CI machine
-        #expect(transport.paths.count >= 7)
+        await Task { await events.run { _ in } }.value
+        // Always connecting, so never slowed: every wait is the first step
+        #expect(waits.all == Array(repeating: Duration.milliseconds(20), count: 7))
+        #expect(transport.paths.count == 7)
+        #expect(problems.unknownTypes.count == 7)
         #expect(problems.unknownTypes.allSatisfy { $0 == "the event stream ended" })
     }
 
@@ -213,4 +211,26 @@ final class SignalLog: @unchecked Sendable {
     var unknownTypes: [String] { lock.withLock { _unknown } }
     func append(_ signal: EventSignal) { lock.withLock { _signals.append(signal) } }
     func appendUnknown(_ type: String) { lock.withLock { _unknown.append(type) } }
+}
+
+/// The waits an event client asked for, kept instead of slept; after `stopAfter` of them the loop is cancelled (the
+/// server stopped), so a test reads the sequence of attempts and waits with no real time passing.
+final class Waits: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _all: [Duration] = []
+    private let stopAfter: Int
+
+    init(stopAfter: Int) {
+        self.stopAfter = stopAfter
+    }
+
+    var all: [Duration] { lock.withLock { _all } }
+
+    var sleep: @Sendable (Duration) async -> Void {
+        { [self] duration in
+            let count = lock.withLock { _all.append(duration); return _all.count }
+            if count >= stopAfter { withUnsafeCurrentTask { $0?.cancel() } }
+            await Task.yield()
+        }
+    }
 }

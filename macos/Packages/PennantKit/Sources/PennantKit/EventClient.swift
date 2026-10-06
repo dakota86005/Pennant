@@ -31,19 +31,23 @@ public struct EventClient: Sendable {
     public var onUnknown: @Sendable (String) -> Void
     /// Called when a connection fails or ends (for the log only).
     public var onError: @Sendable (String) -> Void
+    /// Waits between attempts: the clock's own sleep; a test hands its own to read the waits without waiting.
+    public var sleep: @Sendable (Duration) async -> Void
 
     public init(
         client: Client,
         reconnectDelay: Duration = .seconds(1),
         maxReconnectDelay: Duration = .seconds(10),
         onUnknown: @escaping @Sendable (String) -> Void = { _ in },
-        onError: @escaping @Sendable (String) -> Void = { _ in }
+        onError: @escaping @Sendable (String) -> Void = { _ in },
+        sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }
     ) {
         self.client = client
         self.reconnectDelay = reconnectDelay
         self.maxReconnectDelay = maxReconnectDelay
         self.onUnknown = onUnknown
         self.onError = onError
+        self.sleep = sleep
     }
 
     /// The wait before the next attempt after `failures` attempts in a row that did not connect (1-based).
@@ -139,7 +143,7 @@ public struct EventClient: Sendable {
             }
             failures = connected ? 1 : failures + 1
             await handle(.disconnected)
-            try? await Task.sleep(for: delay(afterFailures: failures))
+            await sleep(delay(afterFailures: failures))
         }
     }
 }
