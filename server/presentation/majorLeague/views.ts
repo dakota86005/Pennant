@@ -7,11 +7,11 @@
 import type { Cell, Tone } from '../../contract/presentation.js';
 import type { MlbNeed } from '../../mlbNeeds.js';
 import type { RoleGroupReview } from '../../mlbReview.js';
-import { ratingFillOf } from '../../scoutedEvidence.js';
 import { basis, cell, claim } from '../claim.js';
 import { sourceOf } from '../frontOffice/desk.js';
 import {
-  action, block, because, column, decision, head, line, linesOf, numberCell, player, REVIEW, reviewClaim, tableRow, view, type OverviewContext,
+  action, block, because, column, decision, fillMark, head, line, linesOf, markFill, numberCell, player, REVIEW, reviewClaim, tableRow, view,
+  type OverviewContext,
 } from './common.js';
 import type {
   MlbBenchFunction, MlbBenchView, MlbBlock, MlbGlance, MlbLine, MlbNeedEntry, MlbNeedGroup, MlbOverviewView, MlbPitchingStaffView,
@@ -206,28 +206,6 @@ function readClaim(v: OverviewContext, h: Holder) {
     wouldChange: h.wouldChange,
     links: [],
   });
-}
-
-/**
- * A row whose grades are OSA's view filling in for our scouts (D-067): every cell that rests on his grades carries the
- * sentence in its hint, and his detail opens with it as a quiet line, so the Mac can draw the mark ("OSA") beside them.
- * Nothing changes for a player our scouts rate.
- */
-/** The mark a row carries beside his grades when they are OSA's view filling in for our scouts (N11), or null. */
-export function fillMark(playerId: number): Cell | null {
-  const fill = ratingFillOf(playerId);
-  return fill ? cell(fill.mark, { hint: fill.hint }) : null;
-}
-
-function markFill(playerId: number, cells: Record<string, Cell>, ratingKeys: readonly string[], detail: MlbBlock[]): MlbBlock[] {
-  const note = ratingFillOf(playerId)?.hint ?? null;
-  if (!note) return detail;
-  for (const k of ratingKeys) {
-    const c = cells[k];
-    if (c) cells[k] = { ...c, hint: c.hint ? `${c.hint}. ${note}` : note };
-  }
-  const [first, ...rest] = detail;
-  return first ? [{ ...first, lines: [line(note, { quiet: true }), ...first.lines] }, ...rest] : [block(null, [line(note, { quiet: true })])];
 }
 
 function hitterDetail(v: OverviewContext, h: Holder, spot: { position: number; label: string; partner: { playerId: number; name: string; share: number } | null }): MlbBlock[] {

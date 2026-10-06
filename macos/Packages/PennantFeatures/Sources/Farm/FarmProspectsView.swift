@@ -187,7 +187,11 @@ struct ProspectCardView: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Player Development").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase)
-                Text(verbatim: card.name).font(.title2.weight(.bold)).farmPlayer(id: card.playerId, name: card.name, open: card.open)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(verbatim: card.name).font(.title2.weight(.bold)).farmPlayer(id: card.playerId, name: card.name, open: card.open)
+                    // His grades ("Scouted now → ceiling") are OSA's view filling in for our scouts (D-067)
+                    if let fill = card.ratingsFill { RatingFillMark(fill) }
+                }
                 Text(verbatim: card.line.display).foregroundStyle(.readableSecondary)
                 CellText(card.queueLine, secondary: true).font(.callout)
             }

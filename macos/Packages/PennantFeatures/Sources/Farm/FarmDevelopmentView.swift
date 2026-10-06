@@ -201,8 +201,12 @@ struct DevelopmentDetailContent: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Scouting history").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase)
-                Text(verbatim: detail.name).font(.title2.weight(.bold))
-                    .farmPlayer(id: detail.playerId, name: detail.name, open: detail.open)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(verbatim: detail.name).font(.title2.weight(.bold))
+                        .farmPlayer(id: detail.playerId, name: detail.name, open: detail.open)
+                    // His reads and snapshots are OSA's view filling in for our scouts (D-067)
+                    if let fill = detail.ratingsFill { RatingFillMark(fill) }
+                }
                 Text(verbatim: detail.line.display).foregroundStyle(.readableSecondary)
                 Pill(detail.pace.display, tone: Tone(detail.pace.tone))
             }
@@ -225,7 +229,10 @@ struct DevelopmentDetailContent: View {
             .font(.callout)
             ServedClaimLine(detail.summary, font: .callout)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Snapshots").font(.callout.weight(.semibold))
+                HStack(spacing: 6) {
+                    Text("Snapshots").font(.callout.weight(.semibold))
+                    if let fill = detail.ratingsFill { RatingFillMark(fill) }
+                }
                 Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 3) {
                     GridRow {
                         Text("Date"); Text("Level"); Text("Our Read"); Text("Ceiling")

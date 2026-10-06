@@ -18,7 +18,7 @@ import type { ChainLink, ConstraintClearing, ResponseCandidate, ResponsePacket }
 import { basis, cell, claim } from '../claim.js';
 import { sourceOf } from '../frontOffice/desk.js';
 import {
-  block, because, column, head, line, linesOf, numberCell, player, RESPONSES, REVIEW, reviewCertainty, tableRow, type ViewContext,
+  block, because, column, fillMark, head, line, linesOf, markFill, numberCell, player, RESPONSES, REVIEW, reviewCertainty, tableRow, type ViewContext,
 } from './common.js';
 import type {
   MlbBlock, MlbCall, MlbCandidates, MlbChoices, MlbConstraint, MlbDecisionQuery, MlbDecisionView, MlbGauge, MlbLine, MlbMechanics,
@@ -426,7 +426,9 @@ function candidateRow(v: ViewContext, c: ResponseCandidate, mode: ResponsePacket
     sort.against = fit?.advantage ?? null;
   }
   void index;
-  return tableRow(`candidate-${c.pathKind}-${c.playerId}`, cells, sort, { player: player(v, c.playerId, c.name), detail: candidateDetail(v, c) });
+  // His fit and his comparison rest on his grades: marked when they are OSA's view filling in for our scouts (N11)
+  const detail = markFill(c.playerId, cells, ['fit', 'against'], candidateDetail(v, c));
+  return tableRow(`candidate-${c.pathKind}-${c.playerId}`, cells, sort, { player: player(v, c.playerId, c.name), detail, ratingsFill: fillMark(c.playerId) });
 }
 
 const OPEN_GROUPS = new Set(['open', 'open_requires_clearing', 'creates_shortfall', 'role_concern', 'context_dependent', 'evaluation_incomplete', 'indeterminate']);

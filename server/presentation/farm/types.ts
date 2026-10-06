@@ -356,6 +356,8 @@ export interface FarmProspectCard {
   line: Cell;
   /** "Double-A → Triple-A", "Double-A · stay" or "Double-A · not settled". */
   queueLine: Cell;
+  /** OSA's view filling in for our scouts on his grades ("Scouted now → ceiling", D-067): the mark and its sentence. */
+  ratingsFill?: Cell;
   /** Player Development's call, with what it means as its help tag and its evidence as its basis. */
   call: Claim;
   /** What the call means, in a sentence. */
@@ -428,6 +430,8 @@ export interface FarmDevelopmentDetail extends FarmViewHead {
   name: string;
   line: Cell;
   pace: Cell;
+  /** OSA's view filling in for our scouts on his grades and his snapshots (D-067): the mark and its sentence. */
+  ratingsFill?: Cell;
   /**
    * When his ratings changed source between snapshots (our scouts' full reports and OSA's view, D-067): the served
    * sentence, a switch and never development, with what it leaves out in its basis. Null otherwise.

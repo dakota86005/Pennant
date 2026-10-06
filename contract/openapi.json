@@ -5529,6 +5529,10 @@
           "pace": {
             "$ref": "#/components/schemas/Cell"
           },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts on his grades and his snapshots (D-067): the mark and its sentence."
+          },
           "sourceSwitch": {
             "$ref": "#/components/schemas/Claim",
             "description": "When his ratings changed source between snapshots (our scouts' full reports and OSA's view, D-067): the served sentence, a switch and never development, with what it leaves out in its basis. Null otherwise."
@@ -6831,6 +6835,10 @@
           "queueLine": {
             "$ref": "#/components/schemas/Cell",
             "description": "\"Double-A → Triple-A\", \"Double-A · stay\" or \"Double-A · not settled\"."
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts on his grades (\"Scouted now → ceiling\", D-067): the mark and its sentence."
           },
           "call": {
             "$ref": "#/components/schemas/Claim",

@@ -101,6 +101,7 @@ function detailOf(ctx: FarmContext, t: Tracked, rating: RatingDisplay): FarmDeve
     name: player.name,
     line: cell(`${player.age} · ${roleWords(player.kind, player.role)} · ${player.levelName} · ${player.team}`),
     pace: cell(pace.text, { tone: pace.tone }),
+    ...fillMark(ctx, player.playerId),
     sourceSwitch: t.switched
       ? claim({
         text: plain(t.switched),

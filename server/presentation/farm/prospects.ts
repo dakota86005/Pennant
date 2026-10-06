@@ -76,6 +76,7 @@ function card(ctx: FarmContext, player: ScoutedDevelopmentPlayer, p: ProspectInp
   const next = nextAssignments(p);
   return {
     playerId: player.playerId,
+    ...fillMark(ctx, player.playerId),
     name: player.name,
     line: cell([String(player.age), roleWords(player.kind, player.role), player.levelName, player.team, player.transaction.onInjuredList ? 'Injured' : null].filter(Boolean).join(' · ')),
     queueLine: cell(queueLine(player, p), { hint: 'The nearest move Player Development finds defensible' }),
