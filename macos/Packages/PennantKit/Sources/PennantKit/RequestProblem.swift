@@ -44,6 +44,10 @@ public enum RequestProblem: Error, Hashable, Sendable {
         if let client {
             parts.append(client.operationID)
             if let status = client.response?.status.code { parts.append("HTTP \(status)") }
+        } else if let status = String(describing: error).firstMatch(of: /statusCode: (\d{3})/) {
+            // An answer the generated client didn't expect (`.ok` on another status): its status, read off the
+            // description, which itself is never kept
+            parts.append("HTTP \(status.1)")
         }
         parts.append("\(ns.domain) \(ns.code)")
         return parts.joined(separator: ": ")
