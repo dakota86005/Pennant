@@ -1286,6 +1286,59 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
 - *Left for later:* the per-view sidebar counts; a player opens his club until N11's player windows land (the views use
   the served `open`, so N11's window takes over).
 
+**As built at N12 (Track B, 2026-10-06): League Office and Scouting (server and Mac).** Branch
+`feature/swiftui-n12-league`; D-072 (BEHAVIOR_CASES.md "Pennant for Mac", the `leagueStandingsViews.test.ts`,
+`leagueHistoryViews.test.ts`, `leagueLeadersViews.test.ts`, `scoutingViews.test.ts` and `LeagueOfficeFeatureTests` rows).
+- **Server.** The routes the React pages read compute in callable modules, each old route sending exactly what its
+  module computes (`computeFranchise`, `computeTenure` with its names read in one batch, `computeLeaderboards`, the
+  draft's class and calendar, `computePlayers`; N4's `computeStandings` and `computeOrgComparison` reused).
+  `GET /api/v2/views/:org/league/standings` (each division a table, our place in the race as figures, and beneath the
+  table the staff's rough read: the odds and the posture, D-060, provisional, with their basis; none before a game is
+  played), `/leaders` (batting and pitching, each category's top ten, the qualifier with its rule), `/orgComparison`
+  (our four figures as ranges with the league's middle, every club a row opening its window), `/franchiseHistory`
+  (the record's figures and a chart's points with its legend, every season as a table, the GM's own seasons),
+  `/usVsThem?team=` (our club beside another as facts with both clubs' league places, their meetings, the next series)
+  and `/scouting/draftBoard` (the class once OOTP publishes it, else one sentence and the calendar; our scouts' grades
+  through `loadScoutedAbilities` with the OSA mark; the staff's stated order, short lists and served filters) and
+  `/scouting/playerSearch?q&tokens` (the palette's name matcher, the served tokens, 300 rows at most with the count).
+  The adapters are `server/presentation/league/` and `server/presentation/scouting/`; `leagueViewsBuild.ts` reads,
+  `leagueViewService.ts` keeps one club's build on the Front Office's key, built in its worker after each kept Front
+  Office build; Us vs Them against another club is read in the worker on its first ask, a search in process. The
+  palette's player matches end with "All N in Player Search", opening the view on the words typed.
+- **Mac.** `LeagueOfficeStore` and `ScoutingStore` (PennantKit, `AppModel.leagueOffice` and `.scouting`). Every table
+  is FeatureCore's `OfficeTable` in a `TablePane` (N8's served table, public, naming a club as well as a player: a
+  club's row opens its window, a player's his; the chosen rows' players are what Compare, ⌥⌘C, takes). Standings shows
+  one division at a time, ours first, chosen from a pop-up; Leaders a segmented batting or pitching and a category
+  pop-up; Franchise History's Record is Swift Charts (a bar per season as a category of its own, a title marked with a
+  diamond as well as its colour, the served legend, round years labelled, the season's words on pointing, one image to
+  VoiceOver with its `AXChartDescriptor`), its seasons and the GM's own seasons tables; Us vs Them an opponent pop-up
+  and the three tables; the Draft Board its served filters as pop-ups narrowing the board to their rows, the calendar
+  a short grid; Player Search the toolbar's `.searchable` field with the served tokens suggested as the GM types (one
+  of each kind), batters or pitchers segmented, asked again a quarter second after the typing stops.
+- **Measured** (in process over HTTP, M4, under tsx). The owner's export (a read-only scratch copy; checksums matched
+  the save's before and after the copy): the build 2.9 s on the server's thread (Org Comparison 2.2 s, Draft Board
+  0.17 s, the rest under 0.15 s each; 2.2 s through the worker), warm GETs p50 / p95: Standings 0.8 / 2.0 ms (38 kB),
+  Leaders 0.7 / 1.9, Org Comparison 2.9 / 3.8 (331 kB), Franchise History 0.5 / 0.9, Us vs Them 0.4 / 0.7, Draft
+  Board (2,076 prospects) and Player Search as it opens 5.8 / 6.6 (566 kB); asked: Us vs Them against another club
+  first 368 ms (a worker) then 0.5 ms, a name search first 12 to 68 ms then about 1 ms, a token search first 23 to 38
+  ms then 3 to 8 ms. USBL (a scratch copy, history from 1930): the build 1.1 s; a club with 86 seasons, Franchise
+  History warm p50 2.0 ms, p95 4.0 ms (81 kB), its whole first build for that club 1.1 s. The synthetic save: Standings
+  1 ms, Us vs Them 5 ms, Franchise History with 86 seasons 5 ms, Org Comparison 88 ms, Leaders 1 to 2 ms, Draft Board
+  12 to 14 ms, Player Search 3 to 5 ms.
+- **The audits.** `testLeagueOfficeNarrowWindow` opens the seven views at 900 × 700 with the inspector open, three
+  rounds, a row chosen in each table and its detail drawn, another opponent asked, the franchise's record and seasons,
+  a search typed, every table at least 120 points tall, and audits each view on its first visit.
+- **The palette test made deterministic.** `testDesignPaletteBasisAndInspector`'s intermittent finding (a report line
+  just above the inspector's top edge, under the toolbar, read at 1.0:1) was the report not at its top when audited:
+  it was scrolled back at its middle, which the inspector covers on a narrow window, so the scroll went to the
+  inspector and the report stayed where the claim's click left it, and an audit taken mid-scroll measured a line
+  passing under the toolbar. It now scrolls at the report's leading side and waits until the masthead is still; the
+  set-aside for text under the inspector is unchanged.
+- *Left for later:* the per-view sidebar counts; a native `Table` with every division as a section (one division at a
+  time today); the React `/api/draft` route's own partial-tool averages (deleted at the cutover); `OfficeKit` and
+  Major League Ops' and the farm's table components are three copies of one design, to fold together once N12's tracks
+  have merged.
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2478,6 +2531,11 @@ owner's calls listed in D-069.
 
 **N11 (2026-10-04)** on `feature/swiftui-n11-player`: the player window and Compare, server and Mac (section 3.1, "As built at
 N11"; D-070), with the OSA mark drawn wherever a grade is shown and PennantKit's live-pipe test made deterministic.
+
+**N12, Track B (2026-10-06)** on `feature/swiftui-n12-league`: League Office (Standings with the odds and posture only
+there, Leaders, Org Comparison, Franchise History, Us vs Them) and Scouting (Draft Board, Player Search), server and
+Mac (section 3.5, "As built at N12 (Track B)"; D-072), and the palette test's intermittent audit finding made
+deterministic.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.
