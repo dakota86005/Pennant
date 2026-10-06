@@ -92,13 +92,18 @@ describe('comparing players lines up what each is, and never says who is better 
     const [a, b] = views;
     const season = a.value.cone.seasons[0].season;
     const wins = (c: ReturnType<typeof compareView>) => c.sections.flatMap((s) => s.rows).find((r) => r.id === `wins-${season}`)!;
-    // The wider ranges overlap, the half-the-time ones don't: told apart
+    // The 80% bars drawn overlap, the 50% ranges don't (review M3): the roster map's words, "clearly ahead of", and the
+    // hover says which band is drawn and which decides, so the words and the picture agree
     const apart = compareView([shaped(a, null, { inner: [2, 3], outer: [0, 5] }), shaped(b, null, { inner: [0.5, 1.5], outer: [-1, 3] })], save.org, null);
-    expect(wins(apart).reading?.text).toBe(`${a.name}'s range sits wholly above ${b.name}'s`);
+    expect(wins(apart).reading?.text).toBe(`${a.name} is clearly ahead of ${b.name}`);
+    expect(wins(apart).reading?.text).not.toMatch(/wholly above/);
     expect(wins(apart).cells[0].range).toEqual({ low: 0, high: 5, mid: 2.5 });
-    // The half-the-time ranges overlap: can't tell apart
+    expect(wins(apart).cells[1].range).toEqual({ low: -1, high: 3, mid: 1 });
+    expect(wins(apart).reading?.hint).toMatch(/8 seasons in 10.*5 in 10/);
+    expect(wins(apart).reading?.basis.because.find((l) => l.label === 'What is drawn')?.value).toMatch(/8 seasons in 10.*half the time/);
+    // The half-the-time ranges meet: not separable, as the map says it
     const together = compareView([shaped(a, null, { inner: [1, 3], outer: [0, 5] }), shaped(b, null, { inner: [2, 4], outer: [0, 6] })], save.org, null);
-    expect(wins(together).reading?.text).toBe('Can\'t tell apart: the ranges overlap');
+    expect(wins(together).reading?.text).toBe('Not separable: their half-time ranges meet');
   });
 
   it('names a player with no figure as not known and leaves him out of the reading', () => {
@@ -109,7 +114,11 @@ describe('comparing players lines up what each is, and never says who is better 
     expect(row.cells[2].range).toBeNull();
     expect(row.reading?.text).toBe(`${b.name}'s range sits wholly above ${a.name}'s. Not known for ${c.name}`);
     const alone = compareView([shaped(a, { low: 1, high: 2 }, null), shaped(c, null, null)], save.org, null);
-    expect(alone.sections.flatMap((s) => s.rows).find((r) => r.id.startsWith('value-'))!.reading?.text).toMatch(/^Nothing to compare/);
+    expect(alone.sections.flatMap((s) => s.rows).find((r) => r.id.startsWith('value-'))!.reading?.text).toBe(`Nothing to compare: ${c.name} isn't valued here`);
+    // Two or more unknown: each named (review L2)
+    const none = compareView([shaped(a, null, null), shaped(b, null, null), shaped(c, null, null)], save.org, null);
+    expect(none.sections.flatMap((s) => s.rows).find((r) => r.id.startsWith('value-'))!.reading?.text)
+      .toBe(`Nothing to compare: ${a.name}, ${b.name} and ${c.name} aren't valued here`);
   });
 
   it('carries no verdict, rank or combined score, its bases included', async () => {

@@ -12,14 +12,15 @@ import PennantAPI
 /// likely value marked in the range (the range drawn is where he lands four times in five).
 nonisolated public struct ValueRange: Sendable, Hashable {
     public var low: Double
-    public var likely: Double
+    /// The most likely value; nil when none is served (no mark is drawn, never a midpoint).
+    public var likely: Double?
     public var high: Double
     /// The range as served ("Most likely 2.1 wins · could be 0.8 to 3.4").
     public var text: String
     /// The most likely value as served ("2.1 wins").
     public var short: String
 
-    public init(low: Double, likely: Double, high: Double, text: String, short: String) {
+    public init(low: Double, likely: Double?, high: Double, text: String, short: String) {
         self.low = low
         self.likely = likely
         self.high = high

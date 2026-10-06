@@ -37,6 +37,8 @@ public struct MainWindowView: View {
         .onChange(of: AppAppearance.served(model.settings), initial: true) { _, theme in
             AppAppearance.apply(theme)
         }
+        // How many a comparison holds, as served, for Compare from any menu
+        .onChange(of: model.phrases?.compare.most, initial: true) { _, most in CompareRouter.shared.most = most }
     }
 }
 

@@ -150,6 +150,14 @@ const median = (xs: number[]): number | null => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
+/**
+ * Which side of another's range one range lies on, as the map reads two half-time ranges (D-057): wholly above is ahead,
+ * wholly below behind, and ranges that meet are level (not separable). Compare reads players the same way (N11).
+ */
+export function separationOf(ours: { low: number; high: number }, theirs: { low: number; high: number }): 'ahead' | 'behind' | 'level' {
+  return ours.low > theirs.high ? 'ahead' : ours.high < theirs.low ? 'behind' : 'level';
+}
+
 /** Our holder at each position and his place among the league's clubs. */
 export function positionReadings(
   orgId: number,
@@ -169,10 +177,7 @@ export function positionReadings(
     const nameOf = (id: number) => clubs.find((c) => c.teamId === id)?.name ?? `Club ${id}`;
     const others = [...holders].filter(([id, h]) => id !== orgId && h?.wins);
     const ours = holder?.wins && place ? apart(holder.wins) : null;
-    const side = (w: WinsRange): 'ahead' | 'behind' | 'level' => {
-      const t = apart(w);
-      return ours!.low > t.high ? 'ahead' : ours!.high < t.low ? 'behind' : 'level';
-    };
+    const side = (w: WinsRange): 'ahead' | 'behind' | 'level' => separationOf(ours!, apart(w));
     const named = (want: 'ahead' | 'behind' | 'level') => (ours ? others.filter(([, h]) => side(h!.wins!) === want).map(([id]) => nameOf(id)) : []);
     const overlapping = named('level');
     const shown = (v: number) => Number(v.toFixed(WINS_DIGITS));

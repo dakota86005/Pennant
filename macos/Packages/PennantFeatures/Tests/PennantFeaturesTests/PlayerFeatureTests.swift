@@ -35,15 +35,37 @@ struct PlayerFeatureTests {
         #expect(linkedPlayer(claim) == PlayerRef(id: 77))
     }
 
-    @Test("Compare keeps two to four players, in the order given, never one twice")
-    func compareAdds() {
-        var value = CompareRouter.adding([PlayerRef(id: 1), PlayerRef(id: 2)], to: ComparisonRef())
+    @Test("Compare keeps up to the served most, in the order given, never one twice")
+    func compareAdds() throws {
+        let most = try #require(PreviewFixtures.catalog?.phrases.compare.most)
+        var value = CompareRouter.adding([PlayerRef(id: 1), PlayerRef(id: 2)], to: ComparisonRef(), most: most)
         #expect(value.players == [PlayerRef(id: 1), PlayerRef(id: 2)])
-        value = CompareRouter.adding([PlayerRef(id: 2), PlayerRef(id: 3)], to: value)
+        value = CompareRouter.adding([PlayerRef(id: 2), PlayerRef(id: 3)], to: value, most: most)
         #expect(value.players.map(\.id) == [1, 2, 3])
-        value = CompareRouter.adding([PlayerRef(id: 4), PlayerRef(id: 5)], to: value)
+        value = CompareRouter.adding([PlayerRef(id: 4), PlayerRef(id: 5)], to: value, most: most)
         #expect(value.players.map(\.id) == [1, 2, 3, 4])
-        #expect(CompareRouter.most == 4)
+        // Nothing served yet: the app holds no number of its own (the server refuses more, in a sentence)
+        #expect(CompareRouter.adding((1...6).map(PlayerRef.init(id:)), to: ComparisonRef(), most: nil).players.count == 6)
+    }
+
+    @Test("Compare from a menu on a full comparison opens a new Compare window, never dropping the player (review L5)")
+    func compareFullOpensNew() {
+        let router = CompareRouter()
+        router.most = 4
+        var opened: [ComparisonRef] = []
+        let token = UUID()
+        let full = ComparisonRef(players: (1...4).map(PlayerRef.init(id:)))
+        router.register(token, value: full)
+        router.compare([PlayerRef(id: 5)]) { opened.append($0) }
+        #expect(opened == [ComparisonRef(players: [PlayerRef(id: 5)])])
+        #expect(router.take(token) == [])
+        // One already there: the full window comes forward, nothing dropped
+        router.compare([PlayerRef(id: 2)]) { opened.append($0) }
+        #expect(opened.last == full)
+        // Room for him: handed to the window used last
+        router.register(token, value: ComparisonRef(players: [PlayerRef(id: 1), PlayerRef(id: 2)]))
+        router.compare([PlayerRef(id: 6)]) { opened.append($0) }
+        #expect(router.take(token) == [PlayerRef(id: 6)])
     }
 
     @Test("Compare hands players to the window used last and brings it forward, else opens a new one")

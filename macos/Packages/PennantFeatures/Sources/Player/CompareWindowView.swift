@@ -28,13 +28,13 @@ public struct CompareWindowView: View {
         let store = model.players
         let comparison = store.comparisons[ids]
         VStack(alignment: .leading, spacing: 0) {
-            CompareHead(players: players, served: comparison, remove: remove, refused: refused)
+            CompareHead(players: players, served: comparison, remove: remove, refused: refused ? model.phrases?.compare.full : nil)
             Divider()
             if players.count < 2 {
                 ContentUnavailableView {
                     Label("Compare Players", systemImage: "rectangle.split.2x1")
                 } description: {
-                    Text("Drop two to four players here")
+                    if let empty = model.phrases?.compare.empty { Text(verbatim: empty.display) }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.readablePage)
@@ -62,6 +62,7 @@ public struct CompareWindowView: View {
         // A Debug build's drop test sizes this window against the screen's trailing edge (`-PennantDebugCompareWindowSize`)
         .background(DebugWindowSizer(key: "PennantDebugCompareWindowSize", trailing: true))
         #endif
+        .onChange(of: model.phrases?.compare.most, initial: true) { _, most in CompareRouter.shared.most = most }
         .onAppear { CompareRouter.shared.register(token, value: value ?? ComparisonRef()) }
         .onDisappear { CompareRouter.shared.forget(token) }
         .onChange(of: active) { _, state in
@@ -79,8 +80,8 @@ public struct CompareWindowView: View {
 
     private func add(_ dropped: [PlayerRef]) {
         let current = value ?? ComparisonRef()
-        let next = CompareRouter.adding(dropped, to: current)
-        refused = next.players.count == CompareRouter.most && dropped.contains { !next.players.contains($0) }
+        let next = CompareRouter.adding(dropped, to: current, most: model.phrases?.compare.most)
+        refused = dropped.contains { !next.players.contains($0) }
         value = next
     }
 
@@ -103,7 +104,8 @@ struct CompareHead: View {
     let players: [PlayerRef]
     let served: Components.Schemas.PlayerCompareView?
     let remove: (PlayerRef) -> Void
-    let refused: Bool
+    /// The served words for a player dropped on a full comparison, while he was refused.
+    let refused: Components.Schemas.Cell?
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -137,8 +139,8 @@ struct CompareHead: View {
                 .padding(.horizontal, 20)
             }
             .scrollBounceBehavior(.basedOnSize)
-            if refused {
-                Text("Compare holds four players at most").font(.caption).foregroundStyle(.readableSecondary)
+            if let refused {
+                Text(verbatim: refused.display).font(.caption).foregroundStyle(.readableSecondary).help(detail: refused.hint)
                     .padding(.horizontal, 20)
             }
             if let note = served?.note {
@@ -199,7 +201,8 @@ struct CompareRowView: View {
                     CellText(c.display).fontWeight(.medium).monospacedDigit().fixedSize(horizontal: false, vertical: true)
                     if let scale, let range = c.range {
                         RangeBar(
-                            range: ValueRange(low: range.low, likely: range.mid ?? (range.low + range.high) / 2, high: range.high, text: c.display.display, short: c.display.display),
+                            // No served most-likely value: no mark, never a midpoint of the Mac's own (review L3)
+                            range: ValueRange(low: range.low, likely: range.mid, high: range.high, text: c.display.display, short: c.display.display),
                             label: c.display.hint ?? c.display.display,
                             scale: scale
                         )

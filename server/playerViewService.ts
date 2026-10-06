@@ -21,7 +21,7 @@ import { addStaffNote, removeStaffNote, snapshotWriteCount, staffNotesOf } from 
 import { buildPlayerDossiers, type PlayerDossiersResult } from './playerDossierBuild.js';
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored, cell } from './presentation/claim.js';
-import { compareView } from './presentation/player/compare.js';
+import { COMPARE_FEWEST, COMPARE_MOST, compareView } from './presentation/player/compare.js';
 import { notesView } from './presentation/player/notes.js';
 import type {
   PlayerCompareView, PlayerDossierView, PlayerNoteChange, PlayerNotesView, StaffNoteChange, StaffNoteRestore,
@@ -180,7 +180,7 @@ function organizationPlayerSet(entry: Kept): Set<number> {
 /** Two to four players side by side (`?players=1,2,3`), each from his kept dossier. */
 export async function playerCompareNow(query: Record<string, unknown>): Promise<PlayerCompareView> {
   const ids = [...new Set(String(query.players ?? '').split(',').map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0))];
-  if (ids.length < 2 || ids.length > 4) throw new LeagueRefusal(COMPARE_HOW_MANY, 400);
+  if (ids.length < COMPARE_FEWEST || ids.length > COMPARE_MOST) throw new LeagueRefusal(COMPARE_HOW_MANY, 400);
   const org = typeof query.org === 'string' && query.org ? query.org : 'automatic';
   const views: PlayerDossierView[] = [];
   for (const id of ids) views.push(await playerDossierNow(String(id), org));

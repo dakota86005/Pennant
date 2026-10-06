@@ -2484,11 +2484,15 @@
           },
           "rosterLegend": {
             "$ref": "#/components/schemas/RosterLegend"
+          },
+          "compare": {
+            "$ref": "#/components/schemas/ComparePhrases"
           }
         },
         "required": [
           "missingValue",
-          "rosterLegend"
+          "rosterLegend",
+          "compare"
         ],
         "description": "Sentences the app shows in more than one place: for a served value that is missing and no line of its own says why, and the legend under the roster diagram (the app keeps only its symbols). The legend under \"How we win and lose\" depends on the league's size, so the club profile serves it (`ClubProfile.legend`)."
       },
@@ -3040,6 +3044,29 @@
           "range"
         ],
         "description": "One player's figure on a compared line: as served for him, with its range for drawing where it has one."
+      },
+      "ComparePhrases": {
+        "type": "object",
+        "properties": {
+          "most": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The most players one comparison holds."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Said by an empty Compare window."
+          },
+          "full": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Said when a player is dropped on a full one."
+          }
+        },
+        "required": [
+          "most",
+          "empty",
+          "full"
+        ],
+        "description": "The Compare window's limit and its words (N11, review L5): the app holds neither."
       },
       "ComparePlayer": {
         "type": "object",

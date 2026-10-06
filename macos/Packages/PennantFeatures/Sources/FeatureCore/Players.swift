@@ -48,8 +48,9 @@ public struct RatingFillMark: View {
 
 // MARK: Compare
 
-/// Where "Compare" sends players: the Compare window the GM used last, while it is open, else a new one. A window
-/// registers itself when it comes forward and takes the players handed to it (`take`); it keeps two to four.
+/// Where "Compare" sends players: the Compare window the GM used last, while it is open and has room for them, else a
+/// new one. A window registers itself when it comes forward and takes the players handed to it (`take`). How many a
+/// comparison holds is served (`phrases.compare.most`, review L5); the app has no number of its own.
 @Observable @MainActor
 public final class CompareRouter {
     public static let shared = CompareRouter()
@@ -59,8 +60,9 @@ public final class CompareRouter {
     /// Players handed to a window, by its token, until it takes them.
     public private(set) var handed: [UUID: [PlayerRef]] = [:]
 
-    /// The most a comparison holds.
-    public nonisolated static let most = 4
+    /// The most a comparison holds, as the catalog serves it; nil until it is read (the server then refuses more, in a
+    /// sentence).
+    public var most: Int?
 
     public init() {}
 
@@ -81,21 +83,30 @@ public final class CompareRouter {
         return handed[token] ?? []
     }
 
-    /// Players added to a comparison, the ones already there kept, at most four, in the order given.
-    public nonisolated static func adding(_ players: [PlayerRef], to value: ComparisonRef) -> ComparisonRef {
+    /// Players added to a comparison, the ones already there kept, up to `most` (when served), in the order given.
+    public nonisolated static func adding(_ players: [PlayerRef], to value: ComparisonRef, most: Int?) -> ComparisonRef {
         var next = value
-        for p in players where !next.players.contains(p) && next.players.count < most { next.players.append(p) }
+        for p in players where !next.players.contains(p) && most.map({ next.players.count < $0 }) ?? true {
+            next.players.append(p)
+        }
         return next
     }
 
-    /// Compares these players: hands them to the Compare window used last and brings it forward, else opens a new one.
+    /// Compares these players: hands them to the Compare window used last and brings it forward; opens a new one when
+    /// none is open, or when the last one has no room for them (never dropping a player the GM chose).
     public func compare(_ players: [PlayerRef], open: (ComparisonRef) -> Void) {
         guard !players.isEmpty else { return }
         if let active {
-            handed[active.token, default: []].append(contentsOf: players)
+            let holding = active.value.players + (handed[active.token] ?? [])
+            let fresh = players.filter { !holding.contains($0) }
+            if let most, holding.count + fresh.count > most, !fresh.isEmpty {
+                open(Self.adding(players, to: ComparisonRef(), most: most))
+                return
+            }
+            handed[active.token, default: []].append(contentsOf: fresh)
             open(active.value)
         } else {
-            open(Self.adding(players, to: ComparisonRef()))
+            open(Self.adding(players, to: ComparisonRef(), most: most))
         }
     }
 }

@@ -6,7 +6,7 @@
  * Player Rights' answers, ratings are the organization's scouted view (D-017, D-067), and the club's playoff odds are not
  * on it (D-060).
  */
-import type { BasisLine, Cell, Claim, DeptId, Tone } from '../../contract/presentation.js';
+import type { BasisLine, Cell, DeptId, Tone } from '../../contract/presentation.js';
 import { gameDateWords } from '../../dataStatus.js';
 import { parseGameDate } from '../../dataFreshness.js';
 import { basis, cell, claim, row, servedValue, target, unknownValue } from '../claim.js';
@@ -484,7 +484,7 @@ function ratingHistory(ctx: DossierInput): PlayerRatingsView['history'] {
     unknown: ['Snapshots of another kind of ratings are left out of the chart: a change of kind isn\'t development.'],
     wouldChange: [], lean: null, certainty: 'recorded',
   });
-  const setAside: Claim[] = [
+  const setAside = [
     ...ctx.history.modeSwitches.map((text) => claim({
       text: plain(text), tone: 'unknown', basis: setAsideBasis([{ label: 'What changed', value: plain(text) }]),
     })),

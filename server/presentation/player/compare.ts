@@ -2,12 +2,15 @@
  * Two to four players side by side (N11, the Compare window), in words. Built only from each player's dossier as served
  * (`dossier.ts`), so a figure in the comparison is the same figure his own window shows; nothing is recomputed. The same
  * field is lined up for every player; a range is compared only by whether it overlaps another (D-052: no verdict, no
- * combined score, no rank). Expected wins are told apart on the range each player lands in half the time and drawn on the
- * wider one, as the roster map places players (D-057); a total of value on its range of reasonable outcomes. A player
+ * combined score, no rank). Expected wins are told apart on the range each player lands in half the time, in the roster
+ * map's own reading and words (D-057: "clearly ahead of", "not separable"), and drawn on the wider one, which the reading's
+ * hover says; a total of value on its range of reasonable outcomes, drawn as compared. A player
  * with no figure is named as not known and left out of the reading (D-018).
  */
 import type { Cell } from '../../contract/presentation.js';
+import { separationOf } from '../../frontOffice/rosterMap.js';
 import { basis, cell, claim } from '../claim.js';
+import { SEPARATION } from '../frontOffice/morning.js';
 import type { CompareCell, CompareRow, CompareSection, PlayerCompareView, PlayerDossierView } from './types.js';
 import { rangeText, signedMoney, signedTenths, winsText } from './words.js';
 
@@ -20,8 +23,46 @@ interface Ranged {
 
 const OVERLAP_STAMP = 'Compared by overlap only';
 
+/** The fewest and the most players one comparison holds (the catalog serves the most to the app, review L5). */
+export const COMPARE_FEWEST = 2;
+export const COMPARE_MOST = 4;
+
+/** Names in a list: "A", "A and B", "A, B and C". */
+const named = (names: readonly string[]): string =>
+  names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
+/** How a reading words a pair told apart, and ranges that all meet. */
+interface Wording {
+  apart: (above: string, below: string) => string;
+  none: (pairs: number) => string;
+  rest: string;
+  /** The reading's hover, when the bars drawn are not the ranges compared. */
+  hint?: string;
+  /** What is drawn, when it differs from what is compared. */
+  drawn?: string;
+}
+
+/** A total of value: the bar drawn is the range compared, a range of reasonable outcomes. */
+const TOTAL_WORDS: Wording = {
+  apart: (above, below) => `${above}'s range sits wholly above ${below}'s`,
+  none: (pairs) => (pairs === 1 ? "Can't tell apart: the ranges overlap" : "Can't tell apart: every range overlaps"),
+  rest: 'the rest overlap',
+};
+
+/**
+ * Expected wins in a season, in the roster map's own words (D-057): told apart on the range each lands in half the time
+ * (`separationOf`, the map's reading), while the bar drawn is the wider range he lands in 8 seasons in 10 (review M3).
+ */
+const WINS_WORDS: Wording = {
+  apart: (above, below) => `${above} is ${SEPARATION.ahead} ${below}`,
+  none: (pairs) => (pairs === 1 ? 'Not separable: their half-time ranges meet' : 'Not separable: every pair\'s half-time ranges meet'),
+  rest: `the rest are ${SEPARATION.level} each other`,
+  hint: 'The bars hold 8 seasons in 10; who is ahead is read on 5 in 10',
+  drawn: 'Each bar is the range he lands in 8 seasons in 10, the mark his most likely. Who is ahead is read on the narrower range he lands in half the time, as the roster map places players, so two bars can overlap while one player is still clearly ahead.',
+};
+
 /** Players with a range, read by overlap: which pairs are told apart, the rest said to overlap. */
-function overlapWords(ranged: readonly Ranged[], unknown: readonly string[], what: string, fmt: (v: number) => string, comparedOn: string) {
+function overlapWords(ranged: readonly Ranged[], unknown: readonly string[], what: string, fmt: (v: number) => string, comparedOn: string, words: Wording) {
   if (ranged.length + unknown.length < 2) return null;
   const apart: string[] = [];
   let overlapping = 0;
@@ -29,23 +70,26 @@ function overlapWords(ranged: readonly Ranged[], unknown: readonly string[], wha
     for (let j = i + 1; j < ranged.length; j++) {
       const a = ranged[i];
       const b = ranged[j];
-      if (a.low > b.high) apart.push(`${a.name}'s range sits wholly above ${b.name}'s`);
-      else if (b.low > a.high) apart.push(`${b.name}'s range sits wholly above ${a.name}'s`);
+      const side = separationOf(a, b);
+      if (side === 'ahead') apart.push(words.apart(a.name, b.name));
+      else if (side === 'behind') apart.push(words.apart(b.name, a.name));
       else overlapping += 1;
     }
   }
   const pairs = (ranged.length * (ranged.length - 1)) / 2;
   let text: string;
-  if (ranged.length < 2) text = `Nothing to compare: ${unknown.length === 1 ? `${unknown[0]} isn't` : 'they aren\'t'} valued here`;
-  else if (apart.length === 0) text = pairs === 1 ? "Can't tell apart: the ranges overlap" : "Can't tell apart: every range overlaps";
-  else text = `${apart.join('; ')}${overlapping > 0 ? '; the rest overlap' : ''}`;
-  if (unknown.length && ranged.length >= 2) text = `${text}. Not known for ${unknown.join(' and ')}`;
+  if (ranged.length < 2) text = `Nothing to compare: ${named(unknown)} ${unknown.length === 1 ? 'isn\'t' : 'aren\'t'} valued here`;
+  else if (apart.length === 0) text = words.none(pairs);
+  else text = `${apart.join('; ')}${overlapping > 0 ? `; ${words.rest}` : ''}`;
+  if (unknown.length && ranged.length >= 2) text = `${text}. Not known for ${named(unknown)}`;
   return claim({
     text, tone: apart.length ? 'neutral' : 'unknown',
+    ...(words.hint && ranged.length >= 2 ? { hint: words.hint } : {}),
     basis: basis({
       because: [
         ...ranged.map((r) => ({ label: r.name, value: rangeText(r.low, r.high, fmt) })),
         { label: 'How it is read', value: `Two players are told apart on ${what} only when their ranges don't overlap (${comparedOn}). A range sitting above another says which figure is higher, not who is the better player.` },
+        ...(words.drawn ? [{ label: 'What is drawn', value: words.drawn }] : []),
       ],
       source: { department: 'finance', specialist: 'Player Value', asOf: null, gameDate: null },
       unknown: unknown.map((n) => `${n} has no figure here, so he is left out of the reading.`),
@@ -85,7 +129,7 @@ function totalRow(views: readonly PlayerDossierView[], id: 'contract' | 'keeping
   });
   return {
     id: `value-${id}`, label: title, cells,
-    reading: overlapWords(ranged, unknown, title.display.toLowerCase(), fmt, 'the range of reasonable outcomes'),
+    reading: overlapWords(ranged, unknown, title.display.toLowerCase(), fmt, 'the range of reasonable outcomes', TOTAL_WORDS),
   };
 }
 
@@ -105,7 +149,7 @@ function winsRows(views: readonly PlayerDossierView[]): CompareRow[] {
     });
     return {
       id: `wins-${season}`, label: cell(`Expected wins, ${season}`), cells,
-      reading: overlapWords(ranged, unknown, `expected wins in ${season}`, signedTenths, 'the range each lands in half the time, as the roster map places players'),
+      reading: overlapWords(ranged, unknown, `expected wins in ${season}`, signedTenths, 'the range each lands in half the time, as the roster map places players', WINS_WORDS),
     };
   });
 }

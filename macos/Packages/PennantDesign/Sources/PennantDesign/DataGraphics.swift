@@ -311,8 +311,10 @@ public struct RangeBar: View {
                     Capsule().fill(accent.opacity(0.35))
                         .frame(width: max(2, x(range.high) - x(range.low)))
                         .offset(x: x(range.low))
-                    Capsule().fill(accent).frame(width: 3, height: height + 4)
-                        .offset(x: x(range.likely) - 1.5, y: -2)
+                    if let likely = range.likely {
+                        Capsule().fill(accent).frame(width: 3, height: height + 4)
+                            .offset(x: x(likely) - 1.5, y: -2)
+                    }
                 } else {
                     Hatch().frame(height: height).clipShape(Capsule())
                 }

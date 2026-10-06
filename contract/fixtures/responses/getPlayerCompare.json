@@ -434,7 +434,7 @@
             }
           ],
           "reading": {
-            "text": "P 1000's range sits wholly above P 1019's; P 1001's range sits wholly above P 1019's; the rest overlap",
+            "text": "P 1000 is clearly ahead of P 1019; P 1001 is clearly ahead of P 1019; the rest are not separable from each other",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -453,6 +453,10 @@
                 {
                   "label": "How it is read",
                   "value": "Two players are told apart on expected wins in 2040 only when their ranges don't overlap (the range each lands in half the time, as the roster map places players). A range sitting above another says which figure is higher, not who is the better player."
+                },
+                {
+                  "label": "What is drawn",
+                  "value": "Each bar is the range he lands in 8 seasons in 10, the mark his most likely. Who is ahead is read on the narrower range he lands in half the time, as the roster map places players, so two bars can overlap while one player is still clearly ahead."
                 }
               ],
               "source": {
@@ -470,7 +474,8 @@
               "called": "A line chosen and stated",
               "stamp": "Compared by overlap only"
             },
-            "links": []
+            "links": [],
+            "hint": "The bars hold 8 seasons in 10; who is ahead is read on 5 in 10"
           }
         },
         {
@@ -514,7 +519,7 @@
             }
           ],
           "reading": {
-            "text": "Can't tell apart: every range overlaps",
+            "text": "Not separable: every pair's half-time ranges meet",
             "tone": "unknown",
             "basis": {
               "because": [
@@ -533,6 +538,10 @@
                 {
                   "label": "How it is read",
                   "value": "Two players are told apart on expected wins in 2041 only when their ranges don't overlap (the range each lands in half the time, as the roster map places players). A range sitting above another says which figure is higher, not who is the better player."
+                },
+                {
+                  "label": "What is drawn",
+                  "value": "Each bar is the range he lands in 8 seasons in 10, the mark his most likely. Who is ahead is read on the narrower range he lands in half the time, as the roster map places players, so two bars can overlap while one player is still clearly ahead."
                 }
               ],
               "source": {
@@ -550,7 +559,8 @@
               "called": "A line chosen and stated",
               "stamp": "Compared by overlap only"
             },
-            "links": []
+            "links": [],
+            "hint": "The bars hold 8 seasons in 10; who is ahead is read on 5 in 10"
           }
         },
         {
@@ -594,7 +604,7 @@
             }
           ],
           "reading": {
-            "text": "Can't tell apart: every range overlaps",
+            "text": "Not separable: every pair's half-time ranges meet",
             "tone": "unknown",
             "basis": {
               "because": [
@@ -613,6 +623,10 @@
                 {
                   "label": "How it is read",
                   "value": "Two players are told apart on expected wins in 2042 only when their ranges don't overlap (the range each lands in half the time, as the roster map places players). A range sitting above another says which figure is higher, not who is the better player."
+                },
+                {
+                  "label": "What is drawn",
+                  "value": "Each bar is the range he lands in 8 seasons in 10, the mark his most likely. Who is ahead is read on the narrower range he lands in half the time, as the roster map places players, so two bars can overlap while one player is still clearly ahead."
                 }
               ],
               "source": {
@@ -630,7 +644,8 @@
               "called": "A line chosen and stated",
               "stamp": "Compared by overlap only"
             },
-            "links": []
+            "links": [],
+            "hint": "The bars hold 8 seasons in 10; who is ahead is read on 5 in 10"
           }
         }
       ]

@@ -1116,12 +1116,6 @@
     },
     "Compare Window": {
       "extractionState": "manual"
-    },
-    "Drop two to four players here": {
-      "extractionState": "manual"
-    },
-    "Compare holds four players at most": {
-      "extractionState": "manual"
     }
   },
   "version": "1.0"
