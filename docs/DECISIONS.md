@@ -2827,12 +2827,20 @@ routes they serve); `GET /api/v2/player/:id`, `GET|PUT|DELETE /api/v2/player/:id
 - **Compare lines fields up and says only what the ranges allow.** Two to four players, each figure as his own dossier
   serves it (nothing recomputed). A range is compared only by overlap: "Can't tell apart" when they overlap, else which
   sits wholly above the other ("which figure is higher, not who is the better player", in the basis); expected wins are told
-  apart on the range each lands in half the time and drawn on the wider one, as the roster map places players (D-057); a
-  player with no figure is named and left out of the reading. No verdict, rank or combined score (D-052).
+  apart on the range each lands in half the time in the roster map's own reading (`separationOf`) and words (D-057:
+  "clearly ahead of", "not separable"), drawn on the wider one, and the reading's hover says which band is drawn and which
+  decides (review M3, 2026-10-05); every player with no figure is named and left out of the reading. The most a
+  comparison holds and its words are served in the catalog (`phrases.compare`); Compare on a full one opens another. No
+  verdict, rank or combined score (D-052).
 - **The GM's note is his own words, on his follow** (D-058): stored exactly as typed (no trimming; up to 10,000
   characters), as the watchlist kept it; a note on a player he doesn't follow follows him (the React card's behaviour), and
-  its undo stops following him; an empty note clears it. The staff's notes are listed as filed, and a removal is undone by
+  its undo stops following him, only while that follow is still the note's (`source` `note`; a plain follow since makes it
+  the GM's own, review L1); an empty note clears it. What he types is held by the app per player and saved whatever closes
+  the view, a quit included, and never logged (review H1, H2). The staff's notes are listed as filed, and a removal is undone by
   putting the note back as it was.
 - **The OSA mark is drawn wherever a grade is shown** (D-067): the dossier's header, its ratings and each grade, and the
-  rows of Major League Ops' and the farm's views (`ratingsFill`, additive), each with the sentence as its hint and VoiceOver
-  label.
+  rows of Major League Ops' and the farm's views, Major League Ops' decision candidates, the farm's prospect meeting cards
+  and Development details (`ratingsFill`, additive), each with the sentence as its hint and VoiceOver label.
+- **Kept as bytes** (review M5, 2026-10-05): each dossier is checked once when kept and held as the JSON the route sends;
+  at most 150 of other clubs' players per build, the least recently opened let go first; after a kept build the server's
+  thread builds one dossier on idle so the first open of anyone else's doesn't pay for initialization.

@@ -175,8 +175,8 @@ request that fails shows the server's sentence, or one of three structural lines
   or Return), the palette's player result, Following, a desk item whose headline names a player and the Player menu
   (⌥⌘O Open Player, ⌥⌘C Compare, on the focused player) open or bring forward his window; Open His Club stays in the
   menus. Compare takes the chosen rows (Major League Ops' tables allow several), a drop anywhere on its window, or the
-  Compare command (the window used last takes the player, `CompareRouter`); a player is removed in one click; it holds
-  four at most. The OSA mark (`RatingFillMark`) is drawn beside every grade, the header, the source line, Major League
+  Compare command (the window used last takes the player, `CompareRouter`, or a new one when it is full); a player is
+  removed in one click; it holds as many as the catalog serves (four). The OSA mark (`RatingFillMark`) is drawn beside every grade, the header, the source line, Major League
   Ops' and the farm's player cells and Compare's players, its sentence the help tag and the VoiceOver label.
 - **Measured** (in process over HTTP on an M4; the synthetic league, read-only scratch copies of the owner's export and
   of USBL): our club read ahead in 0.4 s (32 players), 2.8 s (285) and 1.6 s (162); a dossier from the cache p50 / p95
@@ -193,6 +193,18 @@ request that fails shows the server's sentence, or one of three structural lines
   `testPlayerWindowRestored` and `testPlayerNarrowWindow` (520 × 480, every section five rounds, five runs in a row;
   audited), each at no finding and no new set-aside. PennantKit's live-pipe test signals the process it waits for (the
   flake: 50 consecutive runs of the suite with the real server).
+- **Review fixes (2026-10-05):** the GM's note is held by `PlayerStore` per player and saved 0.6 s after the last key in
+  the store's own task (a keystroke never cancels a save), at once when the section or window goes away, and sent off the
+  main actor before the server stops at quit (`QuitCoordinator`'s `lastWords`); a cancelled request is a non-event, and no
+  error's description reaches the log (`RequestProblem.logLine`: operation, status, domain and code). Option years are
+  Rights' standing behind the stale gate; the rating history says what it set aside and whose grades it draws; Compare
+  reads wins in the roster map's words with the bands said in the hover, draws no likely mark that isn't served, and
+  takes its limit and words from the catalog; the farm's cards and Development details and Major League Ops' decision
+  candidates carry and draw the OSA mark; the Value section's seasons wrap in a grid, not a nested sideways scroll.
+  Measured with 500 other clubs' players opened after our club (read-only scratch copies): USBL steady RSS 627 to 578
+  MB, heap 91 to 38 MB, the first open after a start 498 to 76 ms; the owner's export 1133 to 819 MB, heap 103 to 39 MB,
+  the first open 1467 to 166 ms (the idle warm-up it moves costs 0.4 s and 1.2 s on an idle thread); a kept dossier p50
+  0.3 ms.
 - *Left for later:* the React card's hover card (a summary on resting over a name) is not drawn: the name opens the
   window; the season-by-season breakdown's row hover (the season's control) is in the cone's season detail instead; the
   farm's tables compare the right-clicked player (several chosen only in Major League Ops' tables).
