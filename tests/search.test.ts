@@ -43,6 +43,16 @@ describe('search', () => {
     expect(clubs.results[0]).toMatchObject({ open: { kind: 'club', teamId: save.clubs[1] } });
   });
 
+  it('ends the players matched with Player Search, opened on the words typed (N12 Track B, D-072)', () => {
+    const player = db.prepare(`SELECT last_name FROM players WHERE player_id = ?`).get(save.regular) as { last_name: string };
+    const players = searchNow(` ${player.last_name} `).groups.find((g) => g.kind === 'player')!;
+    const last = players.results.at(-1)!;
+    expect(last).toMatchObject({ kind: 'view', line: 'Scouting', open: { kind: 'view', department: 'scouting', view: 'playerSearch', key: player.last_name } });
+    expect(last.title).toBe(players.total === 1 ? 'Open in Player Search' : `All ${players.total} in Player Search`);
+    // Only after players: a query that finds none has no such line
+    expect(searchNow('depth chart').groups.flatMap((g) => g.results).some((r) => r.id === 'scouting.playerSearch')).toBe(false);
+  });
+
   it('matches plain words, whatever their case or accents', () => {
     expect(fold('José RAMÍREZ')).toBe('jose ramirez');
     db.prepare(`UPDATE players SET first_name = 'José', last_name = 'Ramírez' WHERE player_id = ?`).run(save.regular);

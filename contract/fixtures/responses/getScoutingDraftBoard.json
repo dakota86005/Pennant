@@ -1,0 +1,374 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Draft Board"
+  },
+  "lede": {
+    "text": "This year's class in the scouting staff's order: ceiling first, then now",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Every draft-eligible player our scouts have graded all the way to a ceiling, in the scouting staff's order: the highest ceiling first, then the best now. It is the staff's view of the class, never an order to draft anyone, and every grade on an amateur rests on the few looks the staff has had. The class shows only once OOTP publishes it. The read beside a name is the kind of prospect the staff reads him as, on stated lines: a ceiling of 55 or more with 15 or more still to come is a high ceiling with a long wait; within 8 of his ceiling and 45 or more now is close to ready; a ceiling of 52 or more is an everyday regular's; any other ceiling of 45 or more is a depth piece. Under 45, the staff gives no read. Select a player for his reasons."
+        }
+      ],
+      "source": {
+        "department": "scouting",
+        "specialist": "The scouting staff's draft board",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "published": true,
+  "notShown": null,
+  "calendar": {
+    "columns": [
+      {
+        "id": "event",
+        "title": {
+          "display": "Event"
+        },
+        "numeric": false
+      },
+      {
+        "id": "date",
+        "title": {
+          "display": "Date"
+        },
+        "numeric": true
+      }
+    ],
+    "rows": [
+      {
+        "id": "calendar.draft",
+        "cells": {
+          "event": {
+            "display": "Draft day"
+          },
+          "date": {
+            "display": "July 10, 2040"
+          }
+        },
+        "sort": {
+          "event": 0,
+          "date": 20400710
+        },
+        "player": null,
+        "detail": [],
+        "actions": []
+      }
+    ],
+    "empty": {
+      "display": "The export dates none of the draft's calendar."
+    }
+  },
+  "summary": {
+    "text": "0 draft-eligible players. Draft day is July 10, 65 days out, 20 rounds.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "The class",
+          "value": "Your league runs its own school competitions, so the class is read from school year: high-school seniors and college upperclassmen, not yet drafted."
+        },
+        {
+          "label": "On the board",
+          "value": "0 players our scouts have graded all the way to a ceiling, in the scouting staff's order: ceiling first, then now."
+        },
+        {
+          "label": "Today",
+          "value": "May 6, 2040"
+        }
+      ],
+      "source": {
+        "department": "scouting",
+        "specialist": "The scouting staff's draft board",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the class is read in this league: stated, not fitted"
+    },
+    "links": []
+  },
+  "leftOut": null,
+  "shortLists": [
+    {
+      "title": {
+        "display": "Best available"
+      },
+      "player": null,
+      "chips": [],
+      "claims": [
+        {
+          "text": "The top five on the board, in the staff's order",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "The order",
+                "value": "The highest scouted ceiling first, then the best now: the scouting staff's view of the class, never an order to draft anyone."
+              },
+              {
+                "label": "The staff",
+                "value": "Best available is the stronger idea of the two lists. Every grade on an amateur rests on the few looks the staff has had, so treat the order as rough."
+              }
+            ],
+            "source": {
+              "department": "scouting",
+              "specialist": "The scouting staff's draft board",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "The scouting staff's lines: stated, not fitted"
+          },
+          "links": []
+        }
+      ],
+      "lines": [
+        {
+          "text": {
+            "display": "Nobody is on the board yet."
+          },
+          "quiet": true,
+          "chips": [],
+          "players": []
+        }
+      ],
+      "collapsed": false
+    },
+    {
+      "title": {
+        "display": "Best at your thinnest spots (C, 1B, 2B)"
+      },
+      "player": null,
+      "chips": [],
+      "claims": [
+        {
+          "text": "Your thinnest spots today: C, 1B, 2B",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "C",
+                "value": "P 1012, about 0.1 wins expected this season, is the club's best there."
+              },
+              {
+                "label": "1B",
+                "value": "P 1006, about 0.2 wins expected this season, is the club's best there."
+              },
+              {
+                "label": "2B",
+                "value": "P 1001, about 0.2 wins expected this season, is the club's best there."
+              },
+              {
+                "label": "How it is read",
+                "value": "Each position's best player by his expected wins for the rest of this season (the whole of it before it starts), most likely, from Player Value's production; the club's major-league position players by their listed position. A position whose players' production isn't established, or with nobody listed there, is named apart and never counted as zero."
+              },
+              {
+                "label": "The staff",
+                "value": "Drafting for a hole is the weaker idea and is offered second on purpose: a pick taken today is years from the majors, and the spot you are thin at now is rarely the one you will be short of when he arrives."
+              }
+            ],
+            "source": {
+              "department": "scouting",
+              "specialist": "The scouting staff's draft board",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "The scouting staff's lines: stated, not fitted"
+          },
+          "links": []
+        }
+      ],
+      "lines": [
+        {
+          "text": {
+            "display": "Nobody else on the board plays C, 1B, 2B."
+          },
+          "quiet": true,
+          "chips": [],
+          "players": []
+        }
+      ],
+      "collapsed": false
+    }
+  ],
+  "filters": [
+    {
+      "id": "position",
+      "title": {
+        "display": "Position"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "All positions"
+          },
+          "rows": []
+        },
+        {
+          "text": {
+            "display": "Catchers"
+          },
+          "rows": []
+        },
+        {
+          "text": {
+            "display": "Infielders"
+          },
+          "rows": []
+        },
+        {
+          "text": {
+            "display": "Outfielders"
+          },
+          "rows": []
+        },
+        {
+          "text": {
+            "display": "Pitchers"
+          },
+          "rows": []
+        }
+      ]
+    },
+    {
+      "id": "school",
+      "title": {
+        "display": "From"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "High school and college"
+          },
+          "rows": []
+        },
+        {
+          "text": {
+            "display": "High school"
+          },
+          "rows": []
+        },
+        {
+          "text": {
+            "display": "College"
+          },
+          "rows": []
+        }
+      ]
+    }
+  ],
+  "board": {
+    "columns": [
+      {
+        "id": "board",
+        "title": {
+          "display": "Board",
+          "hint": "The scouting staff's order: ceiling, then now"
+        },
+        "numeric": true
+      },
+      {
+        "id": "player",
+        "title": {
+          "display": "Player"
+        },
+        "numeric": false
+      },
+      {
+        "id": "age",
+        "title": {
+          "display": "Age"
+        },
+        "numeric": true
+      },
+      {
+        "id": "position",
+        "title": {
+          "display": "Pos"
+        },
+        "numeric": false
+      },
+      {
+        "id": "bt",
+        "title": {
+          "display": "B/T",
+          "hint": "Bats / throws"
+        },
+        "numeric": false
+      },
+      {
+        "id": "school",
+        "title": {
+          "display": "From"
+        },
+        "numeric": false
+      },
+      {
+        "id": "current",
+        "title": {
+          "display": "Now",
+          "hint": "Our scouts' grade now, on the 20–80 scale"
+        },
+        "numeric": true
+      },
+      {
+        "id": "ceiling",
+        "title": {
+          "display": "Ceiling",
+          "hint": "Our scouts' grade at his ceiling, on the 20–80 scale"
+        },
+        "numeric": true
+      },
+      {
+        "id": "upside",
+        "title": {
+          "display": "Upside",
+          "hint": "Ceiling minus now: the projection still to happen"
+        },
+        "numeric": true
+      },
+      {
+        "id": "read",
+        "title": {
+          "display": "Read",
+          "hint": "The kind of prospect the scouting staff reads him as"
+        },
+        "numeric": false
+      }
+    ],
+    "rows": [],
+    "empty": {
+      "display": "Nobody in the class has a full scouted ceiling yet."
+    }
+  },
+  "empty": null
+}

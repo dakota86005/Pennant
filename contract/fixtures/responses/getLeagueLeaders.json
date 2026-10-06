@@ -1,0 +1,4938 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Leaders"
+  },
+  "lede": {
+    "text": "2040 Fictional League leaders: the top ten in each category, your players marked",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "The top ten in each batting and pitching category at the league's major league level this season, in order: highest first, and lowest first for earned run average and walks and hits per inning. The rate leaders count qualified players only; the counting leaders count everyone. Your organization's players are marked, and their club is named as yours."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "The league leaders",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "season": {
+    "display": "2040",
+    "hint": "The season the league's own data is in"
+  },
+  "qualifier": {
+    "text": "Rate leaders need 93+ plate appearances or 30+ innings",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Hitters",
+          "value": "3.1 plate appearances for each game your club has played: 30 games make 93."
+        },
+        {
+          "label": "Pitchers",
+          "value": "One inning for each game your club has played: 30 games make 30."
+        },
+        {
+          "label": "Which leaders",
+          "value": "Batting average, on-base plus slugging, earned run average and walks and hits per inning count qualified players only; home runs, runs batted in, stolen bases, strikeouts, wins, saves and wins above replacement count everyone."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "The league leaders",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "The league's qualifying rule: stated, not fitted"
+    },
+    "links": []
+  },
+  "groups": [
+    {
+      "id": "batting",
+      "title": {
+        "display": "Batting"
+      },
+      "sections": [
+        {
+          "id": "batting.AVG",
+          "title": {
+            "display": "Batting average",
+            "hint": "AVG"
+          },
+          "summary": {
+            "display": "Qualified hitters only: 93+ plate appearances"
+          },
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "AVG",
+                  "hint": "Batting average — hits per at bat"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "batting.AVG.1000",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1000"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1000",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1000,
+                  "name": "P 1000",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1000,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1001",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1001"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1001",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1001,
+                  "name": "P 1001",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1001,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1002",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1002"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1002",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1002,
+                  "name": "P 1002",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1002,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1003",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1003"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1003",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1003,
+                  "name": "P 1003",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1003,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1004",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1004"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1004",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1004,
+                  "name": "P 1004",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1004,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1005",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1005"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1005",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1005,
+                  "name": "P 1005",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1005,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1006",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1006"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1006",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1006,
+                  "name": "P 1006",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1006,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1007",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1007"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1007",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1007,
+                  "name": "P 1007",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1007,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1008",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1008"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1008",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1008,
+                  "name": "P 1008",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1008,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.AVG.1026",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1026"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1026",
+                  "club": "C2",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1026,
+                  "name": "P 1026",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1026
+                  }
+                },
+                "detail": [],
+                "actions": []
+              }
+            ],
+            "empty": {
+              "display": "Nobody qualifies yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "batting.OPS",
+          "title": {
+            "display": "On-base plus slugging",
+            "hint": "OPS"
+          },
+          "summary": {
+            "display": "Qualified hitters only: 93+ plate appearances"
+          },
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "OPS"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "batting.OPS.1000",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1000"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1000",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1000,
+                  "name": "P 1000",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1000,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1001",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1001"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1001",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1001,
+                  "name": "P 1001",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1001,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1002",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1002"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1002",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1002,
+                  "name": "P 1002",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1002,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1003",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1003"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1003",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1003,
+                  "name": "P 1003",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1003,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1004",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1004"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1004",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1004,
+                  "name": "P 1004",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1004,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1005",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1005"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1005",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1005,
+                  "name": "P 1005",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1005,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1006",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1006"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1006",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1006,
+                  "name": "P 1006",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1006,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1007",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1007"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1007",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1007,
+                  "name": "P 1007",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1007,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1008",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1008"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1008",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1008,
+                  "name": "P 1008",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1008,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.OPS.1026",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1026"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": ".000"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1026",
+                  "club": "C2",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1026,
+                  "name": "P 1026",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1026
+                  }
+                },
+                "detail": [],
+                "actions": []
+              }
+            ],
+            "empty": {
+              "display": "Nobody qualifies yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "batting.HR",
+          "title": {
+            "display": "Home runs",
+            "hint": "HR"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "HR",
+                  "hint": "Home runs"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "batting.HR.1000",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1000"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1000",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1000,
+                  "name": "P 1000",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1000,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1001",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1001"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1001",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1001,
+                  "name": "P 1001",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1001,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1002",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1002"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1002",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1002,
+                  "name": "P 1002",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1002,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1003",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1003"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1003",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1003,
+                  "name": "P 1003",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1003,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1004",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1004"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1004",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1004,
+                  "name": "P 1004",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1004,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1005",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1005"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1005",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1005,
+                  "name": "P 1005",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1005,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1006",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1006"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1006",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1006,
+                  "name": "P 1006",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1006,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1007",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1007"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1007",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1007,
+                  "name": "P 1007",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1007,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1008",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1008"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1008",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1008,
+                  "name": "P 1008",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1008,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.HR.1009",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1009"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1009",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1009,
+                  "name": "P 1009",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1009,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "batting.RBI",
+          "title": {
+            "display": "Runs batted in",
+            "hint": "RBI"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "RBI",
+                  "hint": "Runs batted in"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "batting.RBI.1000",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1000"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1000",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1000,
+                  "name": "P 1000",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1000,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1001",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1001"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1001",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1001,
+                  "name": "P 1001",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1001,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1002",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1002"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1002",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1002,
+                  "name": "P 1002",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1002,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1003",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1003"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1003",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1003,
+                  "name": "P 1003",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1003,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1004",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1004"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1004",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1004,
+                  "name": "P 1004",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1004,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1005",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1005"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1005",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1005,
+                  "name": "P 1005",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1005,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1006",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1006"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1006",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1006,
+                  "name": "P 1006",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1006,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1007",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1007"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1007",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1007,
+                  "name": "P 1007",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1007,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1008",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1008"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1008",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1008,
+                  "name": "P 1008",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1008,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.RBI.1009",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1009"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1009",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1009,
+                  "name": "P 1009",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1009,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "batting.SB",
+          "title": {
+            "display": "Stolen bases",
+            "hint": "SB"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "SB",
+                  "hint": "Stolen bases"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "batting.SB.1000",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1000"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1000",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1000,
+                  "name": "P 1000",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1000,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1001",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1001"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1001",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1001,
+                  "name": "P 1001",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1001,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1002",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1002"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1002",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1002,
+                  "name": "P 1002",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1002,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1003",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1003"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1003",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1003,
+                  "name": "P 1003",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1003,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1004",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1004"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1004",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1004,
+                  "name": "P 1004",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1004,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1005",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1005"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1005",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1005,
+                  "name": "P 1005",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1005,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1006",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1006"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1006",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1006,
+                  "name": "P 1006",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1006,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1007",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1007"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1007",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1007,
+                  "name": "P 1007",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1007,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1008",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1008"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1008",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1008,
+                  "name": "P 1008",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1008,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.SB.1009",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1009"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1009",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1009,
+                  "name": "P 1009",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1009,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "batting.WAR",
+          "title": {
+            "display": "Wins above replacement",
+            "hint": "WAR"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "WAR",
+                  "hint": "Wins Above Replacement, as calculated by OOTP"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "batting.WAR.1055",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1055"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "1.3"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1055",
+                  "club": "C3",
+                  "value": 1.3
+                },
+                "player": {
+                  "playerId": 1055,
+                  "name": "P 1055",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1055
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "batting.WAR.1052",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1052"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "1.2"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1052",
+                  "club": "C3",
+                  "value": 1.2
+                },
+                "player": {
+                  "playerId": 1052,
+                  "name": "P 1052",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1052
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "batting.WAR.1027",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1027"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "1.1"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1027",
+                  "club": "C2",
+                  "value": 1.1
+                },
+                "player": {
+                  "playerId": 1027,
+                  "name": "P 1027",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1027
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "batting.WAR.1056",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1056"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "1.1"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1056",
+                  "club": "C3",
+                  "value": 1.1
+                },
+                "player": {
+                  "playerId": 1056,
+                  "name": "P 1056",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1056
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "batting.WAR.1005",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1005"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "1"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1005",
+                  "club": "C1",
+                  "value": 1
+                },
+                "player": {
+                  "playerId": 1005,
+                  "name": "P 1005",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1005,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.WAR.1007",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1007"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "1"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1007",
+                  "club": "C1",
+                  "value": 1
+                },
+                "player": {
+                  "playerId": 1007,
+                  "name": "P 1007",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1007,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "batting.WAR.1033",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1033"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.9"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1033",
+                  "club": "C2",
+                  "value": 0.9
+                },
+                "player": {
+                  "playerId": 1033,
+                  "name": "P 1033",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1033
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "batting.WAR.1058",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1058"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "0.9"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1058",
+                  "club": "C3",
+                  "value": 0.9
+                },
+                "player": {
+                  "playerId": 1058,
+                  "name": "P 1058",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1058
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "batting.WAR.1082",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1082"
+                  },
+                  "club": {
+                    "display": "C4"
+                  },
+                  "value": {
+                    "display": "0.9"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1082",
+                  "club": "C4",
+                  "value": 0.9
+                },
+                "player": {
+                  "playerId": 1082,
+                  "name": "P 1082",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1082
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "batting.WAR.1083",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1083"
+                  },
+                  "club": {
+                    "display": "C4"
+                  },
+                  "value": {
+                    "display": "0.9"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1083",
+                  "club": "C4",
+                  "value": 0.9
+                },
+                "player": {
+                  "playerId": 1083,
+                  "name": "P 1083",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1083
+                  }
+                },
+                "detail": [],
+                "actions": []
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "pitching",
+      "title": {
+        "display": "Pitching"
+      },
+      "sections": [
+        {
+          "id": "pitching.ERA",
+          "title": {
+            "display": "Earned run average",
+            "hint": "ERA"
+          },
+          "summary": {
+            "display": "Lowest first · Qualified pitchers only: 30+ innings"
+          },
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "ERA",
+                  "hint": "Earned run average per nine innings"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "pitching.ERA.1066",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1066"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "2.78"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1066",
+                  "club": "C3",
+                  "value": 2.78
+                },
+                "player": {
+                  "playerId": 1066,
+                  "name": "P 1066",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1066
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1039",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1039"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "3.86"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1039",
+                  "club": "C2",
+                  "value": 3.86
+                },
+                "player": {
+                  "playerId": 1039,
+                  "name": "P 1039",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1039
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1065",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1065"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "3.97"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1065",
+                  "club": "C3",
+                  "value": 3.97
+                },
+                "player": {
+                  "playerId": 1065,
+                  "name": "P 1065",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1065
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1067",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1067"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "4.33"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1067",
+                  "club": "C3",
+                  "value": 4.33
+                },
+                "player": {
+                  "playerId": 1067,
+                  "name": "P 1067",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1067
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1093",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1093"
+                  },
+                  "club": {
+                    "display": "C4"
+                  },
+                  "value": {
+                    "display": "4.38"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1093",
+                  "club": "C4",
+                  "value": 4.38
+                },
+                "player": {
+                  "playerId": 1093,
+                  "name": "P 1093",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1093
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1068",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1068"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "4.42"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1068",
+                  "club": "C3",
+                  "value": 4.42
+                },
+                "player": {
+                  "playerId": 1068,
+                  "name": "P 1068",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1068
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1043",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1043"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "4.46"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1043",
+                  "club": "C2",
+                  "value": 4.46
+                },
+                "player": {
+                  "playerId": 1043,
+                  "name": "P 1043",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1043
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1016",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1016"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "5.06"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1016",
+                  "club": "C1",
+                  "value": 5.06
+                },
+                "player": {
+                  "playerId": 1016,
+                  "name": "P 1016",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1016,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.ERA.1092",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1092"
+                  },
+                  "club": {
+                    "display": "C4"
+                  },
+                  "value": {
+                    "display": "5.15"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1092",
+                  "club": "C4",
+                  "value": 5.15
+                },
+                "player": {
+                  "playerId": 1092,
+                  "name": "P 1092",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1092
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.ERA.1015",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1015"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "5.34"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1015",
+                  "club": "C1",
+                  "value": 5.34
+                },
+                "player": {
+                  "playerId": 1015,
+                  "name": "P 1015",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1015,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              }
+            ],
+            "empty": {
+              "display": "Nobody qualifies yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "pitching.WHIP",
+          "title": {
+            "display": "Walks and hits per inning",
+            "hint": "WHIP"
+          },
+          "summary": {
+            "display": "Lowest first · Qualified pitchers only: 30+ innings"
+          },
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "WHIP",
+                  "hint": "Walks and hits per inning pitched — baserunners allowed"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "pitching.WHIP.1013",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1013"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1013",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1013,
+                  "name": "P 1013",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1013,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WHIP.1014",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1014"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1014",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1014,
+                  "name": "P 1014",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1014,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WHIP.1015",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1015"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1015",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1015,
+                  "name": "P 1015",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1015,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WHIP.1016",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1016"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1016",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1016,
+                  "name": "P 1016",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1016,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WHIP.1017",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1017"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1017",
+                  "club": "C1",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1017,
+                  "name": "P 1017",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1017,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WHIP.1039",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1039"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1039",
+                  "club": "C2",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1039,
+                  "name": "P 1039",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1039
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WHIP.1040",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1040"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1040",
+                  "club": "C2",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1040,
+                  "name": "P 1040",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1040
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WHIP.1041",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1041"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1041",
+                  "club": "C2",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1041,
+                  "name": "P 1041",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1041
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WHIP.1042",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1042"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1042",
+                  "club": "C2",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1042,
+                  "name": "P 1042",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1042
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WHIP.1043",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1043"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.00"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1043",
+                  "club": "C2",
+                  "value": 0
+                },
+                "player": {
+                  "playerId": 1043,
+                  "name": "P 1043",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1043
+                  }
+                },
+                "detail": [],
+                "actions": []
+              }
+            ],
+            "empty": {
+              "display": "Nobody qualifies yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "pitching.K",
+          "title": {
+            "display": "Strikeouts",
+            "hint": "K"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "K",
+                  "hint": "Strikeouts"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "pitching.K.1013",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1013"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1013",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1013,
+                  "name": "P 1013",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1013,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1014",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1014"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1014",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1014,
+                  "name": "P 1014",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1014,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1015",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1015"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1015",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1015,
+                  "name": "P 1015",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1015,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1016",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1016"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1016",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1016,
+                  "name": "P 1016",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1016,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1017",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1017"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1017",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1017,
+                  "name": "P 1017",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1017,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1018",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1018"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1018",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1018,
+                  "name": "P 1018",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1018,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1019",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1019"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1019",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1019,
+                  "name": "P 1019",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1019,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1020",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1020"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1020",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1020,
+                  "name": "P 1020",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1020,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1021",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1021"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1021",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1021,
+                  "name": "P 1021",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1021,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.K.1022",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1022"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "Not in his line this season"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1022",
+                  "club": "C1",
+                  "value": null
+                },
+                "player": {
+                  "playerId": 1022,
+                  "name": "P 1022",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1022,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "pitching.W",
+          "title": {
+            "display": "Wins",
+            "hint": "W"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "W",
+                  "hint": "Wins"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "pitching.W.1066",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1066"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "5"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1066",
+                  "club": "C3",
+                  "value": 5
+                },
+                "player": {
+                  "playerId": 1066,
+                  "name": "P 1066",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1066
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.W.1042",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1042"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "4"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1042",
+                  "club": "C2",
+                  "value": 4
+                },
+                "player": {
+                  "playerId": 1042,
+                  "name": "P 1042",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1042
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.W.1043",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1043"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "4"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1043",
+                  "club": "C2",
+                  "value": 4
+                },
+                "player": {
+                  "playerId": 1043,
+                  "name": "P 1043",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1043
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.W.1065",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1065"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "4"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1065",
+                  "club": "C3",
+                  "value": 4
+                },
+                "player": {
+                  "playerId": 1065,
+                  "name": "P 1065",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1065
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.W.1067",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1067"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "4"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1067",
+                  "club": "C3",
+                  "value": 4
+                },
+                "player": {
+                  "playerId": 1067,
+                  "name": "P 1067",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1067
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.W.1013",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1013"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "3"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1013",
+                  "club": "C1",
+                  "value": 3
+                },
+                "player": {
+                  "playerId": 1013,
+                  "name": "P 1013",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1013,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.W.1014",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1014"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "3"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1014",
+                  "club": "C1",
+                  "value": 3
+                },
+                "player": {
+                  "playerId": 1014,
+                  "name": "P 1014",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1014,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.W.1015",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1015"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "3"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1015",
+                  "club": "C1",
+                  "value": 3
+                },
+                "player": {
+                  "playerId": 1015,
+                  "name": "P 1015",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1015,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.W.1016",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1016"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "3"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1016",
+                  "club": "C1",
+                  "value": 3
+                },
+                "player": {
+                  "playerId": 1016,
+                  "name": "P 1016",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1016,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.W.1017",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1017"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "3"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1017",
+                  "club": "C1",
+                  "value": 3
+                },
+                "player": {
+                  "playerId": 1017,
+                  "name": "P 1017",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1017,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "pitching.SV",
+          "title": {
+            "display": "Saves",
+            "hint": "SV"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "SV",
+                  "hint": "Saves"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "pitching.SV.1020",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1020"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1020",
+                  "club": "C1",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1020,
+                  "name": "P 1020",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1020,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.SV.1022",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1022"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1022",
+                  "club": "C1",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1022,
+                  "name": "P 1022",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1022,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.SV.1024",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1024"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1024",
+                  "club": "C1",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1024,
+                  "name": "P 1024",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1024,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.SV.1046",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1046"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1046",
+                  "club": "C2",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1046,
+                  "name": "P 1046",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1046
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.SV.1047",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1047"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1047",
+                  "club": "C2",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1047,
+                  "name": "P 1047",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1047
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.SV.1051",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1051"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1051",
+                  "club": "C2",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1051,
+                  "name": "P 1051",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1051
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.SV.1070",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1070"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1070",
+                  "club": "C3",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1070,
+                  "name": "P 1070",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1070
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.SV.1074",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1074"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1074",
+                  "club": "C3",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1074,
+                  "name": "P 1074",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1074
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.SV.1075",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1075"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1075",
+                  "club": "C3",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1075,
+                  "name": "P 1075",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1075
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.SV.1076",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1076"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "2"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1076",
+                  "club": "C3",
+                  "value": 2
+                },
+                "player": {
+                  "playerId": 1076,
+                  "name": "P 1076",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1076
+                  }
+                },
+                "detail": [],
+                "actions": []
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        },
+        {
+          "id": "pitching.WAR",
+          "title": {
+            "display": "Wins above replacement",
+            "hint": "WAR"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "rank",
+                "title": {
+                  "display": "Rank"
+                },
+                "numeric": true
+              },
+              {
+                "id": "player",
+                "title": {
+                  "display": "Player"
+                },
+                "numeric": false
+              },
+              {
+                "id": "club",
+                "title": {
+                  "display": "Club"
+                },
+                "numeric": false
+              },
+              {
+                "id": "value",
+                "title": {
+                  "display": "WAR",
+                  "hint": "Wins Above Replacement, as calculated by OOTP"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "pitching.WAR.1017",
+                "cells": {
+                  "rank": {
+                    "display": "1"
+                  },
+                  "player": {
+                    "display": "P 1017"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "1.9"
+                  }
+                },
+                "sort": {
+                  "rank": 1,
+                  "player": "P 1017",
+                  "club": "C1",
+                  "value": 1.9
+                },
+                "player": {
+                  "playerId": 1017,
+                  "name": "P 1017",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1017,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WAR.1092",
+                "cells": {
+                  "rank": {
+                    "display": "2"
+                  },
+                  "player": {
+                    "display": "P 1092"
+                  },
+                  "club": {
+                    "display": "C4"
+                  },
+                  "value": {
+                    "display": "1.5"
+                  }
+                },
+                "sort": {
+                  "rank": 2,
+                  "player": "P 1092",
+                  "club": "C4",
+                  "value": 1.5
+                },
+                "player": {
+                  "playerId": 1092,
+                  "name": "P 1092",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1092
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WAR.1016",
+                "cells": {
+                  "rank": {
+                    "display": "3"
+                  },
+                  "player": {
+                    "display": "P 1016"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "1.4"
+                  }
+                },
+                "sort": {
+                  "rank": 3,
+                  "player": "P 1016",
+                  "club": "C1",
+                  "value": 1.4
+                },
+                "player": {
+                  "playerId": 1016,
+                  "name": "P 1016",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1016,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WAR.1013",
+                "cells": {
+                  "rank": {
+                    "display": "4"
+                  },
+                  "player": {
+                    "display": "P 1013"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "1.1"
+                  }
+                },
+                "sort": {
+                  "rank": 4,
+                  "player": "P 1013",
+                  "club": "C1",
+                  "value": 1.1
+                },
+                "player": {
+                  "playerId": 1013,
+                  "name": "P 1013",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1013,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WAR.1044",
+                "cells": {
+                  "rank": {
+                    "display": "5"
+                  },
+                  "player": {
+                    "display": "P 1044"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.7"
+                  }
+                },
+                "sort": {
+                  "rank": 5,
+                  "player": "P 1044",
+                  "club": "C2",
+                  "value": 0.7
+                },
+                "player": {
+                  "playerId": 1044,
+                  "name": "P 1044",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1044
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WAR.1065",
+                "cells": {
+                  "rank": {
+                    "display": "6"
+                  },
+                  "player": {
+                    "display": "P 1065"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "0.7"
+                  }
+                },
+                "sort": {
+                  "rank": 6,
+                  "player": "P 1065",
+                  "club": "C3",
+                  "value": 0.7
+                },
+                "player": {
+                  "playerId": 1065,
+                  "name": "P 1065",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1065
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WAR.1020",
+                "cells": {
+                  "rank": {
+                    "display": "7"
+                  },
+                  "player": {
+                    "display": "P 1020"
+                  },
+                  "club": {
+                    "display": "C1",
+                    "hint": "Your club"
+                  },
+                  "value": {
+                    "display": "0.6"
+                  }
+                },
+                "sort": {
+                  "rank": 7,
+                  "player": "P 1020",
+                  "club": "C1",
+                  "value": 0.6
+                },
+                "player": {
+                  "playerId": 1020,
+                  "name": "P 1020",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1020,
+                    "teamId": 1
+                  }
+                },
+                "detail": [],
+                "actions": [],
+                "ours": true
+              },
+              {
+                "id": "pitching.WAR.1050",
+                "cells": {
+                  "rank": {
+                    "display": "8"
+                  },
+                  "player": {
+                    "display": "P 1050"
+                  },
+                  "club": {
+                    "display": "C2"
+                  },
+                  "value": {
+                    "display": "0.6"
+                  }
+                },
+                "sort": {
+                  "rank": 8,
+                  "player": "P 1050",
+                  "club": "C2",
+                  "value": 0.6
+                },
+                "player": {
+                  "playerId": 1050,
+                  "name": "P 1050",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1050
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WAR.1072",
+                "cells": {
+                  "rank": {
+                    "display": "9"
+                  },
+                  "player": {
+                    "display": "P 1072"
+                  },
+                  "club": {
+                    "display": "C3"
+                  },
+                  "value": {
+                    "display": "0.6"
+                  }
+                },
+                "sort": {
+                  "rank": 9,
+                  "player": "P 1072",
+                  "club": "C3",
+                  "value": 0.6
+                },
+                "player": {
+                  "playerId": 1072,
+                  "name": "P 1072",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1072
+                  }
+                },
+                "detail": [],
+                "actions": []
+              },
+              {
+                "id": "pitching.WAR.1094",
+                "cells": {
+                  "rank": {
+                    "display": "10"
+                  },
+                  "player": {
+                    "display": "P 1094"
+                  },
+                  "club": {
+                    "display": "C4"
+                  },
+                  "value": {
+                    "display": "0.6"
+                  }
+                },
+                "sort": {
+                  "rank": 10,
+                  "player": "P 1094",
+                  "club": "C4",
+                  "value": 0.6
+                },
+                "player": {
+                  "playerId": 1094,
+                  "name": "P 1094",
+                  "open": {
+                    "kind": "player",
+                    "playerId": 1094
+                  }
+                },
+                "detail": [],
+                "actions": []
+              }
+            ],
+            "empty": {
+              "display": "No lines this season yet."
+            }
+          },
+          "note": null
+        }
+      ]
+    }
+  ],
+  "empty": null
+}

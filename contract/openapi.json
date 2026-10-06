@@ -1765,6 +1765,225 @@
         }
       }
     },
+    "/api/v2/views/{org}/league/franchiseHistory": {
+      "get": {
+        "operationId": "getLeagueFranchiseHistory",
+        "summary": "Franchise History: every season the club has played (the record chart, the season by season table, the best and worst seasons, titles) and the GM's own seasons.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueFranchiseView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/league/leaders": {
+      "get": {
+        "operationId": "getLeagueLeaders",
+        "summary": "Leaders: the league's top ten in each batting and pitching category this season, with who qualifies for a rate.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueLeadersView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/league/orgComparison": {
+      "get": {
+        "operationId": "getLeagueOrgComparison",
+        "summary": "Org Comparison: every major league club of the league side by side (the roster's and the farm's expected wins, contract value, payroll and budget), each a range with its basis.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueOrgComparisonView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/league/standings": {
+      "get": {
+        "operationId": "getLeagueStandings",
+        "summary": "Standings: every division as a table (record, games back, runs, streak, pace, magic number), our club's place in the race as facts, and the staff's rough read of the season (the postseason odds and the deadline posture, D-060: only here, with their basis).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueStandingsView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/league/usVsThem": {
+      "get": {
+        "operationId": "getLeagueUsVsThem",
+        "summary": "Us vs Them: our club beside another, as facts (the season, at the plate, on the mound, with each club's league place) and their meetings this season. No odds, no posture, no verdict.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "description": "The club to set beside ours (a served choice's `value`); the next opponent by default.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueUsVsThemView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/views/{org}/majorLeague/benchBackups": {
       "get": {
         "operationId": "getMajorLeagueBench",
@@ -2384,6 +2603,108 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MlbSeasonTrendsView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/scouting/draftBoard": {
+      "get": {
+        "operationId": "getScoutingDraftBoard",
+        "summary": "Draft Board: once OOTP publishes the class, the staff's board in a stated order (our scouts' grades now and ceiling, each with the OSA mark where it applies), its short lists and filters; before then, one sentence and the calendar.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoutingDraftBoardView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/scouting/playerSearch": {
+      "get": {
+        "operationId": "getScoutingPlayerSearch",
+        "summary": "Player Search: players by name and by tokens (position, level, club, age, hands, free agents, batters or pitchers), with their season lines; every token on offer is served.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Words of a player's name, matched as the palette's search matches them.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tokens",
+            "in": "query",
+            "required": false,
+            "description": "The chosen tokens' ids, comma-separated, as served (`kinds[].tokens[].id`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoutingPlayerSearchView"
                 }
               }
             }
@@ -9062,6 +9383,445 @@
         ],
         "description": "The last five results, oldest first, and the line under them."
       },
+      "LeagueChartLegend": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          },
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "result",
+          "text"
+        ],
+        "description": "One entry of a season chart's legend: the result code it draws and its served words (\"Won it all\")."
+      },
+      "LeagueFranchiseView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "club": {
+            "$ref": "#/components/schemas/OfficeClub"
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "Seasons, all-time record, titles, best and worst season."
+          },
+          "chart": {
+            "$ref": "#/components/schemas/LeagueSeasonChart"
+          },
+          "seasons": {
+            "$ref": "#/components/schemas/OfficeSection",
+            "description": "Every season, latest first (finish, best players, payroll and attendance served hidden when no season has them)."
+          },
+          "tenure": {
+            "$ref": "#/components/schemas/LeagueTenure"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "club",
+          "figures",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "seasons",
+          "title"
+        ]
+      },
+      "LeagueLeaderGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeSection"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "sections"
+        ],
+        "description": "Batting or pitching: its categories, each a table of the top ten."
+      },
+      "LeagueLeadersView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "season": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The season the leaders are for, in words; null when the export names none."
+          },
+          "qualifier": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Who qualifies for a rate (plate appearances and innings), with how it is worked out in its basis."
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeagueLeaderGroup"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "groups",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "title"
+        ]
+      },
+      "LeagueOpponentQuery": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "team"
+        ],
+        "description": "Which club ours is set beside."
+      },
+      "LeagueOrgComparisonView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the export is, with what it leaves out in its basis; null when it is current."
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "Our organization's figures (the roster's wins, the farm's, contract value, payroll), each a range with the league's middle."
+          },
+          "clubs": {
+            "$ref": "#/components/schemas/OfficeTable",
+            "description": "Every major league club of the league, ours marked, in the specialist's order."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "clubs",
+          "figures",
+          "importStamp",
+          "lede",
+          "note",
+          "orgId",
+          "reportStamp",
+          "title"
+        ]
+      },
+      "LeagueSeasonChart": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "caption": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "axis": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeagueSeasonPoint"
+            }
+          },
+          "summary": {
+            "type": "string",
+            "description": "The chart in a sentence, for VoiceOver's chart summary."
+          },
+          "legend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeagueChartLegend"
+            },
+            "description": "What each mark means, one entry per result code (`title`, `playoffs`, `none`, in that order): the legend's words."
+          }
+        },
+        "required": [
+          "title",
+          "caption",
+          "axis",
+          "points",
+          "summary",
+          "legend"
+        ],
+        "description": "The season record as a chart: its title, what its marks mean, the seasons oldest first, and the whole in a sentence."
+      },
+      "LeagueSeasonPoint": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "wins": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "losses": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "result": {
+            "type": "string",
+            "description": "`title`, `playoffs` or `none`: which of the chart's fixed marks draws it."
+          },
+          "display": {
+            "type": "string",
+            "description": "The season in words, for the chart's help and VoiceOver (\"1987: 96-66, won it all\")."
+          }
+        },
+        "required": [
+          "year",
+          "wins",
+          "losses",
+          "result",
+          "display"
+        ],
+        "description": "One season on the record chart: its year, wins and losses, how it ended (`title`, `playoffs`, `none`) and its words."
+      },
+      "LeagueStaffRead": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "odds": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "posture": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "What the read rests on, one line each (the record, the runs, the race, the games left, the deadline)."
+          },
+          "caveat": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What it leaves out, in a sentence."
+          }
+        },
+        "required": [
+          "title",
+          "odds",
+          "posture",
+          "reasons",
+          "caveat"
+        ],
+        "description": "The staff's rough read of the season (D-060): the postseason odds and the deadline posture, shown only here, never the view's headline, each with its basis (a two-club race on run differential against a rival of a stated strength, a provisional number never fitted), and what it leaves out in a sentence."
+      },
+      "LeagueStandingsGroup": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "divisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeSection"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "divisions"
+        ],
+        "description": "A league's half (a sub-league, \"American League\"), its divisions each a table."
+      },
+      "LeagueStandingsView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeagueStandingsGroup"
+            }
+          },
+          "race": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "Our club's place in the race as facts (the division, the wild card); empty when it isn't in these standings."
+          },
+          "staffRead": {
+            "$ref": "#/components/schemas/LeagueStaffRead",
+            "description": "The staff's rough read (odds and posture, D-060); null when it can't be read (no game played, no race)."
+          },
+          "staffReadWhy": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why the staff's rough read isn't shown, in a sentence (no game played yet, no race to read); absent when it is shown."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How to read the columns (pace, magic number, run differential), the full words in its basis."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "groups",
+          "importStamp",
+          "lede",
+          "note",
+          "orgId",
+          "race",
+          "reportStamp",
+          "title"
+        ]
+      },
+      "LeagueTenure": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "seasons": {
+            "$ref": "#/components/schemas/OfficeSection"
+          }
+        },
+        "required": [
+          "title",
+          "lede",
+          "figures",
+          "seasons"
+        ],
+        "description": "The GM's own seasons (OOTP's manager history): a line per season, whichever club."
+      },
       "LeagueUpgradeLine": {
         "type": "object",
         "properties": {
@@ -9077,6 +9837,84 @@
           "hint"
         ],
         "description": "What the status says while a league an earlier build imported is brought up to date, once (N6 polish: the first launch on a folder the Electron app last used waited 5.5 s with only \"Starting…\" on screen). The server answers meanwhile; the report follows when it is done."
+      },
+      "LeagueUsVsThemView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "query": {
+            "$ref": "#/components/schemas/LeagueOpponentQuery"
+          },
+          "us": {
+            "$ref": "#/components/schemas/OfficeClub"
+          },
+          "them": {
+            "$ref": "#/components/schemas/OfficeClub"
+          },
+          "opponents": {
+            "$ref": "#/components/schemas/OfficeChoiceGroup",
+            "description": "The clubs ours can be set beside (the next opponent first chosen), sent back as `team`."
+          },
+          "headToHead": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Their meetings this season, as a fact; null before they have met (said in `meetings`)."
+          },
+          "meetings": {
+            "$ref": "#/components/schemas/MlbBlock",
+            "description": "The meetings' detail and the next series, as lines."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeSection"
+            }
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "opened": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How the club beside ours was chosen when the GM didn't choose (\"Opened on your next opponent\"); absent when chosen."
+          }
+        },
+        "required": [
+          "importStamp",
+          "lede",
+          "note",
+          "opponents",
+          "orgId",
+          "query",
+          "reportStamp",
+          "sections",
+          "title",
+          "us"
+        ],
+        "description": "Our club beside one other, as facts (D-060: no odds, no posture, no verdict on who is better): the season, at the plate, on the mound, each line with both clubs' figures and their league places, and how they have done against each other."
       },
       "Lean": {
         "type": "object",
@@ -11462,6 +12300,206 @@
             "type": "string"
           }
         ]
+      },
+      "OfficeChoice": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "selected",
+          "value"
+        ],
+        "description": "One choice of a group, sent back exactly as served (`?<group id>=<value>`)."
+      },
+      "OfficeChoiceGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The query parameter the choice is sent as (`team`)."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeChoice"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "choices"
+        ],
+        "description": "A group of the GM's choices for a view (the opponent, the batters or the pitchers): the query parameter it sets."
+      },
+      "OfficeClub": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "abbr": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ours": {
+            "type": "boolean"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target"
+          }
+        },
+        "required": [
+          "teamId",
+          "name",
+          "abbr",
+          "ours",
+          "open"
+        ],
+        "description": "A club a view names: its id, its name, whether it is ours, and where it opens (its club window)."
+      },
+      "OfficeRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "sort": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              ]
+            }
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "detail": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbAction"
+            }
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts on this row's grades (D-067): the mark (\"OSA\") and its sentence; absent otherwise (N11)."
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbPlayer"
+            },
+            "description": "The players a row names when it is about no one player (N11: a game's two starters, ours first), each openable in his own window; absent when it names none."
+          },
+          "club": {
+            "$ref": "#/components/schemas/OfficeClub"
+          },
+          "ours": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "actions",
+          "cells",
+          "detail",
+          "id",
+          "sort"
+        ],
+        "description": "A row of a League Office or Scouting table: N8's row (its cells and sort keys, the player it is about with his OSA mark, its detail and what it offers to open), the club it is about when it is about one (a standings line), and whether it is ours (drawn marked, never the only signal: the club's or player's cell says so too)."
+      },
+      "OfficeSection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Structural: where the app keeps the table's columns, never shown."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "table": {
+            "$ref": "#/components/schemas/OfficeTable"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "table"
+        ],
+        "description": "A titled table of a view (a division, a leader category, the season by season): its line above it and a note under it."
+      },
+      "OfficeTable": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbColumn"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeRow"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "description": "A table, ready to show: its columns, its rows in the served order, and its sentence when it has none."
       },
       "Ok": {
         "type": "object",
@@ -14274,6 +15312,260 @@
           "status"
         ],
         "description": "What `POST /api/save-source` answers once the save folder is set or cleared."
+      },
+      "ScoutingDraftBoardView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "published": {
+            "type": "boolean",
+            "description": "Whether OOTP has published this year's class (its own switch); the board is empty until it has."
+          },
+          "notShown": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The one sentence when there is no class to show (no draft in this league, or not published yet); null when shown."
+          },
+          "calendar": {
+            "$ref": "#/components/schemas/OfficeTable",
+            "description": "The draft's calendar (class published, combine, draft day) as a short table; null when the league runs no draft."
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How many are eligible, the draft day and its rounds, with who the class is read from in its basis."
+          },
+          "leftOut": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Who is not on the board and why, in a line (already drafted, another league's draft, no scouted ceiling)."
+          },
+          "shortLists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            },
+            "description": "The staff's short lists: the best available on the board, and the best at the organization's thinnest spots."
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoutingFilter"
+            }
+          },
+          "board": {
+            "$ref": "#/components/schemas/OfficeTable"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "board",
+          "filters",
+          "importStamp",
+          "lede",
+          "orgId",
+          "published",
+          "reportStamp",
+          "shortLists",
+          "title"
+        ]
+      },
+      "ScoutingFilter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoutingFilterChoice"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "choices"
+        ],
+        "description": "A filter of the board (where they play, where they come from): its choices, the first keeping every row."
+      },
+      "ScoutingFilterChoice": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "rows"
+        ],
+        "description": "One filter's choice: its words and the board rows it keeps, in the board's order (the app shows those)."
+      },
+      "ScoutingPlayerSearchView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "query": {
+            "$ref": "#/components/schemas/ScoutingSearchQuery"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoutingTokenKind"
+            },
+            "description": "Every token on offer, by kind, in the order the field suggests them."
+          },
+          "chosen": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoutingSearchToken"
+            },
+            "description": "The tokens in effect, as served (a token sent that the server does not know is left out, and said in `count`)."
+          },
+          "group": {
+            "$ref": "#/components/schemas/OfficeChoiceGroup",
+            "description": "Batters or pitchers: the season lines the table shows."
+          },
+          "count": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How many match and how many are shown (\"312 match, the 300 with the most playing time shown\")."
+          },
+          "results": {
+            "$ref": "#/components/schemas/OfficeTable"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "chosen",
+          "count",
+          "group",
+          "importStamp",
+          "kinds",
+          "lede",
+          "orgId",
+          "query",
+          "reportStamp",
+          "results",
+          "title"
+        ]
+      },
+      "ScoutingSearchQuery": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "q",
+          "tokens"
+        ],
+        "description": "What a search asks: the words typed and the tokens chosen, sent back exactly as served."
+      },
+      "ScoutingSearchToken": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text"
+        ],
+        "description": "A search token on offer (a position, a level, a club, an age band, a hand, free agents, batters or pitchers): its id (sent back in `tokens`), its kind (the tokens of one kind replace each other) and its words."
+      },
+      "ScoutingTokenKind": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoutingSearchToken"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "tokens"
+        ],
+        "description": "A kind of token, as the search field offers them (Position, Level, Club, Age, Bats, Throws)."
       },
       "SearchAnswer": {
         "type": "object",

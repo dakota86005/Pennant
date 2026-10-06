@@ -188,9 +188,10 @@ describe('the presentation boundary', () => {
     // still open (no specialist: it says whether the automatic club may be served as chosen)
     // `farmViewsBuild` is Farm & Development's views' reader (N10), run by the same worker; its own imports are held in
     // farmViews.test.ts; `clubhouseViewsBuild` is Major League Ops' clubhouse tools' reader (N9), held below;
-    // `playerDossierBuild` is the player window's reader (N11), run by the same worker; its own imports are held below
+    // `playerDossierBuild` is the player window's reader (N11), run by the same worker; its own imports are held below;
+    // `leagueViewsBuild` is League Office's and Scouting's views' reader (N12 Track B), run by the same worker
     const PUBLIC = new Set([
-      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'clubhouseViewsBuild',
+      'leagueViewsBuild', 'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'clubhouseViewsBuild',
       'playerDossierBuild', 'frontOfficeBuild', 'leagueRules',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
       'viewingOrganization',
@@ -320,8 +321,14 @@ describe('the presentation boundary', () => {
     // N9: Major League Ops' clubhouse tools, kept and built the same way; N11: the player window's dossiers are kept on
     // the Front Office's inputs and our club's built in its worker
     expect(importers('frontOfficeService').sort()).toEqual([
-      'api.ts', 'aroundTheLeague.ts', 'clubhouseViewService.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'playerViewService.ts', 'v2Routes.ts',
+      'api.ts', 'aroundTheLeague.ts', 'clubhouseViewService.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'leagueViewService.ts',
+      'playerViewService.ts', 'v2Routes.ts',
     ]);
+    // N12 Track B: League Office's and Scouting's views, kept and built the same way
+    expect(importers('leagueViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('leagueViewsBuild').sort()).toEqual(['frontOfficeBuild.ts', 'frontOfficeWorker.ts', 'leagueViewService.ts']);
+    expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/leagueViewsBuild\.js'/);
+    expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/leagueViewsBuild\.js'/);
     expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
     expect(importers('clubhouseViewService').sort()).toEqual(['v2Routes.ts']);
     expect(importers('clubhouseViewsBuild').sort()).toEqual(['clubhouseViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
@@ -351,7 +358,9 @@ describe('the presentation boundary', () => {
       'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts', 'clubhouseViewsBuild.ts',
       'clubhouseViewService.ts',
       // N11: the player window's views, read in the build and kept by their service
-      'playerDossierBuild.ts', 'playerViewService.ts']);
+      'playerDossierBuild.ts', 'playerViewService.ts',
+      // N12 Track B: League Office's and Scouting's views, read in their readers and the build, kept by their service
+      'leagueViewsBuild.ts', 'leagueViewService.ts', 'leagueStandingsViews.ts', 'leagueHistoryViews.ts', 'leagueLeadersViews.ts', 'scoutingViews.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

@@ -44,6 +44,18 @@ function resultOf(e: SearchEntry, followed: boolean): SearchResult {
   }
 }
 
+/** The last player result: every player matched, in Scouting's Player Search, opened on the words typed. */
+function playerSearchResult(query: string, total: number): SearchResult {
+  return {
+    kind: 'view',
+    id: 'scouting.playerSearch',
+    title: total === 1 ? 'Open in Player Search' : `All ${total} in Player Search`,
+    line: 'Scouting',
+    followed: false,
+    open: target({ kind: 'view', department: 'scouting', view: 'playerSearch', key: query.trim().slice(0, 200) }),
+  };
+}
+
 export interface SearchContext {
   followedClubs: ReadonlySet<number>;
   followedPlayers: ReadonlySet<number>;
@@ -66,7 +78,10 @@ export function searchWords(query: string, q: SearchQuery, matched: readonly Sea
         || Number(b.ours) - Number(a.ours)
         || BY_NAME.compare(a.e.name, b.e.name)
         || (a.e.id < b.e.id ? -1 : a.e.id > b.e.id ? 1 : 0));
-    return { kind, title: cell(GROUP_TITLES[kind]), results: all.slice(0, SEARCH_LIMITS[kind]).map((x) => resultOf(x.e, x.followed)), total: all.length };
+    const results = all.slice(0, SEARCH_LIMITS[kind]).map((x) => resultOf(x.e, x.followed));
+    // N12 Track B: the players matched lead on to Player Search, which reads the same matches with its tokens and lines
+    if (kind === 'player' && all.length > 0) results.push(playerSearchResult(query, all.length));
+    return { kind, title: cell(GROUP_TITLES[kind]), results, total: all.length };
   }).filter((g) => g.total > 0);
   return {
     query,

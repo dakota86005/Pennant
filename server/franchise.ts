@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { answer, refuse, type Computed } from './computed.js';
 import { freshnessCue, getDataStatus, type DataStatus } from './dataStatus.js';
 import { db, tableColumns, tableExists } from './db.js';
 import { leagueRulesForLeague } from './leagueRules.js';
@@ -31,20 +32,75 @@ interface SeasonRow {
   attendance: number | null;
 }
 
-franchiseRoutes.get('/franchise/:teamId', (req, res) => {
-  const teamId = Number(req.params.teamId);
-  if (!tableExists('team_history_record')) {
-    return res.status(400).json({ error: 'This export has no franchise history' });
-  }
+/** One season of the club's record, as the Franchise page reads it. */
+export interface FranchiseSeason {
+  year: number;
+  w: number;
+  l: number;
+  pct: number;
+  finish: number;
+  gb: number;
+  name: string | null;
+  madePlayoffs: boolean;
+  wonTitle: boolean;
+  bestHitter: { player_id: number; name: string | null } | null;
+  bestPitcher: { player_id: number; name: string | null } | null;
+  payroll: number | null;
+  attendance: number | null;
+}
+
+/** The club's record over every season, and its totals (null with no completed season). */
+export interface FranchiseHistory {
+  seasons: FranchiseSeason[];
+  summary: {
+    seasons: number;
+    firstYear: number;
+    lastYear: number;
+    wins: number;
+    losses: number;
+    pct: number;
+    titles: number;
+    playoffs: number;
+    bestSeason: { year: number; w: number; l: number } | null;
+    worstSeason: { year: number; w: number; l: number } | null;
+  } | null;
+}
+
+/**
+ * What the export's history carries beyond the record: how each season ended and who were its best players
+ * (`team_history`), and its payroll and attendance (`team_history_financials`). Without them the route answers false and
+ * null for those fields, so a reader that words them says they are not known rather than "missed".
+ */
+export function franchiseRecordsCarry(): { results: boolean; finances: boolean } {
+  const finance = tableExists('team_history_financials') ? tableColumns('team_history_financials') : [];
+  return { results: tableExists('team_history'), finances: finance.includes('player_expenses') || finance.includes('attendance') };
+}
+
+/** The seasons the export's history (`team_history`) has a line for, for the club: how they ended is recorded for these. */
+export function franchiseResultYears(teamId: number): number[] {
+  if (!tableExists('team_history')) return [];
+  return (db.prepare(`SELECT DISTINCT year FROM team_history WHERE team_id = ?`).all(teamId) as Array<{ year: number }>).map((r) => r.year);
+}
+
+/**
+ * The club's whole history (`/api/franchise/:teamId`, extracted for the Mac app's League Office, N12): one read of the
+ * record joined to the season's story and finances, and one batched read of the best players' names. Best and worst
+ * season by winning percentage, a tie going to the latest.
+ */
+export function computeFranchise(teamId: number): Computed<FranchiseHistory> {
+  if (!tableExists('team_history_record')) return refuse(400, 'This export has no franchise history');
 
   const hasHistory = tableExists('team_history');
   const hasFinancials = tableExists('team_history_financials');
+  // An export whose past finances lack a column reads it as not known, rather than failing the whole history
+  const finance = new Set(hasFinancials ? tableColumns('team_history_financials') : []);
+  const financeColumn = (column: string) => (finance.has(column) ? `f.${column}` : 'NULL');
 
   const rows = db
     .prepare(
       `SELECT r.year, r.g, r.w, r.l, r.pct, r.pos, r.gb
               ${hasHistory ? `, h.name, h.made_playoffs, h.won_playoffs, h.best_hitter_id, h.best_pitcher_id` : ''}
-              ${hasFinancials ? `, f.player_expenses AS payroll, f.attendance` : ''}
+              ${hasFinancials ? `, ${financeColumn('player_expenses')} AS payroll, ${financeColumn('attendance')} AS attendance` : ''}
        FROM team_history_record r
        ${hasHistory ? 'LEFT JOIN team_history h ON h.team_id = r.team_id AND h.year = r.year' : ''}
        ${hasFinancials ? 'LEFT JOIN team_history_financials f ON f.team_id = r.team_id AND f.year = r.year' : ''}
@@ -53,7 +109,7 @@ franchiseRoutes.get('/franchise/:teamId', (req, res) => {
     )
     .all(teamId) as SeasonRow[];
 
-  if (rows.length === 0) return res.json({ seasons: [], summary: null });
+  if (rows.length === 0) return answer({ seasons: [], summary: null });
 
   // One lookup for every player named as a season's best, rather than one per row
   const ids = [
@@ -71,7 +127,7 @@ franchiseRoutes.get('/franchise/:teamId', (req, res) => {
     }
   }
 
-  const seasons = rows.map((r) => ({
+  const seasons: FranchiseSeason[] = rows.map((r) => ({
     year: r.year,
     w: r.w,
     l: r.l,
@@ -92,7 +148,7 @@ franchiseRoutes.get('/franchise/:teamId', (req, res) => {
   const best = [...seasons].sort((a, b) => b.pct - a.pct)[0];
   const worst = [...seasons].sort((a, b) => a.pct - b.pct)[0];
 
-  res.json({
+  return answer({
     seasons,
     summary: {
       seasons: seasons.length,
@@ -107,6 +163,12 @@ franchiseRoutes.get('/franchise/:teamId', (req, res) => {
       worstSeason: worst ? { year: worst.year, w: worst.w, l: worst.l } : null,
     },
   });
+}
+
+franchiseRoutes.get('/franchise/:teamId', (req, res) => {
+  const computed = computeFranchise(Number(req.params.teamId));
+  if (!computed.ok) return res.status(computed.status).json({ error: computed.error });
+  res.json(computed.body);
 });
 
 /**
@@ -358,6 +420,9 @@ export function computeOrgComparison(orgId: number, status: DataStatus = getData
     clubs: list,
   };
 }
+
+/** What `computeOrgComparison` answers (the Org Comparison page's body). */
+export type OrgComparison = ReturnType<typeof computeOrgComparison>;
 
 franchiseRoutes.get('/org-comparison/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);

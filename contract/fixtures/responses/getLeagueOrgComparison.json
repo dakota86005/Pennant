@@ -1,0 +1,1603 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Org Comparison"
+  },
+  "lede": {
+    "text": "Where each club stands: its roster, its farm, its contracts and its spending",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Where each club stands: what its roster is expected to add the rest of the way, how much help its farm is about to send up, what its contracts are worth and what it spends. Most likely figures, with the range they could be beside them; select a club for how each adds up and who is left out. Nothing is ranked."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "Player Value",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "freshness": {
+    "text": "As of May 6, 2040 · Not checked against your save",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "How current",
+          "value": "Pennant's copy of the league is from May 6, 2040. It couldn't find your OOTP save to compare dates with, so it can't tell whether the export is current: service time, control and the figures built on them are read as the export states them."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "Data status",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "The export's freshness could not be checked against the save."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "figures": [
+    {
+      "text": "Roster, rest of 2040",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Most likely",
+            "value": "7.1 wins"
+          },
+          {
+            "label": "Could be",
+            "value": "4.1 to 9.6 wins"
+          },
+          {
+            "label": "League middle",
+            "value": "6.6 wins: the middle club's most likely figure, for scale; never a rank."
+          },
+          {
+            "label": "What it is",
+            "value": "What the players on the club's major-league roster (active or on the injured list) are expected to add over the rest of 2040, in wins above replacement (WAR), added up. The first figure is the most likely; the range under it is what it could be. Players are combined as if their seasons didn't depend on each other, so the range is a reasonable reading, not a promise. It's who is there now, not who might arrive; a player whose production can't be projected is left out and named."
+          },
+          {
+            "label": "How it adds up",
+            "value": "Expected wins above replacement on the major-league roster for the rest of 2040, summed over 26 players; players combined as independent; not a calibrated interval: around the sum of each player's most likely wins, each player's own distance from his combined across players. Every player at his edge: −6.3 to 18.7 wins."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "provisional",
+        "called": "A starting number, not yet fitted on this save",
+        "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+      },
+      "links": [],
+      "hint": "League middle: 6.6 wins",
+      "value": {
+        "n": 7.131737908326793,
+        "unit": "wins",
+        "display": "7.1 wins",
+        "low": 4.129610663936498,
+        "high": 9.634323312873166
+      }
+    },
+    {
+      "text": "Farm, 2041",
+      "tone": "unknown",
+      "basis": {
+        "because": [
+          {
+            "label": "Most likely",
+            "value": "Not projected"
+          },
+          {
+            "label": "What it is",
+            "value": "What the organization's minor leaguers are expected to add in the majors in 2041, in WAR, added up: each one's chance of reaching the majors times what he'd do there. It says how much help is close, not how good the system is in the long run: a teenager years away adds little here however high his ceiling."
+          },
+          {
+            "label": "How it adds up",
+            "value": "No player on the farm in 2041 has a projection, so there is no total. Leaves out 6 players whose figure isn't known, each named with his reason; never counted as zero."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "6 players left out because their figure isn't known, never counted as zero."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "provisional",
+        "called": "A starting number, not yet fitted on this save",
+        "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+      },
+      "links": [],
+      "value": {
+        "n": null,
+        "unit": "wins",
+        "display": "Not projected"
+      }
+    },
+    {
+      "text": "Contract value",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Most likely",
+            "value": "66.0 wins"
+          },
+          {
+            "label": "Could be",
+            "value": "42.7 to 97.5 wins"
+          },
+          {
+            "label": "What it is",
+            "value": "What the major-league roster's contracts are worth beyond what they pay, added up: the same figure as Contract value on each player's card, over the seasons he is signed or controlled, seasons further out counting a little less, summed the way Payroll adds players. Cheap, productive players push it up; big contracts for fading players pull it down. A player whose value isn't known yet is left out and named. This league's dollars aren't known here, so it is in wins."
+          },
+          {
+            "label": "How it adds up",
+            "value": "Contract value (in wins: this league's dollars aren't known) of the roster: players combined as independent; not a calibrated interval: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as independent across 26 players (root sum of squares); an option, an open status or whether he stays stays at its edges. Every player at his edge, summed: −32.6 wins to 202.0 wins."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "provisional",
+        "called": "A starting number, not yet fitted on this save",
+        "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+      },
+      "links": [],
+      "value": {
+        "n": 65.97801018916812,
+        "unit": "wins",
+        "display": "66.0 wins",
+        "low": 42.70218143489925,
+        "high": 97.51388054592208
+      }
+    },
+    {
+      "text": "Payroll",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Payroll",
+            "value": "$90.0M"
+          },
+          {
+            "label": "Budget",
+            "value": "$150.0M"
+          },
+          {
+            "label": "League middle",
+            "value": "$90.0M: the middle club's payroll, for scale; never a rank."
+          },
+          {
+            "label": "Where it comes from",
+            "value": "team_financials.player_payroll"
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "Club finances",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "League middle: $90.0M",
+      "value": {
+        "n": 90000000,
+        "unit": "dollars",
+        "display": "$90.0M"
+      }
+    }
+  ],
+  "clubs": {
+    "columns": [
+      {
+        "id": "club",
+        "title": {
+          "display": "Club",
+          "hint": "Every major league club in your league; yours is marked"
+        },
+        "numeric": false
+      },
+      {
+        "id": "record",
+        "title": {
+          "display": "Record",
+          "hint": "Wins and losses this season, as the export states them"
+        },
+        "numeric": true
+      },
+      {
+        "id": "rosterWins",
+        "title": {
+          "display": "Roster, rest of 2040",
+          "hint": "Wins the roster is expected to add; sorts by the most likely"
+        },
+        "numeric": true
+      },
+      {
+        "id": "farmWins",
+        "title": {
+          "display": "Farm, 2041",
+          "hint": "Wins the farm is expected to add in the majors next season"
+        },
+        "numeric": true
+      },
+      {
+        "id": "contract",
+        "title": {
+          "display": "Contract value",
+          "hint": "What the roster's contracts are worth beyond what they pay"
+        },
+        "numeric": true
+      },
+      {
+        "id": "payroll",
+        "title": {
+          "display": "Payroll",
+          "hint": "This season's payroll, as the club's finances state it"
+        },
+        "numeric": true
+      },
+      {
+        "id": "budget",
+        "title": {
+          "display": "Budget",
+          "hint": "The club's budget, as its finances state it"
+        },
+        "numeric": true,
+        "hidden": true
+      },
+      {
+        "id": "top",
+        "title": {
+          "display": "Top farm contributor",
+          "hint": "The minor leaguer expected to add the most next season"
+        },
+        "numeric": false
+      },
+      {
+        "id": "players",
+        "title": {
+          "display": "Players",
+          "hint": "On the major league roster · in the farm system"
+        },
+        "numeric": true
+      }
+    ],
+    "rows": [
+      {
+        "id": "club-1",
+        "cells": {
+          "club": {
+            "display": "Club 1 N",
+            "hint": "Your club"
+          },
+          "record": {
+            "display": "15–15"
+          },
+          "rosterWins": {
+            "display": "7.1 wins",
+            "hint": "Could be 4.1 to 9.6 wins"
+          },
+          "farmWins": {
+            "display": "Not projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "contract": {
+            "display": "66.0 wins",
+            "hint": "Could be 42.7 to 97.5 wins"
+          },
+          "payroll": {
+            "display": "$90.0M"
+          },
+          "budget": {
+            "display": "$150.0M"
+          },
+          "top": {
+            "display": "None projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "players": {
+            "display": "26 · 6",
+            "hint": "On the major league roster · in the farm system"
+          }
+        },
+        "sort": {
+          "club": "Club 1 N",
+          "record": 0.5,
+          "rosterWins": 7.131737908326793,
+          "farmWins": null,
+          "contract": 65.97801018916812,
+          "payroll": 90000000,
+          "budget": 150000000,
+          "top": null,
+          "players": 26
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Roster, rest of 2040"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 7.1 wins · could be 4.1 to 9.6 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Expected wins above replacement on the major-league roster for the rest of 2040, summed over 26 players; players combined as independent; not a calibrated interval: around the sum of each player's most likely wins, each player's own distance from his combined across players. Every player at his edge: −6.3 to 18.7 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 7.131737908326793,
+                  "unit": "wins",
+                  "display": "7.1 wins",
+                  "low": 4.129610663936498,
+                  "high": 9.634323312873166
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Farm, 2041"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Not projected",
+                "tone": "unknown",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "No player on the farm in 2041 has a projection, so there is no total. Leaves out 6 players whose figure isn't known, each named with his reason; never counted as zero."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "0 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [
+                    "6 players left out because their figure isn't known, never counted as zero."
+                  ],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": null,
+                  "unit": "wins",
+                  "display": "Not projected"
+                }
+              }
+            ],
+            "lines": [
+              {
+                "text": {
+                  "display": "6 not counted: left out because their figure isn't known, never counted as zero"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1104: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1105: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1106: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1107: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1108: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1109: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Contract value"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 66.0 wins · could be 42.7 to 97.5 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Contract value (in wins: this league's dollars aren't known) of the roster: players combined as independent; not a calibrated interval: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as independent across 26 players (root sum of squares); an option, an open status or whether he stays stays at its edges. Every player at his edge, summed: −32.6 wins to 202.0 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 65.97801018916812,
+                  "unit": "wins",
+                  "display": "66.0 wins",
+                  "low": 42.70218143489925,
+                  "high": 97.51388054592208
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Payroll and budget"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Payroll $90.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Budget $150.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": [
+          {
+            "text": {
+              "display": "Open the Club 1 N"
+            },
+            "open": {
+              "kind": "club",
+              "teamId": 1
+            }
+          }
+        ],
+        "club": {
+          "teamId": 1,
+          "name": "Club 1 N",
+          "abbr": "C1",
+          "ours": true,
+          "open": {
+            "kind": "club",
+            "teamId": 1
+          }
+        },
+        "ours": true
+      },
+      {
+        "id": "club-2",
+        "cells": {
+          "club": {
+            "display": "Club 2 N"
+          },
+          "record": {
+            "display": "15–15"
+          },
+          "rosterWins": {
+            "display": "6.0 wins",
+            "hint": "Could be 3.1 to 8.4 wins"
+          },
+          "farmWins": {
+            "display": "Not projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "contract": {
+            "display": "50.5 wins",
+            "hint": "Could be 29.7 to 79.7 wins"
+          },
+          "payroll": {
+            "display": "$90.0M"
+          },
+          "budget": {
+            "display": "$150.0M"
+          },
+          "top": {
+            "display": "None projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "players": {
+            "display": "26 · 6",
+            "hint": "On the major league roster · in the farm system"
+          }
+        },
+        "sort": {
+          "club": "Club 2 N",
+          "record": 0.5,
+          "rosterWins": 5.969091505332169,
+          "farmWins": null,
+          "contract": 50.54080682397276,
+          "payroll": 90000000,
+          "budget": 150000000,
+          "top": null,
+          "players": 26
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Roster, rest of 2040"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 6.0 wins · could be 3.1 to 8.4 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Expected wins above replacement on the major-league roster for the rest of 2040, summed over 26 players; players combined as independent; not a calibrated interval: around the sum of each player's most likely wins, each player's own distance from his combined across players. Every player at his edge: −6.9 to 17.3 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 5.969091505332169,
+                  "unit": "wins",
+                  "display": "6.0 wins",
+                  "low": 3.1231373969195633,
+                  "high": 8.406965071905809
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Farm, 2041"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Not projected",
+                "tone": "unknown",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "No player on the farm in 2041 has a projection, so there is no total. Leaves out 6 players whose figure isn't known, each named with his reason; never counted as zero."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "0 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [
+                    "6 players left out because their figure isn't known, never counted as zero."
+                  ],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": null,
+                  "unit": "wins",
+                  "display": "Not projected"
+                }
+              }
+            ],
+            "lines": [
+              {
+                "text": {
+                  "display": "6 not counted: left out because their figure isn't known, never counted as zero"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1110: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1111: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1112: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1113: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1114: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1115: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Contract value"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 50.5 wins · could be 29.7 to 79.7 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Contract value (in wins: this league's dollars aren't known) of the roster: players combined as independent; not a calibrated interval: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as independent across 26 players (root sum of squares); an option, an open status or whether he stays stays at its edges. Every player at his edge, summed: −39.9 wins to 176.8 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 50.54080682397276,
+                  "unit": "wins",
+                  "display": "50.5 wins",
+                  "low": 29.695271738090053,
+                  "high": 79.66474252190974
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Payroll and budget"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Payroll $90.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Budget $150.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": [
+          {
+            "text": {
+              "display": "Open the Club 2 N"
+            },
+            "open": {
+              "kind": "club",
+              "teamId": 2
+            }
+          }
+        ],
+        "club": {
+          "teamId": 2,
+          "name": "Club 2 N",
+          "abbr": "C2",
+          "ours": false,
+          "open": {
+            "kind": "club",
+            "teamId": 2
+          }
+        }
+      },
+      {
+        "id": "club-3",
+        "cells": {
+          "club": {
+            "display": "Club 3 N"
+          },
+          "record": {
+            "display": "19–11"
+          },
+          "rosterWins": {
+            "display": "8.0 wins",
+            "hint": "Could be 4.9 to 10.5 wins"
+          },
+          "farmWins": {
+            "display": "Not projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "contract": {
+            "display": "67.5 wins",
+            "hint": "Could be 44.4 to 96.4 wins"
+          },
+          "payroll": {
+            "display": "$90.0M"
+          },
+          "budget": {
+            "display": "$150.0M"
+          },
+          "top": {
+            "display": "None projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "players": {
+            "display": "26 · 6",
+            "hint": "On the major league roster · in the farm system"
+          }
+        },
+        "sort": {
+          "club": "Club 3 N",
+          "record": 0.6333333333333333,
+          "rosterWins": 7.974896922935594,
+          "farmWins": null,
+          "contract": 67.48995335294812,
+          "payroll": 90000000,
+          "budget": 150000000,
+          "top": null,
+          "players": 26
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Roster, rest of 2040"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 8.0 wins · could be 4.9 to 10.5 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Expected wins above replacement on the major-league roster for the rest of 2040, summed over 26 players; players combined as independent; not a calibrated interval: around the sum of each player's most likely wins, each player's own distance from his combined across players. Every player at his edge: −6.0 to 19.6 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 7.974896922935594,
+                  "unit": "wins",
+                  "display": "8.0 wins",
+                  "low": 4.881266264322723,
+                  "high": 10.498497231084688
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Farm, 2041"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Not projected",
+                "tone": "unknown",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "No player on the farm in 2041 has a projection, so there is no total. Leaves out 6 players whose figure isn't known, each named with his reason; never counted as zero."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "0 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [
+                    "6 players left out because their figure isn't known, never counted as zero."
+                  ],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": null,
+                  "unit": "wins",
+                  "display": "Not projected"
+                }
+              }
+            ],
+            "lines": [
+              {
+                "text": {
+                  "display": "6 not counted: left out because their figure isn't known, never counted as zero"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1116: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1117: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1118: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1119: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1120: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1121: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Contract value"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 67.5 wins · could be 44.4 to 96.4 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Contract value (in wins: this league's dollars aren't known) of the roster: players combined as independent; not a calibrated interval: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as independent across 26 players (root sum of squares); an option, an open status or whether he stays stays at its edges. Every player at his edge, summed: −29.6 wins to 191.1 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 67.48995335294812,
+                  "unit": "wins",
+                  "display": "67.5 wins",
+                  "low": 44.40876830052254,
+                  "high": 96.38600039318762
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Payroll and budget"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Payroll $90.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Budget $150.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": [
+          {
+            "text": {
+              "display": "Open the Club 3 N"
+            },
+            "open": {
+              "kind": "club",
+              "teamId": 3
+            }
+          }
+        ],
+        "club": {
+          "teamId": 3,
+          "name": "Club 3 N",
+          "abbr": "C3",
+          "ours": false,
+          "open": {
+            "kind": "club",
+            "teamId": 3
+          }
+        }
+      },
+      {
+        "id": "club-4",
+        "cells": {
+          "club": {
+            "display": "Club 4 N"
+          },
+          "record": {
+            "display": "11–19"
+          },
+          "rosterWins": {
+            "display": "4.4 wins",
+            "hint": "Could be 1.7 to 6.9 wins"
+          },
+          "farmWins": {
+            "display": "Not projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "contract": {
+            "display": "35.9 wins",
+            "hint": "Could be 17.9 to 62.0 wins"
+          },
+          "payroll": {
+            "display": "$90.0M"
+          },
+          "budget": {
+            "display": "$150.0M"
+          },
+          "top": {
+            "display": "None projected",
+            "tone": "unknown",
+            "hint": "No player on the farm has a projection"
+          },
+          "players": {
+            "display": "26 · 6",
+            "hint": "On the major league roster · in the farm system"
+          }
+        },
+        "sort": {
+          "club": "Club 4 N",
+          "record": 0.36666666666666664,
+          "rosterWins": 4.42117488332197,
+          "farmWins": null,
+          "contract": 35.92679110316882,
+          "payroll": 90000000,
+          "budget": 150000000,
+          "top": null,
+          "players": 26
+        },
+        "player": null,
+        "detail": [
+          {
+            "title": {
+              "display": "Roster, rest of 2040"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 4.4 wins · could be 1.7 to 6.9 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Expected wins above replacement on the major-league roster for the rest of 2040, summed over 26 players; players combined as independent; not a calibrated interval: around the sum of each player's most likely wins, each player's own distance from his combined across players. Every player at his edge: −8.0 to 16.0 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 4.42117488332197,
+                  "unit": "wins",
+                  "display": "4.4 wins",
+                  "low": 1.747353718524176,
+                  "high": 6.926727576508903
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Farm, 2041"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Not projected",
+                "tone": "unknown",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "No player on the farm in 2041 has a projection, so there is no total. Leaves out 6 players whose figure isn't known, each named with his reason; never counted as zero."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "0 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [
+                    "6 players left out because their figure isn't known, never counted as zero."
+                  ],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": null,
+                  "unit": "wins",
+                  "display": "Not projected"
+                }
+              }
+            ],
+            "lines": [
+              {
+                "text": {
+                  "display": "6 not counted: left out because their figure isn't known, never counted as zero"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1122: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1123: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1124: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1125: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1126: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "P 1127: His ability is projected, but his major-league playing time is not established: how often players at his level and age reach the majors has not been measured on this save.",
+                  "tone": "unknown"
+                },
+                "quiet": true,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Contract value"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [
+              {
+                "text": "Most likely 35.9 wins · could be 17.9 to 62.0 wins",
+                "tone": "neutral",
+                "basis": {
+                  "because": [
+                    {
+                      "label": "How it adds up",
+                      "value": "Contract value (in wins: this league's dollars aren't known) of the roster: players combined as independent; not a calibrated interval: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as independent across 26 players (root sum of squares); an option, an open status or whether he stays stays at its edges. Every player at his edge, summed: −42.7 wins to 146.0 wins."
+                    },
+                    {
+                      "label": "Counted",
+                      "value": "26 players"
+                    }
+                  ],
+                  "source": {
+                    "department": "league",
+                    "specialist": "Player Value",
+                    "asOf": null,
+                    "gameDate": "2040-05-05"
+                  },
+                  "unknown": [],
+                  "wouldChange": [],
+                  "lean": null,
+                  "certainty": "provisional",
+                  "called": "A starting number, not yet fitted on this save",
+                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                },
+                "links": [],
+                "value": {
+                  "n": 35.92679110316882,
+                  "unit": "wins",
+                  "display": "35.9 wins",
+                  "low": 17.87001885917829,
+                  "high": 62.00472044378148
+                }
+              }
+            ],
+            "lines": [],
+            "collapsed": false
+          },
+          {
+            "title": {
+              "display": "Payroll and budget"
+            },
+            "player": null,
+            "chips": [],
+            "claims": [],
+            "lines": [
+              {
+                "text": {
+                  "display": "Payroll $90.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              },
+              {
+                "text": {
+                  "display": "Budget $150.0M"
+                },
+                "quiet": false,
+                "chips": [],
+                "players": []
+              }
+            ],
+            "collapsed": false
+          }
+        ],
+        "actions": [
+          {
+            "text": {
+              "display": "Open the Club 4 N"
+            },
+            "open": {
+              "kind": "club",
+              "teamId": 4
+            }
+          }
+        ],
+        "club": {
+          "teamId": 4,
+          "name": "Club 4 N",
+          "abbr": "C4",
+          "ours": false,
+          "open": {
+            "kind": "club",
+            "teamId": 4
+          }
+        }
+      }
+    ],
+    "empty": {
+      "display": "No clubs to compare: the export has no major-league clubs in your league."
+    }
+  },
+  "note": {
+    "text": "How to read the comparison",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Roster, rest of 2040",
+          "value": "What the players on the club's major-league roster (active or on the injured list) are expected to add over the rest of 2040, in wins above replacement (WAR), added up. The first figure is the most likely; the range under it is what it could be. Players are combined as if their seasons didn't depend on each other, so the range is a reasonable reading, not a promise. It's who is there now, not who might arrive; a player whose production can't be projected is left out and named."
+        },
+        {
+          "label": "Farm, 2041",
+          "value": "What the organization's minor leaguers are expected to add in the majors in 2041, in WAR, added up: each one's chance of reaching the majors times what he'd do there. It says how much help is close, not how good the system is in the long run: a teenager years away adds little here however high his ceiling."
+        },
+        {
+          "label": "Contract value",
+          "value": "What the major-league roster's contracts are worth beyond what they pay, added up: the same figure as Contract value on each player's card, over the seasons he is signed or controlled, seasons further out counting a little less, summed the way Payroll adds players. Cheap, productive players push it up; big contracts for fading players pull it down. A player whose value isn't known yet is left out and named."
+        },
+        {
+          "label": "Payroll and budget",
+          "value": "This season's payroll, with the budget beside it, as OOTP's club finances state them. A figure the export doesn't carry says so; it's never read as $0."
+        },
+        {
+          "label": "Top farm contributor",
+          "value": "The minor leaguer expected to add the most in the majors next season, with his expected wins: the nearest help, not necessarily the best prospect."
+        },
+        {
+          "label": "A range for the most likely",
+          "value": "No single most likely figure: it depends on seasons that could go more than one way (an option, a status still open, or whether a player stays), so the most likely is the range of those readings."
+        },
+        {
+          "label": "Sorting",
+          "value": "A column sorts by its most likely figure, or by the middle of its range of most likely readings when there is no single one; a club whose figure isn't known sorts last either way. Nothing is ranked: the clubs start in name order."
+        },
+        {
+          "label": "Club",
+          "value": "Every major-league club in your league; yours is marked. Open a club, or its top farm contributor, from its row."
+        },
+        {
+          "label": "Record",
+          "value": "Wins and losses this season, as the export states them."
+        },
+        {
+          "label": "Players",
+          "value": "On the major-league roster · in the farm system."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "Player Value",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "empty": null
+}

@@ -1,0 +1,720 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Standings"
+  },
+  "lede": {
+    "text": "Every club's record, division by division; yours is T-2nd in the East Division, 4 games back",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Full league standings. Run differential is runs scored minus runs allowed: over a season it predicts future record better than the record itself does. Pace is the record a club is on course for at its current rate; the magic number is shown for a division leader."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "The standings",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "groups": [
+    {
+      "title": {
+        "display": "Only"
+      },
+      "divisions": [
+        {
+          "id": "standings-1-1",
+          "title": {
+            "display": "East Division"
+          },
+          "summary": null,
+          "table": {
+            "columns": [
+              {
+                "id": "team",
+                "title": {
+                  "display": "Team",
+                  "hint": "The club; yours is marked"
+                },
+                "numeric": false
+              },
+              {
+                "id": "w",
+                "title": {
+                  "display": "W",
+                  "hint": "Wins."
+                },
+                "numeric": true
+              },
+              {
+                "id": "l",
+                "title": {
+                  "display": "L",
+                  "hint": "Losses."
+                },
+                "numeric": true
+              },
+              {
+                "id": "pct",
+                "title": {
+                  "display": "Win %",
+                  "hint": "Winning percentage: wins divided by games played."
+                },
+                "numeric": true
+              },
+              {
+                "id": "gb",
+                "title": {
+                  "display": "GB",
+                  "hint": "Games behind the division leader"
+                },
+                "numeric": true
+              },
+              {
+                "id": "rs",
+                "title": {
+                  "display": "RS",
+                  "hint": "Runs scored across the season so far."
+                },
+                "numeric": true,
+                "hidden": true
+              },
+              {
+                "id": "ra",
+                "title": {
+                  "display": "RA",
+                  "hint": "Runs allowed across the season so far."
+                },
+                "numeric": true,
+                "hidden": true
+              },
+              {
+                "id": "diff",
+                "title": {
+                  "display": "Run diff",
+                  "hint": "Runs scored minus runs allowed"
+                },
+                "numeric": true
+              },
+              {
+                "id": "streak",
+                "title": {
+                  "display": "Streak",
+                  "hint": "Current streak. W3 means three straight wins, L2 two straight losses."
+                },
+                "numeric": true
+              },
+              {
+                "id": "pace",
+                "title": {
+                  "display": "Pace",
+                  "hint": "The record this club is on course for at its current rate"
+                },
+                "numeric": true
+              },
+              {
+                "id": "magic",
+                "title": {
+                  "display": "Magic #",
+                  "hint": "Wins plus a chaser's losses that clinch the division"
+                },
+                "numeric": true
+              }
+            ],
+            "rows": [
+              {
+                "id": "club-3",
+                "cells": {
+                  "team": {
+                    "display": "Club 3 N"
+                  },
+                  "w": {
+                    "display": "19"
+                  },
+                  "l": {
+                    "display": "11"
+                  },
+                  "pct": {
+                    "display": ".633"
+                  },
+                  "gb": {
+                    "display": "–",
+                    "hint": "No games behind the division's leader"
+                  },
+                  "rs": {
+                    "display": "157"
+                  },
+                  "ra": {
+                    "display": "131"
+                  },
+                  "diff": {
+                    "display": "+26",
+                    "tone": "good"
+                  },
+                  "streak": {
+                    "display": "W1"
+                  },
+                  "pace": {
+                    "display": "38–22",
+                    "hint": "At this rate over a 60-game schedule"
+                  },
+                  "magic": {
+                    "display": "Not known",
+                    "tone": "unknown",
+                    "hint": "OOTP hasn't published one for this club"
+                  }
+                },
+                "sort": {
+                  "team": "Club 3 N",
+                  "w": 19,
+                  "l": 11,
+                  "pct": 0.6333333333333333,
+                  "gb": 0,
+                  "rs": 157,
+                  "ra": 131,
+                  "diff": 26,
+                  "streak": 1,
+                  "pace": 38,
+                  "magic": null
+                },
+                "player": null,
+                "detail": [],
+                "actions": [
+                  {
+                    "text": {
+                      "display": "Open the Club 3 N"
+                    },
+                    "open": {
+                      "kind": "club",
+                      "teamId": 3
+                    }
+                  }
+                ],
+                "club": {
+                  "teamId": 3,
+                  "name": "Club 3 N",
+                  "abbr": "C3",
+                  "ours": false,
+                  "open": {
+                    "kind": "club",
+                    "teamId": 3
+                  }
+                }
+              },
+              {
+                "id": "club-1",
+                "cells": {
+                  "team": {
+                    "display": "Club 1 N",
+                    "hint": "Your club"
+                  },
+                  "w": {
+                    "display": "15"
+                  },
+                  "l": {
+                    "display": "15"
+                  },
+                  "pct": {
+                    "display": ".500"
+                  },
+                  "gb": {
+                    "display": "4"
+                  },
+                  "rs": {
+                    "display": "161"
+                  },
+                  "ra": {
+                    "display": "177"
+                  },
+                  "diff": {
+                    "display": "-16",
+                    "tone": "bad"
+                  },
+                  "streak": {
+                    "display": "L1"
+                  },
+                  "pace": {
+                    "display": "30–30",
+                    "hint": "At this rate over a 60-game schedule"
+                  },
+                  "magic": {
+                    "display": "–",
+                    "hint": "Shown only for a division leader"
+                  }
+                },
+                "sort": {
+                  "team": "Club 1 N",
+                  "w": 15,
+                  "l": 15,
+                  "pct": 0.5,
+                  "gb": 4,
+                  "rs": 161,
+                  "ra": 177,
+                  "diff": -16,
+                  "streak": -1,
+                  "pace": 30,
+                  "magic": null
+                },
+                "player": null,
+                "detail": [],
+                "actions": [
+                  {
+                    "text": {
+                      "display": "Open the Club 1 N"
+                    },
+                    "open": {
+                      "kind": "club",
+                      "teamId": 1
+                    }
+                  }
+                ],
+                "club": {
+                  "teamId": 1,
+                  "name": "Club 1 N",
+                  "abbr": "C1",
+                  "ours": true,
+                  "open": {
+                    "kind": "club",
+                    "teamId": 1
+                  }
+                },
+                "ours": true
+              },
+              {
+                "id": "club-2",
+                "cells": {
+                  "team": {
+                    "display": "Club 2 N"
+                  },
+                  "w": {
+                    "display": "15"
+                  },
+                  "l": {
+                    "display": "15"
+                  },
+                  "pct": {
+                    "display": ".500"
+                  },
+                  "gb": {
+                    "display": "4"
+                  },
+                  "rs": {
+                    "display": "150"
+                  },
+                  "ra": {
+                    "display": "148"
+                  },
+                  "diff": {
+                    "display": "+2",
+                    "tone": "good"
+                  },
+                  "streak": {
+                    "display": "W1"
+                  },
+                  "pace": {
+                    "display": "30–30",
+                    "hint": "At this rate over a 60-game schedule"
+                  },
+                  "magic": {
+                    "display": "–",
+                    "hint": "Shown only for a division leader"
+                  }
+                },
+                "sort": {
+                  "team": "Club 2 N",
+                  "w": 15,
+                  "l": 15,
+                  "pct": 0.5,
+                  "gb": 4,
+                  "rs": 150,
+                  "ra": 148,
+                  "diff": 2,
+                  "streak": 1,
+                  "pace": 30,
+                  "magic": null
+                },
+                "player": null,
+                "detail": [],
+                "actions": [
+                  {
+                    "text": {
+                      "display": "Open the Club 2 N"
+                    },
+                    "open": {
+                      "kind": "club",
+                      "teamId": 2
+                    }
+                  }
+                ],
+                "club": {
+                  "teamId": 2,
+                  "name": "Club 2 N",
+                  "abbr": "C2",
+                  "ours": false,
+                  "open": {
+                    "kind": "club",
+                    "teamId": 2
+                  }
+                }
+              },
+              {
+                "id": "club-4",
+                "cells": {
+                  "team": {
+                    "display": "Club 4 N"
+                  },
+                  "w": {
+                    "display": "11"
+                  },
+                  "l": {
+                    "display": "19"
+                  },
+                  "pct": {
+                    "display": ".367"
+                  },
+                  "gb": {
+                    "display": "8"
+                  },
+                  "rs": {
+                    "display": "141"
+                  },
+                  "ra": {
+                    "display": "153"
+                  },
+                  "diff": {
+                    "display": "-12",
+                    "tone": "bad"
+                  },
+                  "streak": {
+                    "display": "L1"
+                  },
+                  "pace": {
+                    "display": "22–38",
+                    "hint": "At this rate over a 60-game schedule"
+                  },
+                  "magic": {
+                    "display": "–",
+                    "hint": "Shown only for a division leader"
+                  }
+                },
+                "sort": {
+                  "team": "Club 4 N",
+                  "w": 11,
+                  "l": 19,
+                  "pct": 0.36666666666666664,
+                  "gb": 8,
+                  "rs": 141,
+                  "ra": 153,
+                  "diff": -12,
+                  "streak": -1,
+                  "pace": 22,
+                  "magic": null
+                },
+                "player": null,
+                "detail": [],
+                "actions": [
+                  {
+                    "text": {
+                      "display": "Open the Club 4 N"
+                    },
+                    "open": {
+                      "kind": "club",
+                      "teamId": 4
+                    }
+                  }
+                ],
+                "club": {
+                  "teamId": 4,
+                  "name": "Club 4 N",
+                  "abbr": "C4",
+                  "ours": false,
+                  "open": {
+                    "kind": "club",
+                    "teamId": 4
+                  }
+                }
+              }
+            ],
+            "empty": {
+              "display": "No clubs in this division."
+            }
+          },
+          "note": null
+        }
+      ]
+    }
+  ],
+  "race": [
+    {
+      "text": "East Division",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Place",
+            "value": "T-2nd of 4 in the division by games back, level with 1 other club"
+          },
+          {
+            "label": "Games back",
+            "value": "4"
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The standings",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 2,
+        "unit": "place",
+        "display": "T-2nd of 4 · 4 games back"
+      }
+    }
+  ],
+  "staffRead": {
+    "title": {
+      "display": "The staff's rough read",
+      "hint": "A rough model, never fitted on this save: open it for what it uses"
+    },
+    "odds": {
+      "text": "The staff's rough read: about 6% to reach the postseason",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Record",
+            "value": "15–15 in 30 games"
+          },
+          {
+            "label": "Runs",
+            "value": "161 scored, 177 allowed (-16)"
+          },
+          {
+            "label": "Strength read from the runs",
+            "value": "A .457 club (Pythagorean expectation, exponent 1.83): over a season a club's runs say more about what comes next than its record does."
+          },
+          {
+            "label": "The rival",
+            "value": "A .520 club, a stated strength never fitted on this save, holding the place in question."
+          },
+          {
+            "label": "The gap",
+            "value": "4 games to close"
+          },
+          {
+            "label": "Games left",
+            "value": "30"
+          },
+          {
+            "label": "How the chance is worked out",
+            "value": "Over the games left, the difference in wins between the two clubs is read as roughly normal; it is shown between 1% and 99% while games are left."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The deadline read",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "Injuries: who is hurt, and for how long.",
+          "The roster as it stands: the read sees only the runs this season.",
+          "The strength of the schedule left.",
+          "More than one rival: the race is read as two clubs.",
+          "Trades still to come."
+        ],
+        "wouldChange": [
+          "A read built from the roster, planned to replace this one."
+        ],
+        "lean": null,
+        "certainty": "provisional",
+        "called": "A starting number, not yet fitted on this save",
+        "stamp": "Provisional: a stated model, never fitted on this save"
+      },
+      "links": [],
+      "value": {
+        "n": 0.06349245048731718,
+        "unit": "share",
+        "display": "6%"
+      }
+    },
+    "posture": {
+      "text": "The staff's rough read at the deadline: sell and look to next year",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "The chance it rests on",
+            "value": "6%"
+          },
+          {
+            "label": "Where the lines fall",
+            "value": "75% or better reads as buy; 55% lean toward buying; 25% hold; 10% lean toward selling; below that, sell. Lines stated by the staff, not fitted."
+          },
+          {
+            "label": "The deadline",
+            "value": "86 days to the trade deadline"
+          },
+          {
+            "label": "Record",
+            "value": "15–15 in 30 games"
+          },
+          {
+            "label": "Runs",
+            "value": "161 scored, 177 allowed (-16)"
+          },
+          {
+            "label": "Strength read from the runs",
+            "value": "A .457 club (Pythagorean expectation, exponent 1.83): over a season a club's runs say more about what comes next than its record does."
+          },
+          {
+            "label": "The rival",
+            "value": "A .520 club, a stated strength never fitted on this save, holding the place in question."
+          },
+          {
+            "label": "The gap",
+            "value": "4 games to close"
+          },
+          {
+            "label": "Games left",
+            "value": "30"
+          },
+          {
+            "label": "How the chance is worked out",
+            "value": "Over the games left, the difference in wins between the two clubs is read as roughly normal; it is shown between 1% and 99% while games are left."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The deadline read",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "Injuries: who is hurt, and for how long.",
+          "The roster as it stands: the read sees only the runs this season.",
+          "The strength of the schedule left.",
+          "More than one rival: the race is read as two clubs.",
+          "Trades still to come."
+        ],
+        "wouldChange": [
+          "A read built from the roster, planned to replace this one."
+        ],
+        "lean": null,
+        "certainty": "provisional",
+        "called": "A starting number, not yet fitted on this save",
+        "stamp": "Provisional: a stated model, never fitted on this save"
+      },
+      "links": []
+    },
+    "reasons": [
+      {
+        "display": "15–15, 161 runs scored and 177 allowed (-16)"
+      },
+      {
+        "display": "The runs fit about 14 wins so far; the club has 15"
+      },
+      {
+        "display": "4 games back in the division, and this league has no wild card"
+      },
+      {
+        "display": "30 games left"
+      },
+      {
+        "display": "86 days to the trade deadline"
+      }
+    ],
+    "caveat": {
+      "display": "A rough read: it leaves out injuries, the roster, the schedule left and every rival but one.",
+      "tone": "caution"
+    }
+  },
+  "note": {
+    "text": "How to read the standings",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "W",
+          "value": "Wins."
+        },
+        {
+          "label": "L",
+          "value": "Losses."
+        },
+        {
+          "label": "Win %",
+          "value": "Winning percentage: wins divided by games played."
+        },
+        {
+          "label": "GB",
+          "value": "Games behind the division leader. One game back means winning one more and having the leader lose one would tie it."
+        },
+        {
+          "label": "RS",
+          "value": "Runs scored across the season so far."
+        },
+        {
+          "label": "RA",
+          "value": "Runs allowed across the season so far."
+        },
+        {
+          "label": "Run diff",
+          "value": "Run differential — runs scored minus runs allowed. Over a full season it predicts future record better than the current record does, so a good team with a bad record usually improves."
+        },
+        {
+          "label": "Streak",
+          "value": "Current streak. W3 means three straight wins, L2 two straight losses."
+        },
+        {
+          "label": "Pace",
+          "value": "The record this club is on course for if it keeps playing at its current rate over the full schedule. It is arithmetic, not a projection: it takes no account of who is left to play, injuries, or trades."
+        },
+        {
+          "label": "Magic #",
+          "value": "Magic number: wins by this club plus losses by the closest chaser that would clinch the division. Shown only for a club that is leading; OOTP reports it for the leader alone."
+        },
+        {
+          "label": "Order",
+          "value": "Each division in OOTP's own order, its tiebreakers respected."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "The standings",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "empty": null
+}
