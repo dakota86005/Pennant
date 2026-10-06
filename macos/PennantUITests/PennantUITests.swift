@@ -371,6 +371,26 @@ final class PennantUITests: XCTestCase {
         if sidebar.exists { sidebar.scroll(byDeltaX: 0, deltaY: 2000) }
     }
 
+    /// Scrolls a report to its top from its leading side (never its middle, which the inspector may cover) and waits
+    /// until the element at its top stops moving, so nothing is measured mid-scroll.
+    @MainActor
+    private func reportAtTop(_ report: XCUIElement, top: XCUIElement) {
+        let leading = report.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.5))
+        for _ in 0..<3 {
+            leading.scroll(byDeltaX: 0, deltaY: 5000)
+            var last = top.exists ? top.frame : .null
+            var still = 0
+            for _ in 0..<25 where still < 3 {
+                _ = top.waitForExistence(timeout: 0.2)
+                let now = top.exists ? top.frame : .null
+                still = now == last ? still + 1 : 0
+                last = now
+            }
+            if still >= 3 { return }
+        }
+        XCTFail("the report did not come to rest at its top")
+    }
+
     @MainActor
     private func quitCleanly(_ app: XCUIApplication) {
         app.typeKey("q", modifierFlags: .command)
@@ -763,8 +783,13 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(element(app, "inspector.evidence").waitForExistence(timeout: 10), "the pinned claim did not reach the inspector")
         sidebarAtTop(app)
         // The report back at its top: the click scrolled it, and text passing under the toolbar's fading edge is not
-        // text the GM reads there
-        element(app, "detail.frontOffice.morningReport").scroll(byDeltaX: 0, deltaY: 5000)
+        // text the GM reads there. Scrolled at its leading side and waited for until it is still (N12 Track B: the
+        // intermittent finding, a report line just above the inspector's top edge, under the toolbar, read at 1.0:1).
+        // A scroll at the report's middle lands on the inspector wherever the system lays it over the report's trailing
+        // side, so the report stayed where the claim's click had scrolled it; and an audit taken while the scroll still
+        // moved measured a line passing under the toolbar. Neither is the line's colour: the report is put at its top
+        // and held still before the audit, so the set-aside for text under the inspector stays as narrow as it was.
+        reportAtTop(element(app, "detail.frontOffice.morningReport"), top: element(app, "masthead"))
         keep(app.windows.firstMatch.screenshot(), named: "design-inspector-evidence")
         try audit(app, named: "accessibility-audit-design-inspector")
         app.typeKey("i", modifierFlags: [.command, .option])
@@ -1164,6 +1189,106 @@ final class PennantUITests: XCTestCase {
                 if round == 1, clubhouse.contains(view.view) {
                     try audit(app, named: "accessibility-audit-n9-narrow-\(view.view)")
                 }
+            }
+        }
+        quitCleanly(app)
+    }
+
+    /// League Office's and Scouting's views at 900 × 700 with the inspector open (N12 Track B; BEHAVIOR_CASES.md "Pennant
+    /// for Mac", `testLeagueOfficeNarrowWindow`): Standings, Leaders, Org Comparison, Franchise History, Us vs Them, the
+    /// Draft Board and Player Search, round after round, a row chosen in each table, another division, category and
+    /// opponent asked, the franchise's seasons and record, a search typed, and each view audited on its first visit.
+    /// Nothing may stop the app, and every table keeps at least `TablePane.tableMinimum` (120 pt) of height.
+    @MainActor
+    func testLeagueOfficeNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30), "the Morning Report did not load")
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in
+            XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
+            let front = NSWorkspace.shared.frontmostApplication
+            if let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
+                let note = "[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back"
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
+                app.activate()
+                _ = app.wait(for: .runningForeground, timeout: 5)
+            }
+        }
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        let starting = { (prefix: String) in
+            app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch
+        }
+        // Each view, and what shows it drew: a served table (identifier prefix; a row is chosen in it) or another element
+        let views: [(dept: String, view: String, shows: String, table: Bool)] = [
+            ("league", "standings", "table.standings.", true), ("league", "leaders", "table.leaders.", true),
+            ("league", "orgComparison", "table.orgComparison.clubs", true), ("league", "franchiseHistory", "franchise.part", false),
+            ("league", "usVsThem", "table.usVsThem.", true), ("scouting", "draftBoard", "draftBoard.", false),
+            ("scouting", "playerSearch", "table.playerSearch.results.", true),
+        ]
+        for round in 1...3 {
+            for view in views {
+                let item = element(app, "sidebar.\(view.dept).\(view.view)")
+                let sidebar = element(app, "sidebar")
+                up("before \(view.view), round \(round)")
+                if !item.isHittable { reveal(item, in: sidebar) }
+                XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                within(item, in: sidebar)
+                up("before \(view.view), round \(round)")
+                item.click()
+                let shown = starting(view.shows)
+                if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12b-narrow-900-missing-\(view.view)") }
+                XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
+                if view.table {
+                    XCTAssertGreaterThanOrEqual(shown.frame.height, 120, "round \(round): \(view.view)'s table is \(shown.frame.height) pt tall")
+                    let row = firstRow(of: shown)
+                    XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                    leading(row)
+                    XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s row showed no detail")
+                }
+                switch view.view {
+                case "franchiseHistory":
+                    // The record's chart, then every season as a table, and back to the record
+                    let parts = element(app, "franchise.part").radioButtons
+                    parts.element(boundBy: 0).click()
+                    XCTAssertTrue(element(app, "franchise.chart").waitForExistence(timeout: 10), "round \(round): the record chart did not draw")
+                    parts.element(boundBy: 1).click()
+                    let seasons = element(app, "table.franchise.seasons")
+                    XCTAssertTrue(seasons.waitForExistence(timeout: 10), "round \(round): the seasons did not draw")
+                    XCTAssertGreaterThanOrEqual(seasons.frame.height, 120, "round \(round): the seasons' table is \(seasons.frame.height) pt tall")
+                    leading(firstRow(of: seasons))
+                case "usVsThem":
+                    // Another club, asked of the server and drawn
+                    let menu = element(app, "usVsThem.opponent")
+                    if menu.waitForExistence(timeout: 5) {
+                        menu.click()
+                        let other = app.menuItems.element(boundBy: 1)
+                        if other.waitForExistence(timeout: 5) { other.click() } else { app.typeKey(.escape, modifierFlags: []) }
+                        XCTAssertTrue(starting("table.usVsThem.").waitForExistence(timeout: 20), "round \(round): another opponent did not draw")
+                    }
+                case "standings":
+                    XCTAssertTrue(element(app, "standings.division").exists, "round \(round): Standings offers no division")
+                case "playerSearch":
+                    // A name typed in the toolbar's field is asked of the server, and the results drawn again
+                    let field = app.searchFields.firstMatch
+                    if field.waitForExistence(timeout: 5) {
+                        field.click()
+                        field.typeText("a")
+                        XCTAssertTrue(starting("table.playerSearch.results.").waitForExistence(timeout: 20), "round \(round): the search did not draw")
+                        field.typeKey("a", modifierFlags: .command)
+                        field.typeKey(.delete, modifierFlags: [])
+                    }
+                default:
+                    break
+                }
+                if round == 1 { keep(window.screenshot(), named: "n12b-narrow-900-\(view.view)") }
+                up("\(view.view), round \(round)")
+                if round == 1 { try audit(app, named: "accessibility-audit-n12b-narrow-\(view.view)") }
             }
         }
         quitCleanly(app)

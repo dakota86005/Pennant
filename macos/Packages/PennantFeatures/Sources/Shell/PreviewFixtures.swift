@@ -245,6 +245,28 @@ nonisolated public enum PreviewFixtures {
         )
     }
 
+    /// League Office's captured views (`getLeague…`, N12 Track B): Standings, Leaders, Org Comparison, Franchise History
+    /// and Us vs Them as it opens.
+    @MainActor
+    public static var leagueOffice: LeagueOfficeStore {
+        .preview(
+            standings: decode(Components.Schemas.LeagueStandingsView.self, "getLeagueStandings"),
+            leaders: decode(Components.Schemas.LeagueLeadersView.self, "getLeagueLeaders"),
+            orgComparison: decode(Components.Schemas.LeagueOrgComparisonView.self, "getLeagueOrgComparison"),
+            franchise: decode(Components.Schemas.LeagueFranchiseView.self, "getLeagueFranchiseHistory"),
+            usVsThem: decode(Components.Schemas.LeagueUsVsThemView.self, "getLeagueUsVsThem")
+        )
+    }
+
+    /// Scouting's captured views (`getScouting…`, N12 Track B): the Draft Board and Player Search as it opens.
+    @MainActor
+    public static var scouting: ScoutingStore {
+        .preview(
+            draftBoard: decode(Components.Schemas.ScoutingDraftBoardView.self, "getScoutingDraftBoard"),
+            search: decode(Components.Schemas.ScoutingPlayerSearchView.self, "getScoutingPlayerSearch")
+        )
+    }
+
     /// The captured search answer for "club".
     public static var search: Components.Schemas.SearchAnswer? {
         decode(Components.Schemas.SearchAnswer.self, "search")
@@ -335,7 +357,9 @@ nonisolated public enum PreviewFixtures {
             farm: configured ? (farm ?? Self.farm) : nil,
             majorLeague: configured ? majorLeague : nil,
             clubhouse: configured ? clubhouse : nil,
-            players: configured ? (players ?? Self.players) : nil
+            players: configured ? (players ?? Self.players) : nil,
+            leagueOffice: configured ? leagueOffice : nil,
+            scouting: configured ? scouting : nil
         )
     }
 

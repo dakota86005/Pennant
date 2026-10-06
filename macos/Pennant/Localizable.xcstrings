@@ -103,6 +103,9 @@
     "Card": {
       "extractionState": "manual"
     },
+    "Category": {
+      "extractionState": "manual"
+    },
     "Ceiling": {
       "extractionState": "manual"
     },
@@ -190,6 +193,9 @@
       "extractionState": "manual"
     },
     "Dismiss": {
+      "extractionState": "manual"
+    },
+    "Division": {
       "extractionState": "manual"
     },
     "Draft Board": {
@@ -385,6 +391,9 @@
     "Name": {
       "extractionState": "manual"
     },
+    "Name, position, level, club…": {
+      "extractionState": "manual"
+    },
     "Need": {
       "extractionState": "manual"
     },
@@ -434,6 +443,9 @@
     "Open": {
       "extractionState": "manual"
     },
+    "Open Club": {
+      "extractionState": "manual"
+    },
     "Open Decision": {
       "extractionState": "manual"
     },
@@ -441,6 +453,9 @@
       "extractionState": "manual"
     },
     "Open in %@": {
+      "extractionState": "manual"
+    },
+    "Opponent": {
       "extractionState": "manual"
     },
     "Or choose a folder": {
@@ -587,6 +602,9 @@
       "extractionState": "manual"
     },
     "Select a player to see his assignment.": {
+      "extractionState": "manual"
+    },
+    "Select a row to see more.": {
       "extractionState": "manual"
     },
     "Select a row to see the staff's read.": {

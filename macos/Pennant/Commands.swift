@@ -17,6 +17,8 @@ struct PennantCommands: Commands {
     @FocusedValue(\.followable) private var followable
     /// The player whose name, row or window has the focus (N11: the Player menu acts on him).
     @FocusedValue(\.player) private var player
+    /// N12: the players chosen in a served table, so Compare takes several at once
+    @FocusedValue(\.chosenPlayers) private var chosenPlayers
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
@@ -95,9 +97,12 @@ struct PennantCommands: Commands {
             Button("Open Player") { if let player { openWindow(value: player) } }
                 .keyboardShortcut("o", modifiers: [.command, .option])
                 .disabled(player == nil)
-            Button("Compare") { if let player { CompareRouter.shared.compare([player]) { openWindow(value: $0) } } }
-                .keyboardShortcut("c", modifiers: [.command, .option])
-                .disabled(player == nil)
+            Button("Compare") {
+                let chosen = chosenPlayers ?? player.map { [$0] } ?? []
+                if !chosen.isEmpty { CompareRouter.shared.compare(chosen) { openWindow(value: $0) } }
+            }
+            .keyboardShortcut("c", modifiers: [.command, .option])
+            .disabled(chosenPlayers == nil && player == nil)
         }
 
         CommandMenu("Club") {

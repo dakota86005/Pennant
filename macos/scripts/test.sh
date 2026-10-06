@@ -159,6 +159,8 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testPlayerWindowRestored configured '{"theme":"light"}'
   prepare_ui_test testPlayerNarrowWindow configured '{"theme":"light"}'
   prepare_ui_test testPlayerNoteKeptOnLeaving configured '{"theme":"light"}'
+  # N12 Track B: League Office's and Scouting's views at 900 × 700 with the inspector open
+  prepare_ui_test testLeagueOfficeNarrowWindow configured '{"theme":"light"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
   if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi
