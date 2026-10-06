@@ -1,0 +1,943 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Coaching Staff"
+  },
+  "byline": {
+    "display": "Prepared by the front office · Through May 5, 2040"
+  },
+  "lede": {
+    "text": "The club's coaches as the save has them, and who on the farm out-rates the man in a major-league seat.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "The ratings",
+          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+        },
+        {
+          "label": "What it is not",
+          "value": "A call on who to hire or fire: the ratings are OOTP's, as exported, and the decision is yours."
+        }
+      ],
+      "source": {
+        "department": "philosophy",
+        "specialist": "The save's staff",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A newer export."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "sections": [
+    {
+      "id": "major",
+      "title": {
+        "display": "Major League Staff"
+      },
+      "summary": {
+        "display": "5 seats filled"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "role",
+            "title": {
+              "display": "Role"
+            },
+            "numeric": false
+          },
+          {
+            "id": "coach",
+            "title": {
+              "display": "Coach"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "experience",
+            "title": {
+              "display": "Experience"
+            },
+            "numeric": true
+          },
+          {
+            "id": "contract",
+            "title": {
+              "display": "Contract"
+            },
+            "numeric": false
+          },
+          {
+            "id": "ratings",
+            "title": {
+              "display": "Ratings"
+            },
+            "numeric": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "major-5011",
+            "cells": {
+              "role": {
+                "display": "Manager"
+              },
+              "coach": {
+                "display": "Dale Cole"
+              },
+              "age": {
+                "display": "46"
+              },
+              "experience": {
+                "display": "6 years"
+              },
+              "contract": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              },
+              "ratings": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              }
+            },
+            "sort": {
+              "role": 0,
+              "coach": "Dale Cole",
+              "age": 46,
+              "experience": 6,
+              "contract": null,
+              "ratings": null
+            },
+            "player": null,
+            "detail": [
+              {
+                "title": {
+                  "display": "Manager · Dale Cole"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [
+                  {
+                    "text": "Handle Players: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Handle Players",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Handle Players isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Handle Veterans: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Handle Veterans",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Handle Veterans isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Handle Rookies: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Handle Rookies",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Handle Rookies isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  }
+                ],
+                "lines": [],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "major-5010",
+            "cells": {
+              "role": {
+                "display": "General Manager"
+              },
+              "coach": {
+                "display": "Morgan Brock"
+              },
+              "age": {
+                "display": "45"
+              },
+              "experience": {
+                "display": "5 years"
+              },
+              "contract": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              },
+              "ratings": {
+                "display": "No coaching ratings for this seat",
+                "tone": "unknown"
+              }
+            },
+            "sort": {
+              "role": 1,
+              "coach": "Morgan Brock",
+              "age": 45,
+              "experience": 5,
+              "contract": null,
+              "ratings": null
+            },
+            "player": null,
+            "detail": [
+              {
+                "title": {
+                  "display": "General Manager · Morgan Brock"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [],
+                "lines": [],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "major-5012",
+            "cells": {
+              "role": {
+                "display": "Bench Coach"
+              },
+              "coach": {
+                "display": "Rafael Dunn"
+              },
+              "age": {
+                "display": "47"
+              },
+              "experience": {
+                "display": "7 years"
+              },
+              "contract": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              },
+              "ratings": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              }
+            },
+            "sort": {
+              "role": 2,
+              "coach": "Rafael Dunn",
+              "age": 47,
+              "experience": 7,
+              "contract": null,
+              "ratings": null
+            },
+            "player": null,
+            "detail": [
+              {
+                "title": {
+                  "display": "Bench Coach · Rafael Dunn"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [
+                  {
+                    "text": "Teach Hitting: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Teach Hitting",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Teach Hitting isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Teach Pitching: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Teach Pitching",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Teach Pitching isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  }
+                ],
+                "lines": [],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "major-5013",
+            "cells": {
+              "role": {
+                "display": "Head Scout"
+              },
+              "coach": {
+                "display": "Terry Ellis"
+              },
+              "age": {
+                "display": "48"
+              },
+              "experience": {
+                "display": "8 years"
+              },
+              "contract": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              },
+              "ratings": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              }
+            },
+            "sort": {
+              "role": 3,
+              "coach": "Terry Ellis",
+              "age": 48,
+              "experience": 8,
+              "contract": null,
+              "ratings": null
+            },
+            "player": null,
+            "detail": [
+              {
+                "title": {
+                  "display": "Head Scout · Terry Ellis"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [
+                  {
+                    "text": "Scout Majors: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Scout Majors",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Scout Majors isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Scout Minors: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Scout Minors",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Scout Minors isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Scout Amateurs: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Scout Amateurs",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Scout Amateurs isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Scout Intl: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Scout Intl",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Scout Intl isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  }
+                ],
+                "lines": [],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          },
+          {
+            "id": "major-5014",
+            "cells": {
+              "role": {
+                "display": "Team Doctor"
+              },
+              "coach": {
+                "display": "Ana Frey"
+              },
+              "age": {
+                "display": "49"
+              },
+              "experience": {
+                "display": "9 years"
+              },
+              "contract": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              },
+              "ratings": {
+                "display": "Not in the export",
+                "tone": "unknown"
+              }
+            },
+            "sort": {
+              "role": 4,
+              "coach": "Ana Frey",
+              "age": 49,
+              "experience": 9,
+              "contract": null,
+              "ratings": null
+            },
+            "player": null,
+            "detail": [
+              {
+                "title": {
+                  "display": "Team Doctor · Ana Frey"
+                },
+                "player": null,
+                "chips": [],
+                "claims": [
+                  {
+                    "text": "Heal Arms: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Heal Arms",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Heal Arms isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Heal Legs: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Heal Legs",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Heal Legs isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Heal Back: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Heal Back",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Heal Back isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Prevent Arm Inj.: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Prevent Arm Inj.",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Prevent Arm Inj. isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  },
+                  {
+                    "text": "Prevent Leg Inj.: not known",
+                    "tone": "unknown",
+                    "basis": {
+                      "because": [
+                        {
+                          "label": "Prevent Leg Inj.",
+                          "value": "Not in the export"
+                        },
+                        {
+                          "label": "The scale",
+                          "value": "OOTP rates coaches on its own 1–200 scale; higher is better. These are the export's figures as stated."
+                        }
+                      ],
+                      "source": {
+                        "department": "philosophy",
+                        "specialist": "The save's staff",
+                        "asOf": null,
+                        "gameDate": "2040-05-05"
+                      },
+                      "unknown": [
+                        "Prevent Leg Inj. isn't in the export for him."
+                      ],
+                      "wouldChange": [
+                        "A newer export."
+                      ],
+                      "lean": null,
+                      "certainty": "fact",
+                      "called": "A fact from the export"
+                    },
+                    "links": []
+                  }
+                ],
+                "lines": [],
+                "collapsed": false
+              }
+            ],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "No major-league staff in the export."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "ready",
+      "title": {
+        "display": "Ready for a Job Up Here"
+      },
+      "summary": null,
+      "table": {
+        "columns": [
+          {
+            "id": "coach",
+            "title": {
+              "display": "Coach"
+            },
+            "numeric": false
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": false
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "seat",
+            "title": {
+              "display": "Could take over as"
+            },
+            "numeric": false
+          },
+          {
+            "id": "rating",
+            "title": {
+              "display": "Rating"
+            },
+            "numeric": true
+          },
+          {
+            "id": "incumbent",
+            "title": {
+              "display": "Incumbent"
+            },
+            "numeric": false
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "Not known: the export doesn't rate coaches for manager, pitching coach, hitting coach seats.",
+          "tone": "unknown"
+        }
+      },
+      "note": {
+        "text": "Records are context and left out of the order: a coach doesn't pick his roster.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "How the list is made",
+              "value": "OOTP rates every coach for every seat, not only the one he holds, so each farm coach is measured against whoever has the major-league job at each seat, including seats he doesn't hold now. A gap of 10 or more is listed, largest first."
+            }
+          ],
+          "source": {
+            "department": "philosophy",
+            "specialist": "The save's staff",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A newer export."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      }
+    },
+    {
+      "id": "farm",
+      "title": {
+        "display": "Farm System Staff"
+      },
+      "summary": {
+        "display": "0 affiliates"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "role",
+            "title": {
+              "display": "Role"
+            },
+            "numeric": false
+          },
+          {
+            "id": "coach",
+            "title": {
+              "display": "Coach"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "teachHitting",
+            "title": {
+              "display": "Teach Hitting"
+            },
+            "numeric": true
+          },
+          {
+            "id": "teachPitching",
+            "title": {
+              "display": "Teach Pitching"
+            },
+            "numeric": true
+          },
+          {
+            "id": "handleRookies",
+            "title": {
+              "display": "Handle Rookies"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "No affiliate staff in the export."
+        }
+      },
+      "note": null
+    }
+  ],
+  "empty": null
+}

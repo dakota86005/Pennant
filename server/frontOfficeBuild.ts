@@ -25,6 +25,7 @@ import { assemble, type BuildContext, type DepartmentAnswer, type DepartmentCont
 import type { FarmDecisionRequest, FarmViewsRequest } from './farmViewsBuild.js';
 import type { PlayerDossiersRequest } from './playerDossierBuild.js';
 import type { ClubhouseAskRequest, ClubhouseViewsRequest } from './clubhouseViewsBuild.js';
+import type { TradeDeskRequest } from './tradeDeskBuild.js';
 import { farmMaterial } from './presentation/frontOffice/farm.js';
 import { financeMaterial } from './presentation/frontOffice/finance.js';
 import { majorLeagueMaterial, type MajorLeagueInput } from './presentation/frontOffice/majorLeague.js';
@@ -287,4 +288,6 @@ export type WorkerJob =
   | { kind: 'clubhouseViews'; request: ClubhouseViewsRequest }
   | { kind: 'clubhouseAsk'; request: ClubhouseAskRequest }
   // N11: the player window's dossiers for our club's players, read ahead after an import (`playerDossierBuild.ts`)
-  | { kind: 'playerDossiers'; request: PlayerDossiersRequest };
+  | { kind: 'playerDossiers'; request: PlayerDossiersRequest }
+  // N12 Track C: the Trade Desk for our club, read ahead after an import (`tradeDeskBuild.ts`)
+  | { kind: 'tradeDesk'; request: TradeDeskRequest };

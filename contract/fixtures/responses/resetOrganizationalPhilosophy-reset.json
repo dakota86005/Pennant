@@ -1,0 +1,811 @@
+{
+  "view": {
+    "orgId": 1,
+    "importStamp": null,
+    "reportStamp": "rstamp",
+    "title": {
+      "display": "Organizational Philosophy"
+    },
+    "byline": {
+      "display": "Prepared by the front office · Through May 5, 2040"
+    },
+    "lede": {
+      "text": "How this organization weighs competing priorities. They order the choices your staff already finds sound; they never make a move allowed or rule one out.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "What they do",
+            "value": "Once Player Development, Player Rights and the operations staff have said which choices are sound, these settings put those choices in the club's order of preference, and read Player Value's figures through the club's eyes beside the neutral ones."
+          },
+          {
+            "label": "What they never do",
+            "value": "Decide whether an assignment is developmentally sound, what a player's rights allow, or what a player is worth: those answers come first and stay the same whatever is set here."
+          }
+        ],
+        "source": {
+          "department": "philosophy",
+          "specialist": "Organizational Philosophy",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "How Pennant uses the philosophy: stated, not fitted"
+      },
+      "links": []
+    },
+    "identity": {
+      "headline": {
+        "display": "Balanced operation"
+      },
+      "tags": [
+        {
+          "display": "Balanced"
+        }
+      ],
+      "summary": {
+        "text": "This organization keeps a broadly balanced approach without a strongly expressed lean.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Read from",
+              "value": "Every setting is near neutral."
+            },
+            {
+              "label": "How it is read",
+              "value": "A setting at least 10 from 50 is expressed; a combined identity needs each of its settings well past neutral. Only these settings are read: never the club's record, its odds or where it stands."
+            }
+          ],
+          "source": {
+            "department": "philosophy",
+            "specialist": "Organizational Philosophy",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A change to these settings."
+          ],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "How the identity is read: stated, not fitted"
+        },
+        "links": []
+      },
+      "nuance": {
+        "display": "Most other settings stay near neutral, so this is a focused philosophy rather than a strongly prescriptive one."
+      }
+    },
+    "source": {
+      "title": {
+        "display": "Who sets it"
+      },
+      "mode": {
+        "display": "Set by you"
+      },
+      "text": {
+        "display": "You set the club's philosophy directly. Letting the staff you hire shape it comes in a later version."
+      }
+    },
+    "comparables": {
+      "title": {
+        "display": "Comparable Baseball Operations"
+      },
+      "lede": {
+        "display": "Clubs from baseball history whose roster-building tendencies sit nearest the philosophy you have set."
+      },
+      "clubs": [
+        {
+          "id": "lad2023",
+          "name": {
+            "display": "2023 Los Angeles Dodgers"
+          },
+          "match": {
+            "display": "Close"
+          },
+          "description": {
+            "display": "A sustained contender blending stars with organizational depth, internal development, flexible players and a steady prospect pipeline."
+          },
+          "shared": null
+        },
+        {
+          "id": "chc2016",
+          "name": {
+            "display": "2016 Chicago Cubs"
+          },
+          "match": {
+            "display": "Close"
+          },
+          "description": {
+            "display": "A young, controllable contender with depth and versatility that grew more willing to spend future value once the window opened."
+          },
+          "shared": null
+        },
+        {
+          "id": "nyy2020",
+          "name": {
+            "display": "2020 New York Yankees"
+          },
+          "match": {
+            "display": "Some overlap"
+          },
+          "description": {
+            "display": "A star-heavy perennial contender comfortable with major payroll commitments while still drawing value from homegrown players."
+          },
+          "shared": null
+        }
+      ],
+      "note": {
+        "text": "Illustrations of a style, not claims that these clubs held such settings.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "How they are compared",
+              "value": "Closest first, by how far your settings sit from each club's on the tendencies it is known for; the words say how near (\"Very close\", \"Close\", \"Some overlap\", \"Loose overlap\"), and a shared tendency is one you and the club lean the same way on, strongly."
+            },
+            {
+              "label": "Which era",
+              "value": "The comparisons favor the free-agency era, where contract, control, payroll and farm strategies compare meaningfully."
+            }
+          ],
+          "source": {
+            "department": "philosophy",
+            "specialist": "Organizational Philosophy",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A change to these settings."
+          ],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "The club's philosophy settings"
+        },
+        "links": []
+      }
+    },
+    "groups": [
+      {
+        "id": "direction",
+        "title": {
+          "display": "Organizational Direction"
+        },
+        "description": {
+          "display": "The basic direction of the baseball operation: when wins matter most and how much uncertainty it will live with."
+        },
+        "dimensions": [
+          {
+            "id": "competitiveWindow",
+            "label": {
+              "display": "Competitive window"
+            },
+            "description": {
+              "display": "How strongly the organization weighs winning now against value in later seasons."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Build for the future"
+            },
+            "high": {
+              "display": "Maximize current wins"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "riskTolerance",
+            "label": {
+              "display": "Risk tolerance"
+            },
+            "description": {
+              "display": "Tolerance for uncertain projections, volatile players, injury risk and high-variance outcomes."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Prefer floor and certainty"
+            },
+            "high": {
+              "display": "Take on variance for upside"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          }
+        ]
+      },
+      {
+        "id": "financial",
+        "title": {
+          "display": "Financial Strategy"
+        },
+        "description": {
+          "display": "How the club spends and how much future flexibility matters."
+        },
+        "dimensions": [
+          {
+            "id": "payrollFlexibility",
+            "label": {
+              "display": "Payroll flexibility"
+            },
+            "description": {
+              "display": "How strongly guaranteed money in later seasons counts as a cost of its own."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Comfortable with commitments"
+            },
+            "high": {
+              "display": "Protect future flexibility"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "costEfficiency",
+            "label": {
+              "display": "Cost efficiency"
+            },
+            "description": {
+              "display": "How heavily what a player costs, against what he produces, weighs in a choice."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Pay for ability"
+            },
+            "high": {
+              "display": "Maximize value for the money"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          }
+        ]
+      },
+      {
+        "id": "valuation",
+        "title": {
+          "display": "Player Valuation"
+        },
+        "description": {
+          "display": "The traits the front office weighs more when comparing players."
+        },
+        "dimensions": [
+          {
+            "id": "teamControl",
+            "label": {
+              "display": "Team control"
+            },
+            "description": {
+              "display": "How much years of inexpensive or guaranteed club control add to a player's worth to the club."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Production matters most"
+            },
+            "high": {
+              "display": "Strong control premium"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "ageCurveSensitivity",
+            "label": {
+              "display": "Age-curve sensitivity"
+            },
+            "description": {
+              "display": "How strongly expected decline with age weighs on contracts and on a player's worth to the club."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Trust veterans"
+            },
+            "high": {
+              "display": "Discount aging aggressively"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "positionalScarcity",
+            "label": {
+              "display": "Positional scarcity"
+            },
+            "description": {
+              "display": "How much scarcity at catcher, shortstop, center field and other difficult roles adds."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Mostly position-neutral"
+            },
+            "high": {
+              "display": "Strong scarcity premium"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "upsidePreference",
+            "label": {
+              "display": "Upside preference"
+            },
+            "description": {
+              "display": "How much upside and projection count against established ability."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Prefer certainty"
+            },
+            "high": {
+              "display": "Prefer ceiling"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          }
+        ]
+      },
+      {
+        "id": "development",
+        "title": {
+          "display": "Player Development"
+        },
+        "description": {
+          "display": "How the organization treats prospect capital, and which sound moves it prefers for a prospect."
+        },
+        "dimensions": [
+          {
+            "id": "prospectPreservation",
+            "label": {
+              "display": "Prospect preservation"
+            },
+            "description": {
+              "display": "How reluctant the organization is to trade meaningful prospect capital."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Prospects are trade currency"
+            },
+            "high": {
+              "display": "Protect the farm"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "promotionAggressiveness",
+            "label": {
+              "display": "Promotion aggression"
+            },
+            "description": {
+              "display": "Among the moves Player Development finds sound for a prospect, how much the club prefers the quicker one."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Master each level"
+            },
+            "high": {
+              "display": "Challenge prospects quickly"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          }
+        ]
+      },
+      {
+        "id": "roster",
+        "title": {
+          "display": "Roster Construction"
+        },
+        "description": {
+          "display": "What kind of major-league roster the organization prefers to build."
+        },
+        "dimensions": [
+          {
+            "id": "defenseEmphasis",
+            "label": {
+              "display": "Defense emphasis"
+            },
+            "description": {
+              "display": "How strongly defense weighs in building the roster, against offense."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Bat-first"
+            },
+            "high": {
+              "display": "Glove-first"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "pitchingDepth",
+            "label": {
+              "display": "Pitching depth"
+            },
+            "description": {
+              "display": "How much the organization values spare starting and relief depth."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Concentrate pitching"
+            },
+            "high": {
+              "display": "Protect pitching inventory"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "rosterDepth",
+            "label": {
+              "display": "Roster depth"
+            },
+            "description": {
+              "display": "How strongly bench, bullpen, optionable depth and cover for injuries are valued."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "The top of the roster matters most"
+            },
+            "high": {
+              "display": "Depth matters greatly"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "starConcentration",
+            "label": {
+              "display": "Star concentration"
+            },
+            "description": {
+              "display": "Whether resources go to a few elite players or spread across the roster."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Balanced roster"
+            },
+            "high": {
+              "display": "Stars and supporting pieces"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          },
+          {
+            "id": "versatility",
+            "label": {
+              "display": "Versatility"
+            },
+            "description": {
+              "display": "How much playing several positions, and the roster flexibility it brings, adds to a player."
+            },
+            "value": 50,
+            "position": {
+              "display": "Balanced"
+            },
+            "low": {
+              "display": "Prefer specialists"
+            },
+            "high": {
+              "display": "Prefer flexible players"
+            },
+            "balanced": {
+              "display": "Balanced"
+            }
+          }
+        ]
+      }
+    ],
+    "policies": {
+      "title": {
+        "display": "Organizational Policies"
+      },
+      "description": {
+        "display": "Some choices are better stated as explicit policies than as numbers."
+      },
+      "items": [
+        {
+          "id": "agingContracts",
+          "label": {
+            "display": "Contracts into aging years"
+          },
+          "description": {
+            "display": "How willing the organization is to guarantee money into likely decline years."
+          },
+          "selected": "neutral",
+          "options": [
+            {
+              "value": "avoid",
+              "label": {
+                "display": "Avoid"
+              }
+            },
+            {
+              "value": "discourage",
+              "label": {
+                "display": "Discourage"
+              }
+            },
+            {
+              "value": "neutral",
+              "label": {
+                "display": "Neutral"
+              }
+            },
+            {
+              "value": "willing",
+              "label": {
+                "display": "Willing"
+              }
+            }
+          ]
+        },
+        {
+          "id": "arbitrationExtensions",
+          "label": {
+            "display": "Buying out arbitration"
+          },
+          "description": {
+            "display": "How strongly the club prefers early extensions that buy arbitration or free-agent seasons."
+          },
+          "selected": "selective",
+          "options": [
+            {
+              "value": "avoid",
+              "label": {
+                "display": "Avoid"
+              }
+            },
+            {
+              "value": "selective",
+              "label": {
+                "display": "Selective"
+              }
+            },
+            {
+              "value": "prefer",
+              "label": {
+                "display": "Prefer"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rentalAcquisitions",
+          "label": {
+            "display": "Rental acquisitions"
+          },
+          "description": {
+            "display": "How willing the club is to trade value for players with little club control left."
+          },
+          "selected": "contending",
+          "options": [
+            {
+              "value": "never",
+              "label": {
+                "display": "Never"
+              }
+            },
+            {
+              "value": "contending",
+              "label": {
+                "display": "Only while contending"
+              }
+            },
+            {
+              "value": "normal",
+              "label": {
+                "display": "Normal"
+              }
+            },
+            {
+              "value": "aggressive",
+              "label": {
+                "display": "Aggressive"
+              }
+            }
+          ]
+        },
+        {
+          "id": "salaryDumps",
+          "label": {
+            "display": "Salary-dump trades"
+          },
+          "description": {
+            "display": "How willing the organization is to spend prospect or player value to move payroll."
+          },
+          "selected": "neutral",
+          "options": [
+            {
+              "value": "avoid",
+              "label": {
+                "display": "Avoid"
+              }
+            },
+            {
+              "value": "neutral",
+              "label": {
+                "display": "Neutral"
+              }
+            },
+            {
+              "value": "willing",
+              "label": {
+                "display": "Willing"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "neutral": {
+      "title": {
+        "display": "Neutral isn't necessarily right."
+      },
+      "text": {
+        "display": "A setting of 50 means the club has no strong preference on that tradeoff. Move a setting because it reflects how you want this organization to operate."
+      },
+      "reset": {
+        "display": "Reset to Neutral"
+      },
+      "confirm": {
+        "display": "Reset N's philosophy to neutral?"
+      },
+      "confirmDetail": {
+        "display": "Every setting goes back to 50 and every policy to its default. You can undo it."
+      }
+    }
+  },
+  "said": {
+    "display": "Every setting is back to neutral."
+  },
+  "undoName": {
+    "display": "Reset to Neutral"
+  },
+  "undo": {
+    "dimensions": [
+      {
+        "id": "competitiveWindow",
+        "value": 50
+      },
+      {
+        "id": "riskTolerance",
+        "value": 50
+      },
+      {
+        "id": "payrollFlexibility",
+        "value": 50
+      },
+      {
+        "id": "costEfficiency",
+        "value": 50
+      },
+      {
+        "id": "teamControl",
+        "value": 50
+      },
+      {
+        "id": "prospectPreservation",
+        "value": 50
+      },
+      {
+        "id": "promotionAggressiveness",
+        "value": 50
+      },
+      {
+        "id": "upsidePreference",
+        "value": 50
+      },
+      {
+        "id": "ageCurveSensitivity",
+        "value": 50
+      },
+      {
+        "id": "positionalScarcity",
+        "value": 50
+      },
+      {
+        "id": "defenseEmphasis",
+        "value": 50
+      },
+      {
+        "id": "pitchingDepth",
+        "value": 50
+      },
+      {
+        "id": "rosterDepth",
+        "value": 50
+      },
+      {
+        "id": "starConcentration",
+        "value": 50
+      },
+      {
+        "id": "versatility",
+        "value": 50
+      }
+    ],
+    "policies": [
+      {
+        "id": "agingContracts",
+        "value": "neutral"
+      },
+      {
+        "id": "arbitrationExtensions",
+        "value": "selective"
+      },
+      {
+        "id": "rentalAcquisitions",
+        "value": "contending"
+      },
+      {
+        "id": "salaryDumps",
+        "value": "willing"
+      }
+    ]
+  }
+}

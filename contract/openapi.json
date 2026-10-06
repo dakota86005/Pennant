@@ -2401,6 +2401,384 @@
         }
       }
     },
+    "/api/v2/views/{org}/philosophy/coachingStaff": {
+      "get": {
+        "operationId": "getCoachingStaff",
+        "summary": "Coaching Staff: the major-league staff, the farm coaches who out-rate a major-league incumbent at a seat, and the farm's staff, as the export has them (OOTP's 1–200 scale).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingStaffView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/philosophy/organizationalPhilosophy": {
+      "get": {
+        "operationId": "getOrganizationalPhilosophy",
+        "summary": "The Organizational Philosophy editor: the identity read from the settings alone, the comparable clubs, each preference and policy with its words. The settings order sound choices; they never make a move allowed or not.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhilosophyView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setOrganizationalPhilosophy",
+        "summary": "Sets the preferences and policies named, checked whole (an unknown setting, a preference off 0–100, a choice not offered: 400 in words). Answers with the editor, what changed in words, and the request that undoes it.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhilosophyUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhilosophyChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "resetOrganizationalPhilosophy",
+        "summary": "Puts every setting back to neutral; answers with the editor and the request that puts each back as it was.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhilosophyChange"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/trades/analysis": {
+      "get": {
+        "operationId": "getTradeAnalysis",
+        "summary": "A deal weighed on Player Value: both sides, each player's contract value with its range, the difference between the sides as a range around zero with its parts, our view and the salary moving. Never a verdict.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sent",
+            "in": "query",
+            "required": false,
+            "description": "The players the club would send: ids, comma-separated (at most ten).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "received",
+            "in": "query",
+            "required": false,
+            "description": "The players the club would receive: ids, comma-separated (at most ten).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeAnalysisView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/trades/ask": {
+      "post": {
+        "operationId": "askTradeDesk",
+        "summary": "The AI desk's read of the deal on the builder, or its answer to a question about it: its own words about Pennant's figures, which decide nothing. A 409 in words with AI off.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeAsk"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeAnswer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "HTTP 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "HTTP 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/trades/tradeDesk": {
+      "get": {
+        "operationId": "getTradeDesk",
+        "summary": "The Trade Desk: the offers in the OOTP inbox with the analyser's reading, the staff's trade talk, the league's fits by expected wins, and whether the AI desk is on. Built after every import for our club.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeDeskView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/wire/{org}": {
       "get": {
         "operationId": "getWire",
@@ -3396,6 +3774,52 @@
           "openWire"
         ],
         "description": "Another club's report (`GET /api/v2/club/:teamId`): the same masthead, \"How they win and lose\" and roster map as ours (the same modules, D-059), under our organization's scouting, with their recent moves, their injuries, their record against us and their next series with us. Nothing ranks the club or reads it as a buyer or a seller (D-060)."
+      },
+      "CoachingStaffView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffSection"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why there is no staff to show (none imported, or none for this club); null when there is."
+          }
+        },
+        "required": [
+          "byline",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "sections",
+          "title"
+        ],
+        "description": "The club's coaching staff as the save has it."
       },
       "CompareCell": {
         "type": "object",
@@ -11555,6 +11979,61 @@
         ],
         "description": "Our scouts' full reports, when the export carries them: our club's id (`scouting_team_id`) and how many players they rate."
       },
+      "PhilosophyChange": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "$ref": "#/components/schemas/PhilosophyView"
+          },
+          "said": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Competitive window set to 70: Leans — Maximize current wins.\""
+          },
+          "undoName": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The Edit menu's name for the undo (\"Change Competitive Window\")."
+          },
+          "undo": {
+            "$ref": "#/components/schemas/PhilosophyUpdate"
+          }
+        },
+        "required": [
+          "view",
+          "said",
+          "undoName",
+          "undo"
+        ],
+        "description": "What a change did: the editor as it now stands, the change in words, and the request that undoes it."
+      },
+      "PhilosophyComparable": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "match": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Close\", \"Some overlap\"."
+          },
+          "description": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "shared": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Shared tendencies: cost efficiency · roster depth\"; null when none is shared strongly."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "match",
+          "description"
+        ],
+        "description": "A club from baseball history whose tendencies resemble these settings: an illustration, never a rating."
+      },
       "PhilosophyDimensionId": {
         "anyOf": [
           {
@@ -11581,6 +12060,102 @@
             "type": "string"
           }
         ]
+      },
+      "PhilosophyDimensionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "value": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Where the value reads on the scale (\"Leans — Maximize current wins\", \"Balanced\")."
+          },
+          "low": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "high": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "balanced": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "description",
+          "value",
+          "position",
+          "low",
+          "high",
+          "balanced"
+        ],
+        "description": "One preference: where it is set (0–100), what that reads as, and its two ends."
+      },
+      "PhilosophyGroupView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhilosophyDimensionView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "dimensions"
+        ],
+        "description": "A group of preferences (\"Financial Strategy\"), with its one line."
+      },
+      "PhilosophyIdentity": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"This organization …\", with how it was read in its basis."
+          },
+          "nuance": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "headline",
+          "tags",
+          "summary",
+          "nuance"
+        ],
+        "description": "The organization's identity, read from the settings alone."
       },
       "PhilosophyMode": {
         "anyOf": [
@@ -11670,6 +12245,53 @@
           "salaryDumps"
         ]
       },
+      "PhilosophyPolicyOption": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "description": "One choice a policy offers."
+      },
+      "PhilosophyPolicyView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "selected": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhilosophyPolicyOption"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "description",
+          "selected",
+          "options"
+        ],
+        "description": "A policy: an explicit choice rather than a number."
+      },
       "PhilosophyProfile": {
         "type": "object",
         "properties": {
@@ -11703,6 +12325,48 @@
           "overrides",
           "policies"
         ]
+      },
+      "PhilosophySetting": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "A preference's 0–100 as a whole number, or a policy's choice."
+          }
+        },
+        "required": [
+          "id",
+          "value"
+        ],
+        "description": "A preference or a policy, as the app sends a change."
+      },
+      "PhilosophyUpdate": {
+        "type": "object",
+        "properties": {
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhilosophySetting"
+            }
+          },
+          "policies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhilosophySetting"
+            }
+          }
+        },
+        "description": "A change the GM made: the preferences and policies it sets (an undo sends back what it was)."
       },
       "PhilosophyValues": {
         "type": "object",
@@ -11770,6 +12434,184 @@
           "starConcentration",
           "versatility"
         ]
+      },
+      "PhilosophyView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the settings are for and what they never do, in one line; the authority chain in its basis."
+          },
+          "identity": {
+            "$ref": "#/components/schemas/PhilosophyIdentity"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "mode": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "text": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "title",
+              "mode",
+              "text"
+            ],
+            "description": "Who sets the philosophy (\"Set by you\"), and what comes later."
+          },
+          "comparables": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "lede": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "clubs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PhilosophyComparable"
+                }
+              },
+              "note": {
+                "$ref": "#/components/schemas/Claim"
+              }
+            },
+            "required": [
+              "title",
+              "lede",
+              "clubs",
+              "note"
+            ]
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhilosophyGroupView"
+            }
+          },
+          "policies": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "description": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PhilosophyPolicyView"
+                }
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "items"
+            ]
+          },
+          "neutral": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "text": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "reset": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "confirm": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "confirmDetail": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "title",
+              "text",
+              "reset",
+              "confirm",
+              "confirmDetail"
+            ],
+            "description": "The footer: what neutral means, and the reset with its confirmation's words."
+          }
+        },
+        "required": [
+          "byline",
+          "comparables",
+          "groups",
+          "identity",
+          "importStamp",
+          "lede",
+          "neutral",
+          "orgId",
+          "policies",
+          "reportStamp",
+          "source",
+          "title"
+        ],
+        "description": "The Organizational Philosophy editor."
+      },
+      "PhilosophyViewHead": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "title",
+          "byline"
+        ],
+        "description": "What every Philosophy & Staff payload carries: its build, its title and who prepared it."
       },
       "Place": {
         "type": "object",
@@ -15172,6 +16014,35 @@
         ],
         "description": "A pitcher beside the map."
       },
+      "StaffSection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Structural: where the app keeps the table's columns, never shown."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "One line about the section; null when there is nothing to say."
+          },
+          "table": {
+            "$ref": "#/components/schemas/MlbTable"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "A note under the table with its detail in the basis; null when there is none."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "table"
+        ],
+        "description": "A titled table of the staff (the major-league staff, who is ready for a job up here, the farm's staff)."
+      },
       "StandingLine": {
         "type": "object",
         "properties": {
@@ -15693,6 +16564,743 @@
           "claim"
         ],
         "description": "The club's next game, as the export schedules it."
+      },
+      "TradeAnalysisView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by Mike Hazen, general manager · Through May 5, 2040\"."
+          },
+          "deal": {
+            "$ref": "#/components/schemas/TradeDeal"
+          },
+          "sides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeDealSide"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the builder says while the deal can't be weighed (a side is empty); null once it is."
+          },
+          "difference": {
+            "$ref": "#/components/schemas/TradeDifferenceView"
+          },
+          "ourView": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The same figures through the club's philosophy, or that it doesn't lean on these players; null with a side empty."
+          },
+          "salary": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Salary this season going out and coming in; null with a side empty."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "byline",
+          "deal",
+          "importStamp",
+          "orgId",
+          "reportStamp",
+          "sides",
+          "title"
+        ],
+        "description": "A deal weighed: both sides, the difference, our view, the salary moving."
+      },
+      "TradeAnswer": {
+        "type": "object",
+        "properties": {
+          "voice": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeAnswerLine"
+            },
+            "description": "The answer as written, markdown markers taken out, in paragraphs."
+          },
+          "content": {
+            "type": "string",
+            "description": "The raw answer, for the conversation the app sends back with the next question."
+          },
+          "notice": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Answered by … because … couldn't be used\"; null when the chosen model answered."
+          },
+          "about": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "That this is the AI's explanation of the analysis above, never a decision, with what it was given."
+          }
+        },
+        "required": [
+          "voice",
+          "lines",
+          "content",
+          "about"
+        ],
+        "description": "The AI desk's answer: its own words about the analyser's figures, who said it, and a notice if another model answered."
+      },
+      "TradeAnswerLine": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "heading",
+          "text"
+        ],
+        "description": "One paragraph of the AI's answer: a heading or a line of text, as written."
+      },
+      "TradeAsk": {
+        "type": "object",
+        "properties": {
+          "sent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integer"
+            }
+          },
+          "received": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integer"
+            }
+          },
+          "thread": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeTurn"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sent",
+          "received",
+          "thread"
+        ],
+        "description": "What the app asks the AI desk: the deal, the conversation so far, and the GM's question (none for the first read)."
+      },
+      "TradeDeal": {
+        "type": "object",
+        "properties": {
+          "sent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integer"
+            }
+          },
+          "received": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integer"
+            }
+          }
+        },
+        "required": [
+          "sent",
+          "received"
+        ],
+        "description": "A deal as the desk asks for it: who the club would send and who it would receive, by player id."
+      },
+      "TradeDealRow": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"SS · 27 · ARI\"."
+          },
+          "listed": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Listed\" when his own club has put him on the trading block; null otherwise."
+          },
+          "value": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "His contract value, most likely (\"$4.2M\"), with its range as the value and the method in its basis; or \"Not valued\"."
+          },
+          "range": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"could be $1.0M to $9.4M\", or why he isn't valued, with its reason in the hint."
+          },
+          "control": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "production": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "keeping": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The value of keeping him, shown for context; null when not known."
+          },
+          "ifKept": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"2027–2028 if kept\"; null when every season is certain."
+          },
+          "ours": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Our view of him through the club's philosophy, each lean named; null when the philosophy doesn't lean on him."
+          }
+        },
+        "required": [
+          "player",
+          "line",
+          "value",
+          "range",
+          "control",
+          "production"
+        ],
+        "description": "One player in a deal: who, his contract value (most likely, its range), his control, production and our view."
+      },
+      "TradeDealSide": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`sent` or `received`."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeDealRow"
+            }
+          },
+          "total": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Together $8.1M · could be …\", or that no one on the side could be valued yet; null with no players."
+          },
+          "leavesOut": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Leaves out X (not valued yet).\"; null when nobody is left out."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"No players yet.\"; null when there are players."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "rows"
+        ],
+        "description": "One side of a deal: its title, its players, and what they add up to."
+      },
+      "TradeDeskAI": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "voice": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Who answers: \"Sam Ryan · assistant general manager\"."
+          },
+          "ask": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Ask Sam Ryan\"."
+          },
+          "followUp": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Ask Sam a follow-up\"."
+          },
+          "off": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "With AI off: one plain line saying so, and that everything else works; the details in its basis. Null when on."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the AI's answers are and are not (it explains the analysis; it decides nothing)."
+          }
+        },
+        "required": [
+          "available",
+          "voice",
+          "ask",
+          "followUp",
+          "note"
+        ],
+        "description": "Whether the AI desk is on, who answers, and what the button and the reply field say."
+      },
+      "TradeDeskPlayer": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "player",
+          "line"
+        ],
+        "description": "A player as a card names him: who (openable, draggable onto the builder) and his position, age and club in a line."
+      },
+      "TradeDeskView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by Mike Hazen, general manager · Through May 5, 2040\"."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How to read the desk, in one line; the full explanation in its basis."
+          },
+          "sides": {
+            "type": "object",
+            "properties": {
+              "sent": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "received": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "sent",
+              "received"
+            ],
+            "description": "The builder's sides: \"Diamondbacks send\", \"Diamondbacks receive\"."
+          },
+          "emptyDeal": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the builder says with nobody on it."
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeOffer"
+            }
+          },
+          "offersNote": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How the offers are read (the sides are worked out from who each player plays for now)."
+          },
+          "talk": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeTalkTarget"
+            }
+          },
+          "talkNote": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "fits": {
+            "$ref": "#/components/schemas/TradeFitsView"
+          },
+          "ai": {
+            "$ref": "#/components/schemas/TradeDeskAI"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the export is, when there is something to say; null when it is current."
+          }
+        },
+        "required": [
+          "ai",
+          "byline",
+          "emptyDeal",
+          "fits",
+          "importStamp",
+          "lede",
+          "offers",
+          "offersNote",
+          "orgId",
+          "reportStamp",
+          "sides",
+          "talk",
+          "talkNote",
+          "title"
+        ],
+        "description": "The Trade Desk: the builder's words, the offers, the trade talk, the league's fits and the AI desk's state."
+      },
+      "TradeDifferenceView": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Most likely +$3.2M · could be −$4.0M to +$11.5M\", the method in its basis; or \"Not a number yet: …\"."
+          },
+          "chart": {
+            "$ref": "#/components/schemas/TradeRangeChart"
+          },
+          "leavesOut": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Leaves out X (his contract terms aren't in the export).\"; null when nobody is."
+          },
+          "inWins": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Shown in wins: dollars aren't known for everyone in this deal.\"; null in dollars."
+          },
+          "parts": {
+            "$ref": "#/components/schemas/MlbTable",
+            "description": "What makes up the difference: each player's part, going out reversed."
+          },
+          "partsNotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "How the parts add up, in a few plain lines (the full method in the headline's basis)."
+          }
+        },
+        "required": [
+          "title",
+          "headline",
+          "partsNotes"
+        ],
+        "description": "The difference between the sides: what comes in less what goes out, with its parts."
+      },
+      "TradeFitClub": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "club": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "matches": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"2 matches\"."
+          },
+          "theyNeed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeFitLine"
+            }
+          },
+          "theyOffer": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeFitLine"
+            }
+          }
+        },
+        "required": [
+          "teamId",
+          "club",
+          "matches",
+          "theyNeed",
+          "theyOffer"
+        ],
+        "description": "A club with matches either way: what they need that we have, and what we need that they have."
+      },
+      "TradeFitLine": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "player": {
+                  "$ref": "#/components/schemas/TradeDeskPlayer"
+                },
+                "wins": {
+                  "$ref": "#/components/schemas/Cell"
+                }
+              },
+              "required": [
+                "player",
+                "wins"
+              ]
+            }
+          }
+        },
+        "required": [
+          "text",
+          "players"
+        ],
+        "description": "One of a fit's lines: a position where one club is thin, and the other club's players who would add more there."
+      },
+      "TradeFitsView": {
+        "type": "object",
+        "properties": {
+          "weakest": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Your weakest spots by expected wins: SS (…), C (…)\", the method in its basis."
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeFitClub"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why there is nothing to list (no club with a match, or not a major-league club); null when clubs are listed."
+          }
+        },
+        "required": [
+          "clubs"
+        ],
+        "description": "The league's fits for the club: its weakest spots by expected wins, then each club with a match."
+      },
+      "TradeOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "date": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "theySend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeDeskPlayer"
+            }
+          },
+          "weSend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeDeskPlayer"
+            }
+          },
+          "reading": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What comes in less what goes out, most likely and what it could be; the method in its basis. Never a verdict."
+          },
+          "deal": {
+            "$ref": "#/components/schemas/TradeDeal"
+          },
+          "review": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Review This Offer\"."
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "from",
+          "subject",
+          "theySend",
+          "weSend",
+          "reading",
+          "deal",
+          "review"
+        ],
+        "description": "An offer sitting in the OOTP inbox, with the analyser's reading of it, and the deal that loads it into the builder."
+      },
+      "TradeRangeChart": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "type": "string"
+          },
+          "low": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "likelyLow": {
+            "type": "number"
+          },
+          "likelyHigh": {
+            "type": "number"
+          },
+          "scaleLow": {
+            "type": "number",
+            "description": "The scale's ends, symmetric about zero, with a little air past the furthest figure."
+          },
+          "scaleHigh": {
+            "type": "number"
+          },
+          "zero": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"even\", at zero."
+          },
+          "left": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"← More going out\" and \"More coming in →\", under the ends."
+          },
+          "right": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The chart in one sentence, for VoiceOver and the chart's description."
+          },
+          "marks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Each end and the most likely in words, for the chart's description: lowest, most likely, highest."
+          }
+        },
+        "required": [
+          "unit",
+          "low",
+          "high",
+          "likelyLow",
+          "likelyHigh",
+          "scaleLow",
+          "scaleHigh",
+          "zero",
+          "left",
+          "right",
+          "summary",
+          "marks"
+        ],
+        "description": "The difference drawn as a range around zero (`src/tradeDifferenceGeometry.ts`): the range, the most likely reading (a point, or a stretch where it depends on an open season) and the scale, symmetric about zero so a distance left reads as one right. Values in the deal's unit (dollars or wins)."
+      },
+      "TradeTalkTarget": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "date": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "club": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "player": {
+            "$ref": "#/components/schemas/TradeDeskPlayer"
+          },
+          "value": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "control": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "deal": {
+            "$ref": "#/components/schemas/TradeDeal",
+            "description": "The player alone on the side the club would receive: what he costs is the GM's to fill in."
+          },
+          "review": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "subject",
+          "club",
+          "player",
+          "value",
+          "control",
+          "deal",
+          "review"
+        ],
+        "description": "A target the staff raised in the inbox: the player, his contract value at a glance, his control and pay."
+      },
+      "TradeTurn": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "`user` or `assistant`."
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "description": "One turn of the conversation about the deal on the builder, as the app holds it."
+      },
+      "TradesViewHead": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Prepared by Mike Hazen, general manager · Through May 5, 2040\"."
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "title",
+          "byline"
+        ],
+        "description": "What every Trade Desk payload carries: its build and the one line saying who prepared it and when."
       },
       "TrailSection": {
         "type": "object",

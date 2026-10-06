@@ -368,6 +368,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     getPlayerCompare: () => `?players=${save.regular},${save.hitters.find((h) => h !== save.regular)},${save.reliever}`,
     // N9: the club's next game's plan
     getMajorLeagueGamePlan: () => `?game=${nextGame}`,
+    // N12 Track C: a deal weighed, our regular going out for the last club's hitter coming in
+    getTradeAnalysis: () => `?sent=${save.regular}&received=${save.hitters[save.hitters.length - 1]}`,
   };
 
   /** The club's next game on the synthetic save (N9), for its plan. */
@@ -509,6 +511,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     // The pretend save was never saved by OOTP, so nothing stands out and nothing is chosen (D-063)
     setUpAutomatically: [{ name: 'nothing-stands-out', body: {}, status: 200 }],
     // N11: a staff note put back as it was filed (the undo of a removal); the changes below remove it again
+    // N12 Track C: the AI desk with no key (none is read here): AI is off, said in words, and nothing else depends on it
+    askTradeDesk: [{ name: 'ai-off', body: { sent: [1], received: [2], thread: [] }, status: 409 }],
     restoreStaffNote: [
       { name: 'restored', body: { source: 'Bench coach', body: 'Keep him off back-to-back day games for two weeks.', gameDate: '2040-5-3' }, status: 200 },
       { name: 'no-body', body: { source: 'Bench coach' }, status: 400 },
@@ -554,7 +558,10 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
    */
   it('answers the desk\'s and Following\'s changes in the contract\'s shape, and puts each back (captured for the previews)', async () => {
     const changes = operations.filter((op) => op.method === 'put' || op.method === 'delete').map((op) => op.operationId).sort();
-    expect(changes).toEqual(['follow', 'removeStaffNote', 'setDeskStatus', 'setPlayerNote', 'undoFirstPlayerNote', 'unfollow']);
+    expect(changes).toEqual([
+      'follow', 'removeStaffNote', 'resetOrganizationalPhilosophy', 'setDeskStatus', 'setOrganizationalPhilosophy', 'setPlayerNote', 'undoFirstPlayerNote',
+      'unfollow',
+    ]);
     const call = async (method: 'PUT' | 'DELETE', url: string, body?: unknown) => {
       const res = await fetch(`${base}${url}`, {
         method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
@@ -614,6 +621,15 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     expect(notes.staff.length, 'the staff note the POST put back is there').toBeGreaterThan(0);
     check('removeStaffNote', 'removed', await call('DELETE', `/api/v2/player/${save.regular}/staff-notes/${notes.staff[0].id}`), 200);
     check('removeStaffNote', 'gone', await call('DELETE', `/api/v2/player/${save.regular}/staff-notes/${notes.staff[0].id}`), 404);
+    // N12 Track C: the philosophy editor's change, its undo, the server's refusals in words, and the reset (put back after)
+    const philosophy = `/api/v2/views/${save.org}/philosophy/organizationalPhilosophy`;
+    const changed = await call('PUT', philosophy, { dimensions: [{ id: 'competitiveWindow', value: 70 }] });
+    check('setOrganizationalPhilosophy', 'one-preference', changed, 200);
+    check('setOrganizationalPhilosophy', 'undo', await call('PUT', philosophy, (changed.body as { undo: unknown }).undo), 200);
+    check('setOrganizationalPhilosophy', 'policy', await call('PUT', philosophy, { policies: [{ id: 'salaryDumps', value: 'willing' }] }), 200);
+    check('setOrganizationalPhilosophy', 'off-the-scale', await call('PUT', philosophy, { dimensions: [{ id: 'competitiveWindow', value: 140 }] }), 400);
+    check('setOrganizationalPhilosophy', 'not-offered', await call('PUT', philosophy, { policies: [{ id: 'salaryDumps', value: 'always' }] }), 400);
+    check('resetOrganizationalPhilosophy', 'reset', await call('DELETE', philosophy), 200);
   }, SLOW);
 
   /**

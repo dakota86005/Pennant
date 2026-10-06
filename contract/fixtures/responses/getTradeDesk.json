@@ -1,0 +1,583 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Trade Desk"
+  },
+  "byline": {
+    "display": "Prepared by the front office · Through May 5, 2040"
+  },
+  "lede": {
+    "text": "Build a deal and see what each side is worth. The decision is yours.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Put the players you would send on one side and the ones you would receive on the other: drag them in from anywhere, search, or load an offer or a target from your inbox. Each player shows what his contract is worth, and below, the difference between the sides."
+        },
+        {
+          "label": "What it is not",
+          "value": "A verdict. It reads contract value only: not fit, need, or what the other club wants."
+        }
+      ],
+      "source": {
+        "department": "trades",
+        "specialist": "Player Value",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the desk reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "sides": {
+    "sent": {
+      "display": "N send"
+    },
+    "received": {
+      "display": "N receive"
+    }
+  },
+  "emptyDeal": {
+    "display": "Add players to each side to see what the deal is worth: drag them here, search, or load an offer or a target."
+  },
+  "offers": [
+    {
+      "id": "offer-9005",
+      "date": {
+        "display": "May 5, 2040"
+      },
+      "from": {
+        "display": "Club 2 N"
+      },
+      "subject": {
+        "display": "Trade Proposal from the Club 2"
+      },
+      "theySend": [
+        {
+          "player": {
+            "playerId": 1036,
+            "name": "P 1036",
+            "open": {
+              "kind": "player",
+              "playerId": 1036,
+              "teamId": 2
+            }
+          },
+          "line": {
+            "display": "CF · 25 · Club 2 N"
+          }
+        }
+      ],
+      "weSend": [
+        {
+          "player": {
+            "playerId": 1002,
+            "name": "P 1002",
+            "open": {
+              "kind": "player",
+              "playerId": 1002,
+              "teamId": 1
+            }
+          },
+          "line": {
+            "display": "CF · 28 · Club 1 N"
+          }
+        }
+      ],
+      "reading": {
+        "text": "Coming in less going out: most likely −3.7 wins · could be −11.2 wins to +3.8 wins",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "How it is read",
+              "value": "The same reading the builder gives: what you'd receive less what you'd send, each player at his contract value. The sides are worked out from who each player plays for now, since the message doesn't store them. It isn't a verdict."
+            },
+            {
+              "label": "How the sides are added up",
+              "value": "What comes in less what goes out, in wins over a replacement, each player's part named (a player going out enters reversed). players combined as independent; not a calibrated interval: around the sum of the most likely readings, each player's own distance combined as independent across 2 players (root sum of squares); an open season stays at its edges. Every player at his edge: −13.3 wins to 6.9 wins. The price of a win is shared by every player on both sides and is read as independent too, so the range is a reading, not a coverage claim."
+            }
+          ],
+          "source": {
+            "department": "trades",
+            "specialist": "Player Value",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "A newer export, or a change to either side."
+          ],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+        },
+        "links": [],
+        "value": {
+          "n": -3.7233181744412462,
+          "unit": "wins",
+          "display": "−3.7 wins",
+          "low": -11.247174913343228,
+          "high": 3.7956677589620362
+        }
+      },
+      "deal": {
+        "sent": [
+          1002
+        ],
+        "received": [
+          1036
+        ]
+      },
+      "review": {
+        "display": "Review This Offer",
+        "hint": "Puts both sides on the builder, as the offer has them"
+      }
+    }
+  ],
+  "offersNote": {
+    "text": "Proposals in your OOTP inbox. Check the sides against the mail.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How the sides are read",
+          "value": "The message doesn't store which way each player goes, so the sides are worked out from who each one plays for now."
+        }
+      ],
+      "source": {
+        "department": "trades",
+        "specialist": "The OOTP inbox",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "talk": [
+    {
+      "id": "talk-9004",
+      "date": {
+        "display": "May 4, 2040"
+      },
+      "subject": {
+        "display": "P 1062 could be the answer."
+      },
+      "club": {
+        "display": "Club 3 N"
+      },
+      "player": {
+        "player": {
+          "playerId": 1062,
+          "name": "P 1062",
+          "open": {
+            "kind": "player",
+            "playerId": 1062,
+            "teamId": 3
+          }
+        },
+        "line": {
+          "display": "1B · 29 · Club 3 N"
+        }
+      },
+      "value": {
+        "text": "Contract value most likely <0.1 wins (could be −1.1 wins to 1.9 wins)",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Contract value",
+              "value": "What this contract is worth to any team that holds it: the wins he's projected to add, priced at what a win costs on this league's market, minus the salary still to be paid."
+            }
+          ],
+          "source": {
+            "department": "trades",
+            "specialist": "Player Value",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+        },
+        "links": [],
+        "value": {
+          "n": 0.04085200599344371,
+          "unit": "wins",
+          "display": "<0.1 wins",
+          "low": -1.1142516371950364,
+          "high": 1.8692830364035045
+        }
+      },
+      "control": {
+        "display": "Signed 2040–2042 · pre-arbitration 2043 · 2044–2046 pre-arbitration or arbitration · $842K in 2040"
+      },
+      "deal": {
+        "sent": [],
+        "received": [
+          1062
+        ]
+      },
+      "review": {
+        "display": "Review This Target",
+        "hint": "Puts him on the side you would receive; what he costs is yours to fill in"
+      }
+    }
+  ],
+  "talkNote": {
+    "text": "Targets your staff has raised, newest first.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "What a message says",
+          "value": "OOTP's messages name the player and the club but never the price, so reviewing one puts him on the side you'd receive and leaves what you give up to you."
+        }
+      ],
+      "source": {
+        "department": "trades",
+        "specialist": "The OOTP inbox",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "fits": {
+    "weakest": {
+      "text": "Your weakest spots by expected wins: C (P 1012, 0.1 wins), 1B (P 1006, 0.2 wins), 2B (P 1001, 0.2 wins)",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "How fits are read",
+            "value": "Expected wins this season (the part still to be played, most likely), from each player's projection. A match is a player who isn't his club's starter at a position yet is expected to add more wins than the other club's best there. Players whose production isn't established are left out. A lead to look into, not a verdict: the ranges behind these figures are wide."
+          },
+          {
+            "label": "What the wins are",
+            "value": "Expected wins this season (the part still to be played, most likely), from Player Value's production. A match is a player who isn't his club's starter at a position yet is expected to add more wins than the other club's best there. Players whose production is not established are left out and never counted as zero."
+          }
+        ],
+        "source": {
+          "department": "trades",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "How the desk reads it: stated, not fitted"
+      },
+      "links": [],
+      "hint": "Not established: RF"
+    },
+    "clubs": [
+      {
+        "teamId": 2,
+        "club": {
+          "display": "Club 2 N"
+        },
+        "matches": {
+          "display": "3 matches"
+        },
+        "theyNeed": [
+          {
+            "text": {
+              "display": "They're thin at CF (best: P 1037, −<0.1 wins); you have"
+            },
+            "players": [
+              {
+                "player": {
+                  "player": {
+                    "playerId": 1002,
+                    "name": "P 1002",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1002,
+                      "teamId": 1
+                    }
+                  },
+                  "line": {
+                    "display": "0.5 wins"
+                  }
+                },
+                "wins": {
+                  "display": "0.5 wins"
+                }
+              }
+            ]
+          },
+          {
+            "text": {
+              "display": "They're thin at 3B (best: P 1032, <0.1 wins); you have"
+            },
+            "players": [
+              {
+                "player": {
+                  "player": {
+                    "playerId": 1004,
+                    "name": "P 1004",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1004,
+                      "teamId": 1
+                    }
+                  },
+                  "line": {
+                    "display": "0.3 wins"
+                  }
+                },
+                "wins": {
+                  "display": "0.3 wins"
+                }
+              }
+            ]
+          }
+        ],
+        "theyOffer": [
+          {
+            "text": {
+              "display": "You're thin at 1B (P 1006, 0.2 wins); they have"
+            },
+            "players": [
+              {
+                "player": {
+                  "player": {
+                    "playerId": 1031,
+                    "name": "P 1031",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1031,
+                      "teamId": 2
+                    }
+                  },
+                  "line": {
+                    "display": "0.4 wins"
+                  }
+                },
+                "wins": {
+                  "display": "0.4 wins"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "teamId": 3,
+        "club": {
+          "display": "Club 3 N"
+        },
+        "matches": {
+          "display": "3 matches"
+        },
+        "theyNeed": [
+          {
+            "text": {
+              "display": "They're thin at LF (best: P 1054, −<0.1 wins); you have"
+            },
+            "players": [
+              {
+                "player": {
+                  "player": {
+                    "playerId": 1009,
+                    "name": "P 1009",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1009,
+                      "teamId": 1
+                    }
+                  },
+                  "line": {
+                    "display": "0.1 wins"
+                  }
+                },
+                "wins": {
+                  "display": "0.1 wins"
+                }
+              }
+            ]
+          },
+          {
+            "text": {
+              "display": "They're thin at 3B (best: P 1061, 0.1 wins); you have"
+            },
+            "players": [
+              {
+                "player": {
+                  "player": {
+                    "playerId": 1004,
+                    "name": "P 1004",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1004,
+                      "teamId": 1
+                    }
+                  },
+                  "line": {
+                    "display": "0.3 wins"
+                  }
+                },
+                "wins": {
+                  "display": "0.3 wins"
+                }
+              }
+            ]
+          }
+        ],
+        "theyOffer": [
+          {
+            "text": {
+              "display": "You're thin at 2B (P 1001, 0.2 wins); they have"
+            },
+            "players": [
+              {
+                "player": {
+                  "player": {
+                    "playerId": 1052,
+                    "name": "P 1052",
+                    "open": {
+                      "kind": "player",
+                      "playerId": 1052,
+                      "teamId": 3
+                    }
+                  },
+                  "line": {
+                    "display": "0.6 wins"
+                  }
+                },
+                "wins": {
+                  "display": "0.6 wins"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "empty": null
+  },
+  "ai": {
+    "available": false,
+    "voice": {
+      "display": "Morgan Brock · general manager"
+    },
+    "ask": {
+      "display": "Ask Morgan Brock"
+    },
+    "followUp": {
+      "display": "Ask Morgan a follow-up"
+    },
+    "off": {
+      "text": "AI is off. Everything on the desk works without it.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Why",
+            "value": "No Anthropic (Claude) key set. Open Settings and add your key — you can get one at console.claude.com."
+          },
+          {
+            "label": "What still works",
+            "value": "Building a deal, its figures and the difference between the sides, the offers, the trade talk and the league's fits are all worked out by Pennant itself."
+          }
+        ],
+        "source": {
+          "department": "trades",
+          "specialist": "Settings",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [
+          "An AI key in Settings."
+        ],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "Add a key in Settings to ask the front office about a deal"
+    },
+    "note": {
+      "text": "The AI explains the figures above. It decides nothing.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "What it is given",
+            "value": "The deal on the builder with every figure Pennant worked out for it, and the run of the organization to look things up."
+          },
+          {
+            "label": "What it is not",
+            "value": "Pennant's answer: the analysis is. It reads the deal and gives no answer of yes or no: the decision is yours."
+          }
+        ],
+        "source": {
+          "department": "trades",
+          "specialist": "The front office",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "How the desk reads it: stated, not fitted"
+      },
+      "links": []
+    }
+  },
+  "freshness": {
+    "text": "Not checked against your save",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "How current",
+          "value": "Pennant's copy of the league is from May 6, 2040. It couldn't find your OOTP save to compare dates with, so it can't tell whether the export is current: service time, control and the figures built on them are read as the export states them."
+        }
+      ],
+      "source": {
+        "department": "trades",
+        "specialist": "Data status",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A newer export."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  }
+}

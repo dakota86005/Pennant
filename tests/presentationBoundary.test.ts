@@ -192,6 +192,8 @@ describe('the presentation boundary', () => {
     const PUBLIC = new Set([
       'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'clubhouseViewsBuild',
       'playerDossierBuild', 'frontOfficeBuild', 'leagueRules',
+      // N12 Track C: the Trade Desk's reader, run by the same worker; its own imports are held below
+      'tradeDeskBuild',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
       'viewingOrganization',
     ]);
@@ -305,6 +307,30 @@ describe('the presentation boundary', () => {
     expect(valueImports('clubhouseViewsBuild.ts').filter((s) => ['providers', 'ai', 'chat', 'storylines'].includes(moduleName(s)))).toEqual([]);
   });
 
+  /**
+   * The Trade Desk's reader (N12 Track C, D-073) reads the analyser (`trade.ts`) and the export's freshness, and nothing
+   * else: no rating, no developmental stakes, no odds or posture (the club's value of a win is the standings', D-060), no
+   * AI (D-001: the AI desk is `tradeDeskAsk.ts`'s).
+   */
+  it('tradeDeskBuild.ts and tradeDeskService.ts read only the analyser', () => {
+    for (const [file, allowed] of [
+      ['tradeDeskBuild.ts', new Set(['db', 'dataStatus', 'trade'])],
+      ['tradeDeskService.ts', new Set(['db', 'frontOfficeService', 'playerStateRoutes', 'trade', 'tradeDeskBuild', 'viewingOrganization'])],
+    ] as const) {
+      const outside = valueImports(file).filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
+        .filter((m) => !allowed.has(m));
+      expect(outside, file).toEqual([]);
+      const source = code(file);
+      for (const pattern of [
+        /scoutedEvidence|ratingFrom|players_value/,
+        /developmentalContext|openDevelopmentalContext|evaluateDevelopmentProtection/,
+        /posture|playoffs|oddsModel|deadlineRead|playoffPicture|clubWinValue/,
+      ]) {
+        expect(source, `${file} matches ${pattern}`).not.toMatch(pattern);
+      }
+    }
+  });
+
   /** The farm's views name the farm's parts through its public module only (N10): no farm module reached past it. */
   it.each(filesUnder('presentation/farm'))('%s names the farm\'s parts only through farmOperations', (file) => {
     const farmModules = [...code(file).matchAll(/from\s+'\.\.\/\.\.\/(farm\w*|playingTime)\.js'/g)].map((m) => m[1]);
@@ -320,8 +346,19 @@ describe('the presentation boundary', () => {
     // N9: Major League Ops' clubhouse tools, kept and built the same way; N11: the player window's dossiers are kept on
     // the Front Office's inputs and our club's built in its worker
     expect(importers('frontOfficeService').sort()).toEqual([
-      'api.ts', 'aroundTheLeague.ts', 'clubhouseViewService.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'playerViewService.ts', 'v2Routes.ts',
+      'api.ts', 'aroundTheLeague.ts', 'clubhouseViewService.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts',
+      // N12 Track C: Philosophy & Staff's views, served over the club's inputs like the others
+      'philosophyViewService.ts',
+      'playerViewService.ts',
+      // N12 Track C: the Trade Desk, kept on the Front Office's inputs and our club's built in its worker; its AI desk names the club's build
+      'tradeDeskAsk.ts', 'tradeDeskService.ts',
+      'v2Routes.ts',
     ]);
+    expect(importers('tradeDeskService').sort()).toEqual(['tradeDeskAsk.ts', 'v2Routes.ts']);
+    expect(importers('tradeDeskAsk').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('philosophyViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('tradeDeskBuild').sort()).toEqual(['frontOfficeBuild.ts', 'frontOfficeWorker.ts', 'tradeDeskAsk.ts', 'tradeDeskService.ts']);
+    expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/tradeDeskBuild\.js'/);
     expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
     expect(importers('clubhouseViewService').sort()).toEqual(['v2Routes.ts']);
     expect(importers('clubhouseViewsBuild').sort()).toEqual(['clubhouseViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
@@ -351,7 +388,11 @@ describe('the presentation boundary', () => {
       'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts', 'clubhouseViewsBuild.ts',
       'clubhouseViewService.ts',
       // N11: the player window's views, read in the build and kept by their service
-      'playerDossierBuild.ts', 'playerViewService.ts']);
+      'playerDossierBuild.ts', 'playerViewService.ts',
+      // N12 Track C: the Trade Desk, read in its build, kept by its service, and its AI desk's answer worded
+      'tradeDeskBuild.ts', 'tradeDeskService.ts', 'tradeDeskAsk.ts',
+      // N12 Track C: Philosophy & Staff's views, worded and served by their service
+      'philosophyViewService.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

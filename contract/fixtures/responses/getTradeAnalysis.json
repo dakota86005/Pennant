@@ -1,0 +1,743 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Trade Desk"
+  },
+  "byline": {
+    "display": "Prepared by the front office · Through May 5, 2040"
+  },
+  "deal": {
+    "sent": [
+      1000
+    ],
+    "received": [
+      1090
+    ]
+  },
+  "sides": [
+    {
+      "id": "sent",
+      "title": {
+        "display": "N send"
+      },
+      "rows": [
+        {
+          "player": {
+            "playerId": 1000,
+            "name": "P 1000",
+            "open": {
+              "kind": "player",
+              "playerId": 1000,
+              "teamId": 1
+            }
+          },
+          "line": {
+            "display": "3B · 33 · C1"
+          },
+          "listed": null,
+          "value": {
+            "text": "1.5 wins",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Contract value",
+                  "value": "What this contract is worth to any team that holds it: the wins he's projected to add, priced at what a win costs on this league's market, minus the salary still to be paid. Seasons further out count a little less."
+                },
+                {
+                  "label": "Could be",
+                  "value": "−2.0 wins to 6.0 wins: every reasonable combination of how he plays, what a win costs and what he'll be paid; a range of outcomes, not a forecast."
+                }
+              ],
+              "source": {
+                "department": "trades",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+            },
+            "links": [],
+            "value": {
+              "n": 1.4529498034972397,
+              "unit": "wins",
+              "display": "1.5 wins",
+              "low": -1.979844272529143,
+              "high": 5.952035388841629
+            }
+          },
+          "range": {
+            "display": "could be −2.0 wins to 6.0 wins"
+          },
+          "control": {
+            "text": "Signed 2040–2041 · pre-arbitration 2042–2043 · 2044–2046 pre-arbitration or arbitration",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "2040",
+                  "value": "signed, $1.3M"
+                },
+                {
+                  "label": "2041",
+                  "value": "signed, $1.3M"
+                },
+                {
+                  "label": "2042",
+                  "value": "pre-arbitration, most likely $2.1M · could be $700K to $11.8M"
+                },
+                {
+                  "label": "2043",
+                  "value": "pre-arbitration, most likely $2.1M · could be $700K to $11.8M"
+                },
+                {
+                  "label": "2044",
+                  "value": "pre-arbitration or arbitration, not known (Not priced across the statuses the season lies between: Arbitration not priced: The export has no WAR for the league in 2038, a platform season)"
+                },
+                {
+                  "label": "2045",
+                  "value": "pre-arbitration or arbitration, not known (Not priced across the statuses the season lies between: Arbitration not priced: The export has no WAR for the league in 2038, a platform season)"
+                },
+                {
+                  "label": "2046",
+                  "value": "pre-arbitration or arbitration, not known (Not priced across the statuses the season lies between: Arbitration not priced: The export has no WAR for the league in 2038, a platform season)"
+                }
+              ],
+              "source": {
+                "department": "trades",
+                "specialist": "Player Rights",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A newer export, or a new contract."
+              ],
+              "lean": null,
+              "certainty": "fact",
+              "called": "A fact from the export"
+            },
+            "links": []
+          },
+          "production": {
+            "text": "0.4 wins rest of 2040 · 0.5 wins in 2041",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Expected wins",
+                  "value": "Projected wins above replacement for the rest of this season (or the whole of it before it starts), most likely."
+                },
+                {
+                  "label": "2040",
+                  "value": "likely −0.4 wins to 0.9 wins"
+                },
+                {
+                  "label": "2041",
+                  "value": "likely −0.5 wins to 1.9 wins"
+                }
+              ],
+              "source": {
+                "department": "trades",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+            },
+            "links": [],
+            "value": {
+              "n": 0.3939823328316202,
+              "unit": "wins",
+              "display": "0.4 wins",
+              "low": -0.37944502315364453,
+              "high": 0.8891871705436296
+            }
+          },
+          "keeping": null,
+          "ifKept": null,
+          "ours": null
+        }
+      ],
+      "total": {
+        "text": "Together 1.5 wins · could be −2.0 wins to 6.0 wins",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Together",
+              "value": "The players on this side added up at their contract value: the most likely figures summed, and a range that treats each player's ups and downs as separate from the others', so they aren't all at their best or worst at once. A player whose value isn't known is left out and named, never counted as zero."
+            },
+            {
+              "label": "Every player at his lowest and highest at once",
+              "value": "−2.0 wins to 6.0 wins"
+            },
+            {
+              "label": "How the side is added up",
+              "value": "players combined as independent; not a calibrated interval: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as independent across 1 player (root sum of squares); an option, an open status or whether he stays stays at its edges. Every player at his edge, summed: −2.0 wins to 6.0 wins."
+            }
+          ],
+          "source": {
+            "department": "trades",
+            "specialist": "Player Value",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+        },
+        "links": [],
+        "value": {
+          "n": 1.4529498034972397,
+          "unit": "wins",
+          "display": "1.5 wins",
+          "low": -1.979844272529143,
+          "high": 5.952035388841629
+        }
+      },
+      "leavesOut": null,
+      "empty": null
+    },
+    {
+      "id": "received",
+      "title": {
+        "display": "N receive"
+      },
+      "rows": [
+        {
+          "player": {
+            "playerId": 1090,
+            "name": "P 1090",
+            "open": {
+              "kind": "player",
+              "playerId": 1090,
+              "teamId": 4
+            }
+          },
+          "line": {
+            "display": "SS · 33 · C4"
+          },
+          "listed": null,
+          "value": {
+            "text": "0.1 wins",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Contract value",
+                  "value": "What this contract is worth to any team that holds it: the wins he's projected to add, priced at what a win costs on this league's market, minus the salary still to be paid. Seasons further out count a little less."
+                },
+                {
+                  "label": "Could be",
+                  "value": "−0.5 wins to 1.0 wins: every reasonable combination of how he plays, what a win costs and what he'll be paid; a range of outcomes, not a forecast."
+                }
+              ],
+              "source": {
+                "department": "trades",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+            },
+            "links": [],
+            "value": {
+              "n": 0.11099243604688397,
+              "unit": "wins",
+              "display": "0.1 wins",
+              "low": -0.523620928874795,
+              "high": 1.0383936136740781
+            }
+          },
+          "range": {
+            "display": "could be −0.5 wins to 1.0 wins"
+          },
+          "control": {
+            "text": "Signed 2040 · pre-arbitration 2041–2043 · 2044–2046 pre-arbitration or arbitration",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "2040",
+                  "value": "signed, $2.1M"
+                },
+                {
+                  "label": "2041",
+                  "value": "pre-arbitration, most likely $2.1M · could be $700K to $11.8M"
+                },
+                {
+                  "label": "2042",
+                  "value": "pre-arbitration, most likely $2.1M · could be $700K to $11.8M"
+                },
+                {
+                  "label": "2043",
+                  "value": "pre-arbitration, most likely $2.1M · could be $700K to $11.8M"
+                },
+                {
+                  "label": "2044",
+                  "value": "pre-arbitration or arbitration, not known (Not priced across the statuses the season lies between: Arbitration not priced: The export has no WAR for the league in 2038, a platform season)"
+                },
+                {
+                  "label": "2045",
+                  "value": "pre-arbitration or arbitration, not known (Not priced across the statuses the season lies between: Arbitration not priced: The export has no WAR for the league in 2038, a platform season)"
+                },
+                {
+                  "label": "2046",
+                  "value": "pre-arbitration or arbitration, not known (Not priced across the statuses the season lies between: Arbitration not priced: The export has no WAR for the league in 2038, a platform season)"
+                }
+              ],
+              "source": {
+                "department": "trades",
+                "specialist": "Player Rights",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A newer export, or a new contract."
+              ],
+              "lean": null,
+              "certainty": "fact",
+              "called": "A fact from the export"
+            },
+            "links": []
+          },
+          "production": {
+            "text": "0.1 wins rest of 2040 · <0.1 wins in 2041",
+            "tone": "neutral",
+            "basis": {
+              "because": [
+                {
+                  "label": "Expected wins",
+                  "value": "Projected wins above replacement for the rest of this season (or the whole of it before it starts), most likely."
+                },
+                {
+                  "label": "2040",
+                  "value": "likely −0.2 wins to 0.7 wins"
+                },
+                {
+                  "label": "2041",
+                  "value": "likely −0.2 wins to 0.4 wins"
+                }
+              ],
+              "source": {
+                "department": "trades",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": "2040-05-05"
+              },
+              "unknown": [],
+              "wouldChange": [],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+            },
+            "links": [],
+            "value": {
+              "n": 0.06527468502962755,
+              "unit": "wins",
+              "display": "0.1 wins",
+              "low": -0.22291908154131174,
+              "high": 0.6693923069777017
+            }
+          },
+          "keeping": null,
+          "ifKept": null,
+          "ours": null
+        }
+      ],
+      "total": {
+        "text": "Together 0.1 wins · could be −0.5 wins to 1.0 wins",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Together",
+              "value": "The players on this side added up at their contract value: the most likely figures summed, and a range that treats each player's ups and downs as separate from the others', so they aren't all at their best or worst at once. A player whose value isn't known is left out and named, never counted as zero."
+            },
+            {
+              "label": "Every player at his lowest and highest at once",
+              "value": "−0.5 wins to 1.0 wins"
+            },
+            {
+              "label": "How the side is added up",
+              "value": "players combined as independent; not a calibrated interval: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as independent across 1 player (root sum of squares); an option, an open status or whether he stays stays at its edges. Every player at his edge, summed: −0.5 wins to 1.0 wins."
+            }
+          ],
+          "source": {
+            "department": "trades",
+            "specialist": "Player Value",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+        },
+        "links": [],
+        "value": {
+          "n": 0.11099243604688397,
+          "unit": "wins",
+          "display": "0.1 wins",
+          "low": -0.523620928874795,
+          "high": 1.0383936136740781
+        }
+      },
+      "leavesOut": null,
+      "empty": null
+    }
+  ],
+  "status": null,
+  "difference": {
+    "title": {
+      "display": "Coming in less going out, in wins"
+    },
+    "headline": {
+      "text": "Most likely −1.3 wins · could be −5.9 wins to +2.2 wins",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "The difference",
+            "value": "What you'd receive less what you'd send, each player at his contract value: his projected wins priced at what a win costs on this league's market, minus the salary still to be paid, later seasons counting a little less. A trade moves a player's salary with him, so this is the view a deal is read on. It isn't a verdict: it doesn't see either club's roster, needs or money, and the decision is yours. The range is wide because each player's is; the players are added as if each one's ups and downs were separate from the others', so they aren't all at their best or worst at once."
+          },
+          {
+            "label": "The chart",
+            "value": "Zero is an even deal. The shaded stretch is the range the difference could be; the marker is the most likely figure (a darker stretch where it depends on an option or on whether a player stays). Right of zero, more value comes in than goes out; left of zero, the reverse. It measures contract value only: not fit, need, or what the other club wants."
+          },
+          {
+            "label": "Every player at his lowest and highest at once",
+            "value": "−6.5 wins to +3.0 wins"
+          },
+          {
+            "label": "How the sides are added up",
+            "value": "What comes in less what goes out, in wins over a replacement, each player's part named (a player going out enters reversed). players combined as independent; not a calibrated interval: around the sum of the most likely readings, each player's own distance combined as independent across 2 players (root sum of squares); an open season stays at its edges. Every player at his edge: −6.5 wins to 3.0 wins. The price of a win is shared by every player on both sides and is read as independent too, so the range is a reading, not a coverage claim."
+          },
+          {
+            "label": "What it rests on",
+            "value": "A trade moves each player's remaining salary with him, so the sides are read on contract value (what his contract is worth to whoever holds it: his wins at the price of a win on the market, less what he costs, discounted), never on the value of keeping him, whose guaranteed money cancels only for the club that already owes it; that value is shown per player, never summed."
+          },
+          {
+            "label": "And",
+            "value": "Each player's figures are Player Value's as every read serves them (the player card, Payroll, the league-wide read): never recomputed, narrowed or re-read here."
+          },
+          {
+            "label": "And",
+            "value": "players combined as independent; not a calibrated interval: the owner's Payroll rule extended to a deal's sides and the difference between them; the every-player-at-his-edge sum is kept beside each figure and no player's own band is narrowed."
+          },
+          {
+            "label": "And",
+            "value": "A player whose value is not known is listed with his reason and left out of the sums, which name him; he is never counted as zero."
+          },
+          {
+            "label": "And",
+            "value": "The difference describes the deal; it does not see either club's roster, needs or finances, and it decides nothing."
+          },
+          {
+            "label": "And",
+            "value": "Our view, where shown, is the viewing club's lens applied to each player at read time; it never changes the neutral figures, which are the same whoever looks."
+          }
+        ],
+        "source": {
+          "department": "trades",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [
+          "A change to either side, or a newer export."
+        ],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+      },
+      "links": [],
+      "value": {
+        "n": -1.3419573674503558,
+        "unit": "wins",
+        "display": "−1.3 wins",
+        "low": -5.885579845957002,
+        "high": 2.2139037255433136
+      }
+    },
+    "chart": {
+      "unit": "wins",
+      "low": -5.885579845957002,
+      "high": 2.2139037255433136,
+      "likelyLow": -1.3419573674503558,
+      "likelyHigh": -1.3419573674503558,
+      "scaleLow": -6.591849427471843,
+      "scaleHigh": 6.591849427471843,
+      "zero": {
+        "display": "even",
+        "hint": "Zero is an even deal"
+      },
+      "left": {
+        "display": "← More going out"
+      },
+      "right": {
+        "display": "More coming in →"
+      },
+      "summary": {
+        "display": "Coming in less going out: most likely −1.3 wins, could be −5.9 wins to +2.2 wins. Zero is an even deal."
+      },
+      "marks": [
+        {
+          "display": "Lowest −5.9 wins"
+        },
+        {
+          "display": "Most likely −1.3 wins"
+        },
+        {
+          "display": "Highest +2.2 wins"
+        }
+      ]
+    },
+    "leavesOut": null,
+    "inWins": {
+      "text": "Shown in wins: dollars aren't known for everyone in this deal.",
+      "tone": "caution",
+      "basis": {
+        "because": [
+          {
+            "label": "Why in wins",
+            "value": "Dollars aren't known for 2 players in this deal (No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown. Value is in wins, and dollars are unknown.), so the whole deal is read in wins over a replacement."
+          }
+        ],
+        "source": {
+          "department": "trades",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "Phase 6b (the owner's Payroll rule of 2026-09-24 extended to a trade; confirmed by the owner, 2026-09-24): a side's contract value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) kept at its edges, added. Labelled \"players combined as independent; not a calibrated interval\"; the edge-to-edge sum is kept beside it and no player's own band is narrowed."
+      },
+      "links": []
+    },
+    "parts": {
+      "columns": [
+        {
+          "id": "player",
+          "title": {
+            "display": "Player"
+          },
+          "numeric": false
+        },
+        {
+          "id": "side",
+          "title": {
+            "display": "Side"
+          },
+          "numeric": false
+        },
+        {
+          "id": "likely",
+          "title": {
+            "display": "Most likely"
+          },
+          "numeric": true
+        },
+        {
+          "id": "could",
+          "title": {
+            "display": "Could be"
+          },
+          "numeric": true
+        }
+      ],
+      "rows": [
+        {
+          "id": "part-sent-1000-0",
+          "cells": {
+            "player": {
+              "display": "P 1000"
+            },
+            "side": {
+              "display": "Going out"
+            },
+            "likely": {
+              "display": "−1.5 wins"
+            },
+            "could": {
+              "display": "−6.0 wins to +2.0 wins"
+            }
+          },
+          "sort": {
+            "player": "P 1000",
+            "side": 0,
+            "likely": -1.4529498034972397,
+            "could": -5.952035388841629
+          },
+          "player": {
+            "playerId": 1000,
+            "name": "P 1000",
+            "open": {
+              "kind": "player",
+              "playerId": 1000,
+              "teamId": 1
+            }
+          },
+          "detail": [],
+          "actions": []
+        },
+        {
+          "id": "part-received-1090-1",
+          "cells": {
+            "player": {
+              "display": "P 1090"
+            },
+            "side": {
+              "display": "Coming in"
+            },
+            "likely": {
+              "display": "+0.1 wins"
+            },
+            "could": {
+              "display": "−0.5 wins to +1.0 wins"
+            }
+          },
+          "sort": {
+            "player": "P 1090",
+            "side": 1,
+            "likely": 0.11099243604688397,
+            "could": -0.523620928874795
+          },
+          "player": {
+            "playerId": 1090,
+            "name": "P 1090",
+            "open": {
+              "kind": "player",
+              "playerId": 1090,
+              "teamId": 4
+            }
+          },
+          "detail": [],
+          "actions": []
+        }
+      ],
+      "empty": null
+    },
+    "partsNotes": [
+      {
+        "display": "Each player's figures are the ones on his player window; a player going out counts with his range reversed."
+      },
+      {
+        "display": "Seasons further out count a little less, and only the part of this season still to be played counts."
+      },
+      {
+        "display": "The range covers the reasonable readings of each player; it isn't a forecast with a stated chance."
+      }
+    ]
+  },
+  "ourView": {
+    "text": "Club 1 N's philosophy doesn't lean on these players: our view is the same.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Our view",
+          "value": "The same figures read through your club's philosophy: it can weigh near seasons against far ones, read the ranges more cautiously, and weigh salary, club control and guaranteed money more or less. It never changes the figures above, and each lean is named on its player."
+        }
+      ],
+      "source": {
+        "department": "trades",
+        "specialist": "Organizational Philosophy",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A change to the club's philosophy."
+      ],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "The club's philosophy settings"
+    },
+    "links": []
+  },
+  "salary": {
+    "text": "Salary in 2040: $1.3M going out · $2.1M coming in",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Salary",
+          "value": "Salary this season as the export states it. A salary the export doesn't state isn't counted as zero."
+        }
+      ],
+      "source": {
+        "department": "trades",
+        "specialist": "The export",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "freshness": {
+    "text": "Not checked against your save",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "How current",
+          "value": "Pennant's copy of the league is from May 6, 2040. It couldn't find your OOTP save to compare dates with, so it can't tell whether the export is current: service time, control and the figures built on them are read as the export states them."
+        }
+      ],
+      "source": {
+        "department": "trades",
+        "specialist": "Data status",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "The export's freshness could not be checked against the save."
+      ],
+      "wouldChange": [
+        "A newer export."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  }
+}

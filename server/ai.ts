@@ -373,6 +373,74 @@ function tradeSetup(body: TradeBody): { orgId: number; voice: Persona; context: 
   };
 }
 
+/**
+ * Whether the trade desk's AI can answer, and who would (N12, D-073): a key for the provider chosen for trades. The AI is
+ * optional (D-001): with none, every figure on the Trade Desk still stands and the desk says plainly that AI is off.
+ */
+export function tradeAiState(orgId: number): { available: boolean; voice: { name: string; role: string }; offReason: string | null } {
+  const provider = featureProvider('trade');
+  const { name, role } = tradeVoice(orgId);
+  const available = providerCredential(provider) !== null;
+  return { available, voice: { name, role }, offReason: available ? null : noKeyMessage(provider) };
+}
+
+/** The AI desk's refusal or failure, with the status the Mac app's route answers. */
+export class TradeAskProblem extends Error {
+  constructor(message: string, readonly status: 400 | 409 | 502) {
+    super(message);
+    this.name = 'TradeAskProblem';
+  }
+}
+
+/**
+ * The trade desk's read of a deal, or its answer to a question about it (the Mac app's Trade Desk, N12): the same
+ * system prompt, context and model as `/trade/ai-eval` and `/trade/ai-reply`. It explains Pennant's figures and decides
+ * nothing (D-001). No key is a 409 in words; a provider's failure a 502 with its message.
+ */
+export async function askTradeDesk(body: {
+  orgId: number; orgLabel?: string; sideA: number[]; sideB: number[];
+  thread?: Array<{ role: 'user' | 'assistant'; content: string }>; message?: string;
+}): Promise<{ text: string; voice: { name: string; role: string }; notice: FallbackNotice | null }> {
+  if (!tradeAiState(body.orgId).available) throw new TradeAskProblem('AI is off. Add a key in Settings to ask the front office about a deal.', 409);
+  let setup: ReturnType<typeof tradeSetup>;
+  try {
+    setup = tradeSetup(body);
+  } catch (err) {
+    throw new TradeAskProblem((err as Error).message === 'Both sides need at least one player' ? 'Put a player on each side first.' : (err as Error).message, 400);
+  }
+  const { voice, context, leagueId } = setup;
+  let notice: FallbackNotice | null = null;
+  const message = body.message?.trim();
+  try {
+    const text = message
+      ? await askTheDesk(
+        tradeSystem(voice, body.orgLabel, leagueId) +
+          '\n\nYou have already given your read of this deal and are now being asked about it. ' +
+          'Answer the question actually put to you, in a few sentences — no headings, and do not ' +
+          'restate the read unless it has changed. If it has changed, say so plainly.\n\n' +
+          'The question may move past the deal — who else could fill the hole, who is close in the ' +
+          'system, what the roster looks like without these men. Use your tools and go and read it ' +
+          'rather than saying you have not got the data: the roster, the farm and every player in ' +
+          'the league are yours to look up.',
+        [
+          { role: 'user', content: `The deal on the table:\n${JSON.stringify(context, null, 1)}` },
+          ...(body.thread ?? []).filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content?.trim()).slice(-12),
+          { role: 'user', content: message },
+        ],
+        (n) => { notice = n; },
+      )
+      : await askTheDesk(
+        tradeSystem(voice, body.orgLabel, leagueId) + TRADE_ANSWER_FORMAT,
+        [{ role: 'user', content: JSON.stringify(context, null, 1) }],
+        (n) => { notice = n; },
+      );
+    return { text, voice: { name: voice.name, role: voice.role }, notice };
+  } catch (err) {
+    console.error('[trade-desk] the AI desk failed:', err);
+    throw new TradeAskProblem((err as Error).message || 'The AI desk couldn\'t answer this time.', 502);
+  }
+}
+
 /** Who will answer, so the page can put a name on the button before asking. */
 aiRoutes.get('/trade/voice/:orgId', (req, res) => {
   const { name, role } = tradeVoice(Number(req.params.orgId));

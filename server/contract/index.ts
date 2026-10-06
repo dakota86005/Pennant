@@ -146,3 +146,14 @@ export type {
   MlbScheduleView, MlbGamePlanView, MlbDepthEntry, MlbDepthPosition, MlbDepthClub, MlbDepthChartView, MlbFortyManView, MlbRosterQuery,
   MlbRosterChoice, MlbRostersView, MlbTrendPoint, MlbTrendSeries, MlbTrendChart, MlbSeasonTrendsView,
 } from '../presentation/clubhouse/types.js';
+// Trades (N12 Track C, D-073): `GET /api/v2/views/:org/trades/tradeDesk`, `…/analysis`, `POST …/ask`
+export type {
+  TradesViewHead, TradeDeal, TradeDeskPlayer, TradeOffer, TradeTalkTarget, TradeFitLine, TradeFitClub, TradeFitsView, TradeDeskAI,
+  TradeDeskView, TradeDealRow, TradeDealSide, TradeRangeChart, TradeDifferenceView, TradeAnalysisView, TradeTurn, TradeAsk,
+  TradeAnswerLine, TradeAnswer,
+} from '../presentation/trades/types.js';
+// Philosophy & Staff (N12 Track C, D-073): `…/philosophy/organizationalPhilosophy` (GET, PUT, DELETE) and `…/coachingStaff`
+export type {
+  PhilosophyViewHead, PhilosophyDimensionView, PhilosophyGroupView, PhilosophyPolicyOption, PhilosophyPolicyView, PhilosophyComparable,
+  PhilosophyIdentity, PhilosophyView, PhilosophySetting, PhilosophyUpdate, PhilosophyChange, StaffSection, CoachingStaffView,
+} from '../presentation/philosophy/types.js';
