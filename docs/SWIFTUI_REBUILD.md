@@ -1313,8 +1313,13 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   diamond as well as its colour, the served legend, round years labelled, the season's words on pointing, one image to
   VoiceOver with its `AXChartDescriptor`), its seasons and the GM's own seasons tables; Us vs Them an opponent pop-up
   and the three tables; the Draft Board its served filters as pop-ups narrowing the board to their rows, the calendar
-  a short grid; Player Search the toolbar's `.searchable` field with the served tokens suggested as the GM types (one
-  of each kind), batters or pitchers segmented, asked again a quarter second after the typing stops.
+  a short grid; Player Search scopes the window's one toolbar search field to itself while it is shown, as Finder's
+  search scopes to the folder shown (`WindowSearch`, FeatureCore: the served tokens suggested as the GM types, one of
+  each kind; the league-wide suggestions stand aside; leaving the view returns the field to the league), batters or
+  pitchers segmented, asked again a quarter second after the typing stops. A second `.searchable` of its own looped
+  AppKit's layout at 900 points (the app stopped), so the window keeps one field. The choice pop-ups are a button with
+  a popover of the served choices, as the farm's and the clubhouse's filters are (an unlabelled `Menu` failed the audit
+  as "Action is missing"); a cell in the secondary style draws in the row's own colour on a chosen row.
 - **Measured** (in process over HTTP, M4, under tsx). The owner's export (a read-only scratch copy; checksums matched
   the save's before and after the copy): the build 2.9 s on the server's thread (Org Comparison 2.2 s, Draft Board
   0.17 s, the rest under 0.15 s each; 2.2 s through the worker), warm GETs p50 / p95: Standings 0.8 / 2.0 ms (38 kB),
@@ -1325,8 +1330,8 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   History warm p50 2.0 ms, p95 4.0 ms (81 kB), its whole first build for that club 1.1 s. The synthetic save: Standings
   1 ms, Us vs Them 5 ms, Franchise History with 86 seasons 5 ms, Org Comparison 88 ms, Leaders 1 to 2 ms, Draft Board
   12 to 14 ms, Player Search 3 to 5 ms.
-- **The audits.** `testLeagueOfficeNarrowWindow` opens the seven views at 900 × 700 with the inspector open, three
-  rounds, a row chosen in each table and its detail drawn, another opponent asked, the franchise's record and seasons,
+- **The audits.** `testLeagueOfficeNarrowWindow` opens the seven views at 900 × 700 with the inspector open (a folded
+  department through the Go menu, each view's row clicked at its leading side), three rounds, a row chosen in each table and its detail drawn, another opponent asked, the franchise's record and seasons,
   a search typed, every table at least 120 points tall, and audits each view on its first visit.
 - **The palette test made deterministic.** `testDesignPaletteBasisAndInspector`'s intermittent finding (a report line
   just above the inspector's top edge, under the toolbar, read at 1.0:1) was the report not at its top when audited:

@@ -2974,7 +2974,9 @@ SWIFTUI_REBUILD.md section 3.5, "As built at N12 (Track B)".
 - **Player Search finds a name the way the palette does** (one matcher, `server/search.ts`), and its tokens (a position,
   a level, a club, an age band, a hand, free agents, our organization) are served, so the search field suggests only what
   the server knows. The palette's player matches end with "All N in Player Search", which opens the view on the words
-  typed. The results are capped and say how many match and how many are shown.
+  typed. The results are capped and say how many match and how many are shown. On the Mac it is the window's one
+  search field, scoped to Player Search while it is shown (as Finder's search scopes to the folder shown), never a
+  second field.
 - **Org Comparison is Player Value's** (D-052): each figure a range with its most likely value inside it, never one
   number when there is none; an unknown payroll or budget is not known, never $0.
 - **Franchise History serves every season** (a club of USBL's with 86, 1930 to 2015): the record as a chart, the seasons

@@ -1237,21 +1237,17 @@ final class PennantUITests: XCTestCase {
                 let sidebar = element(app, "sidebar")
                 up("before \(view.view), round \(round)")
                 if !item.exists {
-                    // The department folded: its row chosen and opened from the keyboard (→), as the outline does
-                    let department = element(app, "sidebar.\(view.dept)")
-                    if !department.isHittable { reveal(department, in: sidebar) }
-                    XCTAssertTrue(department.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.dept)")
-                    within(department, in: sidebar)
-                    let row = app.outlines["sidebar"].outlineRows.containing(.any, identifier: "sidebar.\(view.dept)").firstMatch
-                    let triangle = row.disclosureTriangles.firstMatch
-                    if triangle.exists { triangle.click() } else { department.click(); app.typeKey(.rightArrow, modifierFlags: []) }
-                    if !item.waitForExistence(timeout: 5) { keep(window.screenshot(), named: "n12b-narrow-900-folded-\(view.dept)") }
+                    // The department folded: the Go menu opens it (⌘4 Scouting, ⌘8 League Office), unfolding its views
+                    app.typeKey(view.dept == "scouting" ? "4" : "8", modifierFlags: .command)
+                    if !item.waitForExistence(timeout: 10) { keep(window.screenshot(), named: "n12b-narrow-900-folded-\(view.dept)") }
                 }
                 if !item.isHittable { reveal(item, in: sidebar) }
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
                 within(item, in: sidebar)
                 up("before \(view.view), round \(round)")
-                item.click()
+                // At the row's leading side, inside the sidebar: XCTest's own scroll-to-visible found no hit point for the
+                // sidebar's list mid-run (as N9's test saw), so nothing is left for it to scroll
+                leading(item)
                 let shown = starting(view.shows)
                 if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12b-narrow-900-missing-\(view.view)") }
                 XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
@@ -1279,7 +1275,7 @@ final class PennantUITests: XCTestCase {
                     let menu = element(app, "usVsThem.opponent")
                     if menu.waitForExistence(timeout: 5) {
                         menu.click()
-                        let other = app.menuItems.element(boundBy: 1)
+                        let other = element(app, "usVsThem.opponent.1")
                         if other.waitForExistence(timeout: 5) { other.click() } else { app.typeKey(.escape, modifierFlags: []) }
                         XCTAssertTrue(starting("table.usVsThem.").waitForExistence(timeout: 20), "round \(round): another opponent did not draw")
                     }

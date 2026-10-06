@@ -84,9 +84,9 @@ struct LeagueOfficeFeatureTests {
         let b = ScoutingStore.SearchQuery(q: "Smith", tokens: ["level:1", "position:SS", "level:1"]).normalized
         #expect(a == b)
         #expect(ScoutingStore.searchName(a) == ScoutingStore.searchName(b))
-        let ss = SearchToken(.init(id: "position:SS", kind: "position", text: .init(display: "Shortstop")))
-        let c = SearchToken(.init(id: "position:C", kind: "position", text: .init(display: "Catcher")))
-        let aaa = SearchToken(.init(id: "level:2", kind: "level", text: .init(display: "Triple-A")))
+        let ss = ScopedSearchToken(id: "position:SS", kind: "position", text: "Shortstop")
+        let c = ScopedSearchToken(id: "position:C", kind: "position", text: "Catcher")
+        let aaa = ScopedSearchToken(id: "level:2", kind: "level", text: "Triple-A")
         #expect(PlayerSearchView.oneOfEachKind([ss, aaa, c]) == [aaa, c])
         #expect(PlayerSearchView.oneOfEachKind([ss, aaa]) == [ss, aaa])
     }

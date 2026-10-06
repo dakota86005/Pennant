@@ -114,33 +114,24 @@ private struct CalendarGrid: View {
 
 // MARK: Player Search
 
-/// A served token as the search field holds it.
-struct SearchToken: Identifiable, Hashable {
-    let id: String
-    let kind: String
-    let text: String
-
-    init(_ served: Components.Schemas.ScoutingSearchToken) {
-        id = served.id
-        kind = served.kind
-        text = served.text.display
-    }
-}
-
-/// Player Search: the toolbar's search field, with the served tokens (a position, a level, a club, an age, a hand, free
-/// agents) suggested as the GM types and kept as tokens; batters or pitchers chosen above the results; the results a
-/// native table whose rows open their players and compare several. Asked again a moment after the GM stops typing.
+/// Player Search: the window's own search field, scoped to Player Search while it is shown (as Finder's search scopes
+/// to the folder shown), with the served tokens (a position, a level, a club, an age, a hand, free agents) suggested as
+/// the GM types and kept as tokens, one of each kind; batters or pitchers chosen above the results; the results a native
+/// table whose rows open their players and compare several. Asked again a moment after the GM stops typing.
 public struct PlayerSearchView: View {
     @Environment(AppModel.self) private var model
     /// The palette's "in Player Search" result opens the view on the words typed there (its route's `key`).
     @Environment(\.currentRoute) private var currentRoute
-    @State private var text = ""
-    @State private var tokens: [SearchToken] = []
+    /// The window's search field; nil outside a main window (a snapshot), where the view shows what it opens on.
+    @Environment(\.windowSearch) private var search
     /// Batters or pitchers: the served group choice's value, sent with the field's tokens (nil: as the server opens).
     @State private var group: String?
     @State private var asked = ScoutingStore.SearchQuery()
 
     public init() {}
+
+    private var text: String { search?.text ?? "" }
+    private var tokens: [ScopedSearchToken] { search?.tokens ?? [] }
 
     public var body: some View {
         let store = model.scouting
@@ -153,7 +144,7 @@ public struct PlayerSearchView: View {
                     OfficeHead(title: view.title, lede: view.lede, refreshing: refreshing)
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                         if !view.group.choices.isEmpty {
-                            Picker(selection: groupBinding(view)) {
+                            Picker(selection: Binding { groupId(view) } set: { group = $0 }) {
                                 ForEach(view.group.choices, id: \.value) { Text(verbatim: $0.text.display).tag($0.value) }
                             } label: {
                                 Text(verbatim: view.group.title.display)
@@ -172,18 +163,18 @@ public struct PlayerSearchView: View {
                     Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
                 }
             }
-            .searchable(text: $text, tokens: $tokens, placement: .toolbar, prompt: Text("Name, position, level, club…")) { token in
-                Text(verbatim: token.text)
+            .onChange(of: Suggesting(text: text, tokens: tokens.map(\.id), offered: view.kinds.count), initial: true) {
+                search?.suggested = Self.suggestions(view, typed: text, chosen: tokens)
             }
-            .searchSuggestions {
-                ForEach(suggestions(view), id: \.id) { token in
-                    Text(verbatim: token.text).searchCompletion(token)
-                }
-            }
-            .onChange(of: tokens) { _, now in tokens = Self.oneOfEachKind(now) }
+        }
+        .onAppear { search?.scope = "Search Players" }
+        .onDisappear { search?.unscope() }
+        .onChange(of: tokens) { _, now in
+            let kept = Self.oneOfEachKind(now)
+            if kept != now { search?.tokens = kept }
         }
         .onChange(of: currentRoute?.key, initial: true) { _, key in
-            if let key, !key.isEmpty { text = key }
+            if let key, !key.isEmpty { search?.text = key }
         }
         .task(id: SearchTask(key: model.storeKey, query: query)) {
             // A moment after the typing stops (a token or a group is asked at once); a newer ask calls this one off
@@ -195,17 +186,17 @@ public struct PlayerSearchView: View {
     }
 
     /// The tokens the field suggests for what is typed: the served tokens whose words contain it, not already chosen.
-    private func suggestions(_ view: Components.Schemas.ScoutingPlayerSearchView) -> [SearchToken] {
-        let typed = text.trimmingCharacters(in: .whitespaces)
+    static func suggestions(_ view: Components.Schemas.ScoutingPlayerSearchView, typed: String, chosen: [ScopedSearchToken]) -> [ScopedSearchToken] {
+        let typed = typed.trimmingCharacters(in: .whitespaces)
         guard !typed.isEmpty else { return [] }
-        let chosen = Set(tokens.map(\.id))
-        return view.kinds.flatMap(\.tokens).map(SearchToken.init)
-            .filter { !chosen.contains($0.id) && $0.text.localizedCaseInsensitiveContains(typed) }
+        let ids = Set(chosen.map(\.id))
+        return view.kinds.flatMap(\.tokens).map { ScopedSearchToken(id: $0.id, kind: $0.kind, text: $0.text.display) }
+            .filter { !ids.contains($0.id) && $0.text.localizedCaseInsensitiveContains(typed) }
             .prefix(12).map { $0 }
     }
 
     /// The tokens kept: one of each served kind, the latest chosen replacing an earlier one.
-    static func oneOfEachKind(_ tokens: [SearchToken]) -> [SearchToken] {
+    static func oneOfEachKind(_ tokens: [ScopedSearchToken]) -> [ScopedSearchToken] {
         var seen = Set<String>()
         let kept = tokens.reversed().filter { seen.insert($0.kind).inserted }.reversed().map { $0 }
         return kept.count == tokens.count ? tokens : kept
@@ -214,11 +205,12 @@ public struct PlayerSearchView: View {
     private func groupId(_ view: Components.Schemas.ScoutingPlayerSearchView) -> String {
         view.group.choices.first(where: \.selected)?.value ?? "all"
     }
+}
 
-    /// Batters or pitchers: the served group's choice, sent back as served.
-    private func groupBinding(_ view: Components.Schemas.ScoutingPlayerSearchView) -> Binding<String> {
-        Binding { groupId(view) } set: { group = $0 }
-    }
+private struct Suggesting: Equatable {
+    let text: String
+    let tokens: [String]
+    let offered: Int
 }
 
 private struct SearchTask: Hashable {

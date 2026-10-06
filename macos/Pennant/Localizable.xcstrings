@@ -391,9 +391,6 @@
     "Name": {
       "extractionState": "manual"
     },
-    "Name, position, level, club…": {
-      "extractionState": "manual"
-    },
     "Need": {
       "extractionState": "manual"
     },
@@ -593,6 +590,9 @@
       "extractionState": "manual"
     },
     "Search": {
+      "extractionState": "manual"
+    },
+    "Search Players": {
       "extractionState": "manual"
     },
     "Season Trends": {
