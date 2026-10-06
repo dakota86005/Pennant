@@ -53,12 +53,18 @@ struct ServedTable: View {
     /// What the table is, as served (the view's or the group's title), for VoiceOver.
     let name: String
     @Binding var selection: ServedRow.ID?
+    /// A row to bring into view when the table appears (N9: the schedule's next game, the 40-man's player a desk item
+    /// opened on).
+    var reveal: ServedRow.ID? = nil
     @State private var sortOrder: [ServedSort] = []
     @SceneStorage private var customization: TableColumnCustomization<ServedRow>
     @Environment(\.openWindow) private var openWindow
     @Environment(\.routeOpener) private var opener
 
     /// A column's narrowest: a name stays readable, a number keeps three digits, words a short label.
+    /// Columns of served words that run long (a reason, an availability, what can be done): wider to start.
+    static let wordy: Set<String> = ["why", "tonight", "now", "issues", "result", "series", "opponent", "ourStarter", "theirStarter", "standing"]
+
     static func minimumWidth(_ column: Components.Schemas.MlbColumn) -> CGFloat {
         if ["player", "pitcher"].contains(column.id) { return 110 }
         return column.numeric ? 44 : 72
@@ -67,13 +73,15 @@ struct ServedTable: View {
     /// A column's starting width (the GM can resize it): a name wide, a number narrow, words between.
     static func idealWidth(_ column: Components.Schemas.MlbColumn) -> CGFloat {
         if ["player", "pitcher"].contains(column.id) { return 170 }
+        if wordy.contains(column.id) { return 190 }
         return column.numeric ? 64 : 104
     }
 
-    init(_ table: Components.Schemas.MlbTable, id: String, name: String, selection: Binding<ServedRow.ID?>) {
+    init(_ table: Components.Schemas.MlbTable, id: String, name: String, selection: Binding<ServedRow.ID?>, reveal: ServedRow.ID? = nil) {
         self.table = table
         self.id = id
         self.name = name
+        self.reveal = reveal
         _selection = selection
         _customization = SceneStorage(wrappedValue: TableColumnCustomization<ServedRow>(), "majorLeague.table.\(id)")
     }
@@ -95,9 +103,17 @@ struct ServedTable: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
             // The table's own identifier (the pane around it is a container, so an id put on the view never replaces it)
-            nativeTable
-                .accessibilityLabel(Text(verbatim: name))
-                .accessibilityIdentifier("table.\(id)")
+            ScrollViewReader { proxy in
+                nativeTable
+                    .accessibilityLabel(Text(verbatim: name))
+                    .accessibilityIdentifier("table.\(id)")
+                    .onAppear {
+                        guard let reveal else { return }
+                        // After the first layout, so the row is there to scroll to; to the middle of the table's height
+                        // and its leading edge, so the columns are never scrolled sideways under the sidebar
+                        AfterNextFrame.run { proxy.scrollTo(reveal, anchor: UnitPoint(x: 0, y: 0.5)) }
+                    }
+            }
         }
     }
 
@@ -115,6 +131,8 @@ struct ServedTable: View {
                 // of its own (`NoContentMinimum`), so the columns' sum never reaches the split view (the N8 crash)
                 .width(min: Self.minimumWidth(column), ideal: Self.idealWidth(column))
                 .customizationID(column.id)
+                // A column served hidden (a roster's other season lines, N9) is shown from the table's own columns
+                .defaultVisibility(column.hidden == true ? .hidden : .automatic)
             }
         } rows: {
             ForEach(rows) { row in
@@ -164,13 +182,16 @@ struct ServedTablePane<Head: View, Notes: View>: View {
     let detailShare: CGFloat
     let head: Head
     let notes: Notes
+    let reveal: ServedRow.ID?
     @State private var selection: ServedRow.ID?
 
+    /// - Parameter selected: the row chosen and brought into view when the pane appears (N9: a desk item's player).
     init(
         _ table: Components.Schemas.MlbTable,
         id: String,
         name: String,
         detailShare: CGFloat = 0.42,
+        selected: ServedRow.ID? = nil,
         @ViewBuilder head: () -> Head,
         @ViewBuilder notes: () -> Notes
     ) {
@@ -180,13 +201,15 @@ struct ServedTablePane<Head: View, Notes: View>: View {
         self.detailShare = detailShare
         self.head = head()
         self.notes = notes()
+        reveal = selected
+        _selection = State(initialValue: selected)
     }
 
     var body: some View {
-        TablePane(detailShare: detailShare) {
+        TablePane(detailShare: detailShare, autosave: id) {
             head
         } table: {
-            ServedTable(table, id: id, name: name, selection: $selection)
+            ServedTable(table, id: id, name: name, selection: $selection, reveal: reveal)
         } detail: {
             VStack(alignment: .leading, spacing: 16) {
                 if let row = table.rows.first(where: { $0.id == selection }) {

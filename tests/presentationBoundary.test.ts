@@ -187,9 +187,9 @@ describe('the presentation boundary', () => {
     // `clubReport` is another club's report's reader (N7), held like `morningReport` below; `clubOwed` is the club question
     // still open (no specialist: it says whether the automatic club may be served as chosen)
     // `farmViewsBuild` is Farm & Development's views' reader (N10), run by the same worker; its own imports are held in
-    // farmViews.test.ts
+    // farmViews.test.ts; `clubhouseViewsBuild` is Major League Ops' clubhouse tools' reader (N9), held below
     const PUBLIC = new Set([
-      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'frontOfficeBuild', 'leagueRules',
+      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'clubhouseViewsBuild', 'frontOfficeBuild', 'leagueRules',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
       'viewingOrganization',
     ]);
@@ -256,6 +256,32 @@ describe('the presentation boundary', () => {
     expect(valueImports('farmViewsBuild.ts').filter((s) => ['providers', 'ai', 'chat', 'storylines'].includes(moduleName(s)))).toEqual([]);
   });
 
+  /**
+   * Major League Ops' clubhouse tools' reader (N9, D-069) reads what the React pages' routes compute, through their
+   * extracted modules, and nothing else: no rating of its own beyond OSA's per-player mark (D-067), no philosophy, no
+   * developmental stakes, no odds or posture, no AI. Its one setting is how the GM shows a rating.
+   */
+  it('clubhouseViewsBuild.ts reads only the routes\' extracted modules', () => {
+    const allowed = new Set([
+      'dashboard', 'dataStatus', 'gameplan', 'lineup', 'org', 'pitching', 'roster', 'rosterops', 'schedule', 'scoutedEvidence', 'settings', 'trends', 'valuation',
+    ]);
+    const outside = valueImports('clubhouseViewsBuild.ts').filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
+      .filter((m) => !allowed.has(m));
+    expect(outside).toEqual([]);
+    const source = code('clubhouseViewsBuild.ts');
+    // From the evidence module, only the per-player mark of OSA's view filling in for our scouts
+    expect([...source.matchAll(/import \{([^}]*)\} from '\.\/scoutedEvidence\.js'/g)].map((m) => m[1].trim())).toEqual(['ratingFillOf']);
+    for (const pattern of [
+      /developmentalContext|openDevelopmentalContext|evaluateDevelopmentProtection/,
+      /philosophy|Philosophy|assignmentPreference|resolvePhilosophy/,
+      /posture|playoffs|oddsModel|deadlineRead|playoffPicture/,
+    ]) {
+      expect(source, `clubhouseViewsBuild.ts matches ${pattern}`).not.toMatch(pattern);
+    }
+    expect([...source.matchAll(/loadSettings\(\)\.(\w+)/g)].map((m) => m[1])).toEqual(['roundRatingsToFive']);
+    expect(valueImports('clubhouseViewsBuild.ts').filter((s) => ['providers', 'ai', 'chat', 'storylines'].includes(moduleName(s)))).toEqual([]);
+  });
+
   /** The farm's views name the farm's parts through its public module only (N10): no farm module reached past it. */
   it.each(filesUnder('presentation/farm'))('%s names the farm\'s parts only through farmOperations', (file) => {
     const farmModules = [...code(file).matchAll(/from\s+'\.\.\/\.\.\/(farm\w*|playingTime)\.js'/g)].map((m) => m[1]);
@@ -268,8 +294,13 @@ describe('the presentation boundary', () => {
     // N7: the attention put on the Front Office when served, and Around the League (the club reports it builds), are
     // served views over it, like the routes; no specialist calls either
     // N10: the farm's views are kept on the Front Office's inputs and built in its worker, a served view like the others
-    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
+    // N9: Major League Ops' clubhouse tools, kept and built the same way
+    expect(importers('frontOfficeService').sort()).toEqual(['api.ts', 'aroundTheLeague.ts', 'clubhouseViewService.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'v2Routes.ts']);
     expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('clubhouseViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('clubhouseViewsBuild').sort()).toEqual(['clubhouseViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
+    expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/clubhouseViewsBuild\.js'/);
+    expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/clubhouseViewsBuild\.js'/);
     // frontOfficeBuild.ts names the farm's two jobs in the worker's one list of jobs (`WorkerJob`), by type only
     expect(importers('farmViewsBuild').sort()).toEqual(['farmViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
     expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
@@ -284,9 +315,10 @@ describe('the presentation boundary', () => {
     // pack files and hands them to the pack check (D-062)
     // N7: the served views that put the GM's attention on the Front Office, Around the League, and search's index (the
     // catalog's views)
-    // N10: Farm & Development's views, read in the build and kept by their service
+    // N10: Farm & Development's views, read in the build and kept by their service; N9: Major League Ops' clubhouse tools
     const allowed = new Set(['api.ts', 'v2Routes.ts', 'serverEvents.ts', 'frontOfficeService.ts', 'frontOfficeBuild.ts', 'themePackStore.ts',
-      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts']);
+      'frontOfficeAttention.ts', 'aroundTheLeague.ts', 'search.ts', 'farmViewsBuild.ts', 'farmViewService.ts', 'clubhouseViewsBuild.ts',
+      'clubhouseViewService.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

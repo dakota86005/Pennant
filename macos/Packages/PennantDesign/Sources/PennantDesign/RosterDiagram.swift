@@ -239,19 +239,21 @@ public struct PositionPlate: View {
 
     public var body: some View {
         let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
+        // The badge's words and fill are the palette's checked pair (N9 review, M7); hollow, its words are the fill's
+        // colour on the page, which reads as the pair does
+        let badge = palette.badgeFill
         let accent = palette.isNeutral ? Color.accentColor : palette.accent
-        let accentText = palette.isNeutral ? Color.white : palette.accentText
         let listed = position.holderRule == .listed
         ClaimText(position.claim) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     // The badge is filled for the regular the game log shows, hollow for the man merely listed there.
                     // The badges and the words keep their size; the holder's name gives way (truncates), never a word
-                    Text(verbatim: position.id).font(.system(size: 10, weight: .bold)).foregroundStyle(listed ? accent : accentText)
+                    Text(verbatim: position.id).font(.system(size: 10, weight: .bold)).foregroundStyle(listed ? badge : palette.badgeText)
                         .lineLimit(1).fixedSize()
                         .padding(.horizontal, 4).padding(.vertical, 1)
-                        .background(listed ? Color.clear : accent, in: .rect(cornerRadius: 3))
-                        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(accent, lineWidth: listed ? 1 : 0))
+                        .background(listed ? Color.clear : badge, in: .rect(cornerRadius: 3))
+                        .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(badge, lineWidth: listed ? 1 : 0))
                     Text(verbatim: position.holder).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.tail)
                         .layoutPriority(-1)
                     if listed { Text("Listed").font(.system(size: 9, weight: .semibold)).foregroundStyle(.readableSecondary).lineLimit(1).fixedSize() }

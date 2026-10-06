@@ -31,19 +31,24 @@ public struct EventClient: Sendable {
     public var onUnknown: @Sendable (String) -> Void
     /// Called when a connection fails or ends (for the log only).
     public var onError: @Sendable (String) -> Void
+    /// Told each wait before it is slept (for tests: they read the sequence of waits). Synchronous on purpose: a
+    /// stored async closure called from this loop aborted the task allocator on macOS 26's runtime (PR #57's CI).
+    public var onWait: @Sendable (Duration) -> Void
 
     public init(
         client: Client,
         reconnectDelay: Duration = .seconds(1),
         maxReconnectDelay: Duration = .seconds(10),
         onUnknown: @escaping @Sendable (String) -> Void = { _ in },
-        onError: @escaping @Sendable (String) -> Void = { _ in }
+        onError: @escaping @Sendable (String) -> Void = { _ in },
+        onWait: @escaping @Sendable (Duration) -> Void = { _ in }
     ) {
         self.client = client
         self.reconnectDelay = reconnectDelay
         self.maxReconnectDelay = maxReconnectDelay
         self.onUnknown = onUnknown
         self.onError = onError
+        self.onWait = onWait
     }
 
     /// The wait before the next attempt after `failures` attempts in a row that did not connect (1-based).
@@ -139,7 +144,9 @@ public struct EventClient: Sendable {
             }
             failures = connected ? 1 : failures + 1
             await handle(.disconnected)
-            try? await Task.sleep(for: delay(afterFailures: failures))
+            let wait = delay(afterFailures: failures)
+            onWait(wait)
+            try? await Task.sleep(for: wait)
         }
     }
 }

@@ -149,12 +149,20 @@ struct ThemeTests {
             // The heading chip's words on its fill, which no system accent touches
             let heading = contrast(.readableHeadingText, on: .readableHeadingFill, in: name)
             #expect(heading >= needed, "heading \(name.rawValue): \(heading)")
+            // A hollow position badge (the roster diagram's "listed" man): the heading fill's colour as words on the page
+            // and the window's background (N9 review, M7)
+            for fill in [NSColor.readablePage, .windowBackgroundColor] {
+                let hollow = contrast(.readableHeadingFill, on: fill, in: name)
+                #expect(hollow >= needed, "hollow badge \(name.rawValue): \(hollow)")
+            }
             // The system's white words on an action's tint
             let action = contrast(.white, on: .readableActionTint, in: name)
             #expect(action >= needed, "action \(name.rawValue): \(action)")
         }
-        // The neutral heading chip no longer draws on the system accent
+        // The neutral heading chip no longer draws on the system accent, and neither does a position's badge
         #expect(Theme.Palette.neutral.isNeutral)
+        #expect(Theme.Palette.neutral.badgeFill == Color(nsColor: .readableHeadingFill))
+        #expect(Theme.Palette.neutral.badgeText == Color(nsColor: .readableHeadingText))
     }
 
     @Test("an appearance whose served text does not read is drawn neutral, never half-themed; the others keep the club's colours")

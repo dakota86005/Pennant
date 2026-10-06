@@ -61,7 +61,7 @@ struct DecisionIndex: View {
         FarmLoading(payload: farm.assignments, problem: farm.assignments == nil ? farm.problems["assignments"] : nil) { view in
             let rows = view.rows.filter(\.inQuestion)
             let chosen = rows.first { selection.contains($0.id) }
-            TablePane(detailShare: 0.3) {
+            TablePane(detailShare: 0.3, autosave: "farm.decision") {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Choose a player to decide on").font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
                     Text(verbatim: view.order.display).font(.callout).foregroundStyle(.readableSecondary).help(detail: view.order.hint)

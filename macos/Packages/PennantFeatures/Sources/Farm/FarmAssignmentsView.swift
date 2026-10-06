@@ -54,7 +54,7 @@ struct AssignmentsTable: View {
         let chosen = rows.first { selection.contains($0.id) }
         // The head at its height, the table filling the rest and scrolling itself, the chosen row beneath it: never a
         // table in a page's scroll view (N8's `TablePane`, the narrow-window crash)
-        TablePane(detailShare: 0.3) {
+        TablePane(detailShare: 0.3, autosave: "farm.assignments") {
             AssignmentsHeader(view: view, updating: updating, problem: problem, shown: shownLabel)
         } table: {
             Table(of: Components.Schemas.FarmAssignmentRow.self, selection: $selection, sortOrder: $order, columnCustomization: $columns) {

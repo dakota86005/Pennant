@@ -88,10 +88,19 @@
     "Bullpen": {
       "extractionState": "manual"
     },
+    "By Club": {
+      "extractionState": "manual"
+    },
+    "By Position": {
+      "extractionState": "manual"
+    },
     "Can the club do its job?": {
       "extractionState": "manual"
     },
     "Can the club field a team?": {
+      "extractionState": "manual"
+    },
+    "Card": {
       "extractionState": "manual"
     },
     "Ceiling": {
@@ -171,6 +180,9 @@
     "Details": {
       "extractionState": "manual"
     },
+    "Details Height": {
+      "extractionState": "manual"
+    },
     "Development Tracking": {
       "extractionState": "manual"
     },
@@ -244,6 +256,12 @@
       "extractionState": "manual"
     },
     "Full development evidence": {
+      "extractionState": "manual"
+    },
+    "Game": {
+      "extractionState": "manual"
+    },
+    "Game Plan": {
       "extractionState": "manual"
     },
     "GM Briefing": {
@@ -495,6 +513,9 @@
       "extractionState": "manual"
     },
     "Position Players": {
+      "extractionState": "manual"
+    },
+    "Positions": {
       "extractionState": "manual"
     },
     "Prospects": {

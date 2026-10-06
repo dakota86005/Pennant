@@ -45,7 +45,7 @@ struct ProspectsBoard: View {
         let chosen = rows.first { selection.contains($0.id) } ?? rows.first
         // The head at its height, the table filling the rest and scrolling itself, the chosen player's meeting beneath it
         // in its own scroll area: never a table in a page's scroll view (N8's `TablePane`, the narrow-window crash)
-        TablePane(detailShare: 0.48) {
+        TablePane(detailShare: 0.48, autosave: "farm.prospects") {
             ProspectsHeader(view: view, updating: updating, problem: problem, guide: $guide)
         } table: {
                 Table(of: Components.Schemas.FarmProspectRow.self, selection: $selection, sortOrder: $order, columnCustomization: $columns) {

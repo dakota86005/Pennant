@@ -480,10 +480,14 @@ struct CandidatesPane: View {
                             Text("Group")
                         }
                         .labelsHidden()
-                        .fixedSize()
+                        // The pop-up takes the width it is given and truncates its title, as a pop-up button does, the
+                        // full title in its help tag: sized to its longest group's title it ran past a 900-point window's
+                        // content column and was clipped (N9's queued fix)
+                        .frame(maxWidth: 420, alignment: .leading)
+                        .help(Text(verbatim: candidates.groups[index].title.display))
                         .accessibilityIdentifier("candidates.group")
                     } else if let only = candidates.groups.first {
-                        Text(verbatim: only.title.display).font(.headline)
+                        Text(verbatim: only.title.display).font(.headline).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             } notes: {

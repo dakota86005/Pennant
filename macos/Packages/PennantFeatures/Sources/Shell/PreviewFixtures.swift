@@ -209,6 +209,22 @@ nonisolated public enum PreviewFixtures {
         )
     }
 
+    /// Major League Ops' captured clubhouse tools (`getMajorLeague…`, N9): the card the view opens on, the pen, the
+    /// schedule and its next game's plan, the depth chart, the 40-man, the major league roster and the season's lines.
+    @MainActor
+    public static var clubhouse: ClubhouseStore {
+        .preview(
+            lineup: decode(Components.Schemas.MlbLineupView.self, "getMajorLeagueLineup"),
+            pitching: decode(Components.Schemas.MlbPitchingAvailabilityView.self, "getMajorLeaguePitchingAvailability"),
+            schedule: decode(Components.Schemas.MlbScheduleView.self, "getMajorLeagueSchedule"),
+            plans: [decode(Components.Schemas.MlbGamePlanView.self, "getMajorLeagueGamePlan")].compactMap { $0 },
+            depth: decode(Components.Schemas.MlbDepthChartView.self, "getMajorLeagueDepthChart"),
+            fortyMan: decode(Components.Schemas.MlbFortyManView.self, "getMajorLeagueFortyMan"),
+            roster: decode(Components.Schemas.MlbRostersView.self, "getMajorLeagueRosters"),
+            trends: decode(Components.Schemas.MlbSeasonTrendsView.self, "getMajorLeagueSeasonTrends")
+        )
+    }
+
     /// The captured search answer for "club".
     public static var search: Components.Schemas.SearchAnswer? {
         decode(Components.Schemas.SearchAnswer.self, "search")
@@ -296,7 +312,8 @@ nonisolated public enum PreviewFixtures {
             following: configured ? (following ?? Self.following()) : nil,
             league: configured ? league : nil,
             farm: configured ? (farm ?? Self.farm) : nil,
-            majorLeague: configured ? majorLeague : nil
+            majorLeague: configured ? majorLeague : nil,
+            clubhouse: configured ? clubhouse : nil
         )
     }
 

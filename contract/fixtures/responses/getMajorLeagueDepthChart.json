@@ -1,0 +1,3122 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Depth Chart"
+  },
+  "lede": {
+    "text": "Who plays each position at every level of the organization",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Every player in the organization at his listed position, a position across every level or club by club from the major league club down, deepest first by the scouts' grade of him now. Signings nobody has assigned yet have a column of their own rather than being hidden."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The depth chart",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "clubs": [
+    {
+      "teamId": 1,
+      "title": {
+        "display": "Club 1 N"
+      },
+      "level": {
+        "display": "MLB"
+      },
+      "positions": [
+        {
+          "id": "SP",
+          "title": {
+            "display": "Starting pitchers"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1013,
+                "name": "P 1013",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1013,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "28 · 73",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1017,
+                "name": "P 1017",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1017,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "29 · 67",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1015,
+                "name": "P 1015",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1015,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 57 → 67",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1016,
+                "name": "P 1016",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1016,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "25 · 45 → 51",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1014,
+                "name": "P 1014",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1014,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "30 · 42",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": {
+            "display": "+2 more",
+            "hint": "P 1016, P 1014"
+          },
+          "empty": null
+        },
+        {
+          "id": "RP",
+          "title": {
+            "display": "Relief pitchers"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1020,
+                "name": "P 1020",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1020,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 52 → 60",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1021,
+                "name": "P 1021",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1021,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "33 · 45",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1023,
+                "name": "P 1023",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1023,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 45 → 55",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1019,
+                "name": "P 1019",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1019,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "30 · 35",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1018,
+                "name": "P 1018",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1018,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 34 → 44",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1022,
+                "name": "P 1022",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1022,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 34",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1024,
+                "name": "P 1024",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1024,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 34 → 42",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1025,
+                "name": "P 1025",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1025,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "25 · 21 → 27",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": {
+            "display": "+5 more",
+            "hint": "P 1019, P 1018, P 1022, P 1024, P 1025"
+          },
+          "empty": null
+        },
+        {
+          "id": "C",
+          "title": {
+            "display": "Catcher"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1012,
+                "name": "P 1012",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1012,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "28 · 43",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "1B",
+          "title": {
+            "display": "First base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1010,
+                "name": "P 1010",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1010,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 51",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1006,
+                "name": "P 1006",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1006,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 41",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "2B",
+          "title": {
+            "display": "Second base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1001,
+                "name": "P 1001",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1001,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "31 · 51",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "3B",
+          "title": {
+            "display": "Third base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1000,
+                "name": "P 1000",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1000,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "33 · 54",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1004,
+                "name": "P 1004",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1004,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "32 · 54",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1011,
+                "name": "P 1011",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1011,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "30 · 40",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "SS",
+          "title": {
+            "display": "Shortstop"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1003,
+                "name": "P 1003",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1003,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "26 · 55 → 59",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "LF",
+          "title": {
+            "display": "Left field"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1007,
+                "name": "P 1007",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1007,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "27 · 56 → 58",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1009,
+                "name": "P 1009",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1009,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 45 → 53",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "CF",
+          "title": {
+            "display": "Center field"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1005,
+                "name": "P 1005",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1005,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 71 → 78",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1002,
+                "name": "P 1002",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1002,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "28 · 62",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "RF",
+          "title": {
+            "display": "Right field"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "DH",
+          "title": {
+            "display": "Designated hitter"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1008,
+                "name": "P 1008",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1008,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "24 · 47 → 55",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        }
+      ]
+    },
+    {
+      "teamId": 101,
+      "title": {
+        "display": "Farm 1 F"
+      },
+      "level": {
+        "display": "AAA"
+      },
+      "positions": [
+        {
+          "id": "SP",
+          "title": {
+            "display": "Starting pitchers"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "RP",
+          "title": {
+            "display": "Relief pitchers"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1109,
+                "name": "P 1109",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1109,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 70 → 80",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1107,
+                "name": "P 1107",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1107,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "20 · 58 → 77",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            },
+            {
+              "player": {
+                "playerId": 1105,
+                "name": "P 1105",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1105,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "23 · 51 → 61",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "C",
+          "title": {
+            "display": "Catcher"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "1B",
+          "title": {
+            "display": "First base"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "2B",
+          "title": {
+            "display": "Second base"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1104,
+                "name": "P 1104",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1104,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "22 · 80",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "3B",
+          "title": {
+            "display": "Third base"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "SS",
+          "title": {
+            "display": "Shortstop"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1106,
+                "name": "P 1106",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1106,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "21 · 62 → 78",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "LF",
+          "title": {
+            "display": "Left field"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "CF",
+          "title": {
+            "display": "Center field"
+          },
+          "players": [
+            {
+              "player": {
+                "playerId": 1108,
+                "name": "P 1108",
+                "open": {
+                  "kind": "player",
+                  "playerId": 1108,
+                  "teamId": 1
+                }
+              },
+              "line": {
+                "display": "22 · 40 → 54",
+                "hint": "Age · the scouts' grade now → his ceiling"
+              }
+            }
+          ],
+          "more": null,
+          "empty": null
+        },
+        {
+          "id": "RF",
+          "title": {
+            "display": "Right field"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        },
+        {
+          "id": "DH",
+          "title": {
+            "display": "Designated hitter"
+          },
+          "players": [],
+          "more": null,
+          "empty": {
+            "display": "Nobody listed here"
+          }
+        }
+      ]
+    }
+  ],
+  "byPosition": [
+    {
+      "id": "SP",
+      "title": {
+        "display": "Starting pitchers"
+      },
+      "summary": {
+        "display": "5 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "SP-1013",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at starting pitchers on this club"
+              },
+              "player": {
+                "display": "P 1013"
+              },
+              "age": {
+                "display": "28"
+              },
+              "now": {
+                "display": "73",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "73",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1013",
+              "age": 28,
+              "now": 73,
+              "ceiling": 73
+            },
+            "player": {
+              "playerId": 1013,
+              "name": "P 1013",
+              "open": {
+                "kind": "player",
+                "playerId": 1013,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "SP-1017",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "2",
+                "hint": "His place at starting pitchers on this club"
+              },
+              "player": {
+                "display": "P 1017"
+              },
+              "age": {
+                "display": "29"
+              },
+              "now": {
+                "display": "67",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "67",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 2,
+              "player": "P 1017",
+              "age": 29,
+              "now": 67,
+              "ceiling": 67
+            },
+            "player": {
+              "playerId": 1017,
+              "name": "P 1017",
+              "open": {
+                "kind": "player",
+                "playerId": 1017,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "SP-1015",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "3",
+                "hint": "His place at starting pitchers on this club"
+              },
+              "player": {
+                "display": "P 1015"
+              },
+              "age": {
+                "display": "23"
+              },
+              "now": {
+                "display": "57",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "67",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 3,
+              "player": "P 1015",
+              "age": 23,
+              "now": 57,
+              "ceiling": 67
+            },
+            "player": {
+              "playerId": 1015,
+              "name": "P 1015",
+              "open": {
+                "kind": "player",
+                "playerId": 1015,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "SP-1016",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "4",
+                "hint": "His place at starting pitchers on this club"
+              },
+              "player": {
+                "display": "P 1016"
+              },
+              "age": {
+                "display": "25"
+              },
+              "now": {
+                "display": "45",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "51",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 4,
+              "player": "P 1016",
+              "age": 25,
+              "now": 45,
+              "ceiling": 51
+            },
+            "player": {
+              "playerId": 1016,
+              "name": "P 1016",
+              "open": {
+                "kind": "player",
+                "playerId": 1016,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "SP-1014",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "5",
+                "hint": "His place at starting pitchers on this club"
+              },
+              "player": {
+                "display": "P 1014"
+              },
+              "age": {
+                "display": "30"
+              },
+              "now": {
+                "display": "42",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "42",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 5,
+              "player": "P 1014",
+              "age": 30,
+              "now": 42,
+              "ceiling": 42
+            },
+            "player": {
+              "playerId": 1014,
+              "name": "P 1014",
+              "open": {
+                "kind": "player",
+                "playerId": 1014,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "RP",
+      "title": {
+        "display": "Relief pitchers"
+      },
+      "summary": {
+        "display": "11 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "RP-1020",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1020"
+              },
+              "age": {
+                "display": "24"
+              },
+              "now": {
+                "display": "52",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "60",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1020",
+              "age": 24,
+              "now": 52,
+              "ceiling": 60
+            },
+            "player": {
+              "playerId": 1020,
+              "name": "P 1020",
+              "open": {
+                "kind": "player",
+                "playerId": 1020,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1021",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "2",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1021"
+              },
+              "age": {
+                "display": "33"
+              },
+              "now": {
+                "display": "45",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "45",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 2,
+              "player": "P 1021",
+              "age": 33,
+              "now": 45,
+              "ceiling": 45
+            },
+            "player": {
+              "playerId": 1021,
+              "name": "P 1021",
+              "open": {
+                "kind": "player",
+                "playerId": 1021,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1023",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "3",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1023"
+              },
+              "age": {
+                "display": "23"
+              },
+              "now": {
+                "display": "45",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "55",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 3,
+              "player": "P 1023",
+              "age": 23,
+              "now": 45,
+              "ceiling": 55
+            },
+            "player": {
+              "playerId": 1023,
+              "name": "P 1023",
+              "open": {
+                "kind": "player",
+                "playerId": 1023,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1019",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "4",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1019"
+              },
+              "age": {
+                "display": "30"
+              },
+              "now": {
+                "display": "35",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "35",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 4,
+              "player": "P 1019",
+              "age": 30,
+              "now": 35,
+              "ceiling": 35
+            },
+            "player": {
+              "playerId": 1019,
+              "name": "P 1019",
+              "open": {
+                "kind": "player",
+                "playerId": 1019,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1018",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "5",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1018"
+              },
+              "age": {
+                "display": "23"
+              },
+              "now": {
+                "display": "34",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "44",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 5,
+              "player": "P 1018",
+              "age": 23,
+              "now": 34,
+              "ceiling": 44
+            },
+            "player": {
+              "playerId": 1018,
+              "name": "P 1018",
+              "open": {
+                "kind": "player",
+                "playerId": 1018,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1022",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "6",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1022"
+              },
+              "age": {
+                "display": "31"
+              },
+              "now": {
+                "display": "34",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "34",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 6,
+              "player": "P 1022",
+              "age": 31,
+              "now": 34,
+              "ceiling": 34
+            },
+            "player": {
+              "playerId": 1022,
+              "name": "P 1022",
+              "open": {
+                "kind": "player",
+                "playerId": 1022,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1024",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "7",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1024"
+              },
+              "age": {
+                "display": "24"
+              },
+              "now": {
+                "display": "34",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "42",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 7,
+              "player": "P 1024",
+              "age": 24,
+              "now": 34,
+              "ceiling": 42
+            },
+            "player": {
+              "playerId": 1024,
+              "name": "P 1024",
+              "open": {
+                "kind": "player",
+                "playerId": 1024,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1025",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "8",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1025"
+              },
+              "age": {
+                "display": "25"
+              },
+              "now": {
+                "display": "21",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "27",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 8,
+              "player": "P 1025",
+              "age": 25,
+              "now": 21,
+              "ceiling": 27
+            },
+            "player": {
+              "playerId": 1025,
+              "name": "P 1025",
+              "open": {
+                "kind": "player",
+                "playerId": 1025,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1109",
+            "cells": {
+              "level": {
+                "display": "AAA"
+              },
+              "club": {
+                "display": "Farm 1 F"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1109"
+              },
+              "age": {
+                "display": "23"
+              },
+              "now": {
+                "display": "70",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "80",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 1,
+              "club": "Farm 1 F",
+              "depth": 1,
+              "player": "P 1109",
+              "age": 23,
+              "now": 70,
+              "ceiling": 80
+            },
+            "player": {
+              "playerId": 1109,
+              "name": "P 1109",
+              "open": {
+                "kind": "player",
+                "playerId": 1109,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1107",
+            "cells": {
+              "level": {
+                "display": "AAA"
+              },
+              "club": {
+                "display": "Farm 1 F"
+              },
+              "depth": {
+                "display": "2",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1107"
+              },
+              "age": {
+                "display": "20"
+              },
+              "now": {
+                "display": "58",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "77",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 1,
+              "club": "Farm 1 F",
+              "depth": 2,
+              "player": "P 1107",
+              "age": 20,
+              "now": 58,
+              "ceiling": 77
+            },
+            "player": {
+              "playerId": 1107,
+              "name": "P 1107",
+              "open": {
+                "kind": "player",
+                "playerId": 1107,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "RP-1105",
+            "cells": {
+              "level": {
+                "display": "AAA"
+              },
+              "club": {
+                "display": "Farm 1 F"
+              },
+              "depth": {
+                "display": "3",
+                "hint": "His place at relief pitchers on this club"
+              },
+              "player": {
+                "display": "P 1105"
+              },
+              "age": {
+                "display": "23"
+              },
+              "now": {
+                "display": "51",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "61",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 1,
+              "club": "Farm 1 F",
+              "depth": 3,
+              "player": "P 1105",
+              "age": 23,
+              "now": 51,
+              "ceiling": 61
+            },
+            "player": {
+              "playerId": 1105,
+              "name": "P 1105",
+              "open": {
+                "kind": "player",
+                "playerId": 1105,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "C",
+      "title": {
+        "display": "Catcher"
+      },
+      "summary": {
+        "display": "1 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "C-1012",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at catcher on this club"
+              },
+              "player": {
+                "display": "P 1012"
+              },
+              "age": {
+                "display": "28"
+              },
+              "now": {
+                "display": "43",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "43",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1012",
+              "age": 28,
+              "now": 43,
+              "ceiling": 43
+            },
+            "player": {
+              "playerId": 1012,
+              "name": "P 1012",
+              "open": {
+                "kind": "player",
+                "playerId": 1012,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "1B",
+      "title": {
+        "display": "First base"
+      },
+      "summary": {
+        "display": "2 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "1B-1010",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at first base on this club"
+              },
+              "player": {
+                "display": "P 1010"
+              },
+              "age": {
+                "display": "31"
+              },
+              "now": {
+                "display": "51",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "51",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1010",
+              "age": 31,
+              "now": 51,
+              "ceiling": 51
+            },
+            "player": {
+              "playerId": 1010,
+              "name": "P 1010",
+              "open": {
+                "kind": "player",
+                "playerId": 1010,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "1B-1006",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "2",
+                "hint": "His place at first base on this club"
+              },
+              "player": {
+                "display": "P 1006"
+              },
+              "age": {
+                "display": "31"
+              },
+              "now": {
+                "display": "41",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "41",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 2,
+              "player": "P 1006",
+              "age": 31,
+              "now": 41,
+              "ceiling": 41
+            },
+            "player": {
+              "playerId": 1006,
+              "name": "P 1006",
+              "open": {
+                "kind": "player",
+                "playerId": 1006,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "2B",
+      "title": {
+        "display": "Second base"
+      },
+      "summary": {
+        "display": "2 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "2B-1001",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at second base on this club"
+              },
+              "player": {
+                "display": "P 1001"
+              },
+              "age": {
+                "display": "31"
+              },
+              "now": {
+                "display": "51",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "51",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1001",
+              "age": 31,
+              "now": 51,
+              "ceiling": 51
+            },
+            "player": {
+              "playerId": 1001,
+              "name": "P 1001",
+              "open": {
+                "kind": "player",
+                "playerId": 1001,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "2B-1104",
+            "cells": {
+              "level": {
+                "display": "AAA"
+              },
+              "club": {
+                "display": "Farm 1 F"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at second base on this club"
+              },
+              "player": {
+                "display": "P 1104"
+              },
+              "age": {
+                "display": "22"
+              },
+              "now": {
+                "display": "80",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "80",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 1,
+              "club": "Farm 1 F",
+              "depth": 1,
+              "player": "P 1104",
+              "age": 22,
+              "now": 80,
+              "ceiling": 80
+            },
+            "player": {
+              "playerId": 1104,
+              "name": "P 1104",
+              "open": {
+                "kind": "player",
+                "playerId": 1104,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "3B",
+      "title": {
+        "display": "Third base"
+      },
+      "summary": {
+        "display": "3 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "3B-1000",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at third base on this club"
+              },
+              "player": {
+                "display": "P 1000"
+              },
+              "age": {
+                "display": "33"
+              },
+              "now": {
+                "display": "54",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "54",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1000",
+              "age": 33,
+              "now": 54,
+              "ceiling": 54
+            },
+            "player": {
+              "playerId": 1000,
+              "name": "P 1000",
+              "open": {
+                "kind": "player",
+                "playerId": 1000,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "3B-1004",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "2",
+                "hint": "His place at third base on this club"
+              },
+              "player": {
+                "display": "P 1004"
+              },
+              "age": {
+                "display": "32"
+              },
+              "now": {
+                "display": "54",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "54",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 2,
+              "player": "P 1004",
+              "age": 32,
+              "now": 54,
+              "ceiling": 54
+            },
+            "player": {
+              "playerId": 1004,
+              "name": "P 1004",
+              "open": {
+                "kind": "player",
+                "playerId": 1004,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "3B-1011",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "3",
+                "hint": "His place at third base on this club"
+              },
+              "player": {
+                "display": "P 1011"
+              },
+              "age": {
+                "display": "30"
+              },
+              "now": {
+                "display": "40",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "40",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 3,
+              "player": "P 1011",
+              "age": 30,
+              "now": 40,
+              "ceiling": 40
+            },
+            "player": {
+              "playerId": 1011,
+              "name": "P 1011",
+              "open": {
+                "kind": "player",
+                "playerId": 1011,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "SS",
+      "title": {
+        "display": "Shortstop"
+      },
+      "summary": {
+        "display": "2 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "SS-1003",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at shortstop on this club"
+              },
+              "player": {
+                "display": "P 1003"
+              },
+              "age": {
+                "display": "26"
+              },
+              "now": {
+                "display": "55",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "59",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1003",
+              "age": 26,
+              "now": 55,
+              "ceiling": 59
+            },
+            "player": {
+              "playerId": 1003,
+              "name": "P 1003",
+              "open": {
+                "kind": "player",
+                "playerId": 1003,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "SS-1106",
+            "cells": {
+              "level": {
+                "display": "AAA"
+              },
+              "club": {
+                "display": "Farm 1 F"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at shortstop on this club"
+              },
+              "player": {
+                "display": "P 1106"
+              },
+              "age": {
+                "display": "21"
+              },
+              "now": {
+                "display": "62",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "78",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 1,
+              "club": "Farm 1 F",
+              "depth": 1,
+              "player": "P 1106",
+              "age": 21,
+              "now": 62,
+              "ceiling": 78
+            },
+            "player": {
+              "playerId": 1106,
+              "name": "P 1106",
+              "open": {
+                "kind": "player",
+                "playerId": 1106,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "LF",
+      "title": {
+        "display": "Left field"
+      },
+      "summary": {
+        "display": "2 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "LF-1007",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at left field on this club"
+              },
+              "player": {
+                "display": "P 1007"
+              },
+              "age": {
+                "display": "27"
+              },
+              "now": {
+                "display": "56",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "58",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1007",
+              "age": 27,
+              "now": 56,
+              "ceiling": 58
+            },
+            "player": {
+              "playerId": 1007,
+              "name": "P 1007",
+              "open": {
+                "kind": "player",
+                "playerId": 1007,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "LF-1009",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "2",
+                "hint": "His place at left field on this club"
+              },
+              "player": {
+                "display": "P 1009"
+              },
+              "age": {
+                "display": "24"
+              },
+              "now": {
+                "display": "45",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "53",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 2,
+              "player": "P 1009",
+              "age": 24,
+              "now": 45,
+              "ceiling": 53
+            },
+            "player": {
+              "playerId": 1009,
+              "name": "P 1009",
+              "open": {
+                "kind": "player",
+                "playerId": 1009,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "CF",
+      "title": {
+        "display": "Center field"
+      },
+      "summary": {
+        "display": "3 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "CF-1005",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at center field on this club"
+              },
+              "player": {
+                "display": "P 1005"
+              },
+              "age": {
+                "display": "23"
+              },
+              "now": {
+                "display": "71",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "78",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1005",
+              "age": 23,
+              "now": 71,
+              "ceiling": 78
+            },
+            "player": {
+              "playerId": 1005,
+              "name": "P 1005",
+              "open": {
+                "kind": "player",
+                "playerId": 1005,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "CF-1002",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "2",
+                "hint": "His place at center field on this club"
+              },
+              "player": {
+                "display": "P 1002"
+              },
+              "age": {
+                "display": "28"
+              },
+              "now": {
+                "display": "62",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "62",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 2,
+              "player": "P 1002",
+              "age": 28,
+              "now": 62,
+              "ceiling": 62
+            },
+            "player": {
+              "playerId": 1002,
+              "name": "P 1002",
+              "open": {
+                "kind": "player",
+                "playerId": 1002,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "CF-1108",
+            "cells": {
+              "level": {
+                "display": "AAA"
+              },
+              "club": {
+                "display": "Farm 1 F"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at center field on this club"
+              },
+              "player": {
+                "display": "P 1108"
+              },
+              "age": {
+                "display": "22"
+              },
+              "now": {
+                "display": "40",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "54",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 1,
+              "club": "Farm 1 F",
+              "depth": 1,
+              "player": "P 1108",
+              "age": 22,
+              "now": 40,
+              "ceiling": 54
+            },
+            "player": {
+              "playerId": 1108,
+              "name": "P 1108",
+              "open": {
+                "kind": "player",
+                "playerId": 1108,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "RF",
+      "title": {
+        "display": "Right field"
+      },
+      "summary": null,
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "DH",
+      "title": {
+        "display": "Designated hitter"
+      },
+      "summary": {
+        "display": "1 in the organization"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "level",
+            "title": {
+              "display": "Level"
+            },
+            "numeric": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false
+          },
+          {
+            "id": "depth",
+            "title": {
+              "display": "#"
+            },
+            "numeric": true
+          },
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true
+          },
+          {
+            "id": "now",
+            "title": {
+              "display": "Now"
+            },
+            "numeric": true
+          },
+          {
+            "id": "ceiling",
+            "title": {
+              "display": "Ceiling"
+            },
+            "numeric": true
+          }
+        ],
+        "rows": [
+          {
+            "id": "DH-1008",
+            "cells": {
+              "level": {
+                "display": "MLB"
+              },
+              "club": {
+                "display": "Club 1 N"
+              },
+              "depth": {
+                "display": "1",
+                "hint": "His place at designated hitter on this club"
+              },
+              "player": {
+                "display": "P 1008"
+              },
+              "age": {
+                "display": "24"
+              },
+              "now": {
+                "display": "47",
+                "hint": "Your scouts' grade of him now"
+              },
+              "ceiling": {
+                "display": "55",
+                "hint": "Your scouts' grade of his ceiling"
+              }
+            },
+            "sort": {
+              "level": 0,
+              "club": "Club 1 N",
+              "depth": 1,
+              "player": "P 1008",
+              "age": 24,
+              "now": 47,
+              "ceiling": 55
+            },
+            "player": {
+              "playerId": 1008,
+              "name": "P 1008",
+              "open": {
+                "kind": "player",
+                "playerId": 1008,
+                "teamId": 1
+              }
+            },
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "Nobody in the organization is listed here."
+        }
+      },
+      "note": null
+    }
+  ],
+  "note": {
+    "text": "Deepest first by the scouts' grade now",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Position",
+          "value": "His listed position in the export; a pitcher is a starter or a reliever by his listed role."
+        },
+        {
+          "label": "Order",
+          "value": "The scouts' grade of him now, highest first; a player the scouts haven't graded comes after every graded one."
+        },
+        {
+          "label": "Unassigned",
+          "value": "A signing nobody has assigned yet sits on the parent club in the export with no roster spot, so he is listed apart."
+        }
+      ],
+      "source": {
+        "department": "majorLeague",
+        "specialist": "The depth chart",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "A grade the scouts haven't given is not known, never low."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "empty": null
+}

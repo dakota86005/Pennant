@@ -15,6 +15,7 @@
  */
 import { db, tableColumns, tableExists } from '../db.js';
 import { daysBetween, parseGameDate, type GameDate } from '../dataFreshness.js';
+import { projectedStarters } from '../probableStarters.js';
 
 export type TotalsTable = 'batting' | 'pitching' | 'starting' | 'bullpen' | 'fielding';
 
@@ -114,6 +115,12 @@ export interface TeamSeasonFacts {
   /** OOTP's projected starters, next start first, per club. */
   projected: Array<{ teamId: number; starters: number[] }>;
   projectedWhy: string | null;
+  /**
+   * Who each side is projected to start in the next game: its projection at that game's place among its own games still
+   * to play (`probableStarters.ts`, D-069), the schedule's reading, never its first slot; null for a side projected to no
+   * one that far ahead.
+   */
+  nextStarters: { ours: number | null; theirs: number | null };
   deadline: { raw: string; date: GameDate } | null;
   deadlineWhy: string | null;
   /** The per-game log of every club: batting, and pitching split into starters (a line with a start) and relievers. */
@@ -154,7 +161,7 @@ export function readTeamSeason(orgId: number): TeamSeasonFacts {
   const teams = has('teams');
   const out: TeamSeasonFacts = {
     orgId, leagueId: null, season: null, currentDate: null, scheduledGames: null, clubs: [], divisions: [], subLeagues: [],
-    games: [], gamesWhy: null, next: null, nextWhy: null, projected: [], projectedWhy: null, deadline: null, deadlineWhy: null,
+    games: [], gamesWhy: null, next: null, nextWhy: null, projected: [], projectedWhy: null, nextStarters: { ours: null, theirs: null }, deadline: null, deadlineWhy: null,
     log: { batting: null, starting: null, relief: null, why: null },
   };
   if (!teams.has('team_id') || !teams.has('league_id')) {
@@ -303,6 +310,13 @@ export function readTeamSeason(orgId: number): TeamSeasonFacts {
     const slots = Array.from({ length: 8 }, (_, i) => `starter_${i}`).filter((c) => projected.has(c));
     out.projected = (db.prepare(`SELECT team_id, ${slots.join(', ')} FROM projected_starting_pitchers WHERE ${inClubs}`).all() as Array<Record<string, unknown>>)
       .map((r) => ({ teamId: r.team_id as number, starters: slots.map((s) => num(r[s])).filter((id): id is number => id !== null && id > 0) }));
+    if (out.next) {
+      // The opponent's next game is not always ours (an off day of ours, a doubleheader): each side's man is its
+      // projection at this game's place
+      const opponent = out.next.home === orgId ? out.next.away : out.next.home;
+      const reader = projectedStarters([orgId, opponent]);
+      out.nextStarters = { ours: reader.starterOf(orgId, out.next.gameId), theirs: reader.starterOf(opponent, out.next.gameId) };
+    }
   }
 
   out.log = readGameLog(leagueId, out.season, inClubs);

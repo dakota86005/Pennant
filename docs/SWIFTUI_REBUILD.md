@@ -1150,6 +1150,73 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   never "not measured yet". Previews: `contract/fixtures/farm/development-detail-switched.json` and
   `organization-set-aside.json`.
 
+**As built at N9 (2026-10-04): Major League Ops' clubhouse tools (server and Mac).** Branch
+`feature/swiftui-n9-clubhouse`; D-069 (BEHAVIOR_CASES.md "Pennant for Mac", the `routeExtractions.test.ts`,
+`clubhouseViews.test.ts` and `ClubhouseFeatureTests` rows).
+- **Server.** The routes the React pages read compute in callable modules, each old route sending exactly what its module
+  computes (`computeLineup` with `lineupAskOf`, `computeNextGame`, `computeSchedule`, `computeGamePlan`,
+  `computeDepthChart`, `computeRoster` moved to `server/roster.ts`; N4's `computeTrends`, `computeRosterCrunchIssues`,
+  `computePitchingStaff` reused). `GET /api/v2/views/:org/majorLeague/lineup?vs&style&dh&sort` (`MlbLineupView`: the next
+  game, the GM's choices each with the ask it sends, the staff's view as the headline, the order as a table with each
+  slot's reason, bench, unavailable, not scouted), `/pitchingAvailability` (the bullpen as a rest calendar of the last five
+  days, the rotation, the starting depth; the availability worded from the route's code), `/scheduleGamePlans` (the record,
+  head-to-head, every game, the filters with their rows in their own order) and `/scheduleGamePlans/plan?game=` (their
+  starter, our card for his hand, the matchups with their samples, their dangerous bats), `/depthChart` (each club's
+  positions deepest first by the scouts' grade now), `/fortyManOptions` (the counts against the limits, needs attention,
+  the 40-man with options, Rule 5 and what can be done from Player Rights, every reason in the row's detail), `/rosters?team=`
+  (hitters and pitchers with the scouts' grades and every season line, the usual ones shown, the rest served `hidden`) and
+  `/seasonTrends` (each chart's series as points, null before a rolling window fills, with what it means). The adapters are
+  `server/presentation/clubhouse/`; `clubhouseViewsBuild.ts` reads, `clubhouseViewService.ts` keeps one club's build on the
+  Front Office's key, built in its worker after each kept Front Office build (the eight cards for the league's DH rule, the
+  next six plans and the major league roster ahead; anything else on its first open, kept, two builds and 48 asks bounded).
+  A 40-man desk item opens 40-Man & Options on its player (`key`); Tonight and a game played open the schedule on the game.
+  `MlbColumn.hidden` is additive. A game still to play names its club's projected starter at its place among the club's
+  own games still to play (`probableStarters.ts`), in the schedule, the game plan and the next game alike.
+- **The queued fix:** the save's place (`currentSaveLocation`) is kept against the configuration's stamp and the served
+  import, a save not found looked for again after 15 seconds, the live log's files still looked at each time; the
+  export's time is kept for the import and 15 seconds at most. A data status read went from 75 stats to 5 (0.42 to 0.13 ms
+  on a local disk; inside OOTP's container each stat is the cost the owner's /farm-operations paid, about 45 ms).
+- **Mac.** `ClubhouseStore` (PennantKit, `AppModel.clubhouse`) reads each tool once per key and ask, never another club's.
+  Lineup, Pitching Availability, 40-Man & Options and Rosters are N8's `TablePane` with the served sections as a segmented
+  control; Lineup's choices ask the server again exactly as served (the card shown stays, drawn as updating; in the
+  toolbar since the review, below); Rosters' club is a popover of choices and its other season lines are shown from the table
+  header's menu (`defaultVisibility`, remembered in scene storage). The schedule opens on the games still to play (or on
+  the filter holding the game it was opened on, Played latest first), the chosen game's plan beneath in its own pane,
+  its sections as short grids. Depth Chart is one club at a time on the roster diagram's flat field (`FieldGeometry`,
+  `FlatField`, `FieldNode`), three men to a plate with the rest in a popover, the pitchers beside it, cards on a narrow
+  column. Season Trends is Swift Charts (linear lines, a dashed served rule, the legend naming each line), each chart one
+  image element with its `AXChartDescriptor` from the served points and summary.
+- **Measured** (in process over HTTP, M4, under tsx). The owner's export (a read-only scratch copy, a pretend home holding
+  its layout): the build 2.5 s on the server's thread (eight cards 1.8 s, six plans 0.26 s, the 40-man 0.14 s; 2.1 s through
+  the worker), warm GETs p50 / p95: Lineup 0.7 / 1.8 ms (18 kB), Pitching Availability 0.6 / 1.0 (31 kB), Schedule 1.3 /
+  2.2 (122 kB), a plan 0.3 / 0.7, Depth Chart 0.8 / 1.5 (64 kB), 40-Man 0.9 / 1.8 (88 kB), Rosters 1.3 / 2.2 (109 kB),
+  Season Trends 0.4 / 0.6; asked on a click, first and warm: a DH card 0.49 s / 0.5 ms, a late game's plan 0.82 s / 0.6 ms,
+  an affiliate's roster 0.41 s / 1.6 ms. USBL (a scratch copy): the build 2.5 s, warm p95 at most 2.9 ms. The synthetic
+  save: the build 50 ms, warm p95 at most 2.1 ms.
+- **The audits.** `testClubhouseNarrowWindow` opens all twelve Major League Ops views at 900 × 700 with the inspector open,
+  three rounds, a row chosen in each table, a card asked another way, a plan drawn and the pitchers shown, and audits each
+  clubhouse tool on its first visit: 0 findings, nothing new set aside. Found and fixed on the way: a table scrolled to a
+  row by `ScrollViewReader` left rows under its header (the schedule opens on a filter instead; a revealed row keeps the
+  leading edge), Swift Charts' per-range elements had no role (the chart is one image element), a caption-size line in the
+  secondary colour read "nearly passed". N8's Decision candidates' group pop-up now truncates with its full title in a
+  help tag instead of being clipped at 900 points.
+- **After the review (2026-10-05).** Every reading of the probable starters (the schedule, a plan, the next game, the
+  dashboard, the Morning Report's Tonight) reads one projection at the game's place, regular-season games only (D-069).
+  Each part of the build is read on its own: a part that throws is logged, worded "couldn't be read this time", and kept
+  for the import like the rest; an asked view is kept only when the generation and the inputs key held. Lineup's choices
+  moved into the window's toolbar (the opposing hand a segmented control, the rest a "Card" pull-down with each group
+  inline), its staff's view one line with the basis a click away, and the next game and notes into the pane beneath.
+  `TablePane`'s boundary between table and detail is the GM's to drag, as in Mail, remembered per view
+  (`TablePane.detailHeight.<view>`), VoiceOver adjusting it a step at a time; the table never drops below
+  `tableMinimum`. Depth Chart reads by position (one position across every level in a native table, served as
+  `byPosition` from the same build) or by club (the field), chosen in the head and remembered by the window. Position
+  badges draw `readableHeadingText` on `readableHeadingFill` in the system's colours. Runs allowed are dashed in Season
+  Trends; a mark-only cell (the rest calendar's dash) reads its served hint to VoiceOver. The narrow test clicks the
+  sidebar once (no second click), brings the app back only when another process is frontmost (logged), asserts the
+  Lineup's table keeps 120 pt, and reads the depth both ways.
+- *Left for later:* the per-view sidebar counts; a player opens his club until N11's player windows land (the views use
+  the served `open`, so N11's window takes over).
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2335,6 +2402,10 @@ built at N8"; D-065). Left open: the items in that section's "Left for later".
 at N10"; D-066), and with the scouted-ratings work (D-067, D-068): Development tracking says a change of rating source and the
 Organization lines say a fit set aside. The farm's XCUITests (`testFarmDeskToDecision`, `testFarmViewsDark`,
 `testFarmNarrowWindow`, five runs in a row) pass on the owner's Mac and on CI. Left open: the owner's calls listed in D-066.
+
+**N9 (2026-10-04)** on `feature/swiftui-n9-clubhouse`: Major League Ops' clubhouse tools, server and Mac (section 3.5,
+"As built at N9"; D-069), every Major League Ops view now drawn, and the save's place kept per import. Left open: the
+owner's calls listed in D-069.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

@@ -169,7 +169,7 @@ describe('the policy lines: fifths and "too early", stamped as policy', () => {
     const buildCtx = { orgId: 1, club: null, importStamp: null, reportStamp: 'r', gameDate: '2040-5-5' };
     const middleOf = (clubs: ClubFacts[]) => {
       const reading = clubProfileOf(facts(clubs));
-      const d = clubProfileWords(buildCtx, { facts: facts(clubs), division: null, profile: reading, map: { why: 'x' }, starters: [], ms: {} }).dimensions.find((x) => x.id === 'scoring')!;
+      const d = clubProfileWords(buildCtx, { facts: facts(clubs), division: null, profile: reading, map: { why: 'x' }, starters: [], tonightStarters: { ours: null, theirs: null }, ms: {} }).dimensions.find((x) => x.id === 'scoring')!;
       return { detail: d.detail.display, line: d.claim.basis.because.find((b) => b.label === 'League middle') };
     };
     const five = middleOf([club(1, 150), club(2, 200), club(3, 120), club(4, 100), club(5, 180)]);

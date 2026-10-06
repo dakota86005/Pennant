@@ -366,7 +366,7 @@ describe('the map on the synthetic save', () => {
 /** A roster map's material holding one position reading. */
 function mapMaterial(r: ReturnType<typeof positionReadings>[number]) {
   return {
-    facts: {} as never, division: null, profile: { why: 'x' }, starters: [], ms: {},
+    facts: {} as never, division: null, profile: { why: 'x' }, starters: [], tonightStarters: { ours: null, theirs: null }, ms: {},
     map: {
       positions: [{ ...r, farmNext: null, farmMore: 0, control: null, standing: null, needs: [] }],
       noDh: null, rotation: [], bullpen: [], rotationNeeds: [], bullpenNeeds: [], scale: { low: -2, high: 6 }, holderWindow: 15, logWhy: null,

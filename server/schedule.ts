@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { db, hasColumns, tableExists } from './db.js';
 import { DATE_KEY } from './dashboard.js';
+import { answer, refuse, type Computed } from './computed.js';
+import { projectedStarters } from './probableStarters.js';
+
+/** The clubs the export projects starters for: the schedule's own projection reader, for its words (N9). */
+export { projectedClubs } from './probableStarters.js';
 
 export const scheduleRoutes = Router();
 
@@ -39,17 +44,22 @@ function pitcher(id: number | null) {
   return p ? { player_id: p.player_id, name: p.name, throws: HAND[p.throws] ?? '?' } : null;
 }
 
-function projectedStarter(teamId: number, index: number) {
-  if (!tableExists('projected_starting_pitchers')) return null;
-  const row = db.prepare(`SELECT * FROM projected_starting_pitchers WHERE team_id = ?`).get(teamId) as
-    | Record<string, number>
-    | undefined;
-  return row ? pitcher(row[`starter_${Math.min(index, 7)}`] ?? null) : null;
+/** A club's season schedule (`GET /api/schedule/:teamId`): its games grouped into series, its record and head-to-heads. */
+export type Schedule = ReturnType<typeof scheduleOf>;
+
+/** A club's schedule, or why it cannot be read (the route's own answer; SWIFTUI_REBUILD.md N9). */
+export function computeSchedule(teamId: number): Computed<Schedule> {
+  if (!tableExists('games')) return refuse(400, 'No data imported yet');
+  return answer(scheduleOf(teamId));
 }
 
 scheduleRoutes.get('/schedule/:teamId', (req, res) => {
-  const teamId = Number(req.params.teamId);
-  if (!tableExists('games')) return res.status(400).json({ error: 'No data imported yet' });
+  const schedule = computeSchedule(Number(req.params.teamId));
+  if (!schedule.ok) return res.status(schedule.status).json({ error: schedule.error });
+  res.json(schedule.body);
+});
+
+function scheduleOf(teamId: number) {
 
   // The named starters are not in every version of games.csv, and asking for a
   // column that is not there costs the whole schedule rather than the probables
@@ -68,7 +78,7 @@ scheduleRoutes.get('/schedule/:teamId', (req, res) => {
     )
     .all(teamId, teamId) as GameRow[];
 
-  if (rows.length === 0) return res.json({ series: [], record: null });
+  if (rows.length === 0) return { series: [], record: null } as const;
 
   // Opponent records, so a series can be judged before it starts
   const records = new Map<number, { w: number; l: number; pct: number }>();
@@ -104,6 +114,8 @@ scheduleRoutes.get('/schedule/:teamId', (req, res) => {
       theirStarter: g.played ? pitcher(isHome ? g.starter0 : g.starter1) : null,
     };
   });
+
+  const starters = projectedStarters([teamId, ...new Set(games.filter((g) => !g.played).map((g) => g.oppId))]);
 
   // Group consecutive same-opponent, same-venue games into series
   type Game = (typeof games)[number];
@@ -150,14 +162,12 @@ scheduleRoutes.get('/schedule/:teamId', (req, res) => {
     s.played = playedCount === s.games.length;
     s.inProgress = playedCount > 0 && playedCount < s.games.length;
 
-    // Probable starters for games still to come, taken from the projected
-    // rotation and advanced one slot per remaining game
-    let ours = 0;
-    let theirs = 0;
+    // Probable starters for games still to come: each club's projected rotation, read at the game's place among that
+    // club's own games still to play (`probableStarters.ts`); past the projection, nobody is named yet
     for (const g of s.games) {
       if (g.played) continue;
-      g.ourStarter = projectedStarter(teamId, ours++);
-      g.theirStarter = projectedStarter(g.oppId, theirs++);
+      g.ourStarter = pitcher(starters.starterOf(teamId, g.game_id));
+      g.theirStarter = pitcher(starters.starterOf(g.oppId, g.game_id));
     }
   }
 
@@ -209,7 +219,7 @@ scheduleRoutes.get('/schedule/:teamId', (req, res) => {
     }
   }
 
-  res.json({
+  return {
     headToHead,
     lineScores,
     record: {
@@ -222,5 +232,5 @@ scheduleRoutes.get('/schedule/:teamId', (req, res) => {
     },
     nextSeriesIndex: nextIndex,
     series,
-  });
-});
+  };
+}
