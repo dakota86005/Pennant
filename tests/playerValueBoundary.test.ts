@@ -295,7 +295,8 @@ const MIGRATED_CONSUMERS = ['contracts.ts', 'payroll.ts', 'trade.ts', 'player.ts
   'franchise.ts'];
 
 /** Who may call the snapshot writer: the import (its snapshots, `importSnapshots.ts`; the start-up's market record, `api.ts`), and the one route that serves the history. */
-const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts', 'importSnapshots.ts'];
+// N12: Finance's Payroll view reads the price of a win's history (`priceHistory`) as Club Finances' route serves it
+const SNAPSHOT_CALLERS = ['api.ts', 'clubFinanceRoutes.ts', 'importSnapshots.ts', 'officeViewsBuild.ts'];
 
 /** Who may mount the Player Value routes. */
 const ROUTE_MOUNTERS = ['api.ts'];

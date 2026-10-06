@@ -554,7 +554,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
    */
   it('answers the desk\'s and Following\'s changes in the contract\'s shape, and puts each back (captured for the previews)', async () => {
     const changes = operations.filter((op) => op.method === 'put' || op.method === 'delete').map((op) => op.operationId).sort();
-    expect(changes).toEqual(['follow', 'removeStaffNote', 'setDeskStatus', 'setPlayerNote', 'undoFirstPlayerNote', 'unfollow']);
+    expect(changes).toEqual(['follow', 'removeStaffNote', 'setDeskStatus', 'setFinanceBudget', 'setPlayerNote', 'undoFirstPlayerNote', 'unfollow']);
     const call = async (method: 'PUT' | 'DELETE', url: string, body?: unknown) => {
       const res = await fetch(`${base}${url}`, {
         method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
@@ -597,6 +597,10 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     check('unfollow', 'club', await call('DELETE', `/api/v2/following?kind=club&id=${club}`), 200);
     check('unfollow', 'not-followed', await call('DELETE', `/api/v2/following?kind=club&id=${club}`), 404);
     check('unfollow', 'no-kind', await call('DELETE', `/api/v2/following?id=${club}`), 400);
+    // N12: the budget the GM expects next season (a Pennant setting), set, refused and cleared again
+    check('setFinanceBudget', 'set', await call('PUT', `/api/v2/views/${save.org}/finance/payrollBudget/nextSeasonBudget`, { amount: 150_000_000 }), 200);
+    check('setFinanceBudget', 'not-an-amount', await call('PUT', `/api/v2/views/${save.org}/finance/payrollBudget/nextSeasonBudget`, { amount: 'lots' }), 400);
+    check('setFinanceBudget', 'cleared', await call('PUT', `/api/v2/views/${save.org}/finance/payrollBudget/nextSeasonBudget`, { amount: 0 }), 200);
     // Put back: nothing followed, nothing marked
     expect((await call('DELETE', `/api/v2/following?kind=player&id=${save.regular}`)).status).toBe(200);
     // N11: the GM's note on a player he doesn't follow, kept exactly as typed, and its undo (which stops following him)

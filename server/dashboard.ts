@@ -79,6 +79,8 @@ export function orgInjuries(orgId: number) {
     status: health!.status,
     daysLeft: health!.daysLeft,
     dlDaysThisYear: r.dl_days_this_year ?? null,
+    // N12: whether he can play through it (an active man day-to-day), as the health rule reads him (additive)
+    playable: health!.playable,
   }));
 }
 

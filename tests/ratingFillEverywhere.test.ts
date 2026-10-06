@@ -62,6 +62,18 @@ describe('the OSA mark is carried wherever a grade is shown (review M4)', () => 
     }
   });
 
+  it('on Finance\'s free agents and the Horizon Board\'s pipeline (N12)', async () => {
+    const { buildOfficeViews } = await import('../server/officeViewsBuild.js');
+    const built = buildOfficeViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    expect(built.failed).toEqual([]);
+    const owners = gradeOwners([built.freeAgents, built.horizon, built.contracts, built.payroll, built.injuryReport], 'finance');
+    expect(owners.length).toBeGreaterThan(0);
+    expect(owners.filter((o) => !o.marked).map((o) => o.path)).toEqual([]);
+    if (built.horizon.ok) {
+      for (const p of built.horizon.view.rows.flatMap((r) => r.pipeline)) expect(p.ratingsFill).toMatchObject({ display: 'OSA', hint: SENTENCE });
+    }
+  });
+
   it('on the player window and Compare', async () => {
     const { buildPlayerDossiers } = await import('../server/playerDossierBuild.js');
     const { compareView } = await import('../server/presentation/player/compare.js');

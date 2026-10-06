@@ -724,7 +724,8 @@ function notYetWords(f: FarmNext, level: string): { text: string; hint: string }
   return null;
 }
 
-function farmMan(f: FarmNext): FarmNextMan {
+/** The farm's next man in the roster map's words (exported at N12 for Finance's Horizon Board, which says him the same way). */
+export function farmMan(f: FarmNext): FarmNextMan {
   const level = LEVEL_WORDS[f.level] ?? `Level ${f.level}`;
   const a = f.assessment;
   const state: ReadinessState = !a ? 'notAssessed' : a.judgment === 'defensible' ? 'ready' : a.judgment === 'indefensible' ? 'notYet' : 'cantTell';

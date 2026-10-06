@@ -113,6 +113,16 @@ export type {
   FarmEvaluationRow, FarmProspectCard, FarmProspectsView, FarmDevelopmentTab, FarmDevelopmentRow, FarmSnapshotRow, FarmMovementRow,
   FarmDevelopmentDetail, FarmDevelopmentView,
 } from '../presentation/farm/types.js';
+// Finance's and Medical's views (N12, D-071): `/api/v2/views/:org/{finance,medical}/…`
+export type {
+  OfficePlayer, OfficeColumn, OfficeFact, OfficeGrid, OfficeRow, OfficeTable, OfficeFilter, OfficeFilterGroup, OfficeViewHead,
+} from '../presentation/officeTable.js';
+export type {
+  FinanceContractsView, FinanceFreeAgentList, FinanceFreeAgentsView, FinanceProjected, FinancePayrollSeason, FinanceBudgetLine,
+  FinanceBudgetEntry, FinancePayrollSection, FinancePayrollView, FinanceBudgetUpdate, FinanceBudgetChange, FinanceHorizonEntry,
+  FinanceHorizonCell, FinanceHorizonProspect, FinanceHorizonRow, FinanceHorizonMoney, FinanceHorizonView,
+} from '../presentation/finance/types.js';
+export type { MedicalInjuryReportView } from '../presentation/medical/injuryReport.js';
 // Around the League and Following (N7): the wire, club reports, following, search
 export type {
   WireKind, WireSource, WireClub, WirePlayer, WireEntry, WireOrder, WireTop, Wire, WireKindChoice, ClubInjury, ClubReport, FollowedItem,
