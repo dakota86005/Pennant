@@ -31,6 +31,8 @@ public final class OfficeStore {
     public private(set) var budgetProblem: RequestProblem?
     /// A budget being sent.
     public private(set) var savingBudget = false
+    /// What the last budget change did, in the server's words ("Next season's budget set to $210M; was $200M").
+    public private(set) var budgetDone: Components.Schemas.Cell?
 
     private var loadedKeys: [String: AppModel.StoreKey] = [:]
     private var askedKeys: [String: AppModel.StoreKey] = [:]
@@ -57,6 +59,7 @@ public final class OfficeStore {
         problems = [:]
         loadedKeys = [:]
         budgetProblem = nil
+        budgetDone = nil
     }
 
     /// Whether a view is drawn as updating: it is being read again, or what is shown was read for an earlier key.
@@ -129,19 +132,22 @@ public final class OfficeStore {
     }
 
     /// Sets the budget the GM expects next season (in dollars; nil or zero clears it), then reads Payroll and the
-    /// Horizon Board again, which read against it. A Pennant setting: nothing is written to OOTP.
-    public func setBudget(_ amount: Double?, client: Client?, key: AppModel.StoreKey?) async {
+    /// Horizon Board again, which read against it. Answers what it did and the request that puts it back, or nil when it
+    /// was refused or couldn't be sent (`budgetProblem` says why). A Pennant setting: nothing is written to OOTP.
+    @discardableResult
+    public func setBudget(_ amount: Double?, client: Client?, key: AppModel.StoreKey?) async -> Components.Schemas.FinanceBudgetChange? {
         guard let client, let key else {
             budgetProblem = .notRunning
-            return
+            return nil
         }
         savingBudget = true
         defer { savingBudget = false }
         let org = FrontOfficeStore.org(key)
         var problem: RequestProblem?
+        var change: Components.Schemas.FinanceBudgetChange?
         do {
             switch try await client.setFinanceBudget(path: .init(org: org), body: .json(.init(amount: max(amount ?? 0, 0)))) {
-            case .ok: problem = nil
+            case .ok(let answer): change = try answer.body.json
             case .badRequest(let refused): problem = .served(try refused.body.json.error)
             case .notFound(let refused): problem = .served(try refused.body.json.error)
             case .undocumented(let code, let payload):
@@ -149,14 +155,16 @@ public final class OfficeStore {
             }
         } catch {
             // A request called off is a non-event; its detail is `RequestProblem.logLine`, never the error's description
-            if RequestProblem.isCancellation(error) { return }
+            if RequestProblem.isCancellation(error) { return nil }
             problem = .from(error)
             log("could not set next season's budget: \(RequestProblem.logLine(error))")
         }
         budgetProblem = problem
-        guard problem == nil else { return }
+        guard problem == nil, let change else { return nil }
+        budgetDone = change.done
         await load(.payrollBudget, client: client, key: key, force: true)
         await load(.horizonBoard, client: client, key: key, force: true)
+        return change
     }
 
     /// Asks once per view and key (or again when forced); keeps the answer only when it answers the last question asked.
@@ -236,8 +244,21 @@ extension AppModel {
         await office.loadAll(client: client, key: storeKey)
     }
 
-    /// Sets the budget the GM expects next season (nil clears it).
-    public func setNextSeasonBudget(_ amount: Double?) async {
-        await office.setBudget(amount, client: client, key: storeKey)
+    /// Sets the budget the GM expects next season (nil clears it), and registers the served request that puts back what
+    /// was there on the window's undo manager (⌘Z), its redo the GM's own amount again. Answers the change, or nil when it
+    /// was refused (`office.budgetProblem` says why).
+    @discardableResult
+    public func setNextSeasonBudget(_ amount: Double?, undoManager: UndoManager? = nil, actionName: String = "") async -> Components.Schemas.FinanceBudgetChange? {
+        guard let change = await office.setBudget(amount, client: client, key: storeKey) else { return nil }
+        registerBudgetUndo(undo: change.undo.amount, redo: max(amount ?? 0, 0), undoManager: undoManager, actionName: actionName)
+        return change
+    }
+
+    @discardableResult
+    func registerBudgetUndo(undo: Double, redo: Double, undoManager: UndoManager?, actionName: String) -> UndoStep? {
+        registerStep(undoManager: undoManager, actionName: actionName) { model, undoManager in
+            let inverse = model.registerBudgetUndo(undo: redo, redo: undo, undoManager: undoManager, actionName: actionName)
+            return { await model.office.setBudget(undo, client: model.client, key: model.storeKey) != nil ? nil : inverse }
+        }
     }
 }

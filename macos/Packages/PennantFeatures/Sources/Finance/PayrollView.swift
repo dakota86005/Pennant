@@ -258,14 +258,27 @@ struct PayrollSeasonsGrid: View {
 }
 
 /// The budget the GM expects next season: a field in millions, as the React page took it, saved on Return or when the
-/// field loses focus; empty clears it. A Pennant setting, never written to OOTP.
+/// field loses focus; empty clears it. It shows the amount to the dollar, so saving it again never rounds it, and after a
+/// change the served line says what it did; ⌘Z puts back what was there. A Pennant setting, never written to OOTP.
 struct BudgetEntry: View {
     let entry: Components.Schemas.FinanceBudgetEntry
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     @State private var draft = ""
     @FocusState private var focused: Bool
 
-    private var served: String { entry.amount.map { String(format: "%g", $0 / 1_000_000) } ?? "" }
+    private var served: String { entry.amount.map(Self.millions) ?? "" }
+
+    /// An amount in dollars as the field's millions, without losing a dollar: 123,456,700 is "123.4567", never "123.457".
+    static func millions(_ amount: Double) -> String {
+        let dollars = amount.rounded()
+        let whole = Int64(dollars / 1_000_000)
+        let rest = Int64(dollars) - whole * 1_000_000
+        guard rest != 0 else { return String(whole) }
+        var fraction = String(format: "%06lld", rest)
+        while fraction.hasSuffix("0") { fraction.removeLast() }
+        return "\(whole).\(fraction)"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -276,7 +289,7 @@ struct BudgetEntry: View {
                     Text(verbatim: entry.label.display)
                 }
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 80)
+                .frame(width: 96)
                 .focused($focused)
                 .onSubmit(save)
                 .accessibilityIdentifier("payroll.budget")
@@ -284,24 +297,34 @@ struct BudgetEntry: View {
                 if model.office.savingBudget { ProgressView().controlSize(.small) }
             }
             Text(verbatim: entry.help.display).font(.callout).foregroundStyle(.readableSecondary)
+            if let done = model.office.budgetDone {
+                Text(verbatim: done.display)
+                    .font(.callout)
+                    .foregroundStyle(.readableSecondary)
+                    .help(detail: done.hint)
+                    .accessibilityIdentifier("payroll.budgetDone")
+            }
             if let problem = model.office.budgetProblem { ProblemLine(problem) }
         }
         .onAppear { draft = served }
         .onChange(of: entry.amount) { _, _ in if !focused { draft = served } }
         .onChange(of: focused) { _, now in if !now { save() } }
+        .onChange(of: model.office.budgetDone) { _, done in
+            if let done { AccessibilityNotification.Announcement(done.display).post() }
+        }
     }
 
     private func save() {
         let trimmed = draft.trimmingCharacters(in: .whitespaces)
         let millions = Double(trimmed)
-        let amount: Double? = trimmed.isEmpty ? nil : millions.map { $0 * 1_000_000 }
+        let amount: Double? = trimmed.isEmpty ? nil : millions.map { ($0 * 1_000_000).rounded() }
         // Not a number: put back what is served (the server refuses only an amount it can't read)
         if !trimmed.isEmpty && millions == nil {
             draft = served
             return
         }
         guard amount != entry.amount else { return }
-        Task { await model.setNextSeasonBudget(amount) }
+        Task { await model.setNextSeasonBudget(amount, undoManager: undoManager, actionName: String(localized: "Set Budget")) }
     }
 }
 

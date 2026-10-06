@@ -15,7 +15,7 @@ import {
   type OfficeContext, type OfficeFact, type OfficeRow, type OfficeTable,
 } from '../officeTable.js';
 import { ordinal } from '../player/words.js';
-import type { FinancePayrollSeason, FinancePayrollSection, FinancePayrollView } from './types.js';
+import type { FinanceBudgetChange, FinancePayrollSeason, FinancePayrollSection, FinancePayrollView } from './types.js';
 import {
   COMBINED_LABEL, COST_BAND_WORDS, costCell, costExplanation, money, perWin, perWinRange, rangeWords, statusWords, type CostInput,
 } from './words.js';
@@ -506,11 +506,32 @@ export function payrollView(ctx: OfficeContext, input: PayrollInput): FinancePay
       label: cell('Budget you expect next season'),
       help: expected !== null
         ? cell('Seasons after this one are measured against it.')
-        : cell("Leave it empty to assume this year's budget holds flat."),
+        : budget === null
+          ? cell("The export has no budget this year, so the seasons ahead are measured against the one you enter here.")
+          : cell("Leave it empty to assume this year's budget holds flat."),
     },
     edges: edgesClaim,
     sections,
     deadMoney,
     contracts: contractsTable(ctx, payroll),
+  };
+}
+
+/** A budget the GM entered, in millions without losing a dollar: "$200M", "$123.4567M". */
+export const budgetWords = (amount: number): string => `$${(amount / 1_000_000).toFixed(6).replace(/\.?0+$/, '')}M`;
+
+/**
+ * What setting the budget the GM expects next season did, from the amount before to the amount kept (null: none), and
+ * the request that puts it back.
+ */
+export function budgetChange(amount: number | null, before: number | null): FinanceBudgetChange {
+  const was = before === null ? "was today's budget held flat" : `was ${budgetWords(before)}`;
+  const done = amount === null
+    ? before === null ? "Next season's budget left empty: today's holds flat" : `Next season's budget cleared, so today's holds flat; ${was}`
+    : amount === before ? `Next season's budget kept at ${budgetWords(amount)}` : `Next season's budget set to ${budgetWords(amount)}; ${was}`;
+  return {
+    nextSeasonBudget: amount,
+    done: cell(done, { hint: 'A Pennant setting: nothing is written to OOTP' }),
+    undo: { amount: before ?? 0 },
   };
 }

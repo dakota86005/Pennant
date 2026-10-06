@@ -97,4 +97,15 @@ struct OfficeFeatureTests {
         #expect(pipeline.isDisjoint(with: placed))
         #expect(view.rows.allSatisfy { $0.cells.map(\.season) == view.seasons })
     }
+
+    @Test("the budget field shows an amount to the dollar, so saving it again never rounds it")
+    func budgetMillions() {
+        #expect(BudgetEntry.millions(123_456_700) == "123.4567")
+        #expect(BudgetEntry.millions(200_000_000) == "200")
+        #expect(BudgetEntry.millions(1) == "0.000001")
+        #expect(BudgetEntry.millions(987_654_321) == "987.654321")
+        for amount in [123_456_700.0, 1.0, 987_654_321.0, 150_000_000.0] {
+            #expect((Double(BudgetEntry.millions(amount))! * 1_000_000).rounded() == amount)
+        }
+    }
 }

@@ -1126,6 +1126,9 @@
     "Remove Staff Note": {
       "extractionState": "manual"
     },
+    "Set Budget": {
+      "extractionState": "manual"
+    },
     "Overview": {
       "extractionState": "manual"
     },

@@ -23,7 +23,8 @@ import type {
   FinanceBudgetChange, FinanceContractsView, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
 } from './presentation/finance/types.js';
 import type { MedicalInjuryReportView } from './presentation/medical/injuryReport.js';
-import { setNextSeasonBudget } from './settings.js';
+import { budgetChange } from './presentation/finance/payroll.js';
+import { loadSettings, setNextSeasonBudget } from './settings.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 interface Kept {
@@ -124,18 +125,23 @@ export async function medicalInjuryReportNow(org: string): Promise<MedicalInjury
 
 /**
  * The budget the GM expects next season, as the React page sets it (`settings.json`, the same entry): a positive amount
- * in dollars keeps it, zero clears it (today's budget then holds flat). The settings move the views' key, so the next
- * read of Payroll builds again with it.
+ * in dollars keeps it (to the dollar, up to `BUDGET_MAX`), zero clears it (today's budget then holds flat). It answers
+ * what it did and the request that puts back what was there (the Mac app's ⌘Z). The settings move the views' key, so
+ * the next read of Payroll builds again with it.
  */
 export function setFinanceBudget(org: string, body: unknown): FinanceBudgetChange | { refused: string } {
   const orgId = resolveOrg(org);
   const raw = (body as { amount?: unknown } | null)?.amount;
-  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) return { refused: BUDGET_REFUSED };
-  return { nextSeasonBudget: setNextSeasonBudget(orgId, raw) };
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0 || raw > BUDGET_MAX) return { refused: BUDGET_REFUSED };
+  const before = loadSettings().nextSeasonBudget?.[String(orgId)] ?? null;
+  return budgetChange(setNextSeasonBudget(orgId, Math.round(raw)), before);
 }
 
-/** What a budget that isn't an amount is answered with (a 400). */
-export const BUDGET_REFUSED = 'The budget is an amount in dollars: zero clears it.';
+/** The most a budget may be: $10 billion, far past any club's, so a slip of the keyboard is refused, never kept. */
+export const BUDGET_MAX = 10_000_000_000;
+
+/** What a budget that isn't an amount, or is past the most, is answered with (a 400). */
+export const BUDGET_REFUSED = 'The budget is an amount in dollars, up to $10 billion: zero clears it.';
 
 /** Builds the club's views ahead (never throws): after a kept build of its Front Office, and at a start. */
 export async function warmOfficeViews(org: number | 'automatic' = 'automatic'): Promise<void> {

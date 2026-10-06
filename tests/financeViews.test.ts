@@ -154,14 +154,56 @@ describe('Payroll & Budget (N12)', () => {
   it('reads later seasons against the budget the GM expects once he enters it, and clears it at zero', async () => {
     const before = await financePayrollNow(String(save.org));
     expect(before.expectedBudget).toBeNull();
-    expect(setFinanceBudget(String(save.org), { amount: 200_000_000 })).toEqual({ nextSeasonBudget: 200_000_000 });
+    expect(setFinanceBudget(String(save.org), { amount: 200_000_000 })).toMatchObject({ nextSeasonBudget: 200_000_000 });
     const after = await financePayrollNow(String(save.org));
     expect(after.expectedBudget?.amount).toBe(200_000_000);
     expect(after.seasons.filter((s) => s.season > after.seasons[0].season).every((s) => s.budget === 200_000_000)).toBe(true);
     expect(after.seasons[0].budget).toBe(before.seasons[0].budget);
-    expect(setFinanceBudget(String(save.org), { amount: 0 })).toEqual({ nextSeasonBudget: null });
+    expect(setFinanceBudget(String(save.org), { amount: 0 })).toMatchObject({ nextSeasonBudget: null });
     expect(loadSettings().nextSeasonBudget?.[String(save.org)]).toBeUndefined();
     expect(setFinanceBudget(String(save.org), { amount: 'lots' })).toEqual({ refused: expect.any(String) });
+  });
+});
+
+describe('the budget the GM expects next season (N12 review, M2)', () => {
+  it('says what it did and serves the request that puts back what was there, to the dollar', () => {
+    const org = String(save.org);
+    setFinanceBudget(org, { amount: 0 });
+    const first = setFinanceBudget(org, { amount: 123_456_700 });
+    expect(first).toEqual({
+      nextSeasonBudget: 123_456_700,
+      done: expect.objectContaining({ display: "Next season's budget set to $123.4567M; was today's budget held flat" }),
+      undo: { amount: 0 },
+    });
+    expect(loadSettings().nextSeasonBudget?.[org]).toBe(123_456_700);
+    const second = setFinanceBudget(org, { amount: 150_000_000 });
+    expect(second).toMatchObject({ done: { display: "Next season's budget set to $150M; was $123.4567M" }, undo: { amount: 123_456_700 } });
+    // Undone: the request it served puts the amount before back, and says so
+    const undone = setFinanceBudget(org, (second as { undo: { amount: number } }).undo);
+    expect(undone).toMatchObject({ nextSeasonBudget: 123_456_700, done: { display: "Next season's budget set to $123.4567M; was $150M" }, undo: { amount: 150_000_000 } });
+    expect(setFinanceBudget(org, { amount: 0 })).toMatchObject({
+      nextSeasonBudget: null, done: { display: "Next season's budget cleared, so today's holds flat; was $123.4567M" }, undo: { amount: 123_456_700 },
+    });
+    expect(bannedInPayload([first, second, undone])).toEqual([]);
+  });
+
+  it('refuses an amount past any club\'s budget, and keeps what was there', () => {
+    const org = String(save.org);
+    setFinanceBudget(org, { amount: 180_000_000 });
+    expect(setFinanceBudget(org, { amount: 1e13 })).toEqual({ refused: expect.stringMatching(/up to \$10 billion/) });
+    expect(setFinanceBudget(org, { amount: Number.MAX_VALUE })).toEqual({ refused: expect.any(String) });
+    expect(loadSettings().nextSeasonBudget?.[org]).toBe(180_000_000);
+    setFinanceBudget(org, { amount: 0 });
+  });
+
+  it('has its own help sentence when the export has no budget: never "this year\'s budget holds flat"', () => {
+    const payroll = computePayroll(save.org, getDataStatus());
+    const unknown = { ...payroll, finances: { ...payroll.finances, budget: { ...payroll.finances.budget, value: null } } } as typeof payroll;
+    const view = payrollView(ctx(), { payroll: unknown, club: null, league: null, history: [] });
+    expect(view.nextSeasonBudget.help.display).not.toMatch(/holds flat/);
+    expect(view.nextSeasonBudget.help.display).toMatch(/no budget/);
+    const known = payrollView(ctx(), { payroll, club: null, league: null, history: [] });
+    expect(known.nextSeasonBudget.help.display).toMatch(/holds flat/);
   });
 });
 

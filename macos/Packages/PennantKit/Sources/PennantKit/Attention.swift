@@ -65,7 +65,7 @@ extension AppModel {
     /// Registers a step on `undoManager` under its own target (`UndoStep`), so it can be taken off alone (its request
     /// failed) or with every other step (the save or the club changed, M7). `run` registers the inverse and returns the
     /// request to send, which answers the inverse to take off when it failed.
-    private func registerStep(
+    func registerStep(
         undoManager: UndoManager?, actionName: String,
         run: @escaping @MainActor (AppModel, UndoManager) -> () async -> UndoStep?
     ) -> UndoStep? {

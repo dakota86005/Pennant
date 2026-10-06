@@ -128,9 +128,14 @@ export interface FinanceBudgetUpdate {
   amount: number;
 }
 
-/** What setting the budget the GM expects next season answers: the amount kept (null: cleared). */
+/** What setting the budget the GM expects next season answers: the amount kept, what it did, and how to put it back. */
 export interface FinanceBudgetChange {
+  /** The amount kept, in dollars; null when cleared (today's budget then holds flat). */
   nextSeasonBudget: number | null;
+  /** What it did, in a sentence ("Next season's budget set to $210M; was $200M"). */
+  done: Cell;
+  /** The request that puts back what was there before (⌘Z): the amount before, or zero when there was none. */
+  undo: FinanceBudgetUpdate;
 }
 
 /** A player in a Horizon Board cell: who, and how the club controls him that season (the full reason in `why`). */

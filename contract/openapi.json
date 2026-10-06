@@ -8297,13 +8297,24 @@
             "type": [
               "number",
               "null"
-            ]
+            ],
+            "description": "The amount kept, in dollars; null when cleared (today's budget then holds flat)."
+          },
+          "done": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What it did, in a sentence (\"Next season's budget set to $210M; was $200M\")."
+          },
+          "undo": {
+            "$ref": "#/components/schemas/FinanceBudgetUpdate",
+            "description": "The request that puts back what was there before (⌘Z): the amount before, or zero when there was none."
           }
         },
         "required": [
-          "nextSeasonBudget"
+          "nextSeasonBudget",
+          "done",
+          "undo"
         ],
-        "description": "What setting the budget the GM expects next season answers: the amount kept (null: cleared)."
+        "description": "What setting the budget the GM expects next season answers: the amount kept, what it did, and how to put it back."
       },
       "FinanceBudgetEntry": {
         "type": "object",
