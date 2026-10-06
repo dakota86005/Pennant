@@ -1837,10 +1837,12 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(playerWindow(again, "1000").waitForExistence(timeout: 30), "his window was not restored at relaunch")
         XCTAssertTrue(element(again, "player.header").waitForExistence(timeout: 60), "the restored window did not load his dossier")
         keep(again.windows.firstMatch.screenshot(), named: "n11-player-window-restored")
-        // Closed by its own close button (⌘W goes to whichever window is key), so the next launch opens without it
-        let restored = again.windows.containing(.any, identifier: "player.window.1000").firstMatch
-        restored.buttons[XCUIIdentifierCloseWindow].click()
-        XCTAssertTrue(playerWindow(again, "1000").waitForNonExistence(timeout: 5), "his window did not close")
+        // Quit with the restored window still open; setUp and tearDown remove the saved windows, so the next test opens
+        // without it. (Closing the restored window first and then quitting left the process unkillable on GitHub's
+        // macOS 26 runner, a virtual machine: the app's log shows the quit answered, applicationWillTerminate reached
+        // and the 5-second _exit net set, and the same pid alive 20 s later. A process _exit cannot end is held in the
+        // kernel, not by the app. Closing a window and quitting is still exercised by testPlayerNoteKeptOnLeaving, and
+        // the case is recorded in SWIFTUI_REBUILD "As built at N11".)
         quitCleanly(again)
     }
 

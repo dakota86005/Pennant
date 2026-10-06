@@ -1886,7 +1886,15 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   handler and every future Quit) schedules `NSApp.terminate` on the main run loop for the same reason. A second request
   while a reply is owed is cancelled. The quit always finishes (PR #58): the last words (notes not kept yet) get 2 s and
   are then given up, the reply goes out at 12 s whatever is still under way, and each step is written to the app's log
-  (`quit: asked`, `quit: the server is stopped`, …). When the app is killed outright, the server sees stdin close and stops itself,
+  (`quit: asked`, `quit: the server is stopped`, …). AppKit ends the app inside `reply(toApplicationShouldTerminate:)`
+  itself, so nothing after the reply runs: an ask that comes after the reply quits at once (`.terminateNow`), and
+  before replying yes the coordinator starts a raw thread that calls `_exit(0)` 5 s later if the app is still there.
+  Open (PR #58, GitHub's macOS 26 runner, a virtual machine): after a *restored* player window was closed, a quit
+  answered yes reached `applicationWillTerminate`, set that net, and the same pid was still alive 20 s later (its
+  launch line and the running-process list in the UI test's output name it). A process `_exit` cannot end is held in
+  the kernel, not by the app; it was never seen on macOS 27, and closing an ordinary window and quitting passes on the
+  runner. The restoration test now quits with the restored window open; check it on a real macOS 26 Mac before
+  release (N14). When the app is killed outright, the server sees stdin close and stops itself,
   releasing the lock (checked on a real build).
 - stdout is read with a readability handler, a line at a time: `FileHandle.bytes.lines` held the ready line back until
   the pipe closed.
