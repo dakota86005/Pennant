@@ -29,14 +29,22 @@ struct ServedWords: View {
 
     var body: some View {
         let tone = Tone(cell.tone)
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            if cell.tone != nil, tone != .neutral { ToneMark(tone).font(.caption) }
-            Text(verbatim: cell.display)
-                .foregroundStyle(quiet || tone == .unknown ? AnyShapeStyle(.readableSecondary) : AnyShapeStyle(.primary))
-                .fixedSize(horizontal: false, vertical: true)
+        let words = Text(verbatim: cell.display)
+            .foregroundStyle(quiet || tone == .unknown ? AnyShapeStyle(.readableSecondary) : AnyShapeStyle(.primary))
+            .fixedSize(horizontal: false, vertical: true)
+        if cell.tone != nil, tone != .neutral {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                ToneMark(tone).font(.caption)
+                words
+            }
+            .help(detail: cell.hint)
+            // One element that says its words (a group with none has no description)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(verbatim: cell.display))
+        } else {
+            // Plain words: a text element of their own, its colour the audit reads (a combined group is read as none)
+            words.help(detail: cell.hint)
         }
-        .help(detail: cell.hint)
-        .accessibilityElement(children: .combine)
     }
 }
 

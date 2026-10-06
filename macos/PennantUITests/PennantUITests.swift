@@ -1631,18 +1631,27 @@ final class PennantUITests: XCTestCase {
                 over.scroll(byDeltaX: 0, deltaY: -150)
                 _ = slider.waitForExistence(timeout: 0.5)
             }
-            XCTAssertTrue(slider.waitForExistence(timeout: 10), "round \(round): the competitive window has no slider")
+            _ = slider.waitForExistence(timeout: 10)
+            XCTAssertTrue(slider.exists, "round \(round): the competitive window has no slider")
             // Moved up the scale as an assistive app moves it (the slider's own value), sent once it settles
             slider.adjust(toNormalizedSliderPosition: 0.72)
             let said = element(app, "philosophy.said")
+            // Static text reads its words as its value on macOS, a combined element as its label
+            let saying = { said.label.isEmpty ? (said.value as? String ?? "") : said.label }
             let set = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                said.exists && said.label.contains("Competitive window set to") && !said.label.contains("set to 50:")
+                said.exists && saying().contains("Competitive window set to") && !saying().contains("set to 50:")
             }, object: nil)
             if XCTWaiter.wait(for: [set], timeout: 15) != .completed { keep(window.screenshot(), named: "n12c-narrow-900-missing-said") }
-            XCTAssertTrue(said.exists && !said.label.contains("set to 50:"), "round \(round): the change did not say what it did")
+            XCTAssertTrue(said.exists && saying().contains("Competitive window set to") && !saying().contains("set to 50:"),
+                          "round \(round): the change did not say what it did")
             app.typeKey("z", modifierFlags: .command)
-            let undone = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && said.label.contains("set to 50:") }, object: nil)
-            XCTAssertEqual(XCTWaiter.wait(for: [undone], timeout: 15), .completed, "round \(round): ⌘Z did not put the preference back")
+            let undone = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && saying().contains("set to 50:") }, object: nil)
+            let undid = XCTWaiter.wait(for: [undone], timeout: 15)
+            if undid != .completed {
+                keep(window.screenshot(), named: "n12c-narrow-900-missing-undo")
+                print("[narrow] after ⌘Z the status reads: \(said.exists ? saying() : "nothing")")
+            }
+            XCTAssertEqual(undid, .completed, "round \(round): ⌘Z did not put the preference back")
             if round == 1 {
                 keep(window.screenshot(), named: "n12c-narrow-900-philosophy")
                 try audit(app, named: "accessibility-audit-philosophy")
