@@ -419,6 +419,11 @@ final class PennantUITests: XCTestCase {
         if !ended {
             let windows = app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame)" }
             print("[quit] \(methodName): still running 20 s after ⌘Q (state \(app.state.rawValue)); windows: \(windows)")
+            // Which process is it: the one that quit (its pid is in the app's log, "launch: this is process …"), or
+            // another instance something launched as it went (PR #58 on the macOS 26 runner)
+            let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.dakotawise.pennant.dev")
+                .map { "pid \($0.processIdentifier) launched \($0.launchDate.map { "\($0)" } ?? "?") terminated \($0.isTerminated)" }
+            print("[quit] \(methodName): Pennant processes now: \(running)")
         }
         XCTAssertTrue(ended, "the app did not quit within 20 s of ⌘Q; see \(scratch.path)/logs/server.log")
         XCTAssertFalse(FileManager.default.fileExists(atPath: dataFolder.appending(path: "server.lock").path))

@@ -100,6 +100,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         outside = OutsideTheWindow(model: model)
         let log = controller.log
         appLog = { log.write($0, source: "app") }
+        // Which process this is, for reading a quit that stops short against the processes running then (PR #58)
+        log.write("launch: this is process \(ProcessInfo.processInfo.processIdentifier)", source: "app")
         quit = QuitCoordinator(
             prepare: { model.beginShutdown() },
             lastWords: { model.lastNoteSaves() },
