@@ -1282,15 +1282,18 @@ final class PennantUITests: XCTestCase {
                 case "standings":
                     XCTAssertTrue(element(app, "standings.division").exists, "round \(round): Standings offers no division")
                 case "playerSearch":
-                    // A name typed in the toolbar's field is asked of the server, and the results drawn again
+                    // A name typed in the window's search field (scoped to Player Search) is asked of the server, and the
+                    // results drawn again: a few rows, so the audit below reads a short table (300 rows of season lines
+                    // made each audit element's lookup take most of a second)
                     let field = app.searchFields.firstMatch
-                    if field.waitForExistence(timeout: 5) {
-                        field.click()
-                        field.typeText("a")
-                        XCTAssertTrue(starting("table.playerSearch.results.").waitForExistence(timeout: 20), "round \(round): the search did not draw")
-                        field.typeKey("a", modifierFlags: .command)
-                        field.typeKey(.delete, modifierFlags: [])
-                    }
+                    XCTAssertTrue(field.waitForExistence(timeout: 5), "round \(round): no search field")
+                    field.click()
+                    field.typeKey("a", modifierFlags: .command)
+                    field.typeText("1054")
+                    let narrowed = starting("table.playerSearch.results.")
+                    XCTAssertTrue(narrowed.waitForExistence(timeout: 20), "round \(round): the search did not draw")
+                    let fewer = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in narrowed.tableRows.count + narrowed.outlineRows.count < 20 }, object: nil)
+                    XCTAssertEqual(XCTWaiter.wait(for: [fewer], timeout: 20), .completed, "round \(round): the search did not narrow the results")
                 default:
                     break
                 }
@@ -1303,6 +1306,12 @@ final class PennantUITests: XCTestCase {
                     if busy.exists { _ = busy.waitForNonExistence(timeout: 20) }
                     up("audit of \(view.view)")
                     try audit(app, named: "accessibility-audit-n12b-narrow-\(view.view)")
+                }
+                if view.view == "playerSearch" {
+                    let field = app.searchFields.firstMatch
+                    field.click()
+                    field.typeKey("a", modifierFlags: .command)
+                    field.typeKey(.delete, modifierFlags: [])
                 }
             }
         }
