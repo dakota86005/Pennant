@@ -1884,7 +1884,9 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   neither needs the main dispatch queue, which the nested run loop `.terminateLater` waits in cannot drain while it is
   inside a main-queue job (every main-actor `Task` is one). Asking to quit (`requestQuit()`, used by the SIGTERM
   handler and every future Quit) schedules `NSApp.terminate` on the main run loop for the same reason. A second request
-  while a reply is owed is cancelled. When the app is killed outright, the server sees stdin close and stops itself,
+  while a reply is owed is cancelled. The quit always finishes (PR #58): the last words (notes not kept yet) get 2 s and
+  are then given up, the reply goes out at 12 s whatever is still under way, and each step is written to the app's log
+  (`quit: asked`, `quit: the server is stopped`, …). When the app is killed outright, the server sees stdin close and stops itself,
   releasing the lock (checked on a real build).
 - stdout is read with a readability handler, a line at a time: `FileHandle.bytes.lines` held the ready line back until
   the pipe closed.
