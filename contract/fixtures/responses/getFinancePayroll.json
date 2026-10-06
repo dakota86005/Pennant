@@ -1191,7 +1191,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1217,8 +1216,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           },
           {
             "id": "staying-1004",
@@ -1256,7 +1254,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1282,8 +1279,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           },
           {
             "id": "staying-1017",
@@ -1321,7 +1317,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1347,8 +1342,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           },
           {
             "id": "staying-1012",
@@ -1386,7 +1380,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1412,8 +1405,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           },
           {
             "id": "staying-1020",
@@ -1451,7 +1443,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1477,8 +1468,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           },
           {
             "id": "staying-1007",
@@ -1516,7 +1506,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1542,8 +1531,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           },
           {
             "id": "staying-1016",
@@ -1581,7 +1569,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1607,8 +1594,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           },
           {
             "id": "staying-1021",
@@ -1646,7 +1632,6 @@
                 "teamId": 1
               }
             },
-            "facts": [],
             "claims": [
               {
                 "text": "Next season could cost $2.1M",
@@ -1672,8 +1657,7 @@
                 },
                 "links": []
               }
-            ],
-            "grid": null
+            ]
           }
         ],
         "empty": {
@@ -1873,7 +1857,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -1971,8 +1954,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1002",
@@ -2040,7 +2022,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -2162,8 +2143,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1004",
@@ -2231,7 +2211,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -2353,8 +2332,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1017",
@@ -2422,7 +2400,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -2544,8 +2521,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1005",
@@ -2612,7 +2588,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -2710,8 +2685,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1003",
@@ -2776,7 +2750,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2044: Not known projected",
@@ -2826,8 +2799,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1010",
@@ -2893,7 +2865,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2043: $2.1M projected",
@@ -2967,8 +2938,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1023",
@@ -3035,7 +3005,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -3133,8 +3102,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1011",
@@ -3201,7 +3169,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -3299,8 +3266,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1001",
@@ -3365,7 +3331,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2044: Not known projected",
@@ -3415,8 +3380,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1012",
@@ -3484,7 +3448,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -3606,8 +3569,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1015",
@@ -3672,7 +3634,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2043: $2.1M projected",
@@ -3746,8 +3707,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1020",
@@ -3814,7 +3774,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -3936,8 +3895,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1008",
@@ -4004,7 +3962,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -4102,8 +4059,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1007",
@@ -4171,7 +4127,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -4293,8 +4248,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1000",
@@ -4361,7 +4315,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -4459,8 +4412,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1018",
@@ -4527,7 +4479,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -4625,8 +4576,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1006",
@@ -4691,7 +4641,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2044: Not known projected",
@@ -4741,8 +4690,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1009",
@@ -4807,7 +4755,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2044: Not known projected",
@@ -4857,8 +4804,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1014",
@@ -4925,7 +4871,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -5023,8 +4968,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1016",
@@ -5092,7 +5036,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -5214,8 +5157,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1019",
@@ -5282,7 +5224,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -5380,8 +5321,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1021",
@@ -5449,7 +5389,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2041: $2.1M projected",
@@ -5571,8 +5510,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1022",
@@ -5639,7 +5577,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -5737,8 +5674,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1024",
@@ -5804,7 +5740,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2043: $2.1M projected",
@@ -5878,8 +5813,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       },
       {
         "id": "payroll-1025",
@@ -5946,7 +5880,6 @@
             "teamId": 1
           }
         },
-        "facts": [],
         "claims": [
           {
             "text": "2042: $2.1M projected",
@@ -6044,8 +5977,7 @@
             },
             "links": []
           }
-        ],
-        "grid": null
+        ]
       }
     ],
     "empty": {

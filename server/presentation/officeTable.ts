@@ -4,7 +4,7 @@
  * columns, its rows in the specialist's own order (each a cell and an ordinal sort key per column, null when unknown so
  * it sorts last both ways) and the sentence it says when it has no rows. A row about a player names him, so he opens
  * his own window, compares and follows; what goes with a chosen row (its facts and its claims) is drawn beneath the
- * table. Every word is served; nothing here decides anything (D-001).
+ * table. A filter's choices name no rows: each row names the choice it falls under (`filterKeys`). Every word is served; nothing here decides anything (D-001).
  */
 import type { GameDate } from '../dataFreshness.js';
 import type { BasisLine, Cell, Claim, DeptId, Row, Target } from '../contract/presentation.js';
@@ -38,15 +38,22 @@ export interface OfficeFact {
 }
 
 /**
- * A row: a cell and a sort key per column, the player it is about (null for none), the facts and claims drawn beneath
- * the table when it is chosen, and the OSA mark when the grades it shows are OSA's view filling in for our scouts (D-067).
+ * A row: a cell and a sort key per column, the player it is about (null for none), what is drawn beneath the table when
+ * it is chosen (its facts, claims and short table; each left out when it has none, and a long list's served on its own
+ * when the row is chosen), the choice of each filter group it falls under, and the OSA mark when the grades it shows are
+ * OSA's view filling in for our scouts (D-067).
  */
 export interface OfficeRow extends Row<string> {
   player: OfficePlayer | null;
-  facts: OfficeFact[];
-  claims: Claim[];
-  /** A short table beneath the chosen row (a contract's seasons under control); null when it has none. */
-  grid: OfficeGrid | null;
+  facts?: OfficeFact[];
+  claims?: Claim[];
+  /** A short table beneath the chosen row (a contract's seasons under control). */
+  grid?: OfficeGrid;
+  /**
+   * The choice it falls under in each of its table's filter groups, by group id (`{ side: 'pitchers', age: 'prime' }`);
+   * a group it falls under no choice of (his age not known) is left out, so only that group's first choice keeps him.
+   */
+  filterKeys?: Record<string, string>;
   ratingsFill?: Cell;
 }
 
@@ -66,19 +73,18 @@ export interface OfficeTable {
   empty: Cell | null;
 }
 
-/** A choice that narrows a table to some of its rows (Contracts' groups, Free Agents' positions): its words and rows. */
+/** A choice that narrows a table to some of its rows (Contracts' groups, Free Agents' positions): its words. */
 export interface OfficeFilter {
   id: string;
   title: Cell;
-  /** The rows it keeps, by id, in the table's order. */
-  rows: string[];
   /** What the choice means, when it needs more than its title (its explanation in the basis); null when it doesn't. */
   explain: Claim | null;
 }
 
 /**
  * One way of narrowing a table (Contracts' groups, all players or pitchers, an age band): its title and its choices. The
- * first choice keeps every row; a table shows the rows every group's chosen choice keeps.
+ * first choice keeps every row; another keeps the rows whose `filterKeys` name it for this group. A table shows the rows
+ * every group's chosen choice keeps. The rows are never listed in the choice: a long table's would double the payload.
  */
 export interface OfficeFilterGroup {
   id: string;
@@ -87,7 +93,7 @@ export interface OfficeFilterGroup {
 }
 
 /** A choice. */
-export const filterChoice = (id: string, title: Cell, rows: string[], explain: Claim | null = null): OfficeFilter => ({ id, title, rows, explain });
+export const filterChoice = (id: string, title: Cell, explain: Claim | null = null): OfficeFilter => ({ id, title, explain });
 
 /** What every Finance and Medical view carries: its build, its title, its byline and the one line saying what it is. */
 export interface OfficeViewHead {
@@ -133,10 +139,18 @@ export function officeRow(
   id: string,
   cells: Record<string, Cell>,
   sort: Record<string, number | string | null>,
-  extra: { player?: OfficePlayer | null; facts?: OfficeFact[]; claims?: Claim[]; claim?: Claim; grid?: OfficeGrid | null; ratingsFill?: Cell | null } = {},
+  extra: {
+    player?: OfficePlayer | null; facts?: OfficeFact[]; claims?: Claim[]; claim?: Claim; grid?: OfficeGrid | null; ratingsFill?: Cell | null;
+    filterKeys?: Record<string, string | null>;
+  } = {},
 ): OfficeRow {
   const base = row(id, cells, sort, extra.claim);
-  const out: OfficeRow = { ...base, player: extra.player ?? null, facts: extra.facts ?? [], claims: extra.claims ?? [], grid: extra.grid ?? null };
+  const out: OfficeRow = { ...base, player: extra.player ?? null };
+  if (extra.facts && extra.facts.length > 0) out.facts = extra.facts;
+  if (extra.claims && extra.claims.length > 0) out.claims = extra.claims;
+  if (extra.grid) out.grid = extra.grid;
+  const keys = Object.entries(extra.filterKeys ?? {}).filter((e): e is [string, string] => e[1] !== null);
+  if (keys.length > 0) out.filterKeys = Object.fromEntries(keys);
   if (extra.ratingsFill) out.ratingsFill = extra.ratingsFill;
   return out;
 }

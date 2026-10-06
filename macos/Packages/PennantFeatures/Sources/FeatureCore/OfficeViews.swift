@@ -6,8 +6,8 @@ import SwiftUI
 // The pieces Finance's and Medical's views are drawn from (N12; D-071): the served head, figures, a native table of
 // served rows with what goes with the chosen row beneath it, and the served filters. Each draws what the server served
 // and nothing more: every word, tone, order and sort key is the payload's; the only ordering here is the unknown-last
-// comparator over the served keys, and the only narrowing the served filters' own rows (and the GM's own search words
-// against the served names).
+// comparator over the served keys, and the only narrowing the served filters' own keys on each row (and the GM's own
+// search words against the served names).
 
 public typealias OfficeTable = Components.Schemas.OfficeTable
 public typealias OfficeRow = Components.Schemas.OfficeRow
@@ -38,26 +38,23 @@ public struct OfficeRowItem: Identifiable, Hashable, Sendable {
 }
 
 extension OfficeFilterGroup {
-    /// The rows a choice keeps (the first choice keeps them all).
-    public func rows(_ choice: String?) -> Set<String>? {
-        guard let choice, let chosen = choices.first(where: { $0.id == choice }), chosen.id != choices.first?.id else { return nil }
-        return Set(chosen.rows)
+    /// Whether a choice keeps a row: the first choice keeps every row, another the rows whose served key for this group
+    /// names it (a row with no key for the group, his age not known, is kept only by the first). Nil keeps every row.
+    public func keeps(_ choice: String?) -> ((OfficeRow) -> Bool)? {
+        guard let choice, choices.contains(where: { $0.id == choice }), choice != choices.first?.id else { return nil }
+        let group = id
+        return { $0.filterKeys?.additionalProperties[group] == choice }
     }
 }
 
 /// The rows the chosen filters keep, and the GM's search words matched against the served names; nil keeps every row.
 public func officeRowsKept(_ table: OfficeTable, filters: [OfficeFilterGroup], chosen: [String: String], search: String) -> Set<String>? {
-    var kept: Set<String>?
-    for group in filters {
-        guard let rows = group.rows(chosen[group.id]) else { continue }
-        kept = kept.map { $0.intersection(rows) } ?? rows
-    }
+    let tests = filters.compactMap { $0.keeps(chosen[$0.id]) }
     let words = search.trimmingCharacters(in: .whitespaces)
-    if !words.isEmpty {
-        let named = Set(table.rows.filter { ($0.player?.name ?? "").localizedCaseInsensitiveContains(words) }.map(\.id))
-        kept = kept.map { $0.intersection(named) } ?? named
-    }
-    return kept
+    guard !tests.isEmpty || !words.isEmpty else { return nil }
+    return Set(table.rows.filter { row in
+        tests.allSatisfy { $0(row) } && (words.isEmpty || (row.player?.name ?? "").localizedCaseInsensitiveContains(words))
+    }.map(\.id))
 }
 
 // MARK: The head
@@ -292,13 +289,16 @@ public struct OfficeTableView: View {
 }
 
 /// A served table in a `TablePane`: the view's head above it, the chosen row's served detail beneath it (or, with
-/// nothing chosen, a line saying how to see one, and the view's notes).
+/// nothing chosen, a line saying how to see one, and the view's notes). A view whose rows carry no detail of their own
+/// (Free Agents) is told which row was chosen (`chose`) and hands back the row with its detail once read (`detailOf`).
 public struct OfficeTablePane<Head: View, Notes: View>: View {
     let table: OfficeTable
     let id: String
     let name: String
     let kept: Set<String>?
     let detailShare: CGFloat
+    let detailOf: (OfficeRow) -> OfficeRow
+    let chose: (String?) -> Void
     let head: Head
     let notes: Notes
     @State private var selection: Set<String> = []
@@ -309,6 +309,8 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
         name: String,
         kept: Set<String>? = nil,
         detailShare: CGFloat = 0.36,
+        detailOf: @escaping (OfficeRow) -> OfficeRow = { $0 },
+        chose: @escaping (String?) -> Void = { _ in },
         @ViewBuilder head: () -> Head,
         @ViewBuilder notes: () -> Notes
     ) {
@@ -317,8 +319,14 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
         self.name = name
         self.kept = kept
         self.detailShare = detailShare
+        self.detailOf = detailOf
+        self.chose = chose
         self.head = head()
         self.notes = notes()
+    }
+
+    private var chosenRow: OfficeRow? {
+        table.rows.first { selection.contains($0.id) && (kept?.contains($0.id) ?? true) }
     }
 
     public var body: some View {
@@ -328,14 +336,15 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
             OfficeTableView(table, id: id, name: name, kept: kept, selection: $selection)
         } detail: {
             VStack(alignment: .leading, spacing: 16) {
-                if let row = table.rows.first(where: { selection.contains($0.id) && (kept?.contains($0.id) ?? true) }) {
-                    OfficeRowDetail(row: row)
+                if let row = chosenRow {
+                    OfficeRowDetail(row: detailOf(row))
                 } else if !table.rows.isEmpty {
                     Text("Select a row to see more.").font(.callout).foregroundStyle(.readableSecondary)
                 }
                 notes
             }
         }
+        .onChange(of: chosenRow?.id) { _, now in chose(now) }
     }
 }
 
@@ -366,10 +375,10 @@ public struct OfficeRowDetail: View {
                         .accessibilityIdentifier("office.openPlayer")
                     }
                 }
-                if !row.facts.isEmpty {
-                    OfficeFacts(row.facts)
+                if let facts = row.facts, !facts.isEmpty {
+                    OfficeFacts(facts)
                 }
-                ForEach(Array(row.claims.enumerated()), id: \.offset) { _, claim in ClaimLine(claim, font: .callout) }
+                ForEach(Array((row.claims ?? []).enumerated()), id: \.offset) { _, claim in ClaimLine(claim, font: .callout) }
                 if let grid = row.grid { OfficeGridView(grid) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

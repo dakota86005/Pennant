@@ -6,9 +6,10 @@ import SwiftUI
 
 /// Free Agents (N12): who is available now, who reaches the market after this season and who might, each a native table
 /// of his production and a season of it at this league's market (never an asking price or an offer). The lists are a
-/// segmented control in the window's toolbar, as Calendar's view choice is; the served filters (pitchers or position
-/// players, position, age, the club's thin spots) the toolbar's filter, a name the search field. Opens on the list the
-/// server serves first. His tools carry the OSA mark when they are OSA's view (D-067).
+/// segmented control in the view's head (a button and popover where it is narrow); the served filters (pitchers or
+/// position players, position, age, the club's thin spots) are the toolbar's filter, and a name the find field. Opens on
+/// the list the server serves first. His tools carry the OSA mark when they are OSA's view (D-067). A chosen row's facts
+/// and claims are read when he is chosen: the lists carry only what the table shows.
 struct FreeAgentsView: View {
     @Environment(AppModel.self) private var model
     @State private var list: String?
@@ -20,7 +21,20 @@ struct FreeAgentsView: View {
         OfficeState(payload: store.freeAgents, problem: store.problems[OfficeStore.View.freeAgents.rawValue]) { view in
             let current = view.lists.first { $0.id == (list ?? view.opensOn) } ?? view.lists[0]
             let kept = officeRowsKept(current.table, filters: current.filters, chosen: chosen, search: search)
-            OfficeTablePane(current.table, id: "freeAgents.\(current.id)", name: current.title.display, kept: kept) {
+            OfficeTablePane(
+                current.table, id: "freeAgents.\(current.id)", name: current.title.display, kept: kept,
+                detailOf: { row in
+                    guard let id = row.player?.playerId, let detail = store.freeAgentDetails[id] else { return row }
+                    var full = row
+                    full.facts = detail.facts
+                    full.claims = detail.claims
+                    return full
+                },
+                chose: { rowId in
+                    guard let id = current.table.rows.first(where: { $0.id == rowId })?.player?.playerId else { return }
+                    Task { await model.loadFreeAgentDetail(id) }
+                }
+            ) {
                 VStack(alignment: .leading, spacing: 8) {
                     OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
                                refreshing: model.officeUpdating(.freeAgents))

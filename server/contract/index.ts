@@ -118,7 +118,7 @@ export type {
   OfficePlayer, OfficeColumn, OfficeFact, OfficeGrid, OfficeRow, OfficeTable, OfficeFilter, OfficeFilterGroup, OfficeViewHead,
 } from '../presentation/officeTable.js';
 export type {
-  FinanceContractsView, FinanceFreeAgentList, FinanceFreeAgentsView, FinanceProjected, FinancePayrollSeason, FinanceBudgetLine,
+  FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentList, FinanceFreeAgentsView, FinanceProjected, FinancePayrollSeason, FinanceBudgetLine,
   FinanceBudgetEntry, FinancePayrollSection, FinancePayrollView, FinanceBudgetUpdate, FinanceBudgetChange, FinanceHorizonEntry,
   FinanceHorizonCell, FinanceHorizonProspect, FinanceHorizonRow, FinanceHorizonMoney, FinanceHorizonView,
 } from '../presentation/finance/types.js';

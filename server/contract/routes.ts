@@ -372,6 +372,16 @@ export const operations: Operation[] = [
     reused: false,
   },
   {
+    operationId: 'getFinanceFreeAgent',
+    method: 'get',
+    path: '/api/v2/views/:org/finance/freeAgents/players/:player',
+    summary: 'One listed free agent\'s detail, served when the GM chooses his row: his facts, and the claims beneath the table (a season at the market, why he might reach it), each with its basis.',
+    params: [ORG_PARAM, { name: 'player', in: 'path', schema: 'string', required: true, description: 'The player\'s id.' }],
+    response: 'FinanceFreeAgentDetail',
+    errors: { 404: 'ApiError' },
+    reused: false,
+  },
+  {
     operationId: 'getFinanceHorizon',
     method: 'get',
     path: '/api/v2/views/:org/finance/horizonBoard',

@@ -11,11 +11,11 @@ import { loadConfig, saveConfig } from '../server/config.js';
 import { FrontOfficeRefusal, frontOfficeInputsKey, relocateLiveLog, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { buildOfficeViews } from '../server/officeViewsBuild.js';
 import {
-  financeContractsNow, financeFreeAgentsNow, financeHorizonNow, financePayrollNow, medicalInjuryReportNow, officeViewStats,
+  financeContractsNow, financeFreeAgentNow, financeFreeAgentsNow, financeHorizonNow, financePayrollNow, medicalInjuryReportNow, officeViewStats,
   officeViewsKey, resetOfficeViews, setFinanceBudget,
 } from '../server/officeViewService.js';
 import { computePayroll } from '../server/payroll.js';
-import { freeAgentsView } from '../server/presentation/finance/freeAgents.js';
+import { freeAgentsView, freeAgentsViewAndDetails } from '../server/presentation/finance/freeAgents.js';
 import { horizonView, type HorizonInput } from '../server/presentation/finance/horizon.js';
 import { payrollView } from '../server/presentation/finance/payroll.js';
 import { injuryReportView } from '../server/presentation/medical/injuryReport.js';
@@ -107,19 +107,30 @@ describe('Finance and Medical say what the routes computed (N12)', () => {
     }
   });
 
-  it('every filter keeps only rows of its table, and its first choice keeps them all', () => {
+  it('every filter is keyed on its rows: each row names a choice of the group (or none), and no choice lists rows (M4)', () => {
     const built = buildOfficeViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
     const groups = [
       ...(built.contracts.ok ? [{ table: built.contracts.view.table, filters: built.contracts.view.filters }] : []),
       ...(built.freeAgents.ok ? built.freeAgents.view.lists.map((l) => ({ table: l.table, filters: l.filters })) : []),
+      ...(built.injuryReport.ok ? [{ table: built.injuryReport.view.table, filters: built.injuryReport.view.filters }] : []),
     ];
     expect(groups.some((g) => g.filters.length > 0)).toBe(true);
     for (const g of groups) {
-      const ids = g.table.rows.map((r) => r.id);
       for (const f of g.filters) {
-        expect(f.choices[0].rows).toEqual(ids);
-        for (const c of f.choices) expect(c.rows.every((id) => ids.includes(id))).toBe(true);
+        expect(f.choices[0].id).toBe('all');
+        for (const c of f.choices) expect(Object.keys(c).sort()).toEqual(['explain', 'id', 'title']);
+        const ids = new Set(f.choices.map((c) => c.id));
+        for (const r of g.table.rows) {
+          const key = r.filterKeys?.[f.id];
+          if (key !== undefined) expect(ids.has(key), `${r.id} ${f.id}=${key}`).toBe(true);
+        }
       }
+    }
+    // Contracts: the side filter keeps exactly the pitchers
+    if (built.contracts.ok) {
+      const c = computeContracts(save.org, getDataStatus());
+      const pitchers = built.contracts.view.table.rows.filter((r) => r.filterKeys?.side === 'pitchers').map((r) => r.player?.playerId);
+      expect(pitchers).toEqual(c.players.filter((p) => p.positionName === 'P').map((p) => p.player_id));
     }
   });
 });
@@ -217,11 +228,31 @@ describe('Free Agents (N12)', () => {
       market: { status: 'unknown', season: 2041, low: null, central: null, high: null, reason: 'Not projected.', text: 'Not projected.' },
     };
     const row = { ...base, why: { kind: 'option' as const, label: 'Club option', reason: 'A club option season: exercised, $8,000,000; declined, the buyout and then indeterminate.' } };
-    const view = freeAgentsView(ctx(), { ...f, mightReach: [row] } as typeof f, () => null);
+    const { view, details } = freeAgentsViewAndDetails(ctx(), { ...f, mightReach: [row] } as typeof f, () => null);
     const list = view.lists.find((l) => l.id === 'mightReach')!;
     expect(list.table.rows[0].cells.why.display).toBe('Club option');
     expect(bannedInPayload(view)).toEqual([]);
-    expect(list.table.rows[0].claims.some((c) => c.basis.because.some((b) => /indeterminate/.test(b.value)))).toBe(true);
+    // The breakdown is his detail, served when his row is chosen: the list's row carries none of it
+    expect(list.table.rows[0].claims).toBeUndefined();
+    expect(list.table.rows[0].facts).toBeUndefined();
+    const detail = details.get(row.player_id)!;
+    expect(detail.claims.some((c) => c.basis.because.some((b) => /indeterminate/.test(b.value)))).toBe(true);
+    expect(detail.facts.map((x) => x.label.display)).toContain('Why he might reach it');
+    expect(list.table.rows[0].filterKeys).toMatchObject({ side: row.isPitcher ? 'pitchers' : 'hitters' });
+  });
+
+  it('serves a chosen player\'s detail from the kept build, and refuses a player not listed in a sentence', async () => {
+    const view = await financeFreeAgentsNow(String(save.org));
+    const listed = view.lists.flatMap((l) => l.table.rows).find((r) => r.player);
+    if (listed) {
+      const builds = officeViewStats().builds;
+      const detail = await financeFreeAgentNow(String(save.org), String(listed.player!.playerId));
+      expect(detail.playerId).toBe(listed.player!.playerId);
+      expect(detail.claims.length).toBeGreaterThan(0);
+      expect(officeViewStats().builds).toBe(builds);
+    }
+    await expect(financeFreeAgentNow(String(save.org), String(save.regular))).rejects.toBeInstanceOf(FrontOfficeRefusal);
+    await expect(financeFreeAgentNow(String(save.org), 'lots')).rejects.toBeInstanceOf(FrontOfficeRefusal);
   });
 });
 
@@ -333,6 +364,7 @@ describe('the Injury Report (N12)', () => {
     expect(two.cells.status.hint).toMatch(/play through it/);
     expect(view.unknowns.map((u) => u.display)).toEqual(['The export has no return date for 1 injured player.']);
     expect(view.filters[0].choices.map((c) => c.id)).toEqual(['all', 'MLB', 'AAA']);
+    expect(view.table.rows.map((r) => r.filterKeys?.level)).toEqual(['MLB', 'AAA']);
   });
 });
 
@@ -422,19 +454,24 @@ describe('fixtures for the Mac app\'s Finance previews (N12)', () => {
         salary0 = 0, salary1 = 0, salary2 = 0, salary3 = 0 WHERE player_id = ?`).run(id);
     }
     const filled = released[1];
-    const view = freeAgentsView(ctx(), computeFreeAgents(save.org, getDataStatus()),
+    const { view, details } = freeAgentsViewAndDetails(ctx(), computeFreeAgents(save.org, getDataStatus()),
       (id) => (id === filled ? { mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' } : null));
     const available = view.lists.find((l) => l.id === 'available')!;
     expect(available.table.rows.length).toBe(released.length);
     expect(available.table.rows.find((r) => r.player?.playerId === filled)?.ratingsFill?.display).toBe('OSA');
     expect(bannedInPayload(view)).toEqual([]);
-    const file = path.join(FOLDER, 'free-agents.json');
-    if (process.env.CONTRACT_FIXTURES === 'write') {
-      fs.mkdirSync(FOLDER, { recursive: true });
-      fs.writeFileSync(file, json(view));
-      return;
+    // The first listed player's detail, served when his row is chosen
+    const detail = details.get(available.table.rows[0].player!.playerId)!;
+    expect(bannedInPayload(detail)).toEqual([]);
+    for (const [name, value] of [['free-agents.json', view], ['free-agent-detail.json', detail]] as const) {
+      const file = path.join(FOLDER, name);
+      if (process.env.CONTRACT_FIXTURES === 'write') {
+        fs.mkdirSync(FOLDER, { recursive: true });
+        fs.writeFileSync(file, json(value));
+        continue;
+      }
+      expect(fs.existsSync(file), `${name} is missing: run npm run contract:fixtures`).toBe(true);
+      expect(fs.readFileSync(file, 'utf8'), `${name} differs: run npm run contract:fixtures`).toBe(json(value));
     }
-    expect(fs.existsSync(file), 'free-agents.json is missing: run npm run contract:fixtures').toBe(true);
-    expect(fs.readFileSync(file, 'utf8'), 'free-agents.json differs: run npm run contract:fixtures').toBe(json(view));
   });
 });

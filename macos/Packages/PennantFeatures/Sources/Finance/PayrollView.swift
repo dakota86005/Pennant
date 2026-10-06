@@ -351,7 +351,7 @@ struct OfficeTableGrid: View {
                                     Text(verbatim: cell.display)
                                         .fontWeight(.medium)
                                         .playerName(id: player.playerId, name: player.name, opens: clubRef(opening: player.open))
-                                } else if column.id == table.columns.last?.id, let claim = row.claims.first {
+                                } else if column.id == table.columns.last?.id, let claim = row.claims?.first {
                                     // The row's explanation (a projected cost's method, why a season is open) behind its last figure
                                     ClaimText(claim, edge: .trailing) { CellText(cell).monospacedDigit() }
                                 } else {

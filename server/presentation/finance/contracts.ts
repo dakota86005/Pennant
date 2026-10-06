@@ -227,6 +227,7 @@ function rowOf(ctx: OfficeContext, r: ContractRow, y: number): OfficeRow {
     facts: factsOf(r),
     claims,
     grid: seasonsGrid(r),
+    filterKeys: { group: r.group, side: r.positionName === 'P' ? 'pitchers' : 'hitters' },
   });
 }
 
@@ -240,34 +241,18 @@ export function contractsView(ctx: OfficeContext, c: Contracts): FinanceContract
     const unknown = members.length - known.length;
     const words = GROUP_WORDS[g](y);
     const title = `${members.length} · ${words.label} · ${money(sum)} in ${y}${unknown > 0 ? ` + ${unknown} not known` : ''}`;
-    return filterChoice(g, cell(title, { hint: hintIf(words.tip) }), members.map((r) => `contract-${r.player_id}`), claim({
-      text: words.label,
-      tone: 'neutral',
-      basis: basis({
-        because: [
-          { label: 'What it means', value: words.tip },
-          { label: 'Players', value: String(members.length) },
-          { label: `Salary in ${y}`, value: `${money(sum)}${unknown > 0 ? `, and ${counted(unknown, 'salary', 'salaries')} not in the export` : ''}` },
-        ],
-        source: officeSource(ctx, 'Player Rights, through Player Value'),
-        unknown: unknown > 0 ? [`${counted(unknown, 'salary', 'salaries')} not in the export.`] : [],
-        wouldChange: [],
-        lean: null,
-        certainty: 'fact',
-      }),
-    }));
+    // What the group means is the title's help tag; its count, salary and any salary not in the export are in the title
+    return filterChoice(g, cell(title, { hint: hintIf(words.tip) }));
   });
   const filters: OfficeFilterGroup[] = [];
   if (groups.length > 0) {
-    filters.push({ id: 'group', title: cell('Group'), choices: [filterChoice('all', cell('Every group'), rows.map((r) => r.id)), ...groups] });
+    filters.push({ id: 'group', title: cell('Group'), choices: [filterChoice('all', cell('Every group')), ...groups] });
   }
-  const pitchers = c.players.filter((r) => r.positionName === 'P').map((r) => `contract-${r.player_id}`);
-  const hitters = c.players.filter((r) => r.positionName !== 'P').map((r) => `contract-${r.player_id}`);
-  if (pitchers.length > 0 && hitters.length > 0) {
+  if (c.players.some((r) => r.positionName === 'P') && c.players.some((r) => r.positionName !== 'P')) {
     filters.push({
       id: 'side',
       title: cell('Players'),
-      choices: [filterChoice('all', cell('All players'), rows.map((r) => r.id)), filterChoice('pitchers', cell('Pitchers'), pitchers), filterChoice('hitters', cell('Position players'), hitters)],
+      choices: [filterChoice('all', cell('All players')), filterChoice('pitchers', cell('Pitchers')), filterChoice('hitters', cell('Position players'))],
     });
   }
 

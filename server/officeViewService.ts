@@ -20,7 +20,7 @@ import { buildOfficeViews, type OfficePart, type OfficeViewsResult } from './off
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored } from './presentation/claim.js';
 import type {
-  FinanceBudgetChange, FinanceContractsView, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
+  FinanceBudgetChange, FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
 } from './presentation/finance/types.js';
 import type { MedicalInjuryReportView } from './presentation/medical/injuryReport.js';
 import { budgetChange } from './presentation/finance/payroll.js';
@@ -114,6 +114,21 @@ export async function financeContractsNow(org: string): Promise<FinanceContracts
 export async function financeFreeAgentsNow(org: string): Promise<FinanceFreeAgentsView> {
   return viewOf((await current(resolveOrg(org))).result.freeAgents);
 }
+
+/**
+ * One listed free agent's detail (his facts and claims, each with its basis), read from the kept build when the GM
+ * chooses his row: the lists never carry it.
+ */
+export async function financeFreeAgentNow(org: string, player: string): Promise<FinanceFreeAgentDetail> {
+  const built = await current(resolveOrg(org));
+  viewOf(built.result.freeAgents);
+  const detail = /^\d+$/.test(player) ? built.result.freeAgentDetails[String(Number(player))] : undefined;
+  if (!detail) throw new FrontOfficeRefusal(FREE_AGENT_NOT_LISTED, 404);
+  return detail;
+}
+
+/** What a player not on the lists is answered with (a 404). */
+export const FREE_AGENT_NOT_LISTED = "He isn't on the free-agent lists.";
 
 export async function financeHorizonNow(org: string): Promise<FinanceHorizonView> {
   return viewOf((await current(resolveOrg(org))).result.horizon);

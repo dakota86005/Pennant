@@ -33,6 +33,10 @@ public final class OfficeStore {
     public private(set) var savingBudget = false
     /// What the last budget change did, in the server's words ("Next season's budget set to $210M; was $200M").
     public private(set) var budgetDone: Components.Schemas.Cell?
+    /// Free agents' details (their facts and claims), by player id, read when the GM chooses a row: the lists carry none.
+    public private(set) var freeAgentDetails: [Int: Components.Schemas.FinanceFreeAgentDetail] = [:]
+    /// The details being read now, so a row chosen twice asks once.
+    private var detailsAsked: Set<Int> = []
 
     private var loadedKeys: [String: AppModel.StoreKey] = [:]
     private var askedKeys: [String: AppModel.StoreKey] = [:]
@@ -60,6 +64,7 @@ public final class OfficeStore {
         loadedKeys = [:]
         budgetProblem = nil
         budgetDone = nil
+        freeAgentDetails = [:]
     }
 
     /// Whether a view is drawn as updating: it is being read again, or what is shown was read for an earlier key.
@@ -109,7 +114,11 @@ public final class OfficeStore {
                 case .undocumented(let code, let payload):
                     return .failure(await .undocumented(code, body: payload.body, operation: "getFinanceFreeAgents", fromV2: true))
                 }
-            } keep: { self.freeAgents = $0 }
+            } keep: { kept in
+                // Another build's lists: the details read for the last one are dropped with them
+                if self.freeAgents?.reportStamp != kept.reportStamp { self.freeAgentDetails = [:] }
+                self.freeAgents = kept
+            }
         case .horizonBoard:
             await read(view, client: client, key: key, force: force) { client in
                 switch try await client.getFinanceHorizon(path: .init(org: org)) {
@@ -128,6 +137,28 @@ public final class OfficeStore {
                     return .failure(await .undocumented(code, body: payload.body, operation: "getMedicalInjuryReport", fromV2: true))
                 }
             } keep: { self.injuries = $0 }
+        }
+    }
+
+    /// Reads a listed free agent's detail when his row is chosen, once per build of the lists; a refusal or a failure
+    /// leaves the row's own cells, and is logged only through `RequestProblem.logLine`.
+    public func loadFreeAgentDetail(_ playerId: Int, client: Client?, key: AppModel.StoreKey?) async {
+        guard let client, let key, freeAgentDetails[playerId] == nil, !detailsAsked.contains(playerId) else { return }
+        let stamp = freeAgents?.reportStamp
+        detailsAsked.insert(playerId)
+        defer { detailsAsked.remove(playerId) }
+        do {
+            switch try await client.getFinanceFreeAgent(path: .init(org: FrontOfficeStore.org(key), player: String(playerId))) {
+            case .ok(let answer):
+                let detail = try answer.body.json
+                // Kept only for the lists it was asked for: another build's lists drop it
+                if freeAgents?.reportStamp == stamp { freeAgentDetails[playerId] = detail }
+            case .notFound: return
+            case .undocumented(let code, _): log("could not read a free agent's detail: HTTP \(code)")
+            }
+        } catch {
+            if RequestProblem.isCancellation(error) { return }
+            log("could not read a free agent's detail: \(RequestProblem.logLine(error))")
         }
     }
 
@@ -214,12 +245,14 @@ public final class OfficeStore {
         contracts: Components.Schemas.FinanceContractsView? = nil,
         freeAgents: Components.Schemas.FinanceFreeAgentsView? = nil,
         horizon: Components.Schemas.FinanceHorizonView? = nil,
-        injuries: Components.Schemas.MedicalInjuryReportView? = nil
+        injuries: Components.Schemas.MedicalInjuryReportView? = nil,
+        freeAgentDetails: [Components.Schemas.FinanceFreeAgentDetail] = []
     ) -> OfficeStore {
         let store = OfficeStore()
         store.payroll = payroll
         store.contracts = contracts
         store.freeAgents = freeAgents
+        for detail in freeAgentDetails { store.freeAgentDetails[detail.playerId] = detail }
         store.horizon = horizon
         store.injuries = injuries
         return store
@@ -242,6 +275,11 @@ extension AppModel {
     /// Finance's and Medical's views for the current key (a view calls it in `.task(id: storeKey)`).
     public func loadOffice() async {
         await office.loadAll(client: client, key: storeKey)
+    }
+
+    /// Reads a free agent's detail for his chosen row (Free Agents' lists carry none).
+    public func loadFreeAgentDetail(_ playerId: Int) async {
+        await office.loadFreeAgentDetail(playerId, client: client, key: storeKey)
     }
 
     /// Sets the budget the GM expects next season (nil clears it), and registers the served request that puts back what

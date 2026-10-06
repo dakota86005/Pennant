@@ -320,34 +320,6 @@
           "title": {
             "display": "Every group"
           },
-          "rows": [
-            "contract-1002",
-            "contract-1004",
-            "contract-1017",
-            "contract-1012",
-            "contract-1020",
-            "contract-1007",
-            "contract-1016",
-            "contract-1021",
-            "contract-1013",
-            "contract-1005",
-            "contract-1010",
-            "contract-1023",
-            "contract-1011",
-            "contract-1015",
-            "contract-1008",
-            "contract-1000",
-            "contract-1018",
-            "contract-1014",
-            "contract-1019",
-            "contract-1022",
-            "contract-1024",
-            "contract-1025",
-            "contract-1003",
-            "contract-1001",
-            "contract-1006",
-            "contract-1009"
-          ],
           "explain": null
         },
         {
@@ -356,48 +328,7 @@
             "display": "8 · Pre-arbitration in 2041 · $35.1M in 2040",
             "hint": "The club renews him at a salary it sets, at or near the league minimum."
           },
-          "rows": [
-            "contract-1002",
-            "contract-1004",
-            "contract-1017",
-            "contract-1012",
-            "contract-1020",
-            "contract-1007",
-            "contract-1016",
-            "contract-1021"
-          ],
-          "explain": {
-            "text": "Pre-arbitration in 2041",
-            "tone": "neutral",
-            "basis": {
-              "because": [
-                {
-                  "label": "What it means",
-                  "value": "The club renews him at a salary it sets, at or near the league minimum."
-                },
-                {
-                  "label": "Players",
-                  "value": "8"
-                },
-                {
-                  "label": "Salary in 2040",
-                  "value": "$35.1M"
-                }
-              ],
-              "source": {
-                "department": "finance",
-                "specialist": "Player Rights, through Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-05"
-              },
-              "unknown": [],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "fact",
-              "called": "A fact from the export"
-            },
-            "links": []
-          }
+          "explain": null
         },
         {
           "id": "signed",
@@ -405,98 +336,14 @@
             "display": "14 · Signed, short term · $39.8M in 2040",
             "hint": "Under contract next season, for one or two more seasons."
           },
-          "rows": [
-            "contract-1013",
-            "contract-1005",
-            "contract-1010",
-            "contract-1023",
-            "contract-1011",
-            "contract-1015",
-            "contract-1008",
-            "contract-1000",
-            "contract-1018",
-            "contract-1014",
-            "contract-1019",
-            "contract-1022",
-            "contract-1024",
-            "contract-1025"
-          ],
-          "explain": {
-            "text": "Signed, short term",
-            "tone": "neutral",
-            "basis": {
-              "because": [
-                {
-                  "label": "What it means",
-                  "value": "Under contract next season, for one or two more seasons."
-                },
-                {
-                  "label": "Players",
-                  "value": "14"
-                },
-                {
-                  "label": "Salary in 2040",
-                  "value": "$39.8M"
-                }
-              ],
-              "source": {
-                "department": "finance",
-                "specialist": "Player Rights, through Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-05"
-              },
-              "unknown": [],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "fact",
-              "called": "A fact from the export"
-            },
-            "links": []
-          }
+          "explain": null
         },
         {
           "id": "long_term",
           "title": {
             "display": "4 · Long-term deals · $9.2M in 2040"
           },
-          "rows": [
-            "contract-1003",
-            "contract-1001",
-            "contract-1006",
-            "contract-1009"
-          ],
-          "explain": {
-            "text": "Long-term deals",
-            "tone": "neutral",
-            "basis": {
-              "because": [
-                {
-                  "label": "What it means",
-                  "value": "Under contract three seasons or more past this one: the club's long-term commitments."
-                },
-                {
-                  "label": "Players",
-                  "value": "4"
-                },
-                {
-                  "label": "Salary in 2040",
-                  "value": "$9.2M"
-                }
-              ],
-              "source": {
-                "department": "finance",
-                "specialist": "Player Rights, through Player Value",
-                "asOf": null,
-                "gameDate": "2040-05-05"
-              },
-              "unknown": [],
-              "wouldChange": [],
-              "lean": null,
-              "certainty": "fact",
-              "called": "A fact from the export"
-            },
-            "links": []
-          }
+          "explain": null
         }
       ]
     },
@@ -511,34 +358,6 @@
           "title": {
             "display": "All players"
           },
-          "rows": [
-            "contract-1002",
-            "contract-1004",
-            "contract-1017",
-            "contract-1012",
-            "contract-1020",
-            "contract-1007",
-            "contract-1016",
-            "contract-1021",
-            "contract-1013",
-            "contract-1005",
-            "contract-1010",
-            "contract-1023",
-            "contract-1011",
-            "contract-1015",
-            "contract-1008",
-            "contract-1000",
-            "contract-1018",
-            "contract-1014",
-            "contract-1019",
-            "contract-1022",
-            "contract-1024",
-            "contract-1025",
-            "contract-1003",
-            "contract-1001",
-            "contract-1006",
-            "contract-1009"
-          ],
           "explain": null
         },
         {
@@ -546,21 +365,6 @@
           "title": {
             "display": "Pitchers"
           },
-          "rows": [
-            "contract-1017",
-            "contract-1020",
-            "contract-1016",
-            "contract-1021",
-            "contract-1013",
-            "contract-1023",
-            "contract-1015",
-            "contract-1018",
-            "contract-1014",
-            "contract-1019",
-            "contract-1022",
-            "contract-1024",
-            "contract-1025"
-          ],
           "explain": null
         },
         {
@@ -568,21 +372,6 @@
           "title": {
             "display": "Position players"
           },
-          "rows": [
-            "contract-1002",
-            "contract-1004",
-            "contract-1012",
-            "contract-1007",
-            "contract-1005",
-            "contract-1010",
-            "contract-1011",
-            "contract-1008",
-            "contract-1000",
-            "contract-1003",
-            "contract-1001",
-            "contract-1006",
-            "contract-1009"
-          ],
           "explain": null
         }
       ]
@@ -983,6 +772,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "hitters"
         }
       },
       {
@@ -1279,6 +1072,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "hitters"
         }
       },
       {
@@ -1575,6 +1372,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "pitchers"
         }
       },
       {
@@ -1871,6 +1672,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "hitters"
         }
       },
       {
@@ -2166,6 +1971,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "pitchers"
         }
       },
       {
@@ -2462,6 +2271,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "hitters"
         }
       },
       {
@@ -2758,6 +2571,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "pitchers"
         }
       },
       {
@@ -3054,6 +2871,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "pre_arbitration",
+          "side": "pitchers"
         }
       },
       {
@@ -3352,6 +3173,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -3650,6 +3475,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "hitters"
         }
       },
       {
@@ -3947,6 +3776,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "hitters"
         }
       },
       {
@@ -4245,6 +4078,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -4543,6 +4380,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "hitters"
         }
       },
       {
@@ -4839,6 +4680,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -5137,6 +4982,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "hitters"
         }
       },
       {
@@ -5435,6 +5284,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "hitters"
         }
       },
       {
@@ -5733,6 +5586,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -6031,6 +5888,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -6329,6 +6190,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -6627,6 +6492,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -6924,6 +6793,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -7222,6 +7095,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "signed",
+          "side": "pitchers"
         }
       },
       {
@@ -7518,6 +7395,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "long_term",
+          "side": "hitters"
         }
       },
       {
@@ -7814,6 +7695,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "long_term",
+          "side": "hitters"
         }
       },
       {
@@ -8110,6 +7995,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "long_term",
+          "side": "hitters"
         }
       },
       {
@@ -8406,6 +8295,10 @@
           "empty": {
             "display": "No seasons under the club's control after this one."
           }
+        },
+        "filterKeys": {
+          "group": "long_term",
+          "side": "hitters"
         }
       }
     ],

@@ -382,12 +382,6 @@
               "title": {
                 "display": "Any position"
               },
-              "rows": [
-                "fa-1027",
-                "fa-1028",
-                "fa-1026",
-                "fa-1104"
-              ],
               "explain": null
             },
             {
@@ -395,9 +389,6 @@
               "title": {
                 "display": "1B"
               },
-              "rows": [
-                "fa-1028"
-              ],
               "explain": null
             },
             {
@@ -405,9 +396,6 @@
               "title": {
                 "display": "2B"
               },
-              "rows": [
-                "fa-1104"
-              ],
               "explain": null
             },
             {
@@ -415,10 +403,6 @@
               "title": {
                 "display": "LF"
               },
-              "rows": [
-                "fa-1027",
-                "fa-1026"
-              ],
               "explain": null
             }
           ]
@@ -434,12 +418,6 @@
               "title": {
                 "display": "Any age"
               },
-              "rows": [
-                "fa-1027",
-                "fa-1028",
-                "fa-1026",
-                "fa-1104"
-              ],
               "explain": null
             },
             {
@@ -447,10 +425,6 @@
               "title": {
                 "display": "27 and under"
               },
-              "rows": [
-                "fa-1028",
-                "fa-1104"
-              ],
               "explain": null
             },
             {
@@ -458,10 +432,6 @@
               "title": {
                 "display": "28 to 31"
               },
-              "rows": [
-                "fa-1027",
-                "fa-1026"
-              ],
               "explain": null
             },
             {
@@ -469,7 +439,6 @@
               "title": {
                 "display": "32 and over"
               },
-              "rows": [],
               "explain": null
             }
           ]
@@ -485,12 +454,6 @@
               "title": {
                 "display": "Every position"
               },
-              "rows": [
-                "fa-1027",
-                "fa-1028",
-                "fa-1026",
-                "fa-1104"
-              ],
               "explain": null
             },
             {
@@ -498,10 +461,6 @@
               "title": {
                 "display": "Only our thin spots"
               },
-              "rows": [
-                "fa-1028",
-                "fa-1104"
-              ],
               "explain": null
             }
           ]
@@ -617,8 +576,8 @@
               "club": null,
               "age": 30,
               "scouted": 60,
-              "winsNow": 0.7596620132766417,
-              "winsNext": 1.28011288890436,
+              "winsNow": 0.76,
+              "winsNext": 1.28,
               "market": null
             },
             "player": {
@@ -629,45 +588,11 @@
                 "playerId": 1027
               }
             },
-            "facts": [
-              {
-                "label": {
-                  "display": "Salary"
-                },
-                "value": {
-                  "display": "No club holds him: he has no contract."
-                }
-              }
-            ],
-            "claims": [
-              {
-                "text": "2041 at the market: Not known",
-                "tone": "unknown",
-                "basis": {
-                  "because": [
-                    {
-                      "label": "Why not",
-                      "value": "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
-                    }
-                  ],
-                  "source": {
-                    "department": "finance",
-                    "specialist": "Player Value",
-                    "asOf": null,
-                    "gameDate": "2040-7-1"
-                  },
-                  "unknown": [
-                    "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
-                  ],
-                  "wouldChange": [],
-                  "lean": null,
-                  "certainty": "unknown",
-                  "called": "Not known"
-                },
-                "links": []
-              }
-            ],
-            "grid": null,
+            "filterKeys": {
+              "side": "hitters",
+              "position": "LF",
+              "age": "prime"
+            },
             "ratingsFill": {
               "display": "OSA",
               "hint": "OSA's view: our scouts haven't rated him."
@@ -691,8 +616,7 @@
                 "display": "26"
               },
               "scouted": {
-                "display": "51 → 55",
-                "hint": "Now → ceiling, on the scouts' scale"
+                "display": "51 → 55"
               },
               "winsNow": {
                 "display": "0.5",
@@ -714,8 +638,8 @@
               "club": null,
               "age": 26,
               "scouted": 51,
-              "winsNow": 0.4909486699451282,
-              "winsNext": 1.0208977819899614,
+              "winsNow": 0.491,
+              "winsNext": 1.021,
               "market": null
             },
             "player": {
@@ -726,53 +650,12 @@
                 "playerId": 1028
               }
             },
-            "facts": [
-              {
-                "label": {
-                  "display": "Thin spot"
-                },
-                "value": {
-                  "display": "1B is one of your thinnest positions: your best there, P 1006, is expected to add 0.2 wins the rest of this season."
-                }
-              },
-              {
-                "label": {
-                  "display": "Salary"
-                },
-                "value": {
-                  "display": "No club holds him: he has no contract."
-                }
-              }
-            ],
-            "claims": [
-              {
-                "text": "2041 at the market: Not known",
-                "tone": "unknown",
-                "basis": {
-                  "because": [
-                    {
-                      "label": "Why not",
-                      "value": "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
-                    }
-                  ],
-                  "source": {
-                    "department": "finance",
-                    "specialist": "Player Value",
-                    "asOf": null,
-                    "gameDate": "2040-7-1"
-                  },
-                  "unknown": [
-                    "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
-                  ],
-                  "wouldChange": [],
-                  "lean": null,
-                  "certainty": "unknown",
-                  "called": "Not known"
-                },
-                "links": []
-              }
-            ],
-            "grid": null
+            "filterKeys": {
+              "side": "hitters",
+              "position": "1B",
+              "age": "young",
+              "thin": "thin"
+            }
           },
           {
             "id": "fa-1026",
@@ -791,8 +674,7 @@
                 "display": "28"
               },
               "scouted": {
-                "display": "51 → 51",
-                "hint": "Now → ceiling, on the scouts' scale"
+                "display": "51 → 51"
               },
               "winsNow": {
                 "display": "0.4",
@@ -814,8 +696,8 @@
               "club": null,
               "age": 28,
               "scouted": 51,
-              "winsNow": 0.4490821393370559,
-              "winsNext": 0.815607643310827,
+              "winsNow": 0.449,
+              "winsNext": 0.816,
               "market": null
             },
             "player": {
@@ -826,45 +708,11 @@
                 "playerId": 1026
               }
             },
-            "facts": [
-              {
-                "label": {
-                  "display": "Salary"
-                },
-                "value": {
-                  "display": "No club holds him: he has no contract."
-                }
-              }
-            ],
-            "claims": [
-              {
-                "text": "2041 at the market: Not known",
-                "tone": "unknown",
-                "basis": {
-                  "because": [
-                    {
-                      "label": "Why not",
-                      "value": "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
-                    }
-                  ],
-                  "source": {
-                    "department": "finance",
-                    "specialist": "Player Value",
-                    "asOf": null,
-                    "gameDate": "2040-7-1"
-                  },
-                  "unknown": [
-                    "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
-                  ],
-                  "wouldChange": [],
-                  "lean": null,
-                  "certainty": "unknown",
-                  "called": "Not known"
-                },
-                "links": []
-              }
-            ],
-            "grid": null
+            "filterKeys": {
+              "side": "hitters",
+              "position": "LF",
+              "age": "prime"
+            }
           },
           {
             "id": "fa-1104",
@@ -884,8 +732,7 @@
                 "display": "22"
               },
               "scouted": {
-                "display": "80 → 80",
-                "hint": "Now → ceiling, on the scouts' scale"
+                "display": "80 → 80"
               },
               "winsNow": {
                 "display": "Not known",
@@ -921,61 +768,12 @@
                 "playerId": 1104
               }
             },
-            "facts": [
-              {
-                "label": {
-                  "display": "Thin spot"
-                },
-                "value": {
-                  "display": "2B is one of your thinnest positions: your best there, P 1001, is expected to add 0.2 wins the rest of this season."
-                }
-              },
-              {
-                "label": {
-                  "display": "Salary"
-                },
-                "value": {
-                  "display": "No club holds him: he has no contract."
-                }
-              },
-              {
-                "label": {
-                  "display": "Production"
-                },
-                "value": {
-                  "display": "No club holds him and he has no major-league line to place his league: his season and his major-league playing time are not established."
-                }
-              }
-            ],
-            "claims": [
-              {
-                "text": "2041 at the market: Not known",
-                "tone": "unknown",
-                "basis": {
-                  "because": [
-                    {
-                      "label": "Why not",
-                      "value": "No club holds him and he has no major-league line to place his league: his season and his major-league playing time are not established."
-                    }
-                  ],
-                  "source": {
-                    "department": "finance",
-                    "specialist": "Player Value",
-                    "asOf": null,
-                    "gameDate": "2040-7-1"
-                  },
-                  "unknown": [
-                    "No club holds him and he has no major-league line to place his league: his season and his major-league playing time are not established."
-                  ],
-                  "wouldChange": [],
-                  "lean": null,
-                  "certainty": "unknown",
-                  "called": "Not known"
-                },
-                "links": []
-              }
-            ],
-            "grid": null
+            "filterKeys": {
+              "side": "hitters",
+              "position": "2B",
+              "age": "young",
+              "thin": "thin"
+            }
           }
         ],
         "empty": {

@@ -261,8 +261,14 @@ nonisolated public enum PreviewFixtures {
             freeAgents: financeFixture(Components.Schemas.FinanceFreeAgentsView.self, "free-agents")
                 ?? decode(Components.Schemas.FinanceFreeAgentsView.self, "getFinanceFreeAgents"),
             horizon: decode(Components.Schemas.FinanceHorizonView.self, "getFinanceHorizon"),
-            injuries: decode(Components.Schemas.MedicalInjuryReportView.self, "getMedicalInjuryReport")
+            injuries: decode(Components.Schemas.MedicalInjuryReportView.self, "getMedicalInjuryReport"),
+            freeAgentDetails: [freeAgentDetail].compactMap { $0 }
         )
+    }
+
+    /// The first listed free agent's detail in the fuller Free Agents payload (N12 review, M4: served when his row is chosen).
+    public static var freeAgentDetail: Components.Schemas.FinanceFreeAgentDetail? {
+        financeFixture(Components.Schemas.FinanceFreeAgentDetail.self, "free-agent-detail")
     }
 
     /// The captured search answer for "club".

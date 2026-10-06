@@ -5,11 +5,12 @@ import PennantAPI
 @testable import PennantKit
 import Testing
 
-/// The budget the GM expects next season (N12 review, M2): the change says what it did in the server's words, and ⌘Z
-/// sends the request the server served to put back what was there, its redo the GM's own amount again.
-@Suite("The budget the GM expects next season")
+/// Finance's store (N12 review): the budget the GM expects next season (M2) says what it did in the server's words, and ⌘Z
+/// sends the request the server served to put back what was there, its redo the GM's own amount again; a free agent's
+/// detail (M4) is read when his row is chosen, once.
+@Suite("Finance's store: the budget and a free agent's detail")
 @MainActor
-struct OfficeBudgetTests {
+struct OfficeStoreTests {
     private static let put = "PUT /api/v2/views/1/finance/payrollBudget/nextSeasonBudget"
 
     private func transport() throws -> RoutedTransport {
@@ -84,5 +85,22 @@ struct OfficeBudgetTests {
         #expect(model.office.budgetDone == nil)
         if case .served(let words) = model.office.budgetProblem { #expect(words.contains("$10 billion")) } else { Issue.record("not refused in the server's words") }
         await model.shutdown()
+    }
+
+    @Test("a free agent's detail is read when his row is chosen, once, and kept for the lists it was read for")
+    func freeAgentDetail() async throws {
+        let detail = "/api/v2/views/1/finance/freeAgents/players/7"
+        let transport = RoutedTransport([
+            "/api/v2/views/1/finance/freeAgents": try RoutedTransport.json("getFinanceFreeAgents"),
+            detail: try RoutedTransport.json("getFinanceFreeAgent"),
+        ])
+        let client = PennantClient.make(port: 5178, token: String(repeating: "t", count: 64), transport: transport)
+        let key = AppModel.StoreKey(importStamp: "", club: ClubRef(id: 1), restores: 0, reportStamp: "rstamp")
+        let store = OfficeStore()
+        await store.load(.freeAgents, client: client, key: key)
+        await store.loadFreeAgentDetail(7, client: client, key: key)
+        await store.loadFreeAgentDetail(7, client: client, key: key)
+        #expect(transport.paths.filter { $0 == detail }.count == 1)
+        #expect(store.freeAgentDetails[7]?.claims.isEmpty == false)
     }
 }

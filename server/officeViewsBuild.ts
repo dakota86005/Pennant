@@ -20,10 +20,12 @@ import { clubFinances, controlSeasonLabel, leagueFinances, marketLeagueOfClub, p
 import { servedDepartments } from './presentation/catalog.js';
 import { cell } from './presentation/claim.js';
 import { contractsView } from './presentation/finance/contracts.js';
-import { freeAgentsView } from './presentation/finance/freeAgents.js';
+import { freeAgentsViewAndDetails } from './presentation/finance/freeAgents.js';
 import { horizonView, type HorizonPlayerInput } from './presentation/finance/horizon.js';
 import { payrollView } from './presentation/finance/payroll.js';
-import type { FinanceContractsView, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView } from './presentation/finance/types.js';
+import type {
+  FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
+} from './presentation/finance/types.js';
 import { farmMan } from './presentation/frontOffice/morning.js';
 import { injuryReportView, type MedicalInjuryReportView } from './presentation/medical/injuryReport.js';
 import type { OfficeContext, OfficeFreshness } from './presentation/officeTable.js';
@@ -44,6 +46,8 @@ export interface OfficeViewsResult {
   payroll: OfficePart<FinancePayrollView>;
   contracts: OfficePart<FinanceContractsView>;
   freeAgents: OfficePart<FinanceFreeAgentsView>;
+  /** Each listed free agent's detail, by player id: served when his row is chosen, never with the lists. */
+  freeAgentDetails: Record<string, FinanceFreeAgentDetail>;
   horizon: OfficePart<FinanceHorizonView>;
   injuryReport: OfficePart<MedicalInjuryReportView>;
   /** The parts that couldn't be read this time (each logged). */
@@ -161,11 +165,14 @@ export function buildOfficeViews(request: OfficeViewsRequest): OfficeViewsResult
     const c = computeContracts(orgId, status);
     return contractsView(plain('finance', c.freshness.limitations), c);
   });
+  const freeAgentDetails: Record<string, FinanceFreeAgentDetail> = {};
   const freeAgents = partOf(failed, ms, 'freeAgents', 'Free agents', () => {
     const f = computeFreeAgents(orgId, status);
-    return freeAgentsView(plain('finance', f.freshness.limitations), f, ratingFillOf);
+    const { view, details } = freeAgentsViewAndDetails(plain('finance', f.freshness.limitations), f, ratingFillOf);
+    for (const [id, detail] of details) freeAgentDetails[String(id)] = detail;
+    return view;
   });
   const horizon = partOf(failed, ms, 'horizon', 'The horizon board', () => horizonOf(plain('finance'), orgId, read.payroll, payrollWhy, cue.state));
   const injuryReport = partOf(failed, ms, 'injuryReport', 'The injury report', () => injuryReportView(plain('medical'), orgInjuries(orgId)));
-  return { payroll, contracts, freeAgents, horizon, injuryReport, failed, ms };
+  return { payroll, contracts, freeAgents, freeAgentDetails, horizon, injuryReport, failed, ms };
 }

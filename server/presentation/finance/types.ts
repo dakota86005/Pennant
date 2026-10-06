@@ -6,7 +6,7 @@
  */
 import type { Cell, Claim } from '../../contract/presentation.js';
 import type { Integer } from '../../contract/primitives.js';
-import type { OfficeFilterGroup, OfficePlayer, OfficeTable, OfficeViewHead } from '../officeTable.js';
+import type { OfficeFact, OfficeFilterGroup, OfficePlayer, OfficeTable, OfficeViewHead } from '../officeTable.js';
 
 /** Contracts: the club's finance figures, the price of a win, the groups, and every contract as a table. */
 export interface FinanceContractsView extends OfficeViewHead {
@@ -35,6 +35,16 @@ export interface FinanceFreeAgentList {
   order: Cell | null;
   filters: OfficeFilterGroup[];
   table: OfficeTable;
+}
+
+/**
+ * One free agent's detail, served when the GM chooses his row (the lists carry none of it, so they stay small): his
+ * facts and the claims beneath the table, each with its basis.
+ */
+export interface FinanceFreeAgentDetail {
+  playerId: Integer;
+  facts: OfficeFact[];
+  claims: Claim[];
 }
 
 /** Free Agents: the club's figures, the price of a win, its thinnest positions, and the three lists. */

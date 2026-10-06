@@ -13,11 +13,14 @@ import { basisProblems } from '../server/presentation/claim.js';
 import { departmentReport, frontOfficeBuilt, frontOfficeRevision } from '../server/frontOfficeService.js';
 import { clubhouseScheduleNow } from '../server/clubhouseViewService.js';
 import { farmAssignmentsNow, resetFarmViews } from '../server/farmViewService.js';
+import { financeFreeAgentsNow, resetOfficeViews } from '../server/officeViewService.js';
+import { clearProductionCaches } from '../server/playerValue.js';
 import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
 import { startJob } from '../server/jobs.js';
 import { themePacksFolder } from '../server/themePackStore.js';
+import { db } from '../server/db.js';
 import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/history.js';
 import { currentHistoryKey, forgetHistoryKey } from '../server/historyIdentity.js';
 import { forgetMemoryCaches, recordReportSnapshot, recordStandingsSnapshot, setDeskRecord } from '../server/frontOfficeMemory.js';
@@ -337,7 +340,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     fs.rmSync(themePacksFolder(), { recursive: true, force: true });
   });
 
-  const reads = operations.filter((op) => op.method === 'get' && !op.stream);
+  // A free agent's detail is checked on its own below: the synthetic save lists no free agent until one is made
+  const reads = operations.filter((op) => op.method === 'get' && !op.stream && op.operationId !== 'getFinanceFreeAgent');
   /** The scoped jargon exceptions the live payloads lean on; one none of them uses is stale. */
   const exceptionsInUse = new Set<JargonException>();
   /** An item's evidence key on the synthetic save (a Major League Ops need), found once the save is built. */
@@ -424,6 +428,40 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     // Where the server looked for saves depends on the platform, so it is no fixture (and is left out of the saves')
     if (op.operationId === 'getSaveDiscovery') body.searched = [];
     if (op.operationId !== 'getSearchLocations') fixture(`responses/${op.operationId}.json`, json(body));
+  }, SLOW);
+
+  it('serves a listed free agent\'s detail in the contract\'s shape, plain (N12; captured for the previews)', async () => {
+    // A veteran elsewhere on the last year of his deal given a club option on next season, as the export writes one:
+    // declined he is a free agent, so he might reach the market. Put back after
+    const veteran = db.prepare(`SELECT c.player_id AS id, c.years, c.salary1, c.last_year_team_option AS option, rs.mlb_service_days AS days
+      FROM players_contract c JOIN players p ON p.player_id = c.player_id JOIN players_roster_status rs ON rs.player_id = c.player_id
+      JOIN teams t ON t.team_id = p.team_id WHERE t.level = 1 AND p.organization_id != ? AND c.years = 1 AND c.is_major = 1
+      ORDER BY c.player_id LIMIT 1`).get(save.org) as { id: number; years: number; salary1: number; option: number; days: number };
+    const refresh = () => {
+      clearProductionCaches();
+      resetOfficeViews();
+    };
+    try {
+      db.prepare('UPDATE players_contract SET years = 2, salary1 = salary0, last_year_team_option = 1 WHERE player_id = ?').run(veteran.id);
+      db.prepare('UPDATE players_roster_status SET mlb_service_days = 1500 WHERE player_id = ?').run(veteran.id);
+      refresh();
+      const list = (await financeFreeAgentsNow(String(save.org))).lists.find((l) => l.id === 'mightReach')!;
+      expect(list.table.rows.map((r) => r.player?.playerId)).toContain(veteran.id);
+      const res = await fetch(`${base}/api/v2/views/${save.org}/finance/freeAgents/players/${veteran.id}`);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      const validate = validator('FinanceFreeAgentDetail');
+      expect(validate(body) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(body, 'getFinanceFreeAgent')).toEqual([]);
+      expect(servedBasisProblems(body)).toEqual([]);
+      expect(body.claims.length).toBeGreaterThan(0);
+      fixture('responses/getFinanceFreeAgent.json', json(body));
+      expect((await fetch(`${base}/api/v2/views/${save.org}/finance/freeAgents/players/${save.regular}`)).status).toBe(404);
+    } finally {
+      db.prepare('UPDATE players_contract SET years = ?, salary1 = ?, last_year_team_option = ? WHERE player_id = ?').run(veteran.years, veteran.salary1, veteran.option, veteran.id);
+      db.prepare('UPDATE players_roster_status SET mlb_service_days = ? WHERE player_id = ?').run(veteran.days, veteran.id);
+      refresh();
+    }
   }, SLOW);
 
   it('takes the farm player\'s snapshots out again, so the history questions below start from a save with none (N10)', () => {

@@ -27,10 +27,10 @@ import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
 import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
 import {
-  financeContractsNow, financeFreeAgentsNow, financeHorizonNow, financePayrollNow, medicalInjuryReportNow, setFinanceBudget,
+  financeContractsNow, financeFreeAgentNow, financeFreeAgentsNow, financeHorizonNow, financePayrollNow, medicalInjuryReportNow, setFinanceBudget,
 } from './officeViewService.js';
 import type {
-  FinanceBudgetChange, FinanceContractsView, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
+  FinanceBudgetChange, FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
 } from './presentation/finance/types.js';
 import type { MedicalInjuryReportView } from './presentation/medical/injuryReport.js';
 import { answerHistoryOffer, carryOvers, currentHistoryKey, HistoryChoiceRefusal, historyCandidates, historyDates, historyNote, historyOffers } from './historyIdentity.js';
@@ -241,6 +241,8 @@ v2Routes.put('/views/:org/finance/payrollBudget/nextSeasonBudget', frontOffice<F
 }));
 v2Routes.get('/views/:org/finance/contracts', frontOffice<FinanceContractsView>((req) => financeContractsNow(String(req.params.org))));
 v2Routes.get('/views/:org/finance/freeAgents', frontOffice<FinanceFreeAgentsView>((req) => financeFreeAgentsNow(String(req.params.org))));
+v2Routes.get('/views/:org/finance/freeAgents/players/:player', frontOffice<FinanceFreeAgentDetail>((req) =>
+  financeFreeAgentNow(String(req.params.org), String(req.params.player))));
 v2Routes.get('/views/:org/finance/horizonBoard', frontOffice<FinanceHorizonView>((req) => financeHorizonNow(String(req.params.org))));
 v2Routes.get('/views/:org/medical/injuryReport', frontOffice<MedicalInjuryReportView>((req) => medicalInjuryReportNow(String(req.params.org))));
 

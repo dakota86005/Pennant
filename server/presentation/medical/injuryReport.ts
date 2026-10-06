@@ -84,6 +84,7 @@ export function injuryReportView(ctx: OfficeContext, injuries: readonly Injury[]
       ilDays,
     }, {
       player: officePlayer(playerId, String(p.name), ctx.orgId),
+      filterKeys: { level: typeof p.levelName === 'string' && p.levelName ? p.levelName : null },
       facts: [
         fact('Status', status.hint),
         fact('Back in', back.cell.display, back.cell.hint),
@@ -111,8 +112,8 @@ export function injuryReportView(ctx: OfficeContext, injuries: readonly Injury[]
         id: 'level',
         title: cell('Level'),
         choices: [
-          filterChoice('all', cell('Every level'), rows.map((r) => r.id)),
-          ...levels.map((l) => filterChoice(l, cell(l === 'MLB' ? 'Major league club' : l), rows.filter((_, i) => injuries[i].levelName === l).map((r) => r.id))),
+          filterChoice('all', cell('Every level')),
+          ...levels.map((l) => filterChoice(l, cell(l === 'MLB' ? 'Major league club' : l))),
         ],
       }]
     : [];

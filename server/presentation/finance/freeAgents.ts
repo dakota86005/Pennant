@@ -4,7 +4,8 @@
  * words them. A player's figure is a season of his production at the market (`marketValueOf`), never an asking price,
  * an offer or what he is worth to this club; his tools come only through `scoutedEvidence.ts` with the OSA mark (D-017,
  * D-067). Everyone reaching the market is listed (no value cut), ordered by expected wins next season, unknown last; no
- * row says sign him. Pure.
+ * row says sign him. The lists carry each row's cells, sort keys and filter keys only; a player's facts and claims are
+ * his detail, served when his row is chosen (N12 review, M4: they were two thirds of the payload). Pure.
  */
 import type { computeFreeAgents, FreeAgentRow, MightReachRow } from '../../freeagents.js';
 import type { BasisLine, Cell } from '../../contract/presentation.js';
@@ -14,8 +15,8 @@ import {
   type OfficeContext, type OfficeFact, type OfficeFilterGroup, type OfficeRow, type OfficeTable,
 } from '../officeTable.js';
 import { TIP_SCOUTED } from '../player/words.js';
-import type { FinanceFreeAgentList, FinanceFreeAgentsView } from './types.js';
-import { financeCards, money, perWinLine, rangeText, signedMoney, signedTenths, winsCell } from './words.js';
+import type { FinanceFreeAgentDetail, FinanceFreeAgentList, FinanceFreeAgentsView } from './types.js';
+import { financeCards, marketMoney, money, perWinLine, rangeText, signedTenths, winsCell } from './words.js';
 
 type FreeAgents = ReturnType<typeof computeFreeAgents>;
 /** The mark beside his grades when they are OSA's view filling in for our scouts (D-067), or null. */
@@ -48,12 +49,19 @@ const AGE_BANDS: Array<{ id: string; title: string; keeps: (age: number) => bool
   { id: 'older', title: '32 and over', keeps: (a) => a >= 32 },
 ];
 
-function rowOf(ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<string, { name: string; wins: number }>, fillOf: FillOf, y: string, n: string): OfficeRow {
+/** A sort key kept to what the table can tell apart: wins to the thousandth, money to the dollar. */
+const keyOf = (v: number | null, places: number): number | null => (v === null ? null : Math.round(v * 10 ** places) / 10 ** places);
+
+/** A row of the list (its cells, sort keys and filter keys), and its detail, served on its own when he is chosen. */
+function rowOf(
+  ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<string, { name: string; wins: number }>, fillOf: FillOf, n: string,
+): { row: OfficeRow; detail: FinanceFreeAgentDetail } {
   const why = 'why' in p ? p.why : null;
   const fill = fillOf(p.player_id);
   const scoutedKnown = p.scouted.now !== null && p.scouted.ceiling !== null;
+  // The column's title says how to read "now → ceiling"; a cell says it again only for OSA's view or a grade not given
   const scouted = scoutedKnown
-    ? cell(`${p.scouted.now} → ${p.scouted.ceiling}`, { hint: fill ? fill.hint : 'Now → ceiling, on the scouts\' scale' })
+    ? cell(`${p.scouted.now} → ${p.scouted.ceiling}`, fill ? { hint: fill.hint } : {})
     : p.scouted.now !== null || p.scouted.ceiling !== null
       ? cell(`${p.scouted.now ?? 'Not scouted'} → ${p.scouted.ceiling ?? 'not scouted'}`, { hint: fill ? fill.hint : 'Now → ceiling; a grade not given is left blank' })
       : cell('Not scouted', { tone: 'unknown', hint: "His tools haven't been graded by your scouts" });
@@ -62,7 +70,7 @@ function rowOf(ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<st
   const m = p.market;
   const known = m.status === 'known' && m.central !== null && m.low !== null && m.high !== null;
   const market = known
-    ? { cell: cell(signedMoney(m.central!), { hint: hintIf(`Could be ${rangeText(m.low!, m.high!, signedMoney)}`) }), sort: m.central }
+    ? { cell: cell(marketMoney(m.central!), { hint: hintIf(`Could be ${rangeText(m.low!, m.high!, marketMoney)}`) }), sort: m.central }
     : { cell: cell('Not known', { tone: 'unknown', hint: hintIf(m.reason) ?? 'Not established' }), sort: null };
   const salary = p.salaryNow === null
     ? { cell: cell('Not known', { tone: 'unknown', hint: hintIf(p.salaryNote) ?? "His salary isn't in the export" }), sort: null }
@@ -80,7 +88,7 @@ function rowOf(ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<st
     tone: known ? 'neutral' : 'unknown',
     basis: basis({
       because: known
-        ? [{ label: 'Most likely', value: signedMoney(m.central!) }, { label: 'Could be', value: rangeText(m.low!, m.high!, signedMoney) }, { label: 'How it is read', value: m.text }]
+        ? [{ label: 'Most likely', value: marketMoney(m.central!) }, { label: 'Could be', value: rangeText(m.low!, m.high!, marketMoney) }, { label: 'How it is read', value: m.text }]
         : [{ label: 'Why not', value: m.reason ?? m.text }],
       source: officeSource(ctx, SPECIALIST),
       unknown: known ? [] : [m.reason ?? m.text],
@@ -90,7 +98,22 @@ function rowOf(ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<st
       ...(known ? { stamp: "One season of his production at the league's price of a win: never an asking price" } : {}),
     }),
   });
-  return officeRow(`fa-${p.player_id}`, {
+  const claims = why
+    ? [marketClaim, claim({
+        text: `Why he might reach the market: ${why.label}`,
+        tone: 'unknown',
+        basis: basis({
+          because: [{ label: 'Why', value: why.reason }],
+          source: officeSource(ctx, 'Player Rights, through Player Value'),
+          unknown: [why.reason],
+          wouldChange: ['The option decided, or his service settled at the next import.'],
+          lean: null,
+          certainty: 'unknown',
+        }),
+      })]
+    : [marketClaim];
+  const band = p.age === null ? null : AGE_BANDS.find((b) => b.keeps(p.age!))?.id ?? null;
+  const row = officeRow(`fa-${p.player_id}`, {
     player: cell(p.name),
     position: position ? cell(position, thinHere ? { hint: 'One of your thinnest positions' } : {}) : cell('Not given', { tone: 'unknown' }),
     why: why ? cell(why.label, { hint: hintIf(why.reason) }) : cell('—', { hint: 'Not on the might-reach list' }),
@@ -108,29 +131,21 @@ function rowOf(ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<st
     club: p.team,
     age: p.age,
     scouted: p.scouted.now,
-    winsNow: winsNow.sort,
-    winsNext: winsNext.sort,
-    market: market.sort,
+    winsNow: keyOf(typeof winsNow.sort === 'number' ? winsNow.sort : null, 3),
+    winsNext: keyOf(typeof winsNext.sort === 'number' ? winsNext.sort : null, 3),
+    market: keyOf(market.sort, 0),
     salary: salary.sort,
   }, {
     player: officePlayer(p.player_id, p.name),
-    facts,
-    claims: why
-      ? [marketClaim, claim({
-          text: `Why he might reach the market: ${why.label}`,
-          tone: 'unknown',
-          basis: basis({
-            because: [{ label: 'Why', value: why.reason }],
-            source: officeSource(ctx, 'Player Rights, through Player Value'),
-            unknown: [why.reason],
-            wouldChange: ['The option decided, or his service settled at the next import.'],
-            lean: null,
-            certainty: 'unknown',
-          }),
-        })]
-      : [marketClaim],
+    filterKeys: {
+      side: p.isPitcher ? 'pitchers' : 'hitters',
+      position,
+      age: band,
+      thin: thin.has(p.positionName) ? 'thin' : null,
+    },
     ratingsFill: fill ? cell(fill.mark, { hint: fill.hint }) : null,
   });
+  return { row, detail: { playerId: p.player_id, facts, claims } };
 }
 
 function listOf(
@@ -140,23 +155,24 @@ function listOf(
   explain: string,
   players: ReadonlyArray<FreeAgentRow | MightReachRow>,
   args: { thin: Map<string, { name: string; wins: number }>; fillOf: FillOf; y: string; n: string; empty: string; note: string | null; order: string; price: FreeAgents['price'] },
+  details: Map<number, FinanceFreeAgentDetail>,
 ): FinanceFreeAgentList {
-  const rows = players.map((p) => rowOf(ctx, p, args.thin, args.fillOf, args.y, args.n));
-  const ids = (keep: (p: FreeAgentRow) => boolean) => players.filter(keep).map((p) => `fa-${p.player_id}`);
+  const read = players.map((p) => rowOf(ctx, p, args.thin, args.fillOf, args.n));
+  for (const r of read) details.set(r.detail.playerId, r.detail);
+  const rows = read.map((r) => r.row);
   const filters: OfficeFilterGroup[] = [];
-  const all = rows.map((r) => r.id);
   if (players.some((p) => p.isPitcher) && players.some((p) => !p.isPitcher)) {
-    filters.push({ id: 'side', title: cell('Players'), choices: [filterChoice('all', cell('All players'), all), filterChoice('pitchers', cell('Pitchers'), ids((p) => p.isPitcher)), filterChoice('hitters', cell('Position players'), ids((p) => !p.isPitcher))] });
+    filters.push({ id: 'side', title: cell('Players'), choices: [filterChoice('all', cell('All players')), filterChoice('pitchers', cell('Pitchers')), filterChoice('hitters', cell('Position players'))] });
   }
   const positions = [...new Set(players.map((p) => p.positionName).filter((x) => x && x !== '?'))].sort();
   if (positions.length > 1) {
-    filters.push({ id: 'position', title: cell('Position'), choices: [filterChoice('all', cell('Any position'), all), ...positions.map((pos) => filterChoice(pos, cell(pos), ids((p) => p.positionName === pos)))] });
+    filters.push({ id: 'position', title: cell('Position'), choices: [filterChoice('all', cell('Any position')), ...positions.map((pos) => filterChoice(pos, cell(pos)))] });
   }
   if (players.length > 0) {
-    filters.push({ id: 'age', title: cell('Age'), choices: [filterChoice('all', cell('Any age'), all), ...AGE_BANDS.map((b) => filterChoice(b.id, cell(b.title), ids((p) => p.age !== null && b.keeps(p.age))))] });
+    filters.push({ id: 'age', title: cell('Age'), choices: [filterChoice('all', cell('Any age')), ...AGE_BANDS.map((b) => filterChoice(b.id, cell(b.title)))] });
   }
   if (args.thin.size > 0 && players.some((p) => args.thin.has(p.positionName))) {
-    filters.push({ id: 'thin', title: cell('Thin spots'), choices: [filterChoice('all', cell('Every position'), all), filterChoice('thin', cell('Only our thin spots'), ids((p) => args.thin.has(p.positionName)))] });
+    filters.push({ id: 'thin', title: cell('Thin spots'), choices: [filterChoice('all', cell('Every position')), filterChoice('thin', cell('Only our thin spots'))] });
   }
   const columns = [
     column('player', 'Player'),
@@ -201,19 +217,23 @@ function listOf(
   };
 }
 
-export function freeAgentsView(ctx: OfficeContext, f: FreeAgents, fillOf: FillOf): FinanceFreeAgentsView {
+/** Free Agents, and each listed player's detail by id (served when his row is chosen, never with the lists). */
+export function freeAgentsViewAndDetails(
+  ctx: OfficeContext, f: FreeAgents, fillOf: FillOf,
+): { view: FinanceFreeAgentsView; details: Map<number, FinanceFreeAgentDetail> } {
   const y = f.seasonYear !== null ? String(f.seasonYear) : 'this season';
   const n = f.nextSeason !== null ? String(f.nextSeason) : 'next season';
   const thinList = f.needs.positions.filter((p) => p.best !== null).slice(0, 3);
   const thin = new Map(thinList.map((p) => [p.positionName, { name: p.best!.name, wins: p.best!.wins }]));
   const args = { thin, fillOf, y, n, order: f.order, price: f.price };
+  const details = new Map<number, FinanceFreeAgentDetail>();
   const lists = [
     listOf(ctx, 'available', 'Available now', "Players no club holds, who last played in this league: free to sign today.", f.currentFAs,
-      { ...args, empty: 'No free agents are available in this league right now.', note: f.currentNote }),
+      { ...args, empty: 'No free agents are available in this league right now.', note: f.currentNote }, details),
     listOf(ctx, 'upcoming', `Free agents after ${y}`, "Players around the league whose club's control ends after this season: they reach the market this winter. Players the club still controls through arbitration or renewal aren't here.", f.upcomingFAs,
-      { ...args, empty: `No free agents are set to reach the market after ${y}.`, note: null }),
+      { ...args, empty: `No free agents are set to reach the market after ${y}.`, note: null }, details),
     listOf(ctx, 'mightReach', 'Might reach the market', "Players around the league who could reach the market after this season or stay: an option or opt-out that would make him a free agent if it's declined, or a season the save can't settle yet. They aren't counted with the free agents, and a player his club keeps whichever way it goes isn't here.", f.mightReach ?? [],
-      { ...args, empty: `Nobody else could reach the market after ${y}.`, note: null }),
+      { ...args, empty: `Nobody else could reach the market after ${y}.`, note: null }, details),
   ];
   const needsText = thinList.length > 0
     ? `Your thinnest positions: ${thinList.map((p) => `${p.positionName} (best: ${p.best!.name}, ${signedTenths(p.best!.wins)} wins)`).join(' · ')}`
@@ -243,7 +263,7 @@ export function freeAgentsView(ctx: OfficeContext, f: FreeAgents, fillOf: FillOf
     { label: 'How to read it', value: 'Figures are the most likely value with the range they could be; the range is in each figure\'s help tag.' },
     { label: 'Order', value: f.order },
   ]);
-  return {
+  const view: FinanceFreeAgentsView = {
     ...officeHead(ctx, 'Free Agents', lede, SPECIALIST),
     cards: financeCards(ctx, f.finances),
     price,
@@ -251,4 +271,10 @@ export function freeAgentsView(ctx: OfficeContext, f: FreeAgents, fillOf: FillOf
     lists,
     opensOn: f.currentFAs.length > 0 || f.upcomingFAs.length === 0 ? 'available' : 'upcoming',
   };
+  return { view, details };
+}
+
+/** Free Agents' view alone. */
+export function freeAgentsView(ctx: OfficeContext, f: FreeAgents, fillOf: FillOf): FinanceFreeAgentsView {
+  return freeAgentsViewAndDetails(ctx, f, fillOf).view;
 }

@@ -58,13 +58,23 @@ struct OfficeFeatureTests {
         }
     }
 
-    @Test("a filter keeps only its served rows; the first choice keeps every row; search words keep the names holding them")
+    @Test("a filter keeps the rows whose served key names its choice; the first choice keeps every row; search words keep the names holding them")
     func filters() throws {
         let view = try #require(store.contracts)
-        for group in view.filters {
-            #expect(officeRowsKept(view.table, filters: [group], chosen: [group.id: group.choices[0].id], search: "") == nil)
-            for choice in group.choices.dropFirst() {
-                #expect(officeRowsKept(view.table, filters: [group], chosen: [group.id: choice.id], search: "") == Set(choice.rows))
+        #expect(!view.filters.isEmpty)
+        let lists = (store.freeAgents?.lists ?? []).map { ($0.table, $0.filters) }
+        for (table, filters) in [(view.table, view.filters)] + lists {
+            for group in filters {
+                #expect(officeRowsKept(table, filters: [group], chosen: [group.id: group.choices[0].id], search: "") == nil)
+                var union = Set<String>()
+                for choice in group.choices.dropFirst() {
+                    let kept = try #require(officeRowsKept(table, filters: [group], chosen: [group.id: choice.id], search: ""))
+                    let named = Set(table.rows.filter { $0.filterKeys?.additionalProperties[group.id] == choice.id }.map(\.id))
+                    #expect(kept == named)
+                    // A row falls under one choice of a group at most
+                    #expect(union.isDisjoint(with: kept))
+                    union.formUnion(kept)
+                }
             }
         }
         let name = try #require(view.table.rows.first?.player?.name)
@@ -107,5 +117,18 @@ struct OfficeFeatureTests {
         for amount in [123_456_700.0, 1.0, 987_654_321.0, 150_000_000.0] {
             #expect((Double(BudgetEntry.millions(amount))! * 1_000_000).rounded() == amount)
         }
+    }
+
+    @Test("a free agent's row is drawn with his detail once it is read, and with its own cells before")
+    func freeAgentDetail() throws {
+        let list = try #require(store.freeAgents?.lists.first { !$0.table.rows.isEmpty })
+        let row = list.table.rows[0]
+        #expect(row.facts == nil && row.claims == nil)
+        let detail = try #require(PreviewFixtures.freeAgentDetail)
+        var full = row
+        full.facts = detail.facts
+        full.claims = detail.claims
+        #expect(full.claims?.isEmpty == false)
+        #expect(full.cells == row.cells)
     }
 }
