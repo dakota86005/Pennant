@@ -1297,18 +1297,20 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   thinnest positions and the three lists, each with its filters: players, position, age, our thin spots), `/horizonBoard`
   (each position against the next three seasons, the pipeline apart, committed salary against the budget) and
   `GET /api/v2/views/:org/medical/injuryReport` (the figures, every injured player, the level as a filter);
-  `PUT …/finance/payrollBudget/nextSeasonBudget` sets the React page's setting. Read by `officeViewsBuild.ts` through
-  the routes' modules, kept by `officeViewService.ts` on the Front Office's key (one `officeViews` worker job after each
-  kept build; another club's on first open, four builds at most).
+  `PUT …/finance/payrollBudget/nextSeasonBudget` sets the React page's setting and answers what it did and its undo;
+  `GET …/finance/freeAgents/players/:player` is a chosen free agent's detail. Read by `officeViewsBuild.ts` through the
+  routes' modules, kept by `officeViewService.ts` on the Front Office's key without the live log plus the derived
+  freshness (one `officeViews` worker job after each kept build; another club's on first open, four builds at most).
 - **Drawn** (the Finance and Medical targets, FeatureCore's `OfficeViews.swift`, `OfficeStore` in PennantKit): Contracts,
   Free Agents, Payroll's every contract and the Injury Report are native `Table`s in a `TablePane` (served columns, sort
   keys, unknown last, several rows chosen, Compare, the player window on Return or a double-click, Follow, Copy Name, a
   player's row dragged as the player, the OSA mark beside a filled player's name), the chosen row's facts, claims and
   seasons beneath; the served filters are one toolbar button whose popover holds each as a radio group, a name the
   search field in the head. Payroll's seasons are a page: the figures, the price and cost lines, Swift Charts with
-  committed money as bars, the projected range a hatched bar beside each (never stacked) and the budget a dashed
-  `RuleMark` (the budget the GM expects a dotted one), with an `AXChartDescriptor`; each season's words beneath; the
-  budget field (millions, saved on Return or leaving it). The Horizon Board is a grid (a row per position, a column per
+  committed money as bars, the projected range a hatched bar beside each (never stacked) and each season's served budget
+  a rule across its own column (today's for this season, the one the GM expects across the following seasons only),
+  with an `AXChartDescriptor` (committed and what could come on top as two series, the axis in dollars); each season's
+  words beneath; the budget field (millions to the dollar, saved on Return or leaving it, ⌘Z undoing it). The Horizon Board is a grid (a row per position, a column per
   season, the pipeline last), a card per position on a narrow column, each status's reason a click away, and committed
   salary against the budget in a chart of its own. Free Agents' lists are a segmented control in the head (a button and a popover where
   there is no room).
@@ -1328,8 +1330,18 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   line of its own: wrapped inside its date ("… Through May" over "6, 2040") it failed the contrast audit in every colour
   tried (14.9:1 by its pixels in the label colour) and wherever it sat, while on one line it passed. The test brings the
   sidebar to rest before each click and audit (a long reveal left it scrolling, the club card half under the title bar).
+- *After the review (NEEDS FIXES, 2026-10-06):* the Horizon Board leaves a player out of every season after his control
+  ends, and a mixed cell says "Not known for N more" (H1; on the owner's export it had drawn 2 false "Not known" cells
+  and hidden the unread in 10 mixed ones). The views key on the export's derived freshness, not the live log's file
+  stats (M1). The budget write serves what it did and its undo (⌘Z, "Set Budget"), the field shows millions to the
+  dollar, and the server refuses past $10 billion (M2). Free Agents serves rows without detail and filters by key: 888 kB
+  to 284 kB on the owner's export; a chosen player's facts and claims are read on the click from the kept build (M4).
+  Each season's served budget is drawn across its own column, so the expected budget spans the following seasons only,
+  and the audio graphs' axes say dollars (L4, L5). The pane tables' "No players match these filters." and "Select a row
+  to see more." are served (L6). The byline's one-line rule is a workaround of unknown cause: the audit fails some
+  wrapped multi-line frames in any colour, and why is not established (L8).
 - *Left for later:* the React Payroll page's club value of a win (playoff odds) is not served (D-060); Payroll's
-  sparkline is replaced by the chart; Free Agents' payload is the largest of the department views on a full league.
+  sparkline is replaced by the chart; Free Agents' lists are not cut to the top 150 (284 kB in full).
 
 ### 3.6 Signature interactions
 

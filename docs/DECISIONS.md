@@ -2942,14 +2942,18 @@ head both departments share), `server/presentation/finance/` and `server/present
 
 - **Read through the routes the React pages read.** Payroll & Budget is `computePayroll` with Club Finances
   (`clubFinances`, `leagueFinances`, `priceHistory`); Contracts is `computeContracts`; Free Agents is `computeFreeAgents`
-  (ability only through `scoutedEvidence.ts`, with OSA's mark, D-067); the Injury Report is `orgInjuries` (which now also
-  serves `playable`, the health rule's own answer, additively). Each old route answers exactly as before; nothing is
-  re-derived for the Mac.
+  (ability only through `scoutedEvidence.ts`, with OSA's mark, D-067); the Injury Report is `orgInjuriesWithHealth`
+  (`orgInjuries` with the health rule's own `playable`; `/api/injuries`, the dashboard and the AI's context read
+  `orgInjuries`, byte for byte as before). The price of a win's history is read through Club Finances' route helper
+  (`marketPriceHistory`), so the snapshot module keeps its one reader outside the import. Each old route answers exactly
+  as before; nothing is re-derived for the Mac.
 - **The Horizon Board is new and owns no answer.** Each major leaguer's control season by season is Player Value's control
   timeline (Player Rights' answers, D-023), laid out against the next three seasons by listed position (pitchers by their
   assignment; one with none given in a row of its own, never guessed). A season his control has ended leaves him out of
-  the cell; a season the timeline can't settle says "Not settled" with what it lies between; a player whose control
-  couldn't be read is counted as not known, never as nobody. The farm's next man at each position is the roster map's
+  the cell, and so does every season after it (the timeline stops at the first free-agent season); a season the timeline
+  can't settle says "Not settled" with what it lies between; a player whose control couldn't be read (an unknown or
+  unsigned standing, or a timeline that stops early without free agency) is counted as not known, never as nobody, and a
+  cell with entries says "Not known for N more" beside them. The farm's next man at each position is the roster map's
   (`farmNextByPosition`, worded by `farmMan`) and sits in a pipeline lane with Player Development's readiness against its
   bar: never in a season, so no arrival year is invented (D-057). Committed salary by season runs beneath it against the
   club's budget as exported.
@@ -2967,8 +2971,17 @@ head both departments share), `server/presentation/finance/` and `server/present
 - **No odds or posture here (D-060).** The React Payroll page's club value of a win is in playoff odds; it is not served
   on Finance's views. Odds and posture live on Standings only.
 - **Built after each import, in the worker; another club's on its first open.** One `officeViews` job builds all five for
-  the club after each kept Front Office build, keyed on the Front Office's inputs (the budget setting moves the key);
-  another club's are built on first open and kept, four builds at most. Each part is read on its own: a part that throws
+  the club after each kept Front Office build, keyed on the Front Office's inputs without OOTP's live log, plus the
+  export's freshness as derived from it (its state and days behind: Payroll and Contracts blank service time when the
+  export is behind), so a write to the log that leaves the freshness as it was keeps them; the budget setting moves the
+  key. Another club's are built on first open and kept, four builds at most.
+- **A long list carries only what its table shows (N12 review, M4).** Free Agents' rows carry their cells, sort keys and
+  filter keys; a player's facts and claims are his detail, kept with the build and served when his row is chosen
+  (`GET …/finance/freeAgents/players/:player`). A filter choice names no rows: each row names the choice it falls under
+  in each group (`filterKeys`). On the owner's export the payload went from 888 kB to 284 kB.
+- **The budget change says what it did, and ⌘Z undoes it.** The write answers a served sentence ("Next season's budget
+  set to $X; was $Y") and the request that puts back what was there; amounts are kept to the dollar and refused past
+  $10 billion. Each part is read on its own: a part that throws
   is logged and says it couldn't be read this time; a refusal the route words (no contracts imported, an unknown club)
   is answered in its own sentence.
 
