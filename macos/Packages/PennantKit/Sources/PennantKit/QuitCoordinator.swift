@@ -26,7 +26,8 @@ public final class QuitCoordinator {
     let replyDeadline: Duration
     /// How long AppKit has to end the app once the quit is answered yes; after it the app ends itself (`forceExit`).
     let exitGrace: Duration
-    /// Ends the process when AppKit has not: the app hands `exit(0)`; nothing by default, so a test process is never ended.
+    /// Ends the process when AppKit has not: the app hands `_exit(0)` (immediate: `exit` cannot run while the stuck exit
+    /// holds its lock); nothing by default, so a test process is never ended.
     private let forceExit: @Sendable () -> Void
     /// A reply is owed to AppKit.
     public private(set) var replyPending = false
@@ -96,8 +97,11 @@ public final class QuitCoordinator {
             // macOS 26 runner, after a restored window was closed: the reply went out and the app stayed), it ends
             // itself rather than leave the GM with an app that will not quit. Off the main thread, which may be the
             // one held.
-            Task.detached(priority: .userInitiated) {
-                try? await Task.sleep(for: exitGrace)
+            // A plain dispatch timer, not a Swift task: on the runner the app reached applicationWillTerminate and then
+            // stayed inside its own exit, where a task-pool timer never ran (PR #58)
+            let (seconds, attoseconds) = exitGrace.components
+            let milliseconds = Int(seconds) * 1000 + Int(attoseconds / 1_000_000_000_000_000)
+            DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + .milliseconds(milliseconds)) {
                 log("quit: AppKit had not ended the app \(exitGrace) after the reply; ending it")
                 forceExit()
             }

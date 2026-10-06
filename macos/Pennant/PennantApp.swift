@@ -103,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quit = QuitCoordinator(
             prepare: { model.beginShutdown() },
             lastWords: { model.lastNoteSaves() },
-            forceExit: { exit(0) },
+            forceExit: { _exit(0) },
             log: { log.write($0, source: "app") },
             stop: { await controller.stop() }
         )
