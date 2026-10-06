@@ -7,6 +7,7 @@ import { lensPhilosophyFrom, ourViewOf, playerValue, productionCone } from '../s
 import { playerState } from '../server/playerState.js';
 import { compareView } from '../server/presentation/player/compare.js';
 import { philosophyForOrg } from '../server/settings.js';
+import { LEVEL_NAMES } from '../server/valuation.js';
 import { buildPlayerDossiers } from '../server/playerDossierBuild.js';
 import { dossierView } from '../server/presentation/player/dossier.js';
 import type { DossierInput } from '../server/presentation/player/input.js';
@@ -41,7 +42,7 @@ beforeAll(() => {
   base = {
     playerId: save.regular, orgId: save.org, orgName: 'Club 1', importStamp: '2040-05-06T12:00:00.000Z', reportStamp: 'r1', gameDate: '2040-5-6',
     body: computed.body, state: null, chronology: null, chronologyNote: null, cone: null, surplus: null, ourView: null,
-    history: { rows: [], sourceSwitch: null, modeSwitches: [], unknownKind: null, setAside: 0 }, rating: { scaleMax: 80, roundToFive: false },
+    history: { rows: [], sourceSwitch: null, modeSwitches: [], unknownKind: null, setAside: 0 }, rating: { scaleMax: 80, roundToFive: false }, levelNames: LEVEL_NAMES,
     ratingSource: { mode: 'scouted-complete', short: 'Your scouts\' view', text: 'Your scouts\' full reports.' },
   };
 }, 120_000);
@@ -87,6 +88,14 @@ describe('the player window shows only what the organization can see (D-017, D-0
     expect(v.ratings.history.sourceSwitch?.text).toMatch(/OSA's view/);
     expect(v.ratings.history.sourceSwitch?.basis.unknown.join(' ')).toMatch(/left out of the chart/);
     expect(view().ratings.history.empty?.display).toBe('No rating history for him in this save yet');
+  });
+
+  it('names a snapshot\'s level as Player Value names levels, and leaves college and high school unnamed, never "R" (review L4)', () => {
+    const at = (level: number) => ({ game_date: '2040-5-1', player_id: save.regular, team_id: 1, org_id: 1, level, age: 18, cur: 40, pot: 60, con: null, gap: null, pow: null, eye: null, avk: null, spd: null, stu: null, mov: null, ctl: null });
+    const v = view((input) => { input.history = { rows: [at(6), at(10), at(11)], sourceSwitch: null, modeSwitches: [], unknownKind: null, setAside: 0 }; });
+    const levels = v.ratings.history.table!.rows.map((r) => r.cells.level?.display ?? null);
+    expect(levels[0]).toBe(LEVEL_NAMES[6]);
+    expect(levels.slice(1)).not.toContain('R');
   });
 
   it('says the snapshots it set aside, a change of kind and an unknown kind, never "one snapshot so far" (review M2)', () => {

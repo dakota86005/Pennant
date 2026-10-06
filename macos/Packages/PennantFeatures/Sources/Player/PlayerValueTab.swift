@@ -83,7 +83,8 @@ struct ValueTotalCard: View {
 
 /// Expected production: each season's two ranges (the wider and the narrower), expected wins as a line, the replacement
 /// level as a rule, and a season not established as an outlined slot with no range; beneath, every season as a button
-/// that opens its detail (its figures and what they rest on), so each is reached by the keyboard and VoiceOver too.
+/// that opens its detail (its figures and what they rest on), so each is reached by the keyboard and VoiceOver too. The
+/// seasons wrap in a grid, never a sideways scroll nested in the page's vertical one.
 struct ConeView: View {
     let cone: Components.Schemas.PlayerConeView
 
@@ -104,25 +105,24 @@ struct ConeView: View {
                 .foregroundStyle(.readableSecondary)
                 ConeChart(cone: cone).frame(height: 220)
                 if let checked = cone.checked { PlayerClaimLine(claim: checked, font: .caption) }
-                ScrollView(.horizontal) {
-                    HStack(spacing: 6) {
-                        ForEach(cone.seasons, id: \.season) { s in
-                            ClaimText(s.detail, edge: .bottom) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(verbatim: s.label.display).font(.caption.weight(.semibold)).monospacedDigit()
-                                    Text(verbatim: s.control.display).font(.caption2)
-                                    if let cost = s.cost {
-                                        Text(verbatim: cost.display).font(.caption2).monospacedDigit()
-                                    }
+                // The seasons wrap onto as many rows as the width needs: no sideways scroll inside the page's own
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 6, alignment: .topLeading)], alignment: .leading, spacing: 6) {
+                    ForEach(cone.seasons, id: \.season) { s in
+                        ClaimText(s.detail, edge: .bottom) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(verbatim: s.label.display).font(.caption.weight(.semibold)).monospacedDigit()
+                                Text(verbatim: s.control.display).font(.caption2)
+                                if let cost = s.cost {
+                                    Text(verbatim: cost.display).font(.caption2).monospacedDigit()
                                 }
-                                .padding(6)
-                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary.opacity(0.18)))
                             }
-                            .accessibilityIdentifier("player.cone.season.\(s.season)")
+                            .padding(6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary.opacity(0.18)))
                         }
+                        .accessibilityIdentifier("player.cone.season.\(s.season)")
                     }
                 }
-                .scrollBounceBehavior(.basedOnSize)
                 PlayerLines(lines: cone.notes)
             }
         }

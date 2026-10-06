@@ -508,7 +508,7 @@ function ratingHistory(ctx: DossierInput): PlayerRatingsView['history'] {
       ? table('ratingHistory', 'Snapshots', [['date', 'Date', false], ['level', 'Level', false], ['now', 'Now', true], ['ceiling', 'Ceiling', true]],
         rows.map((r, i) => ({
           id: `${i}`,
-          cells: { date: dateWords(r.game_date) ?? r.game_date, level: LEVEL_NAMES[r.level ?? -1] ?? null, now: composite(num(r.cur)), ceiling: composite(num(r.pot)) },
+          cells: { date: dateWords(r.game_date) ?? r.game_date, level: ctx.levelNames[r.level ?? -1] ?? null, now: composite(num(r.cur)), ceiling: composite(num(r.pot)) },
           sort: { date: i, level: r.level, now: num(r.cur), ceiling: num(r.pot) },
         })))
       : null,
@@ -527,7 +527,6 @@ function historyHint(ctx: DossierInput): string {
   return `${ctx.ratingSource.short}: the average grades at each import`;
 }
 
-const LEVEL_NAMES: Record<number, string> = { 1: 'MLB', 2: 'AAA', 3: 'AA', 4: 'A', 5: 'A', 6: 'R', 10: 'R', 11: 'R' };
 
 function ratings(ctx: DossierInput): PlayerRatingsView {
   const d = ctx.body;

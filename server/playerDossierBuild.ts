@@ -18,7 +18,7 @@ import { dossierView } from './presentation/player/dossier.js';
 import type { PlayerDossierView } from './presentation/player/types.js';
 import { ratingSource } from './scoutedEvidence.js';
 import { loadSettings, philosophyForOrg } from './settings.js';
-import { ratingScaleMax } from './valuation.js';
+import { LEVEL_NAMES, ratingScaleMax } from './valuation.js';
 
 export interface PlayerDossiersRequest {
   /** The club the window reads them for (our view, our scouts). */
@@ -93,6 +93,7 @@ export function buildPlayerDossiers(request: PlayerDossiersRequest): PlayerDossi
       ourView: surplus ? ourViewOf({ neutral: surplus, philosophy, ours }) : null,
       history: playerRatingHistory(id),
       rating,
+      levelNames: LEVEL_NAMES,
       ratingSource: { mode: source.mode, short: source.short, text: source.text },
     }));
   }

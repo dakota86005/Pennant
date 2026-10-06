@@ -35,6 +35,8 @@ export interface DossierInput {
    */
   history: { rows: PlayerHistoryRow[]; sourceSwitch: string | null; modeSwitches: string[]; unknownKind: string | null; setAside: number };
   rating: { scaleMax: number; roundToFive: boolean };
+  /** The levels' names as Player Value's valuation names them (`valuation.ts`); a level it doesn't name stays unnamed. */
+  levelNames: Readonly<Record<number, string>>;
   /** Whose ratings the evidence reads, in words ("Your scouts' view") and its sentence. */
   ratingSource: { mode: RatingMode | null; short: string; text: string };
 }
