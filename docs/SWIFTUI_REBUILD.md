@@ -209,7 +209,8 @@ request that fails shows the server's sentence, or one of three structural lines
   double-click or its menu; a depth-chart entry, a plan's line or a matchup row by his name), and their tables compare
   the rows chosen. A game's row serves its two starters (`players`, ours first): its menu opens either and Compare takes
   both. The Lineup's, Pitching Availability's, the Depth Chart's (both modes) and the Rosters' rows and entries carry and
-  draw the OSA mark; `ratingFillEverywhere.test.ts` walks the clubhouse payloads too.
+  draw the OSA mark; `ratingFillEverywhere.test.ts` walks the clubhouse payloads too. `ClubhouseStore` logs only `RequestProblem.logLine`'s
+  line, and a request called off is a non-event there as in the player's store.
 - *Left for later:* the React card's hover card (a summary on resting over a name) is not drawn: the name opens the
   window; the season-by-season breakdown's row hover (the season's control) is in the cone's season detail instead; the
   farm's tables compare the right-clicked player (several chosen only in Major League Ops' tables).

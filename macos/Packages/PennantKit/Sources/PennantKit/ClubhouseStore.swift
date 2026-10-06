@@ -242,6 +242,10 @@ public final class ClubhouseStore {
         do {
             answer = try await ask(client)
         } catch {
+            // A request called off (the view's task, or the load itself) is a non-event: no problem line, no log line
+            if RequestProblem.isCancellation(error) { return }
+            // Its detail is `RequestProblem.logLine`: the operation, the status, the error's domain and code, never the
+            // error's own description (review H1, N11)
             answer = .failure(.from(error))
         }
         // A newer question was asked meanwhile, or another save or club: this answer is not the key's
