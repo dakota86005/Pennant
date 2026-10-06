@@ -294,13 +294,15 @@ describe('the presentation boundary', () => {
    */
   it('officeViewsBuild.ts reads only the routes\' modules and the specialists\' public doors', () => {
     const allowed = new Set([
-      'contracts', 'dashboard', 'dataStatus', 'freeagents', 'mlbEvidence', 'payroll', 'playerState', 'playerValue', 'playerValueSnapshot', 'scoutedEvidence',
+      'clubFinanceRoutes', 'contracts', 'dashboard', 'dataStatus', 'freeagents', 'mlbEvidence', 'payroll', 'playerState', 'playerValue', 'scoutedEvidence',
     ]);
     const outside = valueImports('officeViewsBuild.ts').filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
       .filter((m) => !allowed.has(m));
     expect(outside).toEqual([]);
     const source = code('officeViewsBuild.ts');
     expect([...source.matchAll(/import \{([^}]*)\} from '\.\/scoutedEvidence\.js'/g)].map((m) => m[1].trim())).toEqual(['ratingFillOf']);
+    // The market's history only through Club Finances' route helper, never the snapshot module (N12 review, M3)
+    expect([...source.matchAll(/import \{([^}]*)\} from '\.\/clubFinanceRoutes\.js'/g)].map((m) => m[1].trim())).toEqual(['marketPriceHistory']);
     for (const pattern of [/developmentalContext|evaluateDevelopmentProtection/, /posture|playoffs|oddsModel|deadlineRead|playoffPicture|clubWinValue/, /\bai\b|aiProvider|chat\.js/]) {
       expect(source).not.toMatch(pattern);
     }

@@ -1,12 +1,13 @@
 /**
  * Finance's and Medical's views, read and worded (N12, D-071): each view reads what the React page's route computes,
  * through its module (`computePayroll`, `computeContracts`, `computeFreeAgents`, Club Finances' `clubFinances`,
- * `leagueFinances` and `priceHistory`, `orgInjuries`), and the Horizon Board reads Player Value's control timelines
+ * `leagueFinances` and its route's `marketPriceHistory`, `orgInjuries`), and the Horizon Board reads Player Value's control timelines
  * (`playerValues`) and the farm's next men (`farmNextByPosition`, as the roster map does), all handed to the pure
  * adapters in `presentation/finance/` and `presentation/medical/`. The service (`officeViewService.ts`) runs it in the
  * Front Office's worker thread, so no request waits behind it. Each part is read on its own: a part that throws is
  * logged and its view says it couldn't be read this time, never taking down the others.
  */
+import { marketPriceHistory } from './clubFinanceRoutes.js';
 import { computeContracts } from './contracts.js';
 import type { DeptId } from './contract/presentation.js';
 import { orgInjuries } from './dashboard.js';
@@ -16,7 +17,6 @@ import { farmNextByPosition } from './mlbEvidence.js';
 import { computePayroll } from './payroll.js';
 import { organizationPlayerStates } from './playerState.js';
 import { clubFinances, controlSeasonLabel, leagueFinances, marketLeagueOfClub, playerValues } from './playerValue.js';
-import { priceHistory } from './playerValueSnapshot.js';
 import { servedDepartments } from './presentation/catalog.js';
 import { cell } from './presentation/claim.js';
 import { contractsView } from './presentation/finance/contracts.js';
@@ -153,7 +153,7 @@ export function buildOfficeViews(request: OfficeViewsRequest): OfficeViewsResult
       payroll: p,
       club: clubFinances(orgId),
       league: marketId === null ? null : leagueFinances(marketId),
-      history: marketId === null ? [] : priceHistory(marketId),
+      history: marketId === null ? [] : marketPriceHistory(marketId),
     });
   });
   const payrollWhy = payroll.ok ? null : payroll.reason;
