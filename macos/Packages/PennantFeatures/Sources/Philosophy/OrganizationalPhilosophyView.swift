@@ -21,12 +21,6 @@ struct OrganizationalPhilosophyView: View {
             Form {
                 Section {
                     PhilosophyHead(title: view.title, byline: view.byline, lede: view.lede, refreshing: store.writing)
-                    if let said = store.lastSaid {
-                        Label { CellWords(said) } icon: { Image(systemName: "checkmark.circle") }
-                            .font(.callout)
-                            .accessibilityIdentifier("philosophy.said")
-                    }
-                    if let problem = store.changeProblem { ProblemLine(problem) }
                 }
                 Section {
                     IdentityView(identity: view.identity)
@@ -129,6 +123,28 @@ struct OrganizationalPhilosophyView: View {
             .scrollContentBackground(.hidden)
             .background(Color.readablePage)
             .accessibilityIdentifier("philosophy.form")
+            // What the last change did (or why it was refused), in a status strip under the form, where it is seen
+            // wherever the GM has scrolled to, as Finder's status bar is
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if store.lastSaid != nil || store.changeProblem != nil {
+                    VStack(spacing: 0) {
+                        Divider()
+                        Group {
+                            if let problem = store.changeProblem {
+                                ProblemLine(problem)
+                            } else if let said = store.lastSaid {
+                                Label { CellWords(said) } icon: { Image(systemName: "checkmark.circle") }
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityIdentifier("philosophy.said")
+                            }
+                        }
+                        .font(.callout)
+                        .padding(.horizontal, 20).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .background(Color.readablePage)
+                }
+            }
         }
         .task(id: model.storeKey) { await model.loadPhilosophy() }
         .onChange(of: store.lastSaid?.display) { _, said in
@@ -198,7 +214,6 @@ private struct DimensionRow: View {
                 if !editing { commit() }
             }
             .labelsHidden()
-            .accessibilityValue(Text(verbatim: String(Int(value.rounded()))))
             .accessibilityHint(Text(verbatim: dimension.position.display))
             .accessibilityIdentifier("philosophy.dimension.\(dimension.id)")
             // The served ends and the middle under the slider, as the React page's endpoints are

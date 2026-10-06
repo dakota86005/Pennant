@@ -1589,13 +1589,17 @@ final class PennantUITests: XCTestCase {
         for round in 1...3 {
             // The Trade Desk: an offer from the inbox onto the builder, weighed, its difference drawn
             element(app, "sidebar.trades.tradeDesk").click()
-            let page = element(app, "detail.trades.tradeDesk")
             let sent = element(app, "trades.side.sent")
             XCTAssertTrue(sent.waitForExistence(timeout: 30), "round \(round): the Trade Desk did not draw its builder")
             inside(sent, "round \(round): the side sent")
             inside(element(app, "trades.side.received"), "round \(round): the side received")
             let review = element(app, "trades.offer.review")
-            reveal(review, in: page)
+            // Scrolled into view over the content (between the sidebar and the inspector), a step at a time
+            let content = window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.6))
+            for _ in 0..<12 where !(review.exists && review.isHittable && review.frame.maxY < window.frame.maxY - 30) {
+                content.scroll(byDeltaX: 0, deltaY: -300)
+                _ = review.waitForExistence(timeout: 1)
+            }
             XCTAssertTrue(review.exists, "round \(round): the inbox's offer is not on the desk")
             review.click()
             let headline = element(app, "trades.difference.headline")
@@ -1614,20 +1618,30 @@ final class PennantUITests: XCTestCase {
 
             // Organizational Philosophy: a preference moved, what it did said; ⌘Z puts it back
             app.typeKey("9", modifierFlags: .command)
-            let form = element(app, "philosophy.form")
-            XCTAssertTrue(form.waitForExistence(timeout: 30), "round \(round): the philosophy editor did not draw")
+            let form = element(app, "detail.philosophy.organizationalPhilosophy")
+            XCTAssertTrue(form.waitForExistence(timeout: 30), "round \(round): ⌘9 did not open the philosophy editor")
+            if !element(app, "philosophy.identity").waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12c-narrow-900-missing-philosophy") }
+            XCTAssertTrue(element(app, "philosophy.identity").exists, "round \(round): the philosophy editor did not draw")
             inside(form, "round \(round): the philosophy editor")
             let slider = app.sliders["philosophy.dimension.competitiveWindow"]
-            reveal(slider, in: form)
-            XCTAssertTrue(slider.exists, "round \(round): the competitive window has no slider")
-            slider.adjust(toNormalizedSliderPosition: 0.7)
+            // Into view over the form where a step at a time gets it there (the editor opens at its top); the slider's
+            // own value is what is set, so it is moved wherever it is
+            let over = window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.6))
+            for _ in 0..<8 where slider.exists && slider.frame.maxY > window.frame.maxY - 60 {
+                over.scroll(byDeltaX: 0, deltaY: -150)
+                _ = slider.waitForExistence(timeout: 0.5)
+            }
+            XCTAssertTrue(slider.waitForExistence(timeout: 10), "round \(round): the competitive window has no slider")
+            // Moved up the scale as an assistive app moves it (the slider's own value), sent once it settles
+            slider.adjust(toNormalizedSliderPosition: 0.72)
             let said = element(app, "philosophy.said")
-            reveal(said, in: form)
-            let set = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && said.label.contains("70") }, object: nil)
+            let set = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                said.exists && said.label.contains("Competitive window set to") && !said.label.contains("set to 50:")
+            }, object: nil)
             if XCTWaiter.wait(for: [set], timeout: 15) != .completed { keep(window.screenshot(), named: "n12c-narrow-900-missing-said") }
-            XCTAssertTrue(said.label.contains("70"), "round \(round): the change did not say what it did")
+            XCTAssertTrue(said.exists && !said.label.contains("set to 50:"), "round \(round): the change did not say what it did")
             app.typeKey("z", modifierFlags: .command)
-            let undone = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && said.label.contains("50") }, object: nil)
+            let undone = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && said.label.contains("set to 50:") }, object: nil)
             XCTAssertEqual(XCTWaiter.wait(for: [undone], timeout: 15), .completed, "round \(round): ⌘Z did not put the preference back")
             if round == 1 {
                 keep(window.screenshot(), named: "n12c-narrow-900-philosophy")

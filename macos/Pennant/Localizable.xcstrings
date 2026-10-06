@@ -1153,9 +1153,6 @@
     "Follow-Up Question": {
       "extractionState": "manual"
     },
-    "Move or Remove": {
-      "extractionState": "manual"
-    },
     "Move to Receive": {
       "extractionState": "manual"
     },

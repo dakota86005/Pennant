@@ -130,19 +130,16 @@ struct DealRowView: View {
                 Spacer(minLength: 6)
                 ClaimWords(row.value, font: .body.weight(.semibold).monospacedDigit())
                     .accessibilityIdentifier("trades.value.\(row.player.playerId)")
-                Menu {
-                    Button(side == .sent ? "Move to Receive" : "Move to Send", systemImage: "arrow.left.arrow.right") {
-                        model.trades.add(row.player.playerId, to: side == .sent ? .received : .sent)
-                    }
-                    Button("Remove from Deal", systemImage: "xmark") { model.trades.remove(row.player.playerId) }
+                Button {
+                    model.trades.add(row.player.playerId, to: side == .sent ? .received : .sent)
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "arrow.left.arrow.right.circle").foregroundStyle(.readableSecondary)
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help(Text("Move or Remove"))
-                .accessibilityLabel(Text("Move or Remove"))
+                .buttonStyle(.plain)
+                .help(side == .sent ? Text("Move to Receive") : Text("Move to Send"))
+                .accessibilityLabel(side == .sent ? Text("Move to Receive") : Text("Move to Send"))
+                .accessibilityIdentifier("trades.move.\(row.player.playerId)")
+                RemoveButton(id: row.player.playerId, name: row.player.name)
             }
             ServedWords(row.line, quiet: true).font(.callout)
             ServedWords(row.range, quiet: true).font(.callout)
