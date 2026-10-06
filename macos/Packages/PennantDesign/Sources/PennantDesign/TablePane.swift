@@ -134,12 +134,12 @@ struct PaneDivider: View {
                     }
                     .onEnded { _ in start = nil }
             )
-            // To VoiceOver an adjustable slider (a role it can name), a step at a time
+            // To VoiceOver an adjustable slider (a role it can name). No fixed step: on a short window the range can be
+            // narrower than any step, and a slider whose step exceeds its range traps ("max stride must be positive")
             .accessibilityRepresentation {
                 Slider(
                     value: Binding(get: { Double(height) }, set: { set(CGFloat($0).rounded()) }),
-                    in: Double(range.lowerBound)...Double(max(range.upperBound, range.lowerBound + 1)),
-                    step: 40
+                    in: Double(range.lowerBound)...Double(max(range.upperBound, range.lowerBound + 1))
                 ) { Text("Details Height") }
             }
             .accessibilityIdentifier("tablePane.divider")
