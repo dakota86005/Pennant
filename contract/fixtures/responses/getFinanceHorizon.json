@@ -146,7 +146,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -192,7 +193,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -238,7 +240,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],
@@ -337,7 +340,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -424,7 +428,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -510,7 +515,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],
@@ -569,7 +575,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -616,7 +623,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -663,7 +671,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [
@@ -819,7 +828,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -943,7 +953,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -1067,7 +1078,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],
@@ -1126,7 +1138,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -1173,7 +1186,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -1220,7 +1234,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [
@@ -1336,7 +1351,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -1422,7 +1438,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -1508,7 +1525,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],
@@ -1606,7 +1624,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -1691,7 +1710,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -1776,7 +1796,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [
@@ -1815,7 +1836,8 @@
             "display": "Nobody controlled",
             "hint": "No major leaguer here is the club's that season"
           },
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -1824,7 +1846,8 @@
             "display": "Nobody controlled",
             "hint": "No major leaguer here is the club's that season"
           },
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -1833,7 +1856,8 @@
             "display": "Nobody controlled",
             "hint": "No major leaguer here is the club's that season"
           },
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],
@@ -1892,7 +1916,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -1938,7 +1963,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -1984,7 +2010,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],
@@ -2201,7 +2228,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -2404,7 +2432,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -2606,7 +2635,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],
@@ -2941,7 +2971,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2042,
@@ -3261,7 +3292,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         },
         {
           "season": 2043,
@@ -3580,7 +3612,8 @@
             }
           ],
           "empty": null,
-          "unread": 0
+          "unread": 0,
+          "unreadNote": null
         }
       ],
       "pipeline": [],

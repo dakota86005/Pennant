@@ -147,6 +147,8 @@ export interface FinanceHorizonCell {
   empty: Cell | null;
   /** Players listed there whose control that season couldn't be read. */
   unread: Integer;
+  /** "Not known for N more" beside the entries, when some are unread; null when none are, or the cell has no entries (then `empty` says it). */
+  unreadNote: Cell | null;
 }
 
 /** The farm's next man at a position: never placed in a season. */

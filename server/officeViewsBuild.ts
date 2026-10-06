@@ -110,6 +110,7 @@ function horizonOf(ctx: OfficeContext, orgId: number, payroll: ReturnType<typeof
       seasons: read ? timeline!.seasons.filter((c) => seasons.includes(c.season)).map((c) => ({
         season: c.season, status: c.status, label: controlSeasonLabel(c), between: [...c.between], basis: c.basis,
       })) : [],
+      controlEnds: read ? timeline!.controlEnds : null,
       unknown: read ? null : (timeline?.notes[0] ?? 'His control is not established from the export.'),
     };
   });

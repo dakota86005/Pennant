@@ -8584,6 +8584,10 @@
           "unread": {
             "$ref": "#/components/schemas/Integer",
             "description": "Players listed there whose control that season couldn't be read."
+          },
+          "unreadNote": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Not known for N more\" beside the entries, when some are unread; null when none are, or the cell has no entries (then `empty` says it)."
           }
         },
         "required": [

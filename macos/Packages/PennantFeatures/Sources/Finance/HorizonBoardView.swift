@@ -111,7 +111,7 @@ struct HorizonCards: View {
 }
 
 /// One position in one season: who the club controls and how, each name opening his window, each status's reason a
-/// click away; the served sentence when nobody.
+/// click away; the served sentence when nobody, and beside the entries how many more couldn't be read.
 struct HorizonCellView: View {
     let cell: Components.Schemas.FinanceHorizonCell
 
@@ -133,6 +133,15 @@ struct HorizonCellView: View {
             }
             if let empty = cell.empty {
                 Text(verbatim: empty.display).font(.caption).foregroundStyle(.readableSecondary).help(detail: empty.hint)
+            }
+            // Beside the entries, the players whose control that season couldn't be read: a mixed cell never hides them
+            if let unread = cell.unreadNote {
+                HStack(spacing: 3) {
+                    ToneMark(served: unread.tone).font(.caption2)
+                    Text(verbatim: unread.display).font(.caption).foregroundStyle(.readableSecondary)
+                }
+                .accessibilityElement(children: .combine)
+                .help(detail: unread.hint)
             }
         }
     }

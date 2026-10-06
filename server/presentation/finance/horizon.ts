@@ -33,8 +33,24 @@ export interface HorizonPlayerInput {
   /** A pitcher's assignment (11 starter, 12 reliever, 13 closer); null when not given. */
   role: number | null;
   seasons: HorizonSeasonInput[];
+  /**
+   * The first season he is a free agent, when the timeline reaches it. The timeline stops there, so a later season he
+   * is missing from is control ended, never unread; null when it doesn't reach free agency.
+   */
+  controlEnds: number | null;
   /** Why his control couldn't be read, when it couldn't. */
   unknown: string | null;
+}
+
+/**
+ * Where a player stands in one season of the board: a season of the timeline, control ended (he is not the club's),
+ * or unread (his control couldn't be read, or the timeline stops before this season without reaching free agency).
+ */
+export function horizonSeasonOf(p: HorizonPlayerInput, season: number): HorizonSeasonInput | 'ended' | 'unread' {
+  const s = p.seasons.find((x) => x.season === season);
+  if (s) return s.status === 'free_agent' ? 'ended' : s;
+  if (p.unknown === null && p.controlEnds !== null && season > p.controlEnds) return 'ended';
+  return 'unread';
 }
 
 export interface HorizonInput {
@@ -108,19 +124,26 @@ function rowOf(ctx: OfficeContext, def: (typeof ROWS)[number], players: HorizonP
     const entries: FinanceHorizonEntry[] = [];
     let unread = 0;
     for (const p of players) {
-      const s = p.seasons.find((x) => x.season === season);
-      if (!s) {
+      const s = horizonSeasonOf(p, season);
+      // Control has ended: he is not the club's that season, so he is not in the cell
+      if (s === 'ended') continue;
+      if (s === 'unread') {
         unread += 1;
         continue;
       }
-      // Control ends: he is not the club's that season, so he is not in the cell
-      if (s.status === 'free_agent') continue;
       entries.push(entryOf(ctx, p, s));
     }
-    const empty = entries.length === 0
-      ? unread > 0 ? cell(`Not known for ${counted(unread, 'player')}`, { tone: 'unknown', hint: 'His control that season couldn\'t be read' }) : cell('Nobody controlled', { hint: 'No major leaguer here is the club\'s that season' })
+    // Unread players are said whether or not the cell has entries: a mixed cell never hides them
+    const unreadNote = unread > 0
+      ? cell(entries.length > 0 ? `Not known for ${unread} more` : `Not known for ${counted(unread, 'player')}`, {
+          tone: 'unknown',
+          hint: unread === 1 ? "His control that season couldn't be read" : "Their control that season couldn't be read",
+        })
       : null;
-    return { season, entries, empty, unread };
+    const empty = entries.length === 0
+      ? unreadNote ?? cell('Nobody controlled', { hint: 'No major leaguer here is the club\'s that season' })
+      : null;
+    return { season, entries, empty, unread, unreadNote: entries.length > 0 ? unreadNote : null };
   });
   const next = def.farm !== null ? input.farmNext.get(def.farm) ?? [] : [];
   return {

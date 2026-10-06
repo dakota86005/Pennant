@@ -19,6 +19,7 @@ import { payrollView } from '../server/presentation/finance/payroll.js';
 import { injuryReportView } from '../server/presentation/medical/injuryReport.js';
 import { cell } from '../server/presentation/claim.js';
 import type { OfficeContext } from '../server/presentation/officeTable.js';
+import { clearProductionCaches, playerValues } from '../server/playerValue.js';
 import { loadSettings } from '../server/settings.js';
 import { BANNED_JARGON, BANNED_VERDICTS, bannedInPayload } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
@@ -196,7 +197,7 @@ describe('the Horizon Board (N12; D-057)', () => {
     const view = horizonView(ctx(), {
       ...base(),
       players: [{
-        playerId: 7, name: 'Pat Short', position: 6, role: 0, unknown: null,
+        playerId: 7, name: 'Pat Short', position: 6, role: 0, unknown: null, controlEnds: 2043,
         seasons: [
           { season: 2041, status: 'arbitration', label: 'Arbitration 3', between: [], basis: 'His third arbitration year.' },
           { season: 2042, status: 'indeterminate', label: 'Not settled', between: ['arbitration', 'free_agent'], basis: 'His service crosses the line only if he stays up.' },
@@ -212,10 +213,56 @@ describe('the Horizon Board (N12; D-057)', () => {
   });
 
   it('says a season it couldn\'t read is not known, never nobody', () => {
-    const view = horizonView(ctx(), { ...base(), players: [{ playerId: 8, name: 'Lee Unread', position: 2, role: 0, unknown: 'Not established.', seasons: [] }] });
+    const view = horizonView(ctx(), { ...base(), players: [{ playerId: 8, name: 'Lee Unread', position: 2, role: 0, unknown: 'Not established.', controlEnds: null, seasons: [] }] });
     const c = view.rows.find((r) => r.id === 'c')!;
     expect(c.cells.every((x) => x.empty?.tone === 'unknown' && x.unread === 1)).toBe(true);
     expect(view.unknowns.length).toBe(1);
+  });
+
+  it('leaves out a player whose real timeline stopped at free agency, in the seasons after it too, never "not known"', () => {
+    // A major leaguer of ours on the last year of his deal, given a veteran's service: Player Value's timeline reads free
+    // agency next season and stops there, so the board's later seasons are control ended, not unread
+    const veteran = db.prepare(`SELECT c.player_id AS id, rs.mlb_service_days AS days FROM players_contract c
+      JOIN players p ON p.player_id = c.player_id JOIN players_roster_status rs ON rs.player_id = c.player_id
+      JOIN teams t ON t.team_id = p.team_id WHERE t.level = 1 AND p.organization_id = ? AND c.years = 1 AND c.is_major = 1
+      ORDER BY c.player_id LIMIT 1`).get(save.org) as { id: number; days: number };
+    const setDays = (days: number) => {
+      db.prepare('UPDATE players_roster_status SET mlb_service_days = ? WHERE player_id = ?').run(days, veteran.id);
+      clearProductionCaches();
+      resetOfficeViews();
+    };
+    setDays(1500);
+    try {
+      const control = playerValues([veteran.id]).get(veteran.id)!.control;
+      const built = buildOfficeViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+      if (!built.horizon.ok) throw new Error(built.horizon.reason);
+      const view = built.horizon.view;
+      expect(control.controlEnds).toBe(view.seasons[0]);
+      expect(control.seasons.map((x) => x.season)).not.toContain(view.seasons[1]);
+      const cells = view.rows.flatMap((r) => r.cells);
+      expect(cells.flatMap((c) => c.entries).filter((e) => e.player.playerId === veteran.id)).toEqual([]);
+      // Every other major leaguer's timeline reaches past the board, so nothing on it is unread
+      expect(cells.filter((c) => c.unread > 0 || c.empty?.tone === 'unknown' || c.unreadNote !== null).map((c) => c.season)).toEqual([]);
+    } finally {
+      setDays(veteran.days);
+    }
+  });
+
+  it('says the unread players in a cell that has entries too: "Not known for N more"', () => {
+    const view = horizonView(ctx(), {
+      ...base(),
+      players: [
+        { playerId: 9, name: 'Sam Signed', position: 8, role: 0, unknown: null, controlEnds: null,
+          seasons: [2041, 2042, 2043].map((season) => ({ season, status: 'under_contract', label: 'Signed', between: [], basis: 'Under contract.' })) },
+        { playerId: 10, name: 'Kim Unread', position: 8, role: 0, unknown: 'Not established.', controlEnds: null, seasons: [] },
+        { playerId: 11, name: 'Ray Early', position: 8, role: 0, unknown: null, controlEnds: null,
+          seasons: [{ season: 2041, status: 'arbitration', label: 'Arbitration 1', between: [], basis: 'His first arbitration year.' }] },
+      ],
+    });
+    const cf = view.rows.find((r) => r.id === 'cf')!;
+    expect(cf.cells.map((c) => c.unread)).toEqual([1, 2, 2]);
+    expect(cf.cells.map((c) => c.unreadNote?.display)).toEqual(['Not known for 1 more', 'Not known for 2 more', 'Not known for 2 more']);
+    expect(cf.cells.every((c) => c.empty === null && c.unreadNote?.tone === 'unknown')).toBe(true);
   });
 
   it('keeps the farm\'s next man in the pipeline lane, never placed in a season (no arrival year is invented)', async () => {
