@@ -1885,6 +1885,168 @@
         }
       }
     },
+    "/api/v2/views/{org}/majorLeague/depthChart": {
+      "get": {
+        "operationId": "getMajorLeagueDepthChart",
+        "summary": "Depth Chart: the organization's players at each position, club by club, deepest first by the scouts' grade now.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbDepthChartView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/fortyManOptions": {
+      "get": {
+        "operationId": "getMajorLeagueFortyMan",
+        "summary": "40-Man & Options: the roster counts against the limits, the running clocks and option notes, and for each player what Player Rights says can be done, with its reasons.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbFortyManView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/lineup": {
+      "get": {
+        "operationId": "getMajorLeagueLineup",
+        "summary": "Lineup: the staff's card for one ask (the opposing hand, the ordering, the DH, what it is built from), with each slot's reason, the bench, who is out and who is not scouted. Never written to OOTP.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vs",
+            "in": "query",
+            "required": false,
+            "description": "The opposing starter's hand (`r` or `l`), as a served choice sends it; the next game's starter's by default.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "style",
+            "in": "query",
+            "required": false,
+            "description": "How the order is written (`saber` or `trad`), as a served choice sends it.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dh",
+            "in": "query",
+            "required": false,
+            "description": "The designated hitter (`auto` follows the league, `on`, `off`), as a served choice sends it.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "What the order is built from (`talent` or `production`), as a served choice sends it.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbLineupView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/views/{org}/majorLeague/overview": {
       "get": {
         "operationId": "getMajorLeagueOverview",
@@ -1910,6 +2072,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MlbOverviewView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/pitchingAvailability": {
+      "get": {
+        "operationId": "getMajorLeaguePitchingAvailability",
+        "summary": "Pitching Availability: the bullpen as a rest calendar (each day's pitches, the last three days' load, tonight's availability), the rotation and the starting depth.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbPitchingAvailabilityView"
                 }
               }
             }
@@ -1994,6 +2198,192 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MlbPositionPlayersView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/rosters": {
+      "get": {
+        "operationId": "getMajorLeagueRosters",
+        "summary": "Rosters: one of the organization's clubs, its hitters and pitchers with the scouts' grades and the season's lines. The major league club's is read ahead; an affiliate's when opened.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "description": "One of the organization's clubs (a served choice's `query.team`); the major league club by default.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbRostersView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/scheduleGamePlans": {
+      "get": {
+        "operationId": "getMajorLeagueSchedule",
+        "summary": "Schedule & Game Plans: the record, how the club has done against each opponent, and every game with its result or probable starters.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbScheduleView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/scheduleGamePlans/plan": {
+      "get": {
+        "operationId": "getMajorLeagueGamePlan",
+        "summary": "One game's plan: their starter, our card against his hand, how our hitters have fared against him and his club, and their dangerous bats. The next games' are read ahead; another is read when opened and kept until the next import.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "game",
+            "in": "query",
+            "required": true,
+            "description": "The game's id (a plan's `query.game`), one of the club's games.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbGamePlanView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/majorLeague/seasonTrends": {
+      "get": {
+        "operationId": "getMajorLeagueSeasonTrends",
+        "summary": "Season Trends: the season game by game as lines to draw (run differential, scoring, winning percentage), each with what it means.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MlbSeasonTrendsView"
                 }
               }
             }
@@ -9309,6 +9699,10 @@
           },
           "numeric": {
             "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hidden until the GM shows it from the table's columns (N9: a roster's other season lines); absent is shown."
           }
         },
         "required": [
@@ -9498,6 +9892,272 @@
         ],
         "description": "A decision: one need, opened, in the GM's order: the problem, why it was flagged, the staff's call, the ways to respond followed through, every candidate, and the roster mechanics. It ranks nobody and makes no move."
       },
+      "MlbDepthChartView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbDepthClub"
+            }
+          },
+          "byPosition": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTableSection"
+            },
+            "description": "The organization's depth at each position, every level in one table (N9 review): who is behind a man at his position, from the major league club down, deepest first at each club. The same reading as `clubs`."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How the depth is ordered, with what it leaves out in its basis."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "byPosition",
+          "clubs",
+          "importStamp",
+          "lede",
+          "note",
+          "orgId",
+          "reportStamp",
+          "title"
+        ]
+      },
+      "MlbDepthClub": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "level": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbDepthPosition"
+            }
+          }
+        },
+        "required": [
+          "teamId",
+          "title",
+          "level",
+          "positions"
+        ],
+        "description": "One club of the organization (or the players nobody has assigned yet) and its depth at every position."
+      },
+      "MlbDepthEntry": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "player",
+          "line"
+        ],
+        "description": "A man at a position: who, and his age and scouted now and ceiling in words, with the OSA mark where it applies."
+      },
+      "MlbDepthPosition": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The position's short name (\"SS\", \"SP\"): the field's place for it."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbDepthEntry"
+            }
+          },
+          "more": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How many more there are past the first three (a plate on the field shows three), with their names; null with none."
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The sentence when nobody plays it here."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "players"
+        ],
+        "description": "A position's depth at one club, deepest-first as the scouts grade them now."
+      },
+      "MlbFortyManView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "The roster's counts against the league's limits, as figures."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTableSection"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "figures",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "sections",
+          "title"
+        ]
+      },
+      "MlbGamePlanQuery": {
+        "type": "object",
+        "properties": {
+          "game": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "game"
+        ],
+        "description": "What a game's plan is asked for."
+      },
+      "MlbGamePlanView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "rowId": {
+            "type": "string",
+            "description": "The schedule row it belongs to."
+          },
+          "query": {
+            "$ref": "#/components/schemas/MlbGamePlanQuery"
+          },
+          "game": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "starter": {
+            "$ref": "#/components/schemas/MlbLine"
+          },
+          "missing": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What this export could not supply, in a sentence; null when nothing is missing."
+          },
+          "card": {
+            "$ref": "#/components/schemas/MlbBlock"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTableSection"
+            }
+          }
+        },
+        "required": [
+          "card",
+          "game",
+          "importStamp",
+          "lede",
+          "orgId",
+          "query",
+          "reportStamp",
+          "rowId",
+          "sections",
+          "starter",
+          "title"
+        ],
+        "description": "One game's plan: their starter, our card against his hand, how our hitters have fared, and their dangerous bats."
+      },
       "MlbGauge": {
         "type": "object",
         "properties": {
@@ -9623,6 +10283,154 @@
           "players"
         ],
         "description": "One line of words: its text, the chips drawn before it, and the players it names (each can be opened or followed)."
+      },
+      "MlbLineupChoice": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "query": {
+            "$ref": "#/components/schemas/MlbLineupQuery"
+          }
+        },
+        "required": [
+          "text",
+          "selected",
+          "query"
+        ],
+        "description": "One of the GM's choices for the card, sent back exactly as served (the server builds the card again)."
+      },
+      "MlbLineupChoices": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbLineupChoice"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "choices"
+        ],
+        "description": "A group of choices (against which hand, how the order is written, what it is built from, the DH)."
+      },
+      "MlbLineupQuery": {
+        "type": "object",
+        "properties": {
+          "vs": {
+            "type": "string"
+          },
+          "style": {
+            "type": "string"
+          },
+          "dh": {
+            "type": "string"
+          },
+          "sort": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "vs",
+          "style",
+          "dh",
+          "sort"
+        ],
+        "description": "What a lineup card is asked for: the opposing hand, the ordering, the DH and what the order is built from."
+      },
+      "MlbLineupView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "query": {
+            "$ref": "#/components/schemas/MlbLineupQuery"
+          },
+          "tonight": {
+            "$ref": "#/components/schemas/MlbBlock",
+            "description": "The next game: when, where, and each side's projected starter; null when none is scheduled."
+          },
+          "againstTonight": {
+            "$ref": "#/components/schemas/MlbLineupChoice",
+            "description": "The card against the next game's starter, when it is not the one shown."
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbLineupChoices"
+            }
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The staff's view of the card in one line; how it was written, ranked and searched in its basis."
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "What else the card says about itself (the run search, a DH the league doesn't use)."
+          },
+          "order": {
+            "$ref": "#/components/schemas/MlbTable"
+          },
+          "bench": {
+            "$ref": "#/components/schemas/MlbBlock",
+            "description": "The bench, who is unavailable and who isn't scouted: each man once, a line of his own that opens him."
+          },
+          "notScouted": {
+            "$ref": "#/components/schemas/MlbBlock"
+          },
+          "unavailable": {
+            "$ref": "#/components/schemas/MlbBlock"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why there is no card (too few position players, nothing imported); null when there is one."
+          }
+        },
+        "required": [
+          "choices",
+          "importStamp",
+          "lede",
+          "notes",
+          "order",
+          "orgId",
+          "query",
+          "reportStamp",
+          "title"
+        ],
+        "description": "The staff's lineup card for one ask (D-001: the staff's view, never an order; Pennant never writes it to OOTP): the next game and its starters, the GM's choices, the order with each slot's reason, the bench, who is unavailable and who the scouts have not graded."
       },
       "MlbMechanics": {
         "type": "object",
@@ -9862,6 +10670,56 @@
           "basisNote"
         ]
       },
+      "MlbPitchingAvailabilityView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "through": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The day the calendar counts back from (the last game played), in words; null when no game has been played."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTableSection"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "sections",
+          "title"
+        ],
+        "description": "Who can pitch tonight: the bullpen as a rest calendar (each of the last days' pitches, the last three days' load and the availability it reads, toned rested, limited or down), the rotation and the starting depth."
+      },
       "MlbPitchingStaffView": {
         "type": "object",
         "properties": {
@@ -10017,6 +10875,95 @@
           "plans"
         ]
       },
+      "MlbRosterChoice": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "query": {
+            "$ref": "#/components/schemas/MlbRosterQuery"
+          }
+        },
+        "required": [
+          "text",
+          "selected",
+          "query"
+        ],
+        "description": "One of the organization's clubs, as a choice."
+      },
+      "MlbRosterQuery": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "$ref": "#/components/schemas/Integer"
+          }
+        },
+        "required": [
+          "team"
+        ],
+        "description": "What a club's roster is asked for: the organization's club, by team id."
+      },
+      "MlbRostersView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "query": {
+            "$ref": "#/components/schemas/MlbRosterQuery"
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbRosterChoice"
+            }
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTableSection"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "clubs",
+          "importStamp",
+          "lede",
+          "orgId",
+          "query",
+          "reportStamp",
+          "sections",
+          "title"
+        ],
+        "description": "A club's roster: its hitters and its pitchers, each a table with the scouts' grades and the season's lines."
+      },
       "MlbRow": {
         "type": "object",
         "properties": {
@@ -10077,6 +11024,148 @@
         ],
         "description": "A table row: a cell and a raw sort key per column (null is unknown and sorts last both ways), the player the row is about, what a scout would say if asked (its detail, drawn when the row is selected) and what it offers to open."
       },
+      "MlbScheduleView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "record": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "The record as figures (overall, home and away, runs); empty with no game played."
+          },
+          "headToHead": {
+            "$ref": "#/components/schemas/MlbTableSection"
+          },
+          "games": {
+            "$ref": "#/components/schemas/MlbTableSection"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "$ref": "#/components/schemas/Cell"
+                },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "text",
+                "rows"
+              ]
+            },
+            "description": "The filters (full season, still to play, played), each naming the rows it keeps in its own order (played: the latest first)."
+          },
+          "nextRow": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The row the view opens on: the next game to play; null when the season is over or unscheduled."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "choose": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the plan's place says before a game is chosen."
+          }
+        },
+        "required": [
+          "choose",
+          "filters",
+          "games",
+          "importStamp",
+          "lede",
+          "nextRow",
+          "note",
+          "orgId",
+          "record",
+          "reportStamp",
+          "title"
+        ],
+        "description": "The season's schedule: the record, how the club has done against each opponent, and every game with its plan."
+      },
+      "MlbSeasonTrendsView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "yardsticks": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "charts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTrendChart"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "charts",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "title"
+        ]
+      },
       "MlbStaffSection": {
         "type": "object",
         "properties": {
@@ -10132,6 +11221,136 @@
           "rows"
         ],
         "description": "A table, ready to show: its columns, its rows in the specialist's own order, and its sentence when it has none."
+      },
+      "MlbTableSection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Structural: where the app keeps the table's columns, never shown."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "One line about the section (\"3 of 8 limited or unavailable\"); null when there is nothing to say."
+          },
+          "table": {
+            "$ref": "#/components/schemas/MlbTable"
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "A note under the table, with its detail in the basis; null when there is none."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "table"
+        ],
+        "description": "A titled table of a view (the bullpen, the 40-man, a club's hitters): its words above it and a note under it."
+      },
+      "MlbTrendChart": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "caption": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "axis": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "baseline": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTrendSeries"
+            }
+          },
+          "summary": {
+            "type": "string",
+            "description": "The whole chart in a sentence, for VoiceOver's chart summary."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "caption",
+          "axis",
+          "baseline",
+          "series",
+          "summary"
+        ],
+        "description": "One chart: its title and headline, what its lines mean, its axis's name and a rule it draws (the zero, .500)."
+      },
+      "MlbTrendPoint": {
+        "type": "object",
+        "properties": {
+          "game": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "date": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "display": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "game",
+          "date",
+          "value",
+          "display"
+        ],
+        "description": "A point on a line: the game's number in the season, its date in words, the value (null: the line has none yet)."
+      },
+      "MlbTrendSeries": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "role": {
+            "type": "string",
+            "description": "`main`, `scored` or `allowed`: which of the chart's fixed colours draws it."
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbTrendPoint"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "role",
+          "points"
+        ],
+        "description": "One line of a chart: its name, its role (the app's fixed colour for it) and its points."
       },
       "MlbViewHead": {
         "type": "object",

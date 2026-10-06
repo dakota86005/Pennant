@@ -11,6 +11,7 @@ import { DIGEST_SWIFT_PATH, SHAPES_SPEC_PATH, SPEC_PATH, buildShapesSpec, buildS
 import { operations } from '../server/contract/routes.js';
 import { basisProblems } from '../server/presentation/claim.js';
 import { departmentReport, frontOfficeBuilt, frontOfficeRevision } from '../server/frontOfficeService.js';
+import { clubhouseScheduleNow } from '../server/clubhouseViewService.js';
 import { farmAssignmentsNow, resetFarmViews } from '../server/farmViewService.js';
 import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
@@ -365,7 +366,16 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     getMajorLeagueDecision: () => `?need=${encodeURIComponent(evidenceKey.replace(/^\d+\.majorLeague:need:/, ''))}`,
     // N11: three players side by side, a pitcher among them
     getPlayerCompare: () => `?players=${save.regular},${save.hitters.find((h) => h !== save.regular)},${save.reliever}`,
+    // N9: the club's next game's plan
+    getMajorLeagueGamePlan: () => `?game=${nextGame}`,
   };
+
+  /** The club's next game on the synthetic save (N9), for its plan. */
+  let nextGame = 0;
+  it('has a next game on the synthetic save, for the clubhouse tools\' game plan (N9)', async () => {
+    nextGame = Number((await clubhouseScheduleNow(String(save.org))).nextRow?.replace(/^game-/, '') ?? 0);
+    expect(nextGame).toBeGreaterThan(0);
+  });
 
   it('has an item with an evidence trail on the synthetic save, for the claims route', async () => {
     const report = await departmentReport(save.org, 'majorLeague');

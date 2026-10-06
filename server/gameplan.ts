@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db, hasColumns, tableExists } from './db.js';
 import { contactProfiles } from './battedball.js';
 import { padDate } from './rosterops.js';
+import { answer, refuse, type Computed } from './computed.js';
+import { projectedStarters } from './probableStarters.js';
 
 export const gameplanRoutes = Router();
 
@@ -152,60 +154,6 @@ function scoutOpponent(oppTeamId: number) {
 }
 
 /**
- * Which slot of the opponent's rotation this game falls on.
- *
- * The projected-starters table is not a lookup by game: it is the rotation in
- * order, `starter_0` through `starter_7`, and the schedule advances one slot
- * per remaining game in a series. This counts the opponent's unplayed games
- * ahead of this one in the same series, matching what the schedule page shows
- * so the two never disagree about who is pitching.
- *
- * A series is a run of consecutive games against the same club at the same
- * venue, which is the same rule the schedule groups by.
- */
-function rotationSlot(teamId: number, game: GameRow): number {
-  const all = db
-    .prepare(
-      `SELECT game_id, date, home_team, away_team, played
-       FROM games WHERE home_team = ? OR away_team = ?`
-    )
-    .all(teamId, teamId) as GameRow[];
-  const ordered = all
-    .map((g) => ({
-      ...g,
-      key: padDate(g.date) ?? '',
-      oppId: g.home_team === teamId ? g.away_team : g.home_team,
-      isHome: g.home_team === teamId,
-    }))
-    .sort((a, b) => a.key.localeCompare(b.key));
-
-  const here = ordered.findIndex((g) => g.game_id === game.game_id);
-  if (here < 0) return 0;
-  const me = ordered[here];
-
-  let start = here;
-  while (
-    start > 0 &&
-    ordered[start - 1].oppId === me.oppId &&
-    ordered[start - 1].isHome === me.isHome
-  ) {
-    start--;
-  }
-  let slot = 0;
-  for (let i = start; i < here; i++) if (ordered[i].played !== 1) slot++;
-  return slot;
-}
-
-/** One slot of a club's projected rotation, or null when it is not exported. */
-function projectedStarter(teamId: number, slot: number): number | null {
-  if (!tableExists('projected_starting_pitchers')) return null;
-  const row = db
-    .prepare(`SELECT * FROM projected_starting_pitchers WHERE team_id = ?`)
-    .get(teamId) as Record<string, number> | undefined;
-  return row ? (row[`starter_${Math.min(slot, 7)}`] || null) : null;
-}
-
-/**
  * Run one optional half of the plan, and carry on without it if it fails.
  *
  * Returns what the reader should be told is absent alongside the fallback, so
@@ -228,10 +176,23 @@ function attempt<T>(work: () => T, fallback: T, what: string): { value: T; missi
  * one, and otherwise from OOTP's projected rotation — which is the usual case
  * for a game that has not been played.
  */
+/** A game's plan (`GET /api/game-plan/:teamId/:gameId`): their starter, the matchups, their dangerous bats, what is missing. */
+export type GamePlan = Exclude<ReturnType<typeof planOf>, null>;
+
+/** One game's plan, or why there is none (the route's own answer; SWIFTUI_REBUILD.md N9). */
+export function computeGamePlan(teamId: number, gameId: number): Computed<GamePlan> {
+  if (!tableExists('games')) return refuse(400, 'No data imported yet');
+  const plan = planOf(teamId, gameId);
+  return plan ? answer(plan) : refuse(404, 'No such game');
+}
+
 gameplanRoutes.get('/game-plan/:teamId/:gameId', (req, res) => {
-  const teamId = Number(req.params.teamId);
-  const gameId = Number(req.params.gameId);
-  if (!tableExists('games')) return res.status(400).json({ error: 'No data imported yet' });
+  const plan = computeGamePlan(Number(req.params.teamId), Number(req.params.gameId));
+  if (!plan.ok) return res.status(plan.status).json({ error: plan.error });
+  res.json(plan.body);
+});
+
+function planOf(teamId: number, gameId: number) {
 
   /*
    * Ask games.csv only for the columns this export actually has.
@@ -251,7 +212,7 @@ gameplanRoutes.get('/game-plan/:teamId/:gameId', (req, res) => {
        FROM games WHERE game_id = ?`
     )
     .get(gameId) as GameRow | undefined;
-  if (!g) return res.status(404).json({ error: 'No such game' });
+  if (!g) return null;
 
   const home = g.home_team === teamId;
   const oppId = home ? g.away_team : g.home_team;
@@ -262,7 +223,9 @@ gameplanRoutes.get('/game-plan/:teamId/:gameId', (req, res) => {
   // starter0 is the away side, starter1 the home side — the same mapping the
   // schedule page uses for a played game
   const namedStarter = home ? g.starter0 : g.starter1;
-  const pitcherId = namedStarter || projectedStarter(oppId, rotationSlot(teamId, g));
+  // An unplayed game's starter is the opponent's projection at this game's place among their own games still to play
+  // (`probableStarters.ts`, the schedule's own reading); none when the projection does not reach that far
+  const pitcherId = namedStarter || (g.played === 1 ? null : projectedStarters([oppId]).starterOf(oppId, g.game_id));
 
   const pitcher = pitcherId
     ? (db
@@ -287,7 +250,7 @@ gameplanRoutes.get('/game-plan/:teamId/:gameId', (req, res) => {
   );
   const scouting = attempt(() => scoutOpponent(oppId), { dangerous: [] }, "the opponent's contact quality");
 
-  res.json({
+  return {
     game: {
       game_id: g.game_id,
       date: padDate(g.date),
@@ -314,8 +277,8 @@ gameplanRoutes.get('/game-plan/:teamId/:gameId', (req, res) => {
     // Anything the export could not supply, said plainly rather than shown as
     // an empty table the reader has to interpret
     missing: [matchupsOrNothing.missing, scouting.missing].filter(Boolean) as string[],
-  });
-});
+  };
+}
 
 /**
  * Your own record, which is the one story the app never told.

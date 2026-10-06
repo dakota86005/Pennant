@@ -224,10 +224,10 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
   const time = timeWords(next.time);
   const gap = facts.currentDate ? daysBetweenRaw(facts.currentDate, next.date) : null;
   const day = gap === 0 ? (next.time !== null && next.time >= 1700 ? 'Tonight' : 'Today') : gap === 1 ? 'Tomorrow' : dayWords(next.date) ?? next.date;
-  const firstOf = (teamId: number) => facts.projected.find((p) => p.teamId === teamId)?.starters[0] ?? null;
+  // Each side's man at this game's place in its own turn (D-069), the schedule's reading, never its first slot
   const lines = new Map(m.starters.map((l) => [l.playerId, l]));
-  const ours = starterOf(lines.get(firstOf(facts.orgId) ?? -1), firstOf(facts.orgId));
-  const theirs = starterOf(lines.get(firstOf(oppId) ?? -1), firstOf(oppId));
+  const ours = starterOf(lines.get(m.tonightStarters.ours ?? -1), m.tonightStarters.ours);
+  const theirs = starterOf(lines.get(m.tonightStarters.theirs ?? -1), m.tonightStarters.theirs);
   const brief = (s: ProbableStarter | null) => (s ? `${s.short} (${s.line.display})` : 'not projected');
   const starters = ours || theirs
     ? cell(`${brief(ours)} vs ${brief(theirs)}`, { hint: 'The probable starters, as OOTP projects them' })
@@ -245,7 +245,8 @@ function tonight(build: BuildContext, m: MorningMaterial): TonightGame | null {
     opponent: { teamId: oppId, name: oppName, abbr: opp?.abbr ?? null, record: oppRecord },
     matchup,
     ours, theirs, starters,
-    open: target({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans' }),
+    // N9: Tonight opens the schedule on this game, its plan beneath
+    open: target({ kind: 'view', department: 'majorLeague', view: 'scheduleGamePlans', key: String(next.gameId) }),
     claim: claim({
       text: `${day}: ${matchup.display}`,
       tone: 'neutral',

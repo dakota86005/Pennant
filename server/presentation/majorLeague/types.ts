@@ -53,6 +53,8 @@ export interface MlbColumn {
   id: string;
   title: Cell;
   numeric: boolean;
+  /** Hidden until the GM shows it from the table's columns (N9: a roster's other season lines); absent is shown. */
+  hidden?: boolean;
 }
 
 /**

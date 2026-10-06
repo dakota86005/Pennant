@@ -24,6 +24,7 @@ import { needTrail } from './presentation/frontOffice/claims.js';
 import { assemble, type BuildContext, type DepartmentAnswer, type DepartmentContext } from './presentation/frontOffice/desk.js';
 import type { FarmDecisionRequest, FarmViewsRequest } from './farmViewsBuild.js';
 import type { PlayerDossiersRequest } from './playerDossierBuild.js';
+import type { ClubhouseAskRequest, ClubhouseViewsRequest } from './clubhouseViewsBuild.js';
 import { farmMaterial } from './presentation/frontOffice/farm.js';
 import { financeMaterial } from './presentation/frontOffice/finance.js';
 import { majorLeagueMaterial, type MajorLeagueInput } from './presentation/frontOffice/majorLeague.js';
@@ -283,5 +284,7 @@ export type WorkerJob =
   | { kind: 'decision'; request: DecisionRequest }
   | { kind: 'farmViews'; request: FarmViewsRequest }
   | { kind: 'farmDecision'; request: FarmDecisionRequest }
+  | { kind: 'clubhouseViews'; request: ClubhouseViewsRequest }
+  | { kind: 'clubhouseAsk'; request: ClubhouseAskRequest }
   // N11: the player window's dossiers for our club's players, read ahead after an import (`playerDossierBuild.ts`)
   | { kind: 'playerDossiers'; request: PlayerDossiersRequest };

@@ -848,7 +848,13 @@
             "certainty": "fact",
             "called": "A fact from the export"
           },
-          "links": [],
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "rosters"
+            }
+          ],
           "value": {
             "n": 26,
             "unit": "count",
@@ -882,7 +888,13 @@
             "certainty": "fact",
             "called": "A fact from the export"
           },
-          "links": [],
+          "links": [
+            {
+              "kind": "view",
+              "department": "majorLeague",
+              "view": "fortyManOptions"
+            }
+          ],
           "value": {
             "n": 32,
             "unit": "count",
@@ -1878,7 +1890,8 @@
       "open": {
         "kind": "view",
         "department": "majorLeague",
-        "view": "scheduleGamePlans"
+        "view": "scheduleGamePlans",
+        "key": "61"
       },
       "claim": {
         "text": "Tonight: at Club 4 N",
@@ -5001,7 +5014,8 @@
           "open": {
             "kind": "view",
             "department": "majorLeague",
-            "view": "scheduleGamePlans"
+            "view": "scheduleGamePlans",
+            "key": "55"
           }
         },
         {
@@ -5053,7 +5067,8 @@
           "open": {
             "kind": "view",
             "department": "majorLeague",
-            "view": "scheduleGamePlans"
+            "view": "scheduleGamePlans",
+            "key": "57"
           }
         },
         {
@@ -5105,7 +5120,8 @@
           "open": {
             "kind": "view",
             "department": "majorLeague",
-            "view": "scheduleGamePlans"
+            "view": "scheduleGamePlans",
+            "key": "59"
           }
         }
       ]

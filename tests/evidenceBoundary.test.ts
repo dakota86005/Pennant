@@ -188,7 +188,7 @@ describe('the evidence boundary', () => {
     expect(offenders).toEqual([]);
   });
 
-  it.each(['api.ts', 'lineup.ts', 'franchise.ts'])('%s, taken off players_value (phase 6d), reads no value field, percentile or OOTP rating', (file) => {
+  it.each(['api.ts', 'roster.ts', 'lineup.ts', 'franchise.ts'])('%s, taken off players_value (phase 6d; roster.ts holds the roster code api.ts had before N9), reads no value field, percentile or OOTP rating', (file) => {
     const source = code(file);
     for (const pattern of [...PROHIBITED, /\bmlbPercentiler\b/, /\bVALUE_PERCENTILE_NOTE\b/, /\boverallPct\b/, /\btalentPct\b/, /\boffensive_value/, /\bpitching_value\b/]) {
       expect(source, `${file} matches ${pattern}`).not.toMatch(pattern);

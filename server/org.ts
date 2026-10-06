@@ -2,6 +2,7 @@ import { Router, type Response } from 'express';
 import { db, tableColumns, tableExists } from './db.js';
 import { loadScoutedAbilities, summarizeEvidence } from './scoutedEvidence.js';
 import { LEVEL_NAMES } from './valuation.js';
+import { answer, refuse, type Computed } from './computed.js';
 import { resolvePhilosophy } from './philosophy.js';
 import { philosophyForOrg } from './settings.js';
 import {
@@ -173,9 +174,22 @@ function orgPlayers(orgId: number): OrgPlayer[] {
     .all(orgId) as OrgPlayer[];
 }
 
+/** The organization's depth chart (`GET /api/depth-chart/:orgId`): its clubs and every player with his scouted now and ceiling. */
+export type DepthChart = ReturnType<typeof depthChartOf>;
+
+/** The organization's depth chart, or why it cannot be read (the route's own answer; SWIFTUI_REBUILD.md N9). */
+export function computeDepthChart(orgId: number): Computed<DepthChart> {
+  if (!tableExists('players')) return refuse(400, 'No data imported yet');
+  return answer(depthChartOf(orgId));
+}
+
 orgRoutes.get('/depth-chart/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+  const chart = computeDepthChart(Number(req.params.orgId));
+  if (!chart.ok) return res.status(chart.status).json({ error: chart.error });
+  res.json(chart.body);
+});
+
+function depthChartOf(orgId: number) {
   const teams = orgTeams(orgId).map((t) => ({
     ...t,
     label: `${t.name} ${t.nickname}`,
@@ -216,8 +230,8 @@ orgRoutes.get('/depth-chart/:orgId', (req, res) => {
       pot,
     };
   });
-  res.json({ teams, players });
-});
+  return { teams, players };
+}
 
 /** Aggregate latest-season stats per player (split 1 = overall). */
 /**

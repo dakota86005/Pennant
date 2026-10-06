@@ -53,7 +53,7 @@ struct DevelopmentBoard: View {
         let chosen = rows.first { selection.contains($0.id) } ?? rows.first
         // The head at its height, the table filling the rest and scrolling itself, the chosen player's history beneath it
         // in its own scroll area: never a table in a page's scroll view (N8's `TablePane`, the narrow-window crash)
-        TablePane(detailShare: 0.45) {
+        TablePane(detailShare: 0.45, autosave: "farm.development") {
             VStack(alignment: .leading, spacing: 8) {
                 DevelopmentHeader(view: view, tab: tab, updating: updating, problem: problem, guide: $guide)
                 if let building = view.building {

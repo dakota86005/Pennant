@@ -150,6 +150,10 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   # Major League Ops (N8): the report's companion, the tables, a row's detail and context menu, a decision
   prepare_ui_test testMajorLeagueViews configured '{"theme":"light"}'
   prepare_ui_test testMajorLeagueNarrowWindow configured '{"theme":"light"}'
+  # N9: every Major League Ops view, the clubhouse tools included, at 900 × 700 with the inspector open
+  prepare_ui_test testClubhouseNarrowWindow configured '{"theme":"light"}'
+  prepare_ui_test testClubhouseWideWindow configured '{"theme":"light"}'
+  prepare_ui_test testClubhouseWideWindowDark configured '{"theme":"dark"}'
   prepare_ui_test testPlayerWindows configured '{"theme":"light"}'
   prepare_ui_test testCompareByMenuAndDrag configured '{"theme":"light"}'
   prepare_ui_test testPlayerWindowRestored configured '{"theme":"light"}'
@@ -192,7 +196,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
         const fs = require("fs"), path = require("path");
         const dir = process.argv[1];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
-        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n10-|n11-)/;
+        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n9-|n10-|n11-)/;
         const kept = new Set();
         for (const test of manifest) for (const a of test.attachments ?? []) {
           const name = a.suggestedHumanReadableName ?? "";

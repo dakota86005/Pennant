@@ -140,3 +140,9 @@ export type {
   PlayerStaffNote, PlayerNotesView, PlayerNoteUpdate, PlayerNoteChange, StaffNoteRestore, StaffNoteChange,
   ComparePlayer, CompareCell, CompareRow, CompareSection, PlayerCompareView,
 } from '../presentation/player/types.js';
+// Major League Ops' clubhouse tools (N9): `GET /api/v2/views/:org/majorLeague/<tool>`
+export type {
+  MlbTableSection, MlbLineupQuery, MlbLineupChoice, MlbLineupChoices, MlbLineupView, MlbPitchingAvailabilityView, MlbGamePlanQuery,
+  MlbScheduleView, MlbGamePlanView, MlbDepthEntry, MlbDepthPosition, MlbDepthClub, MlbDepthChartView, MlbFortyManView, MlbRosterQuery,
+  MlbRosterChoice, MlbRostersView, MlbTrendPoint, MlbTrendSeries, MlbTrendChart, MlbSeasonTrendsView,
+} from '../presentation/clubhouse/types.js';

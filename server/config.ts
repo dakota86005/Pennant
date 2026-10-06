@@ -71,6 +71,21 @@ export function loadConfig(): AppConfig {
   return { csvDir: null, saveName: null };
 }
 
+/**
+ * Where the configuration stands, as one string (its file's size and time, both places): what the save's place is kept
+ * against (N9, `currentSaveLocation`), so a change of save or folder is never missed and nothing re-reads it otherwise.
+ */
+export function configStamp(): string {
+  return [CONFIG_PATH, LEGACY_CONFIG_PATH].map((p) => {
+    try {
+      const st = fs.statSync(p);
+      return `${st.size}:${st.mtimeMs}`;
+    } catch {
+      return 'absent';
+    }
+  }).join('|');
+}
+
 export function saveConfig(config: AppConfig): void {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 }

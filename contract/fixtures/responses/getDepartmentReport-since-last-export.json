@@ -123,7 +123,13 @@
         "certainty": "fact",
         "called": "A fact from the export"
       },
-      "links": [],
+      "links": [
+        {
+          "kind": "view",
+          "department": "majorLeague",
+          "view": "rosters"
+        }
+      ],
       "value": {
         "n": 26,
         "unit": "count",
@@ -157,7 +163,13 @@
         "certainty": "fact",
         "called": "A fact from the export"
       },
-      "links": [],
+      "links": [
+        {
+          "kind": "view",
+          "department": "majorLeague",
+          "view": "fortyManOptions"
+        }
+      ],
       "value": {
         "n": 32,
         "unit": "count",

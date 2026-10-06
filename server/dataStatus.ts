@@ -11,10 +11,10 @@
  */
 
 import fs from 'node:fs';
-import { db, tableColumns, tableExists } from './db.js';
-import { loadConfig } from './config.js';
+import { databaseGeneration, db, tableColumns, tableExists } from './db.js';
+import { configStamp, loadConfig } from './config.js';
 import {
-  locateSave, readLastDateSimulated,
+  liveDatabaseFiles, locateSave, readLastDateSimulated,
   type LiveDatabaseFiles, type SaveDiscoveryMethod, type SaveLocation,
 } from './ootpSave.js';
 import { Worker } from 'node:worker_threads';
@@ -125,6 +125,7 @@ let reading: Promise<void> | null = null;
 
 /** Forgets the log entirely (a different save, a hand-named save folder): the next request reads it afresh. */
 export function resetTransactionLogCache(): void {
+  forgetSaveLocation();
   cache = null;
   generation += 1;
   if (pending) clearTimeout(pending.timer);
@@ -145,10 +146,40 @@ const emptyLogStatus = (over: Partial<LogSourceStatus>): LogSourceStatus => ({
   snapshot: null, coverage: null, counts: null, unsupportedSamples: [], ...over,
 });
 
+/**
+ * The save's place, kept (N9): finding it reads the configuration and stats the folders it names (and, where the export
+ * is not in OOTP's layout, every save OOTP keeps), which inside another app's container costs a request tens of
+ * milliseconds. It is kept against the configuration and the served import, so a change of save, folder or import finds
+ * it again; one not found is looked for again after 15 seconds. The live log's files come and go as OOTP opens and closes
+ * the save, so they are looked at each time (three stats).
+ */
+let located: { key: string; at: number; location: SaveLocation } | null = null;
+const LOOK_AGAIN_MS = 15_000;
+const locationStats = { locates: 0 };
+
+/** How many times the save was looked for (the tests' "kept" guard). */
+export function saveLocationStats(): Readonly<typeof locationStats> {
+  return { ...locationStats };
+}
+
+/** Forgets the save's place: the next request looks for it afresh (a different save, a hand-named folder). */
+export function forgetSaveLocation(): void {
+  located = null;
+}
+
 /** Where the current save lives, derived from configuration. */
 export function currentSaveLocation(): SaveLocation {
+  const key = `${configStamp()}|${databaseGeneration()}`;
+  const now = Date.now();
+  const kept = located;
+  if (kept && kept.key === key && (kept.location.found || now - kept.at < LOOK_AGAIN_MS)) {
+    return kept.location.lgPath ? { ...kept.location, live: liveDatabaseFiles(kept.location.lgPath) } : kept.location;
+  }
   const config = loadConfig();
-  return locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
+  locationStats.locates += 1;
+  const location = locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
+  located = { key, at: now, location };
+  return location;
 }
 
 const logKey = (location: SaveLocation): string =>
@@ -346,8 +377,24 @@ function csvCurrentDate(): string | null {
   }
 }
 
+/**
+ * When the export was written, kept for the served import and 15 seconds at most (N9): finding it stats every file of
+ * the export, which inside another app's container is most of a request's cost. A diagnostic, so a new export is seen
+ * within the 15 seconds, and at its import at once.
+ */
+let exportedAt: { key: string; at: number; value: string | null } | null = null;
+
 /** Modification time of the newest CSV file. Shown as a diagnostic, never used to judge freshness. */
 export function csvExportedAt(csvDir: string): string | null {
+  const key = `${csvDir}|${databaseGeneration()}`;
+  const now = Date.now();
+  if (exportedAt && exportedAt.key === key && now - exportedAt.at < LOOK_AGAIN_MS) return exportedAt.value;
+  const value = newestCsv(csvDir);
+  exportedAt = { key, at: now, value };
+  return value;
+}
+
+function newestCsv(csvDir: string): string | null {
   try {
     let latest = 0;
     for (const f of fs.readdirSync(csvDir)) {

@@ -261,7 +261,8 @@
       "open": {
         "kind": "view",
         "department": "majorLeague",
-        "view": "scheduleGamePlans"
+        "view": "scheduleGamePlans",
+        "key": "62"
       },
       "claim": {
         "text": "Tonight: at Club 3 N",

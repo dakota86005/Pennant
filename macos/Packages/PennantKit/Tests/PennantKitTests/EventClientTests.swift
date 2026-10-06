@@ -148,12 +148,12 @@ struct EventReconnectTests {
         let transport = RoutedTransport([:])
         let waits = Waits(stopAfter: 6)
         let events = EventClient(
-            client: client(transport), reconnectDelay: .milliseconds(20), maxReconnectDelay: .milliseconds(160),
-            onError: { problems.appendUnknown($0) }, sleep: waits.sleep
+            client: client(transport), reconnectDelay: .milliseconds(1), maxReconnectDelay: .milliseconds(8),
+            onError: { problems.appendUnknown($0) }, onWait: waits.record
         )
-        await Task { await events.run { _ in } }.value
+        await waits.run(events)
         // Each attempt failed, so each wait doubled to the cap: the sequence, not a count read off the wall clock
-        #expect(waits.all == [20, 40, 80, 160, 160, 160].map { Duration.milliseconds($0) })
+        #expect(waits.all == [1, 2, 4, 8, 8, 8].map { Duration.milliseconds($0) })
         #expect(transport.paths.count == 6)
         #expect(problems.unknownTypes.count == 6)
         #expect(problems.unknownTypes.allSatisfy { $0.contains("failed") })
@@ -166,12 +166,12 @@ struct EventReconnectTests {
         let problems = SignalLog()
         let waits = Waits(stopAfter: 7)
         let events = EventClient(
-            client: client(transport), reconnectDelay: .milliseconds(20), maxReconnectDelay: .seconds(5),
-            onError: { problems.appendUnknown($0) }, sleep: waits.sleep
+            client: client(transport), reconnectDelay: .milliseconds(1), maxReconnectDelay: .seconds(5),
+            onError: { problems.appendUnknown($0) }, onWait: waits.record
         )
-        await Task { await events.run { _ in } }.value
+        await waits.run(events)
         // Always connecting, so never slowed: every wait is the first step
-        #expect(waits.all == Array(repeating: Duration.milliseconds(20), count: 7))
+        #expect(waits.all == Array(repeating: Duration.milliseconds(1), count: 7))
         #expect(transport.paths.count == 7)
         #expect(problems.unknownTypes.count == 7)
         #expect(problems.unknownTypes.allSatisfy { $0 == "the event stream ended" })
@@ -213,11 +213,13 @@ final class SignalLog: @unchecked Sendable {
     func appendUnknown(_ type: String) { lock.withLock { _unknown.append(type) } }
 }
 
-/// The waits an event client asked for, kept instead of slept; after `stopAfter` of them the loop is cancelled (the
-/// server stopped), so a test reads the sequence of attempts and waits with no real time passing.
+/// The waits an event client announced, kept in order; after `stopAfter` of them the run is cancelled (the server
+/// stopped), so a test reads the sequence of attempts and waits with only a few milliseconds of real time passing.
 final class Waits: @unchecked Sendable {
     private let lock = NSLock()
     private var _all: [Duration] = []
+    private var task: Task<Void, Never>?
+    private var stopRequested = false
     private let stopAfter: Int
 
     init(stopAfter: Int) {
@@ -226,11 +228,24 @@ final class Waits: @unchecked Sendable {
 
     var all: [Duration] { lock.withLock { _all } }
 
-    var sleep: @Sendable (Duration) async -> Void {
+    var record: @Sendable (Duration) -> Void {
         { [self] duration in
-            let count = lock.withLock { _all.append(duration); return _all.count }
-            if count >= stopAfter { withUnsafeCurrentTask { $0?.cancel() } }
-            await Task.yield()
+            let toCancel: Task<Void, Never>? = lock.withLock {
+                _all.append(duration)
+                guard _all.count >= stopAfter else { return nil }
+                stopRequested = true
+                return task
+            }
+            toCancel?.cancel()
         }
+    }
+
+    /// Runs the client until the stop: the task is kept before any wait can ask for it, or cancelled at once if the
+    /// stop came first.
+    func run(_ events: EventClient) async {
+        let running = Task { await events.run { _ in } }
+        let stopNow = lock.withLock { task = running; return stopRequested }
+        if stopNow { running.cancel() }
+        await running.value
     }
 }

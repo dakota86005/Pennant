@@ -2801,6 +2801,88 @@ changes little today; it matters as scouting staffs change and our scouts' cover
 Not established, and left so: whether OSA's rows in the file hold OSA's view under "Show real player ratings" (they are
 read as OSA's by their label, `scouting_team_id` 0; only an OSA-mode export was available to check them against).
 
+## D-069 — Major League Ops' clubhouse tools on the Mac: D-065 for the routes the React pages read
+
+**Status:** Proposed (N9 builder, 2026-10-04; the supervisor renumbers on a collision), the builder's calls pending the
+owner's review (listed below). **Implementation:** the extracted routes (`computeLineup`, `computeNextGame`,
+`computeSchedule`, `computeGamePlan`, `computeDepthChart`, `computeRoster` in `server/roster.ts`, beside N4's
+`computeTrends`, `computeRosterCrunch` and `computePitchingStaff`), `server/probableStarters.ts`,
+`server/presentation/clubhouse/` (the words), `server/clubhouseViewsBuild.ts` (the reader),
+`server/clubhouseViewService.ts` (the cache), `GET /api/v2/views/:org/majorLeague/{lineup, pitchingAvailability,
+scheduleGamePlans, scheduleGamePlans/plan, depthChart, fortyManOptions, rosters, seasonTrends}`; `ClubhouseStore`
+(PennantKit) and the MajorLeague target's clubhouse views. Applies D-065 to Lineup, Pitching Availability, Schedule &
+Game Plans, Depth Chart, 40-Man & Options, Rosters and Season Trends, and refines D-001, D-018, D-020, D-023, D-056 and
+D-060 for them: no baseball judgment changes, save the projected starter below.
+
+These tools are not Major League Ops' review: they are what the React pages' routes compute (the lineup builder, the
+pitching staff's rest and workload, the schedule, a game's plan, the organization's depth, the roster crunch, a club's
+roster, the season's games). So they are read through those routes' extracted modules, each old route answering exactly
+what its module computes (`tests/routeExtractions.test.ts`), and never re-derived for the Mac.
+
+- **Each tool is its own payload, worded once.** Every sentence the React pages wrote on the client (the lineup's hint
+  line and tips, the bench and unavailable lines, the next-game banner, the pitching page's tips and IL toggle words, the
+  schedule's record strip and series words, the game plan's sections and sample sizes, the roster's scouted cell and
+  column picker, the crunch's rights chips and their tooltips, the trend captions) is served with its basis; a cell
+  carries an ordinal sort key, null when unknown.
+- **Built after each import, in the worker; asked another way on a click.** The club's tools are built in the Front
+  Office's worker after each kept build, keyed on its inputs: every view, the lineup card for each opposing hand, each
+  ordering and each basis under the league's own DH rule (eight cards, read once each: the run search is most of a
+  card's cost, and a game's plan reuses them), the next six games' plans and the major league roster. A card with the DH
+  the league doesn't use, another game's plan and an affiliate's roster are read on their first open and kept until the
+  next import. A game or club outside the club's own is refused in words.
+- **A lineup and a game plan are the staff's view, never an order** (D-001). The card's headline is "Staff's view: the
+  card against …"; the GM's choices are served with the ask each sends, and Pennant never writes a card to OOTP. The
+  pen's availability is worded from the route's own reading (a code beside the label the React page shows, additive),
+  as what his workload is ("Pitched the last two days"), never "sit him".
+- **Unknown stays unknown** (D-018). A workload the export cannot show (no game-by-game log) is not known, never a rested
+  arm or zero pitches; a day he didn't pitch is a dash with its words; a part of a season line that cannot be worked out
+  is not known, no line at all is said as such; a bat read on overall grades says so; a rolling line has no point before
+  its window fills.
+- **40-Man & Options reads Player State and Player Rights only** (D-020, D-023): option years, Rule 5 and what can be done
+  are Player Rights' answers with every reason and where its rule comes from in the row's detail; an option count the
+  export does not state is not known and sorts last, never "?/3" or zero. A 40-man item on the desk opens the view on
+  its player.
+- **No odds or posture** (D-060), not even in the schedule: an opponent's record is the standings' fact.
+- **A game still to play names the starter its club projects for that game, and every reading names the same man.**
+  What the export shows of OOTP's projected starters is a pattern, not a rule: eight slots per club, observed as a
+  five-man turn and then its first three again. Pennant reads slot N as the club's starter N games from now, counted
+  along the club's own regular-season games still to play (`game_type` 0, the schedule's and the next game's filter),
+  across series and opponents. That reading is an inference from the observed pattern: OOTP does not document how it
+  fills the slots, off days are not modelled (whether a day off lets a turn skip its fifth man is not known), past the
+  last slot nobody is named, and a club with an unplayed game of another type (an exhibition) ahead of a regular one has
+  its later games read as not projected, since whether OOTP's turn counts that game is not known. The schedule (and the
+  game plan, which matched it) restarted the count at every series and repeated the last slot for the rest of the
+  season; the Morning Report's Tonight and `/api/dashboard`'s upcoming games took each club's first slot, so when the
+  opponent played a game before ours (our off day, a doubleheader) Tonight named one man and the schedule row it opens
+  another, and the Lineup opened against the wrong hand. All of them (both routes, the next game, the dashboard, Tonight
+  and the v2 views) now read one projection at the game's place (`probableStarters.ts`). BEHAVIOR_CASES.md "MLB
+  Operations", the `probableStarters.test.ts` row.
+- **A played game the export names no starter for names none** (D-018). `/api/game-plan` used to project a starter for
+  any game whose `games.csv` row named none, played or not; a played game now has no starter in its plan, said as the
+  export not naming him, because who started a played game is a fact the export gives or doesn't and a projection is
+  about games still to play. A plan with no starter shows the card against right-handers and says that is what it is,
+  not a card built for him. BEHAVIOR_CASES.md "MLB Operations", the `routeExtractions.test.ts` row.
+The builder's calls (for the owner's review):
+1. *The schedule opens on the games still to play* (the next first, its plan beneath), with Played (latest first) and the
+   full season one click away, rather than the full season scrolled to the current series as React did: a table
+   scrolled programmatically left rows under its header, and the next game is what the page is opened for.
+2. *The pen shows its arms on the injured list*, last, marked "Out about N more days", instead of React's hide toggle (a
+   setting in `settings.json`): nothing to set, and no arm quietly missing.
+3. *Depth Chart reads two ways* (revised after the review): **by position**, the default, one position across every
+   level in a native table (who is behind a man reads straight down, the React page's main use, without its grid of
+   every club at every position that needed scrolling both ways), and **by club**, one club at a time on the roster
+   diagram's flat field (the eight fielders and the DH, three to a plate with the rest a click away; the starters and
+   relievers beside it), stacking as cards on a narrow column. Both are served from one build.
+4. *Rosters puts every season line the React picker offered in the table*, React's defaults shown and the rest hidden
+   until the GM shows them from the table header's own menu (the window remembers), instead of a separate picker.
+5. *The rest calendar is five days* (today, the last game played, and the four before it), the three-day load the
+   availability reading uses beside it.
+6. *Lineup's choices are the window's toolbar* (after the review), as Calendar's and Finder's view choices are: the
+   opposing hand, the one asked most, a segmented control; the order, what the card is built from and the DH a "Card"
+   pull-down with each group inline and checked, rather than four menus that overflow a narrow toolbar.
+7. *The boundary between a table and its detail is the GM's to move*, as in Mail, remembered per view; the table keeps
+   at least 120 points.
+
 ## D-070 — The player window: one dossier per player, read ahead for our club; Compare says only what ranges allow
 
 **Status:** Proposed (N11 builder, 2026-10-04; the supervisor renumbers on a collision; N9 holds D-069). Applies D-065 to
