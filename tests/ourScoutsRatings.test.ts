@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
-import { developmentHistoryFor, developmentTrendByPlayer, historyDb, modeFilter, snapshotModes, stampSnapshotMode } from '../server/history.js';
+import { developmentHistoryFor, developmentTrendByPlayer, historyDb, modeFilter, playerRatingHistory, snapshotModes, stampSnapshotMode } from '../server/history.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { takeImportSnapshots } from '../server/importSnapshots.js';
 import { indexesFor } from '../server/importWorker.js';
@@ -326,6 +326,11 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
       expect(trend?.snapshotCount ?? 0).toBe(1);
       expect(trend?.reasons.join(' ')).toMatch(/changed source/);
       expect((loadScoutedObservations([SWITCHER]).get(SWITCHER) ?? []).map((o) => o.ability.ratingsFrom)).toEqual(['our_scouts']);
+      // His own window's history (N11, review M2): OSA's row set aside, the change of source said
+      const own = playerRatingHistory(SWITCHER);
+      expect(own.rows.map((r) => r.game_date)).toEqual([dates[1]]);
+      expect(own.setAside).toBe(1);
+      expect(own.sourceSwitch).toBe(switched.text);
     } finally {
       historyDb.prepare(`DELETE FROM save_rating_snapshots WHERE save_key = ? AND game_date IN (?, ?)`).run(save, ...dates);
       historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date IN (?, ?)`).run(save, ...dates);

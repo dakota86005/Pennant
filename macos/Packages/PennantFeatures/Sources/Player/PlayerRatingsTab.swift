@@ -106,8 +106,9 @@ struct GradeBar: View {
 }
 
 /// His rating history: the scouted average now and its ceiling at each snapshot as two lines (the served points, in the
-/// order taken; a date is never parsed), the snapshots beneath, and a change of source said. With fewer than two
-/// snapshots, the served sentence and no chart that would read as "no change".
+/// order taken; a date is never parsed), the snapshots beneath, and what was set aside said: a change of his source, the
+/// save's changes of the kind of ratings, snapshots of a kind that couldn't be read. With fewer than two snapshots, the
+/// served sentence and no chart that would read as "no change".
 struct RatingHistoryView: View {
     let history: Components.Schemas.PlayerRatingHistory
     let low: Double
@@ -116,6 +117,7 @@ struct RatingHistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let switchNote = history.sourceSwitch { PlayerClaimLine(claim: switchNote, font: .callout) }
+            ForEach(Array(history.setAside.enumerated()), id: \.offset) { _, aside in PlayerClaimLine(claim: aside, font: .callout) }
             if history.points.count >= 2 {
                 HistoryChart(history: history, low: low, high: high)
                     .frame(height: 180)

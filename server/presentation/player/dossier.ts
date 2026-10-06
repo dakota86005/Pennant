@@ -6,7 +6,7 @@
  * Player Rights' answers, ratings are the organization's scouted view (D-017, D-067), and the club's playoff odds are not
  * on it (D-060).
  */
-import type { BasisLine, Cell, DeptId, Tone } from '../../contract/presentation.js';
+import type { BasisLine, Cell, Claim, DeptId, Tone } from '../../contract/presentation.js';
 import { gameDateWords } from '../../dataStatus.js';
 import { parseGameDate } from '../../dataFreshness.js';
 import { basis, cell, claim, row, servedValue, target, unknownValue } from '../claim.js';
@@ -479,11 +479,30 @@ function ratingHistory(ctx: DossierInput): PlayerRatingsView['history'] {
       }),
     })
     : null;
+  const setAsideBasis = (because: BasisLine[]) => basis({
+    because, source: sourceOf(ctx, 'scouting', 'Rating history'),
+    unknown: ['Snapshots of another kind of ratings are left out of the chart: a change of kind isn\'t development.'],
+    wouldChange: [], lean: null, certainty: 'recorded',
+  });
+  const setAside: Claim[] = [
+    ...ctx.history.modeSwitches.map((text) => claim({
+      text: plain(text), tone: 'unknown', basis: setAsideBasis([{ label: 'What changed', value: plain(text) }]),
+    })),
+    ...(ctx.history.unknownKind
+      ? [claim({ text: plain(ctx.history.unknownKind), tone: 'unknown', basis: setAsideBasis([{ label: 'Why', value: plain(ctx.history.unknownKind) }]) })]
+      : []),
+  ];
   const summary = points.length
     ? `Scouted now and ceiling at each snapshot: ${points.map((p) => `${p.label.display}, ${composite(p.now)} now, ${composite(p.ceiling)} ceiling`).join('; ')}.`
     : 'No rating history for him in this save yet.';
+  const aside = ctx.history.setAside > 0;
+  const empty = points.length >= 2
+    ? null
+    : points.length === 1
+      ? (aside ? 'One comparable snapshot so far: his others are set aside' : 'One snapshot so far: the history builds with each import')
+      : (aside ? 'No comparable rating history yet: his snapshots are set aside' : 'No rating history for him in this save yet');
   return {
-    title: cell('Rating history', { hint: "Your scouts' average grades at each import" }),
+    title: cell('Rating history', { hint: historyHint(ctx) }),
     points,
     table: points.length
       ? table('ratingHistory', 'Snapshots', [['date', 'Date', false], ['level', 'Level', false], ['now', 'Now', true], ['ceiling', 'Ceiling', true]],
@@ -493,10 +512,19 @@ function ratingHistory(ctx: DossierInput): PlayerRatingsView['history'] {
           sort: { date: i, level: r.level, now: num(r.cur), ceiling: num(r.pot) },
         })))
       : null,
-    empty: points.length >= 2 ? null : cell(points.length === 1 ? 'One snapshot so far: the history builds with each import' : 'No rating history for him in this save yet'),
+    empty: empty ? cell(empty) : null,
     sourceSwitch: switchClaim,
+    setAside,
     summary,
   };
+}
+
+/** Whose grades the chart draws (review M2): our scouts', OSA's view filling in for him, or the export's kind. */
+function historyHint(ctx: DossierInput): string {
+  if (ctx.body.ratingsFill) return 'OSA\'s average grades at each import: our scouts haven\'t rated him';
+  if (ctx.ratingSource.mode === 'scouted-complete' || ctx.ratingSource.mode === 'scouted') return 'Your scouts\' average grades at each import';
+  if (ctx.ratingSource.mode === 'osa') return 'OSA\'s average grades at each import';
+  return `${ctx.ratingSource.short}: the average grades at each import`;
 }
 
 const LEVEL_NAMES: Record<number, string> = { 1: 'MLB', 2: 'AAA', 3: 'AA', 4: 'A', 5: 'A', 6: 'R', 10: 'R', 11: 'R' };

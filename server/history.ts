@@ -1695,13 +1695,20 @@ export interface PlayerHistoryRow {
 
 /**
  * One player's rating history in this save (N11: the player window's chart), whatever organization held him at each
- * snapshot, oldest first, read through the same filter as the organization's (`usableHistoryRows`): his rows from another
- * kind of ratings or another source are left out, and a change of source is said (`sourceSwitch`).
+ * snapshot, oldest first (by `compareGameDates`: OOTP writes dates unpadded), read through the same filter as the
+ * organization's (`usableHistoryRows`). Nothing is left out silently (review M2): his snapshots of another kind of ratings
+ * are counted and the save's changes of kind said, his snapshots whose kind couldn't be read are said with the reason,
+ * and a change of his own source is said (`sourceSwitch`).
  */
 export function playerRatingHistory(playerId: number): {
   rows: PlayerHistoryRow[];
   sourceSwitch: string | null;
-  ratingModeSwitches: ReturnType<typeof modeSwitches>;
+  /** The save's changes of the kind of ratings, said when any of his snapshots is of a kind set aside. */
+  modeSwitches: string[];
+  /** Why his snapshots of an unknown kind are set aside; null when he has none. */
+  unknownKind: string | null;
+  /** How many of his snapshots are set aside (another kind, an unknown kind, or another source). */
+  setAside: number;
   history: ReturnType<typeof historyNote>;
 } {
   const all = historyDb
@@ -1712,10 +1719,16 @@ export function playerRatingHistory(playerId: number): {
     .all(currentHistoryKey(), playerId) as PlayerHistoryRow[];
   const { rows, sourceSwitches } = usableHistoryRows(all);
   rows.sort((a, b) => compareGameDates(a.game_date, b.game_date));
+  const { excluded, switches, unknownKind } = modeFilter();
+  const unknownDates = new Set(unknownKind);
+  const his = new Set(all.map((r) => r.game_date));
+  const otherKind = [...his].some((date) => excluded.has(date) && !unknownDates.has(date));
   return {
     rows: rows.map(({ src: _src, ...row }: PlayerHistoryRow & { src?: unknown }) => row),
     sourceSwitch: sourceSwitches.get(playerId) ?? null,
-    ratingModeSwitches: modeSwitches(),
+    modeSwitches: otherKind ? switches.map((x) => x.text) : [],
+    unknownKind: unknownKindReason(unknownKind.filter((date) => his.has(date))),
+    setAside: all.length - rows.length,
     history: historyNote(),
   };
 }

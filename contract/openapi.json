@@ -11257,6 +11257,13 @@
           "sourceSwitch": {
             "$ref": "#/components/schemas/Claim"
           },
+          "setAside": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "What else was set aside, each said with its basis (review M2): the save's changes of the kind of ratings when any of his snapshots is of another kind, and why snapshots whose kind couldn't be read are not compared."
+          },
           "summary": {
             "type": "string",
             "description": "The chart's served words for VoiceOver (each snapshot's figures)."
@@ -11265,6 +11272,7 @@
         "required": [
           "title",
           "points",
+          "setAside",
           "summary"
         ],
         "description": "His rating history in this save: the points, a table of them, and a change of source said (D-067)."

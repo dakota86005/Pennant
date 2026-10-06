@@ -613,7 +613,7 @@
     "history": {
       "title": {
         "display": "Rating history",
-        "hint": "Your scouts' average grades at each import"
+        "hint": "Not known: the average grades at each import"
       },
       "points": [],
       "table": null,
@@ -621,6 +621,7 @@
         "display": "No rating history for him in this save yet"
       },
       "sourceSwitch": null,
+      "setAside": [],
       "summary": "No rating history for him in this save yet."
     }
   },

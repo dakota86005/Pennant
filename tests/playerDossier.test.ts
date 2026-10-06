@@ -41,7 +41,8 @@ beforeAll(() => {
   base = {
     playerId: save.regular, orgId: save.org, orgName: 'Club 1', importStamp: '2040-05-06T12:00:00.000Z', reportStamp: 'r1', gameDate: '2040-5-6',
     body: computed.body, state: null, chronology: null, chronologyNote: null, cone: null, surplus: null, ourView: null,
-    history: { rows: [], sourceSwitch: null }, rating: { scaleMax: 80, roundToFive: false }, ratingSource: { short: 'Your scouts\' view', text: 'Your scouts\' full reports.' },
+    history: { rows: [], sourceSwitch: null, modeSwitches: [], unknownKind: null, setAside: 0 }, rating: { scaleMax: 80, roundToFive: false },
+    ratingSource: { mode: 'scouted-complete', short: 'Your scouts\' view', text: 'Your scouts\' full reports.' },
   };
 }, 120_000);
 
@@ -81,11 +82,35 @@ describe('the player window shows only what the organization can see (D-017, D-0
       { game_date: '2040-4-1', player_id: save.regular, team_id: 1, org_id: 1, level: 1, age: 30, cur: 50, pot: 55, con: null, gap: null, pow: null, eye: null, avk: null, spd: null, stu: null, mov: null, ctl: null },
       { game_date: '2040-5-1', player_id: save.regular, team_id: 1, org_id: 1, level: 1, age: 30, cur: 52, pot: 55, con: null, gap: null, pow: null, eye: null, avk: null, spd: null, stu: null, mov: null, ctl: null },
     ];
-    const v = view((input) => { input.history = { rows, sourceSwitch: 'His ratings came from OSA\'s view, then from your scouts\' full reports' }; });
+    const v = view((input) => { input.history = { rows, sourceSwitch: 'His ratings came from OSA\'s view, then from your scouts\' full reports', modeSwitches: [], unknownKind: null, setAside: 1 }; });
     expect(v.ratings.history.points.map((p) => [p.date, p.now, p.ceiling])).toEqual([['2040-4-1', 50, 55], ['2040-5-1', 52, 55]]);
     expect(v.ratings.history.sourceSwitch?.text).toMatch(/OSA's view/);
     expect(v.ratings.history.sourceSwitch?.basis.unknown.join(' ')).toMatch(/left out of the chart/);
     expect(view().ratings.history.empty?.display).toBe('No rating history for him in this save yet');
+  });
+
+  it('says the snapshots it set aside, a change of kind and an unknown kind, never "one snapshot so far" (review M2)', () => {
+    const one = [{ game_date: '2040-5-1', player_id: save.regular, team_id: 1, org_id: 1, level: 1, age: 30, cur: 52, pot: 55, con: null, gap: null, pow: null, eye: null, avk: null, spd: null, stu: null, mov: null, ctl: null }];
+    const change = 'The kind of ratings changed between 2040-3-1 and 2040-5-1, from true ratings to your scouts\' view: the change is a switch, not development.';
+    const unknown = 'The kind of ratings in the snapshot of 2040-4-1 couldn\'t be read, so it is not compared.';
+    const v = view((input) => { input.history = { rows: one, sourceSwitch: null, modeSwitches: [change], unknownKind: unknown, setAside: 2 }; });
+    const h = v.ratings.history;
+    expect(h.setAside.map((c) => c.text)).toEqual([change, unknown]);
+    for (const c of h.setAside) expect(c.basis.source.specialist).toBe('Rating history');
+    expect(h.empty?.display).toBe('One comparable snapshot so far: his others are set aside');
+    expect(h.empty?.display).not.toMatch(/One snapshot so far/);
+    // Nothing set aside: the plain words, and no claims
+    const plainOne = view((input) => { input.history = { rows: one, sourceSwitch: null, modeSwitches: [], unknownKind: null, setAside: 0 }; });
+    expect(plainOne.ratings.history.setAside).toEqual([]);
+    expect(plainOne.ratings.history.empty?.display).toBe('One snapshot so far: the history builds with each import');
+  });
+
+  it('says whose grades the chart draws: our scouts\', OSA\'s view filling in, or an OSA export (review M2)', () => {
+    expect(view().ratings.history.title.hint).toBe('Your scouts\' average grades at each import');
+    const filled = view((input) => { (input.body as { ratingsFill: unknown }).ratingsFill = { mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' }; });
+    expect(filled.ratings.history.title.hint).toMatch(/^OSA's average grades .*haven't rated him/);
+    const osa = view((input) => { input.ratingSource = { mode: 'osa', short: 'OSA\'s view', text: 'OSA\'s view.' }; });
+    expect(osa.ratings.history.title.hint).toBe('OSA\'s average grades at each import');
   });
 });
 
@@ -236,6 +261,9 @@ describe('fixtures for the Mac app\'s player previews (N11)', () => {
           con: null, gap: null, pow: null, eye: null, avk: null, spd: null, stu: null, mov: null, ctl: null,
         })),
         sourceSwitch: fill ? 'His ratings came from your scouts\' full reports, then from OSA\'s view' : null,
+        modeSwitches: fill ? ['The kind of ratings changed between 2039-3-1 and 2039-6-1, from true ratings to your scouts\' view: the change is a switch, not development.'] : [],
+        unknownKind: null,
+        setAside: fill ? 2 : 0,
       };
       input.chronology = [
         { id: 'team_transactions:2', provenance: 'explicit_log', kind: 'activated', supported: true, date: '2040-04-20', rawDate: '2040-4-20', season: 2040, playerId: save.regular, playerName: 'P', position: '3B', from: null, to: null, details: {}, text: 'Activated P from the 10-day injured list.', rawText: '', sources: [] },

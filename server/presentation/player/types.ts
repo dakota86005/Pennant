@@ -113,6 +113,11 @@ export interface PlayerRatingHistory {
   table: PlayerTable | null;
   empty: Cell | null;
   sourceSwitch: Claim | null;
+  /**
+   * What else was set aside, each said with its basis (review M2): the save's changes of the kind of ratings when any of
+   * his snapshots is of another kind, and why snapshots whose kind couldn't be read are not compared.
+   */
+  setAside: Claim[];
   /** The chart's served words for VoiceOver (each snapshot's figures). */
   summary: string;
 }

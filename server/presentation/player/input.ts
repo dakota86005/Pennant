@@ -9,6 +9,7 @@ import type { OurView, PlayerSurplus, ProductionCone } from '../../playerValue.j
 import type { PlayerState } from '../../playerState.js';
 import type { TransactionEvent } from '../../transactionLog.js';
 import type { PlayerHistoryRow } from '../../history.js';
+import type { RatingMode } from '../../ratingMode.js';
 
 export interface DossierInput {
   playerId: number;
@@ -28,8 +29,12 @@ export interface DossierInput {
   surplus: PlayerSurplus | null;
   /** Our view, and the club's name it is read for; null when he isn't valued. */
   ourView: OurView | null;
-  history: { rows: PlayerHistoryRow[]; sourceSwitch: string | null };
+  /**
+   * His rating history: the comparable rows, and what was set aside and why (review M2): a change of his source, the
+   * save's changes of kind when any of his snapshots is of another kind, the reason for snapshots of an unknown kind.
+   */
+  history: { rows: PlayerHistoryRow[]; sourceSwitch: string | null; modeSwitches: string[]; unknownKind: string | null; setAside: number };
   rating: { scaleMax: number; roundToFive: boolean };
   /** Whose ratings the evidence reads, in words ("Your scouts' view") and its sentence. */
-  ratingSource: { short: string; text: string };
+  ratingSource: { mode: RatingMode | null; short: string; text: string };
 }

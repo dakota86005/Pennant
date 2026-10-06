@@ -93,7 +93,7 @@ export function buildPlayerDossiers(request: PlayerDossiersRequest): PlayerDossi
       ourView: surplus ? ourViewOf({ neutral: surplus, philosophy, ours }) : null,
       history: playerRatingHistory(id),
       rating,
-      ratingSource: { short: source.short, text: source.text },
+      ratingSource: { mode: source.mode, short: source.short, text: source.text },
     }));
   }
   return { views, missing, ms: Math.round((performance.now() - started) * 10) / 10 };

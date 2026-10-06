@@ -631,7 +631,7 @@
     "history": {
       "title": {
         "display": "Rating history",
-        "hint": "Your scouts' average grades at each import"
+        "hint": "OSA's average grades at each import: our scouts haven't rated him"
       },
       "points": [
         {
@@ -798,6 +798,34 @@
         },
         "links": []
       },
+      "setAside": [
+        {
+          "text": "The kind of ratings changed between 2039-3-1 and 2039-6-1, from true ratings to your scouts' view: the change is a switch, not development.",
+          "tone": "unknown",
+          "basis": {
+            "because": [
+              {
+                "label": "What changed",
+                "value": "The kind of ratings changed between 2039-3-1 and 2039-6-1, from true ratings to your scouts' view: the change is a switch, not development."
+              }
+            ],
+            "source": {
+              "department": "scouting",
+              "specialist": "Rating history",
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [
+              "Snapshots of another kind of ratings are left out of the chart: a change of kind isn't development."
+            ],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "recorded",
+            "called": "From Pennant's own record"
+          },
+          "links": []
+        }
+      ],
       "summary": "Scouted now and ceiling at each snapshot: June 1, 2039, 50 now, 56 ceiling; September 28, 2039, 52 now, 56 ceiling; April 30, 2040, 54 now, 57 ceiling."
     }
   },

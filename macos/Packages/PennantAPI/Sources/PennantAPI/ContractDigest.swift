@@ -2,4 +2,4 @@
 
 /// The SHA-256 of the contract this build was generated from (`contract/openapi.json`): what the app keys a payload
 /// it keeps across launches on, so one kept under another contract is never read.
-public let contractDigest = "8dc757070861c96a35da2d5ee64c2f3cc2e3c4eb7d4be64851124c1d039dde7f"
+public let contractDigest = "4ee9234a8eb62deece7ad6bf60e7de725e483749d944286969d9988c3cb2ec9f"
