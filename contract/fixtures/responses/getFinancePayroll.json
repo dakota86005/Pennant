@@ -392,7 +392,7 @@
   },
   "priceHistory": null,
   "costs": {
-    "text": "What a season the club controls costs: a renewal costs $700K to $11.8M (30 renewals this season) · an arbitration year is read from 0 contracts (0 in the 1st year, 0 in the 2nd year, 0 in the 3rd year)",
+    "text": "What a season the club controls costs: a renewal costs $700K to $11.8M (30 renewals this season) · no arbitration contracts on this save to read an arbitration year from yet",
     "tone": "neutral",
     "basis": {
       "because": [
@@ -5982,6 +5982,12 @@
     ],
     "empty": {
       "display": "No contracts on the books."
+    },
+    "noneKept": {
+      "display": "No players match these filters."
+    },
+    "choose": {
+      "display": "Select a row to see more."
     }
   }
 }

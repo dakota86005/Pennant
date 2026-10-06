@@ -49,7 +49,12 @@ export function nextGames(teamId: number, limit: number) {
   }>;
 }
 
-export function orgInjuries(orgId: number) {
+/**
+ * The organization's injured players with whether each can play through it (an active man day-to-day), as the health
+ * rule reads him: the Mac app's Injury Report (N12) reads this; `/api/injuries`, the dashboard and the AI's context read
+ * `orgInjuries`, unchanged.
+ */
+export function orgInjuriesWithHealth(orgId: number) {
   return (
     db
       .prepare(
@@ -79,9 +84,13 @@ export function orgInjuries(orgId: number) {
     status: health!.status,
     daysLeft: health!.daysLeft,
     dlDaysThisYear: r.dl_days_this_year ?? null,
-    // N12: whether he can play through it (an active man day-to-day), as the health rule reads him (additive)
     playable: health!.playable,
   }));
+}
+
+/** The organization's injured players, as `/api/injuries`, the dashboard and the AI's context have always read them. */
+export function orgInjuries(orgId: number) {
+  return orgInjuriesWithHealth(orgId).map(({ playable: _playable, ...injury }) => injury);
 }
 
 dashboardRoutes.get('/injuries/:orgId', (req, res) => {

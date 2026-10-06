@@ -8,7 +8,7 @@ import type { computeContracts } from '../../contracts.js';
 import type { BasisLine, Cell } from '../../contract/presentation.js';
 import { basis, cell, claim } from '../claim.js';
 import {
-  column, counted, fact, filterChoice, hintIf, officeHead, officeLede, officePlayer, officeRow, officeSource,
+  column, counted, fact, filterChoice, hintIf, officeHead, officeLede, officePlayer, officeRow, officeSource, paneTable,
   type OfficeContext, type OfficeFact, type OfficeFilterGroup, type OfficeGrid, type OfficeRow,
 } from '../officeTable.js';
 import { TIP_CONTRACT_VALUE, TIP_KEEPING_HIM } from '../player/words.js';
@@ -65,7 +65,8 @@ function oursCell(r: ContractRow): { cell: Cell; sort: number | null } {
     return { cell: cell('Not valued', { tone: 'unknown', hint: hintIf(t?.reason) ?? 'Not valued, so the philosophy has nothing to lean on' }), sort: null };
   }
   const f = t.ours;
-  const order = f.central ?? (f.centralRange ? (f.centralRange.low + f.centralRange.high) / 2 : (f.low + f.high) / 2);
+  // Sorted on the most likely figure, else the low edge of what it could be: never a midpoint nobody stated (D-018)
+  const order = f.central ?? f.centralRange?.low ?? f.low;
   if (!v.leaning) return { cell: cell('Same', { hint: "The philosophy doesn't lean on him" }), sort: order };
   const fmt = unit === 'wins' ? (x: number) => `${signedTenths(x)} wins` : signedMoney;
   const main = f.central !== null ? fmt(f.central) : rangeText(f.centralRange?.low ?? f.low, f.centralRange?.high ?? f.high, fmt);
@@ -269,7 +270,7 @@ export function contractsView(ctx: OfficeContext, c: Contracts): FinanceContract
     cards: financeCards(ctx, c.finances),
     price,
     filters,
-    table: {
+    table: paneTable({
       columns: [
         column('player', 'Player'),
         column('position', 'Pos'),
@@ -286,6 +287,6 @@ export function contractsView(ctx: OfficeContext, c: Contracts): FinanceContract
       ],
       rows,
       empty: cell('No contracts on the club\'s roster to show.'),
-    },
+    }),
   };
 }

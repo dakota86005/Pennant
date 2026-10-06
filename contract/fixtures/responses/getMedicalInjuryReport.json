@@ -244,6 +244,12 @@
     "rows": [],
     "empty": {
       "display": "Everyone is healthy across the organization."
+    },
+    "noneKept": {
+      "display": "No players match these filters."
+    },
+    "choose": {
+      "display": "Select a row to see more."
     }
   },
   "filters": [],

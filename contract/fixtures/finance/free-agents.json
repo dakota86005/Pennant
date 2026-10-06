@@ -778,6 +778,12 @@
         ],
         "empty": {
           "display": "No free agents are available in this league right now."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       }
     },
@@ -925,6 +931,12 @@
         "rows": [],
         "empty": {
           "display": "No free agents are set to reach the market after 2040."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       }
     },
@@ -1080,6 +1092,12 @@
         "rows": [],
         "empty": {
           "display": "Nobody else could reach the market after 2040."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       }
     }

@@ -68,7 +68,8 @@ export function costCell(c: CostInput | null | undefined, none: string): Sorted 
   if (!c) return { cell: cell('None', { hint: hintIf(none) }), sort: null };
   if (c.low === null || c.high === null) return { cell: cell('Not known', { tone: 'unknown', hint: hintIf(c.text) ?? 'Not established' }), sort: null };
   const held = c.ifHeld ? ' if kept' : '';
-  const order = c.central ?? (c.low + c.high) / 2;
+  // Sorted on the most likely figure, else the low edge: never a midpoint nobody stated (D-018)
+  const order = c.central ?? c.low;
   if (c.low === c.high) return { cell: cell(`${money(c.low)}${held}`), sort: order };
   const main = c.central !== null ? money(c.central) : costRangeText(c.low, c.high);
   return { cell: cell(`${main}${held}`, { hint: `Could be ${rangeWords(c.low, c.high)}` }), sort: order };
@@ -117,7 +118,8 @@ export function totalCell(total: TotalInput | null | undefined, unit: 'dollars' 
   const figure = rangeText(r.low, r.high, fmt);
   return {
     cell: cell(figure, { hint: hintIf(`Could be ${couldBe}`) }),
-    sort: (r.low + r.high) / 2,
+    // No single most likely figure: sorted on the low edge of the most likely ones, never their midpoint (D-018)
+    sort: r.low,
     explain: `${over}no single most likely figure: ${figure} depending on a season that could go more than one way (his window says which); could be ${couldBe}.`,
   };
 }

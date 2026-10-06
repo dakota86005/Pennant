@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { computeContracts } from '../server/contracts.js';
-import { orgInjuries } from '../server/dashboard.js';
+import { orgInjuries, orgInjuriesWithHealth } from '../server/dashboard.js';
 import { db, tableColumns } from '../server/db.js';
 import { freshnessCue, getDataStatus } from '../server/dataStatus.js';
 import { computeFreeAgents } from '../server/freeagents.js';
@@ -17,7 +17,8 @@ import {
 import { computePayroll } from '../server/payroll.js';
 import { freeAgentsView, freeAgentsViewAndDetails } from '../server/presentation/finance/freeAgents.js';
 import { horizonView, type HorizonInput } from '../server/presentation/finance/horizon.js';
-import { payrollView } from '../server/presentation/finance/payroll.js';
+import { arbitrationYearWords, payrollView } from '../server/presentation/finance/payroll.js';
+import { costCell, totalCell } from '../server/presentation/finance/words.js';
 import { injuryReportView } from '../server/presentation/medical/injuryReport.js';
 import { cell } from '../server/presentation/claim.js';
 import type { OfficeContext } from '../server/presentation/officeTable.js';
@@ -160,6 +161,31 @@ describe('Payroll & Budget (N12)', () => {
     expect(view.budget.label.display).toBe('Budget not known');
     expect(view.seasons.every((s) => s.budget === null && s.roomCell.display === 'Room not known')).toBe(true);
     expect(visible([view.budget, view.seasons.map((s) => s.roomCell)]).filter((w) => /\$0\b/.test(w))).toEqual([]);
+  });
+
+  it('says an arbitration year with no contracts to read from in its own words, never "read from 0 contracts" (L9)', () => {
+    expect(arbitrationYearWords('prior', [{ cases: 0, arbitrationClass: 1 }, { cases: 0, arbitrationClass: 2 }], 0))
+      .toBe('no arbitration contracts on this save to read an arbitration year from yet');
+    expect(arbitrationYearWords('measured', [{ cases: 1, arbitrationClass: 1 }, { cases: 0, arbitrationClass: 2 }], 1))
+      .toBe('an arbitration year is read from 1 contract (1 in the 1st year)');
+    expect(arbitrationYearWords('no_arbitration', [], 0)).toBe("an arbitration year doesn't exist in this league");
+  });
+
+  it('says dead money the export leaves blank is not stated, never counts it as zero (L3)', () => {
+    const payroll = computePayroll(save.org, getDataStatus());
+    const owed = (players: Array<{ salary: number | null }>) => payrollView(ctx(), {
+      payroll: { ...payroll, deadMoney: { status: 'known', total: null, candidates: players.length, note: null,
+        players: players.map((p, i) => ({ player_id: 900 + i, name: `Gone ${i}`, salary: p.salary })) } } as unknown as typeof payroll,
+      club: null, league: null, history: [],
+    }).deadMoney;
+    const mixed = owed([{ salary: 4_000_000 }, { salary: null }]);
+    expect(mixed.text).toBe('Dead money: $4.0M still owed to players who left, plus 1 not stated');
+    expect(mixed.value?.display).toBe('$4.0M + 1 not stated');
+    expect(mixed.basis.unknown.length).toBe(1);
+    const blank = owed([{ salary: null }, { salary: null }]);
+    expect(blank).toMatchObject({ text: 'Dead money: owed to 2 players who left, amounts not stated', tone: 'unknown' });
+    expect(blank.value).toBeUndefined();
+    expect(owed([{ salary: 4_000_000 }]).text).toBe('Dead money: $4.0M still owed to players who left');
   });
 
   it('reads later seasons against the budget the GM expects once he enters it, and clears it at zero', async () => {
@@ -340,6 +366,24 @@ describe('the Horizon Board (N12; D-057)', () => {
     expect(cf.cells.every((c) => c.empty === null && c.unreadNote?.tone === 'unknown')).toBe(true);
   });
 
+  it('says when a later season is read against today\'s budget held flat (L5)', async () => {
+    const view = horizonView(ctx(), {
+      ...base(),
+      budget: 150_000_000,
+      payroll: [
+        { season: 2040, committed: 120_000_000, budget: 150_000_000 },
+        { season: 2041, committed: 90_000_000, budget: 150_000_000, heldFlat: true },
+        { season: 2042, committed: 60_000_000, budget: 170_000_000, heldFlat: false },
+      ],
+    });
+    expect(view.payroll.map((p) => p.budget)).toEqual([150_000_000, 150_000_000, 170_000_000]);
+    expect(view.payroll.map((p) => p.claim.hint ?? null)).toEqual([null, "Read against today's budget, held flat", null]);
+    expect(view.payroll[1].claim.basis.because.find((b) => b.label === 'Measured against')?.value).toMatch(/assumed to hold flat/);
+    // From the build: no budget entered, so every later season is today's held flat
+    const built = await financeHorizonNow(String(save.org));
+    expect(built.payroll.slice(1).every((p) => p.budget === null || p.claim.hint === "Read against today's budget, held flat")).toBe(true);
+  });
+
   it('keeps the farm\'s next man in the pipeline lane, never placed in a season (no arrival year is invented)', async () => {
     const view = await financeHorizonNow(String(save.org));
     const pipeline = view.rows.flatMap((r) => r.pipeline.map((p) => p.player.playerId));
@@ -355,7 +399,7 @@ describe('the Injury Report (N12)', () => {
     const view = injuryReportView({ ...ctx(), department: 'medical' }, [
       { player_id: 1, name: 'A One', age: 30, positionName: 'SS', levelName: 'MLB', team: 'Club', status: 'IL', daysLeft: null, dlDaysThisYear: null, playable: false },
       { player_id: 2, name: 'B Two', age: 25, positionName: 'P', levelName: 'AAA', team: 'Farm', status: 'Day-to-day', daysLeft: 3, dlDaysThisYear: 12, playable: true },
-    ] as unknown as ReturnType<typeof orgInjuries>);
+    ] as unknown as ReturnType<typeof orgInjuriesWithHealth>);
     const [one, two] = view.table.rows;
     expect(one.cells.back).toMatchObject({ display: 'Not given', tone: 'unknown' });
     expect(one.sort.back).toBeNull();
@@ -365,6 +409,45 @@ describe('the Injury Report (N12)', () => {
     expect(view.unknowns.map((u) => u.display)).toEqual(['The export has no return date for 1 injured player.']);
     expect(view.filters[0].choices.map((c) => c.id)).toEqual(['all', 'MLB', 'AAA']);
     expect(view.table.rows.map((r) => r.filterKeys?.level)).toEqual(['MLB', 'AAA']);
+  });
+});
+
+describe('the pane tables serve their own sentences (N12 review, L6)', () => {
+  it('serves what a filtered-empty table and an unchosen row say, so the Mac app writes neither', () => {
+    const built = buildOfficeViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    const tables = [
+      built.contracts.ok ? built.contracts.view.table : null,
+      built.payroll.ok ? built.payroll.view.contracts : null,
+      ...(built.freeAgents.ok ? built.freeAgents.view.lists.map((l) => l.table) : []),
+      built.injuryReport.ok ? built.injuryReport.view.table : null,
+    ];
+    for (const t of tables) {
+      expect(t?.noneKept?.display).toBe('No players match these filters.');
+      expect(t?.choose?.display).toBe('Select a row to see more.');
+    }
+  });
+});
+
+describe('sort keys say only what was stated (N12 review, L2; D-018)', () => {
+  it('sorts a figure with no most likely value on its low edge, never an invented midpoint', () => {
+    const cost = costCell({ low: 2_000_000, high: 8_000_000, central: null, text: 'Between statuses.', source: null, ifHeld: false }, 'None');
+    expect(cost.sort).toBe(2_000_000);
+    expect(costCell({ low: 2_000_000, high: 8_000_000, central: 3_000_000, text: '', source: null, ifHeld: false }, 'None').sort).toBe(3_000_000);
+    const total = totalCell({ status: 'known', from: 2041, to: 2043, low: -4_000_000, central: null, high: 20_000_000, centralRange: { low: 1_000_000, high: 9_000_000 }, reason: null }, 'dollars', null);
+    expect(total.sort).toBe(1_000_000);
+  });
+});
+
+describe('the routes the React app reads stay as they were (N12 review, L1)', () => {
+  it('serves /api/injuries\' rows without the Mac app\'s playable, which only the Injury Report reads', () => {
+    const plain = orgInjuries(save.org);
+    const full = orgInjuriesWithHealth(save.org);
+    expect(plain.length).toBe(full.length);
+    for (const [i, injury] of plain.entries()) {
+      expect(Object.keys(injury)).not.toContain('playable');
+      const { playable: _playable, ...rest } = full[i];
+      expect(injury).toEqual(rest);
+    }
   });
 });
 

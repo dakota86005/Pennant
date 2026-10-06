@@ -158,6 +158,9 @@
     "Committed Salary": {
       "extractionState": "manual"
     },
+    "Could Come on Top": {
+      "extractionState": "manual"
+    },
     "Committed salary by season": {
       "extractionState": "manual"
     },
@@ -425,9 +428,6 @@
     "No key needed": {
       "extractionState": "manual"
     },
-    "No players match these filters.": {
-      "extractionState": "manual"
-    },
     "No save chosen": {
       "extractionState": "manual"
     },
@@ -623,9 +623,6 @@
       "extractionState": "manual"
     },
     "Select a player to see his assignment.": {
-      "extractionState": "manual"
-    },
-    "Select a row to see more.": {
       "extractionState": "manual"
     },
     "Select a row to see the staff's read.": {

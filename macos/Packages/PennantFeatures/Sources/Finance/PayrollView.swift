@@ -117,9 +117,9 @@ struct PayrollSeasonsPage: View {
     }
 }
 
-/// Committed salary by season as bars, the projected range beside each (hatched, never stacked), today's budget as a
-/// dashed rule and the budget the GM expects as a dotted one for the later seasons. One image element with its audio
-/// graph and the served summary.
+/// Committed salary by season as bars, the projected range beside each (hatched, never stacked), and each season's served
+/// budget as a rule across its column: today's for this season, the budget the GM expects across the following seasons
+/// only. One image element with its audio graph and the served summary.
 struct PayrollChart: View {
     let view: Components.Schemas.FinancePayrollView
     @Environment(\.theme) private var theme
@@ -155,21 +155,26 @@ struct PayrollChart: View {
                     }
                 }
             }
-            if let budget = view.budget.amount {
-                RuleMark(y: .value("Budget", budget))
-                    .foregroundStyle(Color.primary.opacity(0.7))
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                    .annotation(position: .top, alignment: .leading) {
-                        Text(verbatim: view.budget.label.display).font(.caption).foregroundStyle(.readableSecondary)
+            // Each season's served budget as a short rule across its own column: today's for this season (and for the
+            // later ones while no other is entered), the budget the GM expects across the following seasons only
+            ForEach(Array(view.seasons.enumerated()), id: \.element.season) { index, season in
+                if let budget = season.budget {
+                    let expected = index > 0 && view.expectedBudget?.amount == budget
+                    RectangleMark(
+                        x: .value("Season", String(season.season)),
+                        y: .value("Budget", budget),
+                        width: .ratio(0.9),
+                        height: .fixed(expected ? 1.5 : 2)
+                    )
+                    .foregroundStyle(Color.primary.opacity(expected ? 0.5 : 0.7))
+                    .annotation(position: expected ? .bottom : .top, alignment: .leading) {
+                        if index == 0 {
+                            Text(verbatim: view.budget.label.display).font(.caption).foregroundStyle(.readableSecondary)
+                        } else if expected, index == 1, let label = view.expectedBudget?.label {
+                            Text(verbatim: label.display).font(.caption).foregroundStyle(.readableSecondary)
+                        }
                     }
-            }
-            if let expected = view.expectedBudget?.amount {
-                RuleMark(y: .value("Expected", expected))
-                    .foregroundStyle(Color.primary.opacity(0.5))
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [2, 3]))
-                    .annotation(position: .bottom, alignment: .trailing) {
-                        Text(verbatim: view.expectedBudget?.label.display ?? "").font(.caption).foregroundStyle(.readableSecondary)
-                    }
+                }
             }
         }
         .chartYAxis {
@@ -193,28 +198,41 @@ struct PayrollChart: View {
     }
 }
 
-/// The payroll chart's audio graph: each season across, the committed money up (in the served words), the budget a
-/// gridline, and the served sentence as the summary.
+/// A dollar figure on an audio graph's axis, as the chart's own axis prints it ("$150M"): a number, never a served label.
+func audioGraphDollars(_ value: Double) -> String {
+    value.formatted(.currency(code: "USD").notation(.compactName).precision(.fractionLength(0...1)))
+}
+
+/// The payroll chart's audio graph: each season across, the committed money up, the projected range as a second series
+/// (its low edge, the high edge beside it), the budget a gridline, and the served sentence as the summary.
 struct PayrollDescriptor: AXChartDescriptorRepresentable {
     let view: Components.Schemas.FinancePayrollView
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let seasons = view.seasons.map { String($0.season) }
         let x = AXCategoricalDataAxisDescriptor(title: String(localized: "Season"), categoryOrder: seasons)
-        let high = max(view.seasons.map { max($0.committed, $0.projected?.high ?? 0) }.max() ?? 1, view.budget.amount ?? 0, 1)
-        let words = Dictionary(view.seasons.map { ($0.committed, $0.committedCell.display) }, uniquingKeysWith: { first, _ in first })
+        let high = max(view.seasons.map { max($0.committed, $0.projected?.high ?? 0, $0.budget ?? 0) }.max() ?? 1, view.budget.amount ?? 0, 1)
         let y = AXNumericDataAxisDescriptor(
             title: String(localized: "Committed"),
             range: 0...high,
-            gridlinePositions: view.budget.amount.map { [$0] } ?? []
-        ) { value in words[value] ?? view.budget.label.display }
+            gridlinePositions: view.budget.amount.map { [$0] } ?? [],
+            valueDescriptionProvider: audioGraphDollars
+        )
         let committed = AXDataSeriesDescriptor(
             name: String(localized: "Committed"),
             isContinuous: false,
             dataPoints: view.seasons.map { AXDataPoint(x: String($0.season), y: $0.committed, additionalValues: [], label: $0.claim.text) }
         )
+        let projected = AXDataSeriesDescriptor(
+            name: String(localized: "Could Come on Top"),
+            isContinuous: false,
+            dataPoints: view.seasons.compactMap { season in
+                guard let p = season.projected else { return nil }
+                return AXDataPoint(x: String(season.season), y: p.low, additionalValues: [.number(p.high)], label: season.projectedCell?.display)
+            }
+        )
         return AXChartDescriptor(title: String(localized: "Committed salary by season"), summary: view.chartSummary.display,
-                                 xAxis: x, yAxis: y, additionalAxes: [], series: [committed])
+                                 xAxis: x, yAxis: y, additionalAxes: [], series: projected.dataPoints.isEmpty ? [committed] : [committed, projected])
     }
 }
 

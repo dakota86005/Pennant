@@ -174,7 +174,8 @@ struct HorizonPipeline: View {
     }
 }
 
-/// Committed salary by season against the club's budget: bars and a dashed rule, one image element with its audio graph.
+/// Committed salary by season against each season's served budget (a rule across its column), one image element with its
+/// audio graph.
 struct HorizonMoney: View {
     let view: Components.Schemas.FinanceHorizonView
     @Environment(\.theme) private var theme
@@ -193,13 +194,17 @@ struct HorizonMoney: View {
                         BarMark(x: .value("Season", String(money.season)), y: .value("Committed", money.committed), width: .ratio(0.45))
                             .foregroundStyle(palette.isNeutral ? Color.accentColor : palette.accent)
                     }
-                    if let budget = view.budget?.amount {
-                        RuleMark(y: .value("Budget", budget))
-                            .foregroundStyle(Color.primary.opacity(0.7))
-                            .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                            .annotation(position: .top, alignment: .leading) {
-                                Text(verbatim: view.budget?.label.display ?? "").font(.caption).foregroundStyle(.readableSecondary)
-                            }
+                    // Each season's served budget across its own column (today's, or the one the GM expects later)
+                    ForEach(Array(view.payroll.enumerated()), id: \.element.season) { index, money in
+                        if let budget = money.budget {
+                            RectangleMark(x: .value("Season", String(money.season)), y: .value("Budget", budget), width: .ratio(0.9), height: .fixed(2))
+                                .foregroundStyle(Color.primary.opacity(0.7))
+                                .annotation(position: .top, alignment: .leading) {
+                                    if index == 0, let label = view.budget?.label {
+                                        Text(verbatim: label.display).font(.caption).foregroundStyle(.readableSecondary)
+                                    }
+                                }
+                        }
                     }
                 }
                 .chartYAxis {
@@ -227,17 +232,17 @@ struct HorizonMoney: View {
     }
 }
 
-/// The money strip's audio graph from its served figures and summary.
+/// The money strip's audio graph from its served figures and summary: the axis says dollars as the chart prints them.
 struct HorizonMoneyDescriptor: AXChartDescriptorRepresentable {
     let view: Components.Schemas.FinanceHorizonView
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let x = AXCategoricalDataAxisDescriptor(title: String(localized: "Season"), categoryOrder: view.payroll.map { String($0.season) })
-        let high = max(view.payroll.map(\.committed).max() ?? 1, view.budget?.amount ?? 0, 1)
-        let words = Dictionary(view.payroll.map { ($0.committed, $0.claim.text) }, uniquingKeysWith: { first, _ in first })
-        let y = AXNumericDataAxisDescriptor(title: String(localized: "Committed"), range: 0...high, gridlinePositions: view.budget?.amount.map { [$0] } ?? []) { value in
-            words[value] ?? view.budget?.label.display ?? ""
-        }
+        let high = max(view.payroll.map { max($0.committed, $0.budget ?? 0) }.max() ?? 1, view.budget?.amount ?? 0, 1)
+        let y = AXNumericDataAxisDescriptor(
+            title: String(localized: "Committed"), range: 0...high, gridlinePositions: view.budget?.amount.map { [$0] } ?? [],
+            valueDescriptionProvider: audioGraphDollars
+        )
         let series = AXDataSeriesDescriptor(
             name: String(localized: "Committed"),
             isContinuous: false,

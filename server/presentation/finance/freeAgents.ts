@@ -11,8 +11,8 @@ import type { computeFreeAgents, FreeAgentRow, MightReachRow } from '../../freea
 import type { BasisLine, Cell } from '../../contract/presentation.js';
 import { basis, cell, claim } from '../claim.js';
 import {
-  column, fact, filterChoice, hintIf, officeHead, officeLede, officePlayer, officeRow, officeSource,
-  type OfficeContext, type OfficeFact, type OfficeFilterGroup, type OfficeRow, type OfficeTable,
+  column, fact, filterChoice, hintIf, officeHead, officeLede, officePlayer, officeRow, officeSource, paneTable,
+  type OfficeContext, type OfficeFact, type OfficeFilterGroup, type OfficeRow,
 } from '../officeTable.js';
 import { TIP_SCOUTED } from '../player/words.js';
 import type { FinanceFreeAgentDetail, FinanceFreeAgentList, FinanceFreeAgentsView } from './types.js';
@@ -193,7 +193,7 @@ function listOf(
     cells: Object.fromEntries(Object.entries(r.cells).filter(([k]) => shown.has(k))),
     sort: Object.fromEntries(Object.entries(r.sort).filter(([k]) => shown.has(k))),
   }));
-  const table: OfficeTable = { columns, rows: trimmed, empty: cell(args.note ?? args.empty) };
+  const table = paneTable({ columns, rows: trimmed, empty: cell(args.note ?? args.empty) });
   return {
     id,
     title: cell(title),

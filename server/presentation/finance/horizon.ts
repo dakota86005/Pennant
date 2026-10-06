@@ -60,8 +60,11 @@ export interface HorizonInput {
   players: HorizonPlayerInput[];
   /** The farm's next man at each listed position (2 … 10), as the roster map words him. */
   farmNext: Map<number, FarmNextMan[]>;
-  /** Committed salary by season (Payroll's), with the budget each is read against; empty when payroll couldn't be read. */
-  payroll: Array<{ season: number; committed: number; budget: number | null }>;
+  /**
+   * Committed salary by season (Payroll's), with the budget each is read against and whether that is today's budget held
+   * flat for a later season (no budget for it entered); empty when payroll couldn't be read.
+   */
+  payroll: Array<{ season: number; committed: number; budget: number | null; heldFlat?: boolean }>;
   budget: number | null;
   payrollUnknown: string | null;
   /** The OSA mark for a prospect whose readiness rests on OSA's view of him (D-067), or null. */
@@ -193,10 +196,16 @@ export function horizonView(ctx: OfficeContext, input: HorizonInput): FinanceHor
       claim: claim({
         text: `${p.season}: ${money(p.committed)} committed`,
         tone: 'neutral',
+        ...(p.heldFlat && p.budget !== null ? { hint: "Read against today's budget, held flat" } : {}),
         basis: basis({
           because: [
             { label: 'Committed', value: money(p.committed) },
-            { label: 'Measured against', value: p.budget === null ? "No budget in the export" : money(p.budget) },
+            {
+              label: 'Measured against',
+              value: p.budget === null
+                ? 'No budget in the export'
+                : p.heldFlat ? `${money(p.budget)}: today's budget, assumed to hold flat, since no budget for ${p.season} is entered` : money(p.budget),
+            },
           ],
           source: officeSource(ctx, 'Payroll'),
           unknown: p.budget === null ? ["The club's budget isn't in the export."] : [],

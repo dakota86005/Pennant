@@ -4,7 +4,8 @@
  * columns, its rows in the specialist's own order (each a cell and an ordinal sort key per column, null when unknown so
  * it sorts last both ways) and the sentence it says when it has no rows. A row about a player names him, so he opens
  * his own window, compares and follows; what goes with a chosen row (its facts and its claims) is drawn beneath the
- * table. A filter's choices name no rows: each row names the choice it falls under (`filterKeys`). Every word is served; nothing here decides anything (D-001).
+ * table. A filter's choices name no rows: each row names the choice it falls under (`filterKeys`). Every word is
+ * served; nothing here decides anything (D-001).
  */
 import type { GameDate } from '../dataFreshness.js';
 import type { BasisLine, Cell, Claim, DeptId, Row, Target } from '../contract/presentation.js';
@@ -71,6 +72,15 @@ export interface OfficeTable {
   columns: OfficeColumn[];
   rows: OfficeRow[];
   empty: Cell | null;
+  /** A table drawn with a chosen row's detail beneath it: what it says when the filters keep none of its rows. */
+  noneKept?: Cell;
+  /** And what it says beneath it while no row is chosen. */
+  choose?: Cell;
+}
+
+/** A table drawn with its chosen row's detail beneath it, with the two sentences that go with that (N12 review, L6). */
+export function paneTable(table: OfficeTable, noun = 'players'): OfficeTable {
+  return { ...table, noneKept: cell(`No ${noun} match these filters.`), choose: cell('Select a row to see more.') };
 }
 
 /** A choice that narrows a table to some of its rows (Contracts' groups, Free Agents' positions): its words. */

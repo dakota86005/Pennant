@@ -8304,6 +8304,12 @@
     ],
     "empty": {
       "display": "No contracts on the club's roster to show."
+    },
+    "noneKept": {
+      "display": "No players match these filters."
+    },
+    "choose": {
+      "display": "Select a row to see more."
     }
   }
 }

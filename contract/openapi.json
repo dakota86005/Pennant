@@ -12853,6 +12853,14 @@
           },
           "empty": {
             "$ref": "#/components/schemas/Cell"
+          },
+          "noneKept": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "A table drawn with a chosen row's detail beneath it: what it says when the filters keep none of its rows."
+          },
+          "choose": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "And what it says beneath it while no row is chosen."
           }
         },
         "required": [

@@ -1,16 +1,16 @@
 /**
  * Finance's and Medical's views, read and worded (N12, D-071): each view reads what the React page's route computes,
  * through its module (`computePayroll`, `computeContracts`, `computeFreeAgents`, Club Finances' `clubFinances`,
- * `leagueFinances` and its route's `marketPriceHistory`, `orgInjuries`), and the Horizon Board reads Player Value's control timelines
- * (`playerValues`) and the farm's next men (`farmNextByPosition`, as the roster map does), all handed to the pure
- * adapters in `presentation/finance/` and `presentation/medical/`. The service (`officeViewService.ts`) runs it in the
+ * `leagueFinances` and its route's `marketPriceHistory`, `orgInjuriesWithHealth`), and the Horizon Board reads Player
+ * Value's control timelines (`playerValues`) and the farm's next men (`farmNextByPosition`, as the roster map does), all
+ * handed to the pure adapters in `presentation/finance/` and `presentation/medical/`. The service (`officeViewService.ts`) runs it in the
  * Front Office's worker thread, so no request waits behind it. Each part is read on its own: a part that throws is
  * logged and its view says it couldn't be read this time, never taking down the others.
  */
 import { marketPriceHistory } from './clubFinanceRoutes.js';
 import { computeContracts } from './contracts.js';
 import type { DeptId } from './contract/presentation.js';
-import { orgInjuries } from './dashboard.js';
+import { orgInjuriesWithHealth } from './dashboard.js';
 import { getDataStatus, freshnessCue, type DataStatus } from './dataStatus.js';
 import { computeFreeAgents } from './freeagents.js';
 import { farmNextByPosition } from './mlbEvidence.js';
@@ -131,6 +131,7 @@ function horizonOf(ctx: OfficeContext, orgId: number, payroll: ReturnType<typeof
           season: c.year,
           committed: c.total,
           budget: c.year > anySeason ? (payroll.nextSeasonBudget ?? budget) : budget,
+          heldFlat: c.year > anySeason && payroll.nextSeasonBudget === null,
         }))
       : [],
     budget,
@@ -173,6 +174,6 @@ export function buildOfficeViews(request: OfficeViewsRequest): OfficeViewsResult
     return view;
   });
   const horizon = partOf(failed, ms, 'horizon', 'The horizon board', () => horizonOf(plain('finance'), orgId, read.payroll, payrollWhy, cue.state));
-  const injuryReport = partOf(failed, ms, 'injuryReport', 'The injury report', () => injuryReportView(plain('medical'), orgInjuries(orgId)));
+  const injuryReport = partOf(failed, ms, 'injuryReport', 'The injury report', () => injuryReportView(plain('medical'), orgInjuriesWithHealth(orgId)));
   return { payroll, contracts, freeAgents, freeAgentDetails, horizon, injuryReport, failed, ms };
 }

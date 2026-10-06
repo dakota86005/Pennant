@@ -11,7 +11,7 @@ import type { clubFinances, LeagueFinances } from '../../playerValue.js';
 import type { BasisLine, Cell, Claim } from '../../contract/presentation.js';
 import { basis, cell, claim, servedValue, unknownValue } from '../claim.js';
 import {
-  column, counted, fact, hintIf, officeFacts, officeHead, officeLede, officePlayer, officeRow, officeSource,
+  column, counted, fact, hintIf, officeFacts, officeHead, officeLede, officePlayer, officeRow, officeSource, paneTable,
   type OfficeContext, type OfficeFact, type OfficeRow, type OfficeTable,
 } from '../officeTable.js';
 import { ordinal } from '../player/words.js';
@@ -255,6 +255,16 @@ function priceOf(ctx: OfficeContext, league: LeagueFinances, history: readonly P
   return { price: priceClaim, history: historyClaim };
 }
 
+/** How an arbitration year is read, in the costs line: from how many of the save's contracts, or that it can't be yet. */
+export function arbitrationYearWords(status: string, classes: ReadonlyArray<{ cases: number; arbitrationClass: number }>, cases: number): string {
+  if (status === 'no_arbitration') return "an arbitration year doesn't exist in this league";
+  if (classes.length === 0) return "an arbitration year isn't known yet";
+  // None of the save's own contracts to read yet: said as that, never "read from 0 contracts"
+  if (cases === 0) return 'no arbitration contracts on this save to read an arbitration year from yet';
+  const read = classes.filter((c) => c.cases > 0).map((c) => `${c.cases} in the ${ordinal(c.arbitrationClass)} year`).join(', ');
+  return `an arbitration year is read from ${counted(cases, 'contract')} (${read})`;
+}
+
 /** What a season the club controls costs: a renewal's range and how many arbitration contracts each year is read from. */
 function costsOf(ctx: OfficeContext, league: LeagueFinances) {
   const costs = league.costs;
@@ -264,11 +274,7 @@ function costsOf(ctx: OfficeContext, league: LeagueFinances) {
   const usesPrior = r.status === 'provisional' || arb.classes.some((c) => c.status === 'thin' || c.status === 'prior');
   const arbCases = arb.classes.reduce((n, c) => n + c.cases, 0);
   const renewalWords = renewal ? `a renewal costs ${rangeWords(renewal.low, renewal.high)} (${r.cases} renewals this season)` : "a renewal isn't known yet";
-  const arbWords = arb.status === 'no_arbitration'
-    ? "an arbitration year doesn't exist in this league"
-    : arb.classes.length > 0
-      ? `an arbitration year is read from ${arbCases} contracts (${arb.classes.map((c) => `${c.cases} in the ${ordinal(c.arbitrationClass)} year`).join(', ')})`
-      : "an arbitration year isn't known yet";
+  const arbWords = arbitrationYearWords(arb.status, arb.classes, arbCases);
   const observed = league.observed as unknown as { awards?: { text: string; readingsText?: string | null }; reserveClause?: { status: string; text: string } };
   const because: BasisLine[] = [
     { label: 'A renewal', value: `A pre-arbitration renewal: ${howRead(r.status)}. ${r.text}` },
@@ -409,11 +415,11 @@ function contractsTable(ctx: OfficeContext, payroll: Payroll): OfficeTable {
     Object.assign(sort, { player: p.name, position, age: p.age, through: p.endYear, notes: p.options.length > 0 ? p.options.join(', ') : null });
     return officeRow(`payroll-${p.player_id}`, cells, sort, { player: officePlayer(p.player_id, p.name, p.deadMoney ? null : ctx.orgId), claims });
   });
-  return {
+  return paneTable({
     columns: [column('player', 'Player'), column('position', 'Pos'), column('age', 'Age', { numeric: true }), ...yearColumns, column('through', 'Through', { numeric: true }), column('notes', 'Notes', { sortable: false })],
     rows,
     empty: cell('No contracts on the books.'),
-  };
+  });
 }
 
 export interface PayrollInput {
@@ -452,12 +458,25 @@ export function payrollView(ctx: OfficeContext, input: PayrollInput): FinancePay
   } else if (dm.players.length === 0) {
     deadMoney = claim({ text: 'Dead money: none in the export', tone: 'neutral', basis: officeFacts(ctx, SPECIALIST, [{ label: 'What it is', value: 'No contract of a player now elsewhere is on this club\'s books.' }, ...(dm.note ? [{ label: 'Retained salary', value: dm.note }] : [])]) });
   } else {
-    deadMoney = claim({
-      text: `Dead money: ${money(dm.total ?? 0)} still owed to players who left`,
-      tone: 'neutral',
-      value: servedValue(dm.total ?? 0, 'dollars', money(dm.total ?? 0)),
-      basis: officeFacts(ctx, SPECIALIST, dm.players.map((p) => ({ label: p.name, value: p.salary === null ? 'Not stated' : money(p.salary) }))),
-    });
+    // Only the stated salaries are summed: one the export leaves blank is said, never counted as zero (D-018)
+    const stated = dm.players.filter((p) => p.salary !== null);
+    const unstated = dm.players.length - stated.length;
+    const sum = stated.reduce((total, p) => total + p.salary!, 0);
+    const notStated = unstated > 0 ? `, plus ${unstated} not stated` : '';
+    const lines = dm.players.map((p) => ({ label: p.name, value: p.salary === null ? 'Not stated' : money(p.salary) }));
+    const unknown = unstated > 0 ? [`What ${counted(unstated, 'player')} who left ${unstated === 1 ? 'is' : 'are'} still owed isn't in the export.`] : [];
+    deadMoney = stated.length === 0
+      ? claim({
+          text: `Dead money: owed to ${counted(unstated, 'player')} who left, amounts not stated`,
+          tone: 'unknown',
+          basis: officeFacts(ctx, SPECIALIST, lines, unknown),
+        })
+      : claim({
+          text: `Dead money: ${money(sum)} still owed to players who left${notStated}`,
+          tone: 'neutral',
+          value: servedValue(sum, 'dollars', unstated > 0 ? `${money(sum)} + ${unstated} not stated` : money(sum)),
+          basis: officeFacts(ctx, SPECIALIST, lines, unknown),
+        });
   }
 
   const edges = payroll.commitments.filter((c) => c.projected.edges);

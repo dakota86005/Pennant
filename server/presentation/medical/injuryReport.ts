@@ -1,18 +1,18 @@
 /**
  * Medical's Injury Report for the Mac app (N12, D-071): every injured player in the organization, majors to rookie
- * ball, as the trainer's report lists them (`orgInjuries`, read through `health.ts`'s one rule for who is hurt). The
+ * ball, as the trainer's report lists them (`orgInjuriesWithHealth`, read through `health.ts`'s one rule for who is hurt). The
  * React page's words (`src/pages/Injuries.tsx` and its column tips) are served here; a date the export doesn't give is
  * said to be missing, never a dash read as zero (D-018). Pure: it words what it is handed.
  */
-import type { orgInjuries } from '../../dashboard.js';
+import type { orgInjuriesWithHealth } from '../../dashboard.js';
 import type { Cell, Claim } from '../../contract/presentation.js';
 import { cell, claim, servedValue } from '../claim.js';
 import {
-  column, counted, fact, filterChoice, hintIf, officeFacts, officeHead, officeLede, officePlayer, officeRow,
+  column, counted, fact, filterChoice, hintIf, officeFacts, officeHead, officeLede, officePlayer, officeRow, paneTable,
   type OfficeContext, type OfficeFilterGroup, type OfficeTable, type OfficeViewHead,
 } from '../officeTable.js';
 
-type Injury = ReturnType<typeof orgInjuries>[number];
+type Injury = ReturnType<typeof orgInjuriesWithHealth>[number];
 
 /** The Injury Report: the figures, every injured player as a table, and what the export doesn't say. */
 export interface MedicalInjuryReportView extends OfficeViewHead {
@@ -58,7 +58,7 @@ export function injuryReportView(ctx: OfficeContext, injuries: readonly Injury[]
     const playerId = Number(p.player_id);
     const status = STATUS[p.status] ?? { text: String(p.status), hint: 'Injured' };
     const dayToDay = p.status === 'Day-to-day';
-    const playable = (p as { playable?: boolean }).playable === true;
+    const playable = p.playable === true;
     const back = backIn(p.daysLeft ?? null);
     const level = String(p.levelName);
     const ilDays = p.dlDaysThisYear === null || p.dlDaysThisYear === undefined ? null : Number(p.dlDaysThisYear);
@@ -123,7 +123,7 @@ export function injuryReportView(ctx: OfficeContext, injuries: readonly Injury[]
   return {
     ...officeHead(ctx, 'Injury Report', lede, SPECIALIST),
     figures,
-    table: {
+    table: paneTable({
       columns: [
         column('player', 'Player'),
         column('age', 'Age', { numeric: true }),
@@ -135,7 +135,7 @@ export function injuryReportView(ctx: OfficeContext, injuries: readonly Injury[]
       ],
       rows,
       empty: cell('Everyone is healthy across the organization.'),
-    },
+    }),
     filters,
     unknowns: noDate > 0 ? [cell(`The export has no return date for ${counted(noDate, 'injured player')}.`)] : [],
   };

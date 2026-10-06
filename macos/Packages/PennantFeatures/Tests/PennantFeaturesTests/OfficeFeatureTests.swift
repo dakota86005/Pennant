@@ -97,6 +97,21 @@ struct OfficeFeatureTests {
         #expect(descriptor.summary == view.chartSummary.display)
         #expect(descriptor.series.first?.dataPoints.count == view.seasons.count)
         #expect(descriptor.series.first?.dataPoints.first?.label == view.seasons.first?.claim.text)
+        // The axis says dollars as the chart prints them, never the budget's label for every tick (L4)
+        let budget = try #require(view.budget.amount)
+        let tick = (descriptor.yAxis?.valueDescriptionProvider(budget) ?? "")
+        #expect(tick.hasPrefix("$"))
+        #expect(tick != view.budget.label.display)
+        #expect((descriptor.yAxis?.valueDescriptionProvider(1) ?? "") != view.budget.label.display)
+        // What could come on top is a series of its own, each season's served words its label
+        let projected = view.seasons.filter { $0.projected != nil }
+        if !projected.isEmpty {
+            #expect(descriptor.series.count == 2)
+            #expect(descriptor.series[1].dataPoints.map(\.label) == projected.map { $0.projectedCell?.display })
+        }
+        let horizon = try #require(store.horizon)
+        let money = HorizonMoneyDescriptor(view: horizon).makeChartDescriptor()
+        #expect((money.yAxis?.valueDescriptionProvider(150_000_000) ?? "") == "$150M")
     }
 
     @Test("the Horizon Board's pipeline is never placed in a season")

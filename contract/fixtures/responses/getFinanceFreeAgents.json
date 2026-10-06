@@ -468,6 +468,12 @@
         "rows": [],
         "empty": {
           "display": "This export doesn't say which league a free agent last played in, so the players available now can't be listed."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       }
     },
@@ -615,6 +621,12 @@
         "rows": [],
         "empty": {
           "display": "No free agents are set to reach the market after 2040."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       }
     },
@@ -770,6 +782,12 @@
         "rows": [],
         "empty": {
           "display": "Nobody else could reach the market after 2040."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       }
     }

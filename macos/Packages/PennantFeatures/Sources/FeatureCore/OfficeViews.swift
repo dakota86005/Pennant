@@ -87,8 +87,10 @@ public struct OfficeHead: View {
                 if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
             }
             // The byline on one line where it fits, else its served parts each on a line of its own: never broken inside
-            // a date. A wrapped byline ("… Through May" over "6, 2040") failed the contrast audit in any colour (14.9:1
-            // by its pixels in the label colour) wherever it sat, and on one line it passed
+            // a date. A workaround of unknown cause, not a fix: the accessibility audit fails some wrapped multi-line text
+            // frames whatever their colour (a wrapped "… Through May" over "6, 2040" failed at 14.9:1 by its pixels in the
+            // label colour, wherever it sat), and the same words on one line pass. Why the audit measures a wrapped frame
+            // that way is not established
             ViewThatFits(in: .horizontal) {
                 Text(verbatim: byline.display).lineLimit(1).fixedSize()
                 VStack(alignment: .leading, spacing: 2) {
@@ -220,8 +222,8 @@ public struct OfficeTableView: View {
             Group {
                 if table.rows.isEmpty, let empty = table.empty {
                     Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
-                } else if !table.rows.isEmpty {
-                    Text("No players match these filters.").foregroundStyle(.readableSecondary)
+                } else if !table.rows.isEmpty, let none = table.noneKept {
+                    Text(verbatim: none.display).foregroundStyle(.readableSecondary)
                 }
             }
             .padding(.horizontal, 28).padding(.vertical, 12)
@@ -338,8 +340,8 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let row = chosenRow {
                     OfficeRowDetail(row: detailOf(row))
-                } else if !table.rows.isEmpty {
-                    Text("Select a row to see more.").font(.callout).foregroundStyle(.readableSecondary)
+                } else if !table.rows.isEmpty, let choose = table.choose {
+                    Text(verbatim: choose.display).font(.callout).foregroundStyle(.readableSecondary)
                 }
                 notes
             }
