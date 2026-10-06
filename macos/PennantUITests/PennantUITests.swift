@@ -1296,7 +1296,14 @@ final class PennantUITests: XCTestCase {
                 }
                 if round == 1 { keep(window.screenshot(), named: "n12b-narrow-900-\(view.view)") }
                 up("\(view.view), round \(round)")
-                if round == 1 { try audit(app, named: "accessibility-audit-n12b-narrow-\(view.view)") }
+                if round == 1 {
+                    // The view at rest before it is measured: nothing still being read (a view drawn as updating fades
+                    // its rows while the newer payload lands, run 3 of the first five), and the window in front
+                    let busy = app.progressIndicators.firstMatch
+                    if busy.exists { _ = busy.waitForNonExistence(timeout: 20) }
+                    up("audit of \(view.view)")
+                    try audit(app, named: "accessibility-audit-n12b-narrow-\(view.view)")
+                }
             }
         }
         quitCleanly(app)
