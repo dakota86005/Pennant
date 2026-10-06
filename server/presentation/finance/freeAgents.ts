@@ -71,7 +71,7 @@ function rowOf(ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<st
   const position = p.positionName && p.positionName !== '?' ? p.positionName : null;
   const facts: OfficeFact[] = [];
   if (p.team) facts.push(fact('His club now', p.team));
-  if (why) facts.push(fact(why.label, why.reason));
+  if (why) facts.push(fact('Why he might reach it', why.label));
   if (thinHere) facts.push(fact('Thin spot', `${p.positionName} is one of your thinnest positions: your best there, ${thinHere.name}, is expected to add ${signedTenths(thinHere.wins)} wins the rest of this season.`));
   if (p.salaryNote) facts.push(fact('Salary', p.salaryNote));
   if ((!p.winsNext || !p.winsNow) && p.winsReason) facts.push(fact('Production', p.winsReason));
@@ -115,7 +115,20 @@ function rowOf(ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<st
   }, {
     player: officePlayer(p.player_id, p.name),
     facts,
-    claims: [marketClaim],
+    claims: why
+      ? [marketClaim, claim({
+          text: `Why he might reach the market: ${why.label}`,
+          tone: 'unknown',
+          basis: basis({
+            because: [{ label: 'Why', value: why.reason }],
+            source: officeSource(ctx, 'Player Rights, through Player Value'),
+            unknown: [why.reason],
+            wouldChange: ['The option decided, or his service settled at the next import.'],
+            lean: null,
+            certainty: 'unknown',
+          }),
+        })]
+      : [marketClaim],
     ratingsFill: fill ? cell(fill.mark, { hint: fill.hint }) : null,
   });
 }

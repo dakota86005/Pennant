@@ -162,6 +162,24 @@ describe('Payroll & Budget (N12)', () => {
   });
 });
 
+describe('Free Agents (N12)', () => {
+  it('keeps why a player might reach the market in a breakdown: its method words never on the face', () => {
+    const f = computeFreeAgents(save.org, getDataStatus());
+    const any = [...f.currentFAs, ...f.upcomingFAs][0] ?? null;
+    const base = any ?? {
+      player_id: 4242, name: 'Pat Option', age: 31, position: 6, positionName: 'SS', isPitcher: false, team: 'Club', salaryNow: 8_000_000, salaryNote: null,
+      scouted: { now: null, ceiling: null, status: 'unknown' }, winsNow: null, winsNext: null, winsReason: 'Not projected.',
+      market: { status: 'unknown', season: 2041, low: null, central: null, high: null, reason: 'Not projected.', text: 'Not projected.' },
+    };
+    const row = { ...base, why: { kind: 'option' as const, label: 'Club option', reason: 'A club option season: exercised, $8,000,000; declined, the buyout and then indeterminate.' } };
+    const view = freeAgentsView(ctx(), { ...f, mightReach: [row] } as typeof f, () => null);
+    const list = view.lists.find((l) => l.id === 'mightReach')!;
+    expect(list.table.rows[0].cells.why.display).toBe('Club option');
+    expect(bannedInPayload(view)).toEqual([]);
+    expect(list.table.rows[0].claims.some((c) => c.basis.because.some((b) => /indeterminate/.test(b.value)))).toBe(true);
+  });
+});
+
 describe('the Horizon Board (N12; D-057)', () => {
   const base = (): HorizonInput => ({
     thisSeason: 2040,
