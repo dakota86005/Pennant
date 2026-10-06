@@ -139,12 +139,14 @@ struct CompareHead: View {
                 .padding(.horizontal, 20)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // The served lines in the callout size, as every served secondary line is: at the caption size the runner's
+            // 1× screen drew this one too thin for the contrast audit ("nearly passed", PR #58)
             if let refused {
-                Text(verbatim: refused.display).font(.caption).foregroundStyle(.readableSecondary).help(detail: refused.hint)
+                Text(verbatim: refused.display).font(.callout).foregroundStyle(.readableSecondary).help(detail: refused.hint)
                     .padding(.horizontal, 20)
             }
             if let note = served?.note {
-                Text(verbatim: note.display).font(.caption).foregroundStyle(.readableSecondary).help(detail: note.hint)
+                Text(verbatim: note.display).font(.callout).foregroundStyle(.readableSecondary).help(detail: note.hint)
                     .padding(.horizontal, 20).fixedSize(horizontal: false, vertical: true)
             }
         }

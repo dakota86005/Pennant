@@ -125,12 +125,14 @@ struct PlayerNoteSaveTests {
         let store = PlayerStore()
         store.noteDelay = .milliseconds(10)
         let transport = NoteTransport()
-        transport.next(.answer, hold: .milliseconds(200))
+        transport.next(.answer, hold: .milliseconds(500))
         let c = client(transport)
         let save: @MainActor (Int) async -> Void = { id in await store.flush(id, client: c) }
         store.type(1019, "Ready") { await save($0) }
-        // The first save is under way, held by the server
-        try? await Task.sleep(for: .milliseconds(60))
+        // The first save is under way, held by the server: waited for by what the server has seen, not a fixed time
+        // (a loaded CI machine took longer than 60 ms to send it, PR #58)
+        let deadline = ContinuousClock.now + .seconds(10)
+        while transport.sent.isEmpty && ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(5)) }
         #expect(transport.sent == ["Ready"])
         store.type(1019, "Ready for the late innings") { await save($0) }
         await store.flush(1019, client: c)

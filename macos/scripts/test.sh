@@ -173,8 +173,17 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
       -skipPackagePluginValidation ${signing[@]+"${signing[@]}"} test || failed=1
   # The restoration test's saved windows, if a failure left them (the runner may not reach the folder itself)
   rm -rf "$HOME/Library/Saved Application State/com.dakotawise.pennant.dev.savedState"
-  # What each accessibility audit set aside, and why, and any finding: printed by the tests, repeated here for the CI log
-  grep -E "^\[audit\]" "$LOGS/xcodebuild-test.log" | sort -u || true
+  # What each accessibility audit set aside, and why, and any finding, and a quit that needed help or did not finish:
+  # printed by the tests, repeated here for the CI log
+  grep -E "^\[(audit|quit)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
+  # Each test's app log (the server's lines and the app's own: the launch, the quit's steps), kept with the run's logs
+  # (the CI artifact): the synthetic league's only
+  for log in "$UI_SCRATCH"/*/logs/server*.log; do
+    [ -f "$log" ] || continue
+    test_name="$(basename "$(dirname "$(dirname "$log")")")"
+    mkdir -p "$LOGS/ui-tests/$test_name"
+    cp "$log" "$LOGS/ui-tests/$test_name/"
+  done
   if grep -q "Failed to activate application" "$LOGS/xcodebuild-test.log"; then
     echo "The app started (see each test's logs/server.log under $UI_SCRATCH) but XCUITest could not bring it to the"
     echo "front. That happens while the Mac's screen is locked or asleep: unlock it and run the tests again."
