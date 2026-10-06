@@ -14,7 +14,7 @@ import type { MlbBlock, MlbLine, MlbRow } from '../majorLeague/types.js';
 import { BATTING_STATS } from '../statCatalog.js';
 import { factClaim, head, HAND_WORDS, dayWords, player, statCell, statSort, type ClubhouseContext } from './common.js';
 import type { MlbLineupChoice, MlbLineupChoices, MlbLineupQuery, MlbLineupView } from './types.js';
-import { withFill, type RatingFill } from './fill.js';
+import { fillMark, withFill, type RatingFill } from './fill.js';
 
 const CARD = 'The lineup card';
 const stat = (key: string) => BATTING_STATS.find((s) => s.key === key)!;
@@ -157,7 +157,7 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
       wrcPlus: statSort(l.wrcPlus),
       war: statSort(l.war),
       why: l.slot,
-    }, { player: player(l.player_id, l.name, orgId), detail });
+    }, { player: player(l.player_id, l.name, orgId), detail, ratingsFill: fillMark(fill) });
   });
 }
 

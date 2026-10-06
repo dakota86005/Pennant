@@ -219,7 +219,8 @@ struct DepthList: View {
     }
 }
 
-/// One man at a position: his name (which opens his club, follows and drags as him) and his served line.
+/// One man at a position: his name (which opens his window, compares, follows and drags as him), his served line, and
+/// the OSA mark beside it when his grades are OSA's view filling in for our scouts (D-067).
 struct DepthEntryLine: View {
     let entry: Components.Schemas.MlbDepthEntry
     let font: Font
@@ -232,6 +233,7 @@ struct DepthEntryLine: View {
             Text(verbatim: entry.line.display).font(.footnote).monospacedDigit().foregroundStyle(.primary)
                 .lineLimit(1).fixedSize()
                 .help(detail: entry.line.hint)
+            if let fill = entry.ratingsFill { RatingFillMark(fill).fixedSize() }
         }
     }
 }

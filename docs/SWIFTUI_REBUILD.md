@@ -205,6 +205,11 @@ request that fails shows the server's sentence, or one of three structural lines
   MB, heap 91 to 38 MB, the first open after a start 498 to 76 ms; the owner's export 1133 to 819 MB, heap 103 to 39 MB,
   the first open 1467 to 166 ms (the idle warm-up it moves costs 0.4 s and 1.2 s on an idle thread); a kept dossier p50
   0.3 ms.
+- **With N9's clubhouse tools (2026-10-05):** every player the seven tools name opens his window (a row on Return, a
+  double-click or its menu; a depth-chart entry, a plan's line or a matchup row by his name), and their tables compare
+  the rows chosen. A game's row serves its two starters (`players`, ours first): its menu opens either and Compare takes
+  both. The Lineup's, Pitching Availability's, the Depth Chart's (both modes) and the Rosters' rows and entries carry and
+  draw the OSA mark; `ratingFillEverywhere.test.ts` walks the clubhouse payloads too.
 - *Left for later:* the React card's hover card (a summary on resting over a name) is not drawn: the name opens the
   window; the season-by-season breakdown's row hover (the season's control) is in the cone's season detail instead; the
   farm's tables compare the right-clicked player (several chosen only in Major League Ops' tables).

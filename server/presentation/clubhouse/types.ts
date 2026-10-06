@@ -130,6 +130,8 @@ export interface MlbGamePlanView extends MlbViewHead {
 export interface MlbDepthEntry {
   player: MlbPlayer;
   line: Cell;
+  /** The mark beside his grades when they are OSA's view filling in for our scouts (D-067, N11); absent otherwise. */
+  ratingsFill?: Cell;
 }
 
 /** A position's depth at one club, deepest-first as the scouts grade them now. */

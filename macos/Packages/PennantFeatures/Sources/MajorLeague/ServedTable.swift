@@ -44,7 +44,8 @@ nonisolated struct ServedSort: SortComparator, Hashable, Sendable {
 /// A served table as a native `Table` (SWIFTUI_REBUILD.md section 3.6): the served columns (each can be hidden, moved
 /// and resized, and the window remembers how), sorting by the served keys with unknowns last, keyboard navigation, a
 /// player's row that drags as the player, and a context menu that opens his window (also a double-click or Return, N11)
-/// or his club, compares the selected players, follows him, copies his name, or opens the decisions the row offers. A
+/// or his club, compares the selected players, follows him, copies his name, or opens the decisions the row offers; a row
+/// about no one player that names some (a game's two starters) opens each and compares them. A
 /// filled player's grades carry the OSA mark beside his name (D-067). It fills the space it is given and scrolls by itself:
 /// it is only ever placed in a `TablePane`, never inside a page's scroll view (the N8 crash; see `TablePane`).
 struct ServedTable: View {
@@ -157,15 +158,37 @@ struct ServedTable: View {
         .background(Color.readablePage)
         .contextMenu(forSelectionType: ServedRow.ID.self) { ids in
             if let row = table.rows.first(where: { ids.contains($0.id) }) {
-                menu(for: row, chosen: table.rows.filter { ids.contains($0.id) }.compactMap { $0.player.map { PlayerRef(id: $0.playerId) } })
+                menu(for: row, chosen: Self.players(in: table.rows.filter { ids.contains($0.id) }))
             }
         } primaryAction: { ids in
             if let player = table.rows.first(where: { ids.contains($0.id) })?.player { openWindow(value: PlayerRef(id: player.playerId)) }
         }
     }
 
+    /// The players the chosen rows name, in the table's order, each once: a row's player, or the players a row about no one
+    /// player names (a game's two starters), so Compare takes them all.
+    static func players(in rows: [Components.Schemas.MlbRow]) -> [PlayerRef] {
+        var seen = Set<Int>()
+        return rows.flatMap { row in row.player.map { [$0] } ?? row.players ?? [] }
+            .filter { seen.insert($0.playerId).inserted }
+            .map { PlayerRef(id: $0.playerId) }
+    }
+
     @ViewBuilder
     private func menu(for row: Components.Schemas.MlbRow, chosen: [PlayerRef]) -> some View {
+        if row.player == nil, let named = row.players, !named.isEmpty {
+            // A row about no one player that names some (a game's starters): each opens in his own window
+            if named.count == 1, let only = named.first {
+                OpenPlayerMenuItem(PlayerRef(id: only.playerId))
+            } else {
+                Menu("Open Player", systemImage: "person.text.rectangle") {
+                    ForEach(named, id: \.playerId) { player in
+                        Button { openWindow(value: PlayerRef(id: player.playerId)) } label: { Text(verbatim: player.name) }
+                    }
+                }
+            }
+            CompareMenuItem(chosen)
+        }
         if let player = row.player {
             OpenPlayerMenuItem(PlayerRef(id: player.playerId))
             if let club = player.club {

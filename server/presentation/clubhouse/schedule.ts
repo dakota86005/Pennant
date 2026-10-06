@@ -115,6 +115,12 @@ function gameRows(s: Full, orgId: number, projected: ReadonlySet<number>): { row
         ourStarter: g.ourStarter?.name ?? null,
         theirStarter: g.theirStarter?.name ?? null,
         series: si * 100 + gi,
+      }, {
+        // The game's starters, ours first, each opened in his own window (N11); a starter not named is not listed
+        players: [
+          ...(g.ourStarter ? [player(g.ourStarter.player_id, g.ourStarter.name, orgId)] : []),
+          ...(g.theirStarter ? [player(g.theirStarter.player_id, g.theirStarter.name, g.oppId)] : []),
+        ],
       }));
     });
   });

@@ -83,6 +83,20 @@ describe('the clubhouse tools say what the routes computed (N9)', () => {
     expect(played.rows.map(order)).toEqual([...played.rows.map(order)].sort((a, b) => b - a));
   });
 
+  it('names each game\'s starters on its row, ours first, so either opens in his own window; a starter not named is not listed (N11)', async () => {
+    const schedule = await clubhouseScheduleNow(String(save.org));
+    const rows = schedule.games.table.rows;
+    const named = rows.filter((r) => r.players?.length === 2);
+    expect(named.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.player).toBeNull();
+      const shown = [r.cells.ourStarter, r.cells.theirStarter].filter((c) => c.tone !== 'unknown').map((c) => c.display.replace(/ \([LRS?]\)$/, ''));
+      expect((r.players ?? []).map((p) => p.name)).toEqual(shown);
+      for (const p of r.players ?? []) expect(p.open).toMatchObject({ kind: 'player', playerId: p.playerId });
+    }
+    expect(named[0].players![0].open?.teamId).toBe(save.org);
+  });
+
   it('opens the card against the next game\'s starter\'s hand', () => {
     const built = buildClubhouseViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
     const next = computeNextGame(save.org);

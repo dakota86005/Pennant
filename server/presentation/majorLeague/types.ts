@@ -67,6 +67,11 @@ export interface MlbRow extends Row<string> {
   actions: MlbAction[];
   /** OSA's view filling in for our scouts on this row's grades (D-067): the mark ("OSA") and its sentence; absent otherwise (N11). */
   ratingsFill?: Cell;
+  /**
+   * The players a row names when it is about no one player (N11: a game's two starters, ours first), each openable in his
+   * own window; absent when it names none.
+   */
+  players?: MlbPlayer[];
 }
 
 /** A table, ready to show: its columns, its rows in the specialist's own order, and its sentence when it has none. */

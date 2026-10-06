@@ -6,13 +6,24 @@
  * `playerId`, or a row's `player`) and shows one of his grades, or rests on them, with whether it carries the mark
  * (`ratingsFill`). A target (`{ kind: 'player', playerId }`) only names him.
  */
-const GRADE_CELLS = new Set(['ratings', 'current', 'grade', 'estimate', 'bat', 'glove', 'run', 'tools', 'canPlay', 'fit', 'against']);
+// N9's clubhouse tools: a pitcher's stamina, a roster's scouted grade and each rating (`rating.<id>`), the depth's ceiling
+const GRADE_CELLS = new Set(['ratings', 'current', 'grade', 'estimate', 'bat', 'glove', 'run', 'tools', 'canPlay', 'fit', 'against', 'stamina', 'scouted', 'ceiling']);
+const GRADE_CELL_PREFIXES = ['rating.'];
 const GRADE_FIELDS = ['first', 'latest', 'snapshots'];
+/** The fill's sentence (`OSA_FILL_WORDS`): a cell or line of his that says it rests on his grades. */
+const FILL_SENTENCE = /OSA's view/;
+
+/** Whether one of his own cells (his row's cells, or a cell he carries directly, such as a depth entry's line) says so. */
+function saysFilled(o: Record<string, unknown>): boolean {
+  const own = [...Object.values((o.cells ?? {}) as Record<string, unknown>), ...Object.values(o)];
+  return own.some((c) => !!c && typeof c === 'object' && typeof (c as { hint?: unknown }).hint === 'string' && FILL_SENTENCE.test((c as { hint: string }).hint));
+}
 
 function showsGrades(o: Record<string, unknown>): boolean {
   const cells = (o.cells ?? {}) as Record<string, unknown>;
-  if (Object.keys(cells).some((k) => GRADE_CELLS.has(k))) return true;
+  if (Object.keys(cells).some((k) => GRADE_CELLS.has(k) || GRADE_CELL_PREFIXES.some((p) => k.startsWith(p)))) return true;
   if (GRADE_FIELDS.some((k) => k in o)) return true;
+  if (saysFilled(o)) return true;
   // A fact or a fact row whose label says it is a scouted grade ("Scouted now → ceiling")
   return Array.isArray(o.facts) && /"(?:display|label)":"Scouted/.test(JSON.stringify(o.facts));
 }

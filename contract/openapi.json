@@ -9985,6 +9985,10 @@
           },
           "line": {
             "$ref": "#/components/schemas/Cell"
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The mark beside his grades when they are OSA's view filling in for our scouts (D-067, N11); absent otherwise."
           }
         },
         "required": [
@@ -11013,6 +11017,13 @@
           "ratingsFill": {
             "$ref": "#/components/schemas/Cell",
             "description": "OSA's view filling in for our scouts on this row's grades (D-067): the mark (\"OSA\") and its sentence; absent otherwise (N11)."
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbPlayer"
+            },
+            "description": "The players a row names when it is about no one player (N11: a game's two starters, ours first), each openable in his own window; absent when it names none."
           }
         },
         "required": [

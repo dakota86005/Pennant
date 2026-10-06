@@ -146,12 +146,13 @@ export function tableRow(
   id: string,
   cells: Record<string, Cell>,
   sort: Record<string, number | string | null>,
-  extra: { player?: MlbPlayer | null; detail?: MlbBlock[]; actions?: MlbAction[]; claim?: Claim; ratingsFill?: Cell | null } = {},
+  extra: { player?: MlbPlayer | null; detail?: MlbBlock[]; actions?: MlbAction[]; claim?: Claim; ratingsFill?: Cell | null; players?: MlbPlayer[] } = {},
 ): MlbRow {
   const base = row(id, cells, sort, extra.claim);
   return {
     ...base, player: extra.player ?? null, detail: extra.detail ?? [], actions: extra.actions ?? [],
     ...(extra.ratingsFill ? { ratingsFill: extra.ratingsFill } : {}),
+    ...(extra.players?.length ? { players: extra.players } : {}),
   };
 }
 

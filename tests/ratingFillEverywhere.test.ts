@@ -46,6 +46,22 @@ describe('the OSA mark is carried wherever a grade is shown (review M4)', () => 
     expect(owners.filter((o) => !o.marked).map((o) => o.path)).toEqual([]);
   });
 
+  it('on every clubhouse tool\'s row and depth-chart entry that shows a grade (N9)', async () => {
+    const { buildClubhouseViews } = await import('../server/clubhouseViewsBuild.js');
+    const built = buildClubhouseViews({ orgId: save.org, importStamp: null, reportStamp: 'r1' });
+    const { failed, ms: _ms, ...views } = built;
+    expect(failed).toEqual([]);
+    const owners = gradeOwners(views, 'clubhouse');
+    // Each tool that shows a grade has something checked: the lineup, the staff, the depth (both modes) and the rosters
+    for (const part of ['lineups', 'pitching', 'depth.clubs', 'depth.byPosition', 'rosters']) {
+      expect(owners.some((o) => o.path.startsWith(`clubhouse.${part}`)), part).toBe(true);
+    }
+    expect(owners.filter((o) => !o.marked).map((o) => o.path)).toEqual([]);
+    for (const entry of built.depth.clubs.flatMap((c) => c.positions.flatMap((p) => p.players))) {
+      expect(entry.ratingsFill).toMatchObject({ display: 'OSA', hint: SENTENCE });
+    }
+  });
+
   it('on the player window and Compare', async () => {
     const { buildPlayerDossiers } = await import('../server/playerDossierBuild.js');
     const { compareView } = await import('../server/presentation/player/compare.js');
