@@ -35,10 +35,10 @@ import type {
   FarmAffiliatesView, FarmAssignmentsView, FarmDecisionView, FarmDevelopmentDetail, FarmDevelopmentView, FarmOrganizationView, FarmProspectsView,
 } from './presentation/farm/types.js';
 import {
-  playerCompareNow, playerDossierNow, playerNotesNow, removeStaffNoteNow, restoreStaffNoteNow, setPlayerNoteNow, undoFirstNoteNow,
+  playerCompareNow, playerDossierJsonNow, playerNotesNow, removeStaffNoteNow, restoreStaffNoteNow, setPlayerNoteNow, undoFirstNoteNow,
 } from './playerViewService.js';
 import type {
-  PlayerCompareView, PlayerDossierView, PlayerNoteChange, PlayerNotesView, StaffNoteChange,
+  PlayerCompareView, PlayerNoteChange, PlayerNotesView, StaffNoteChange,
 } from './presentation/player/types.js';
 
 export const v2Routes = Router();
@@ -175,7 +175,15 @@ v2Routes.get('/views/:org/majorLeague/decision', frontOffice<MlbDecisionView>((r
  * his first open; both kept until the next import (`playerViewService.ts`).
  */
 const orgQuery = (value: unknown): string => (typeof value === 'string' && value.trim() ? value.trim() : 'automatic');
-v2Routes.get('/player/:id', frontOffice<PlayerDossierView>((req) => playerDossierNow(String(req.params.id), orgQuery(req.query.org))));
+// The dossier is kept as the JSON this route sends, checked when it was kept (`assertAuthored`): sent as it is (review M5)
+v2Routes.get('/player/:id', (req: Request, res: Response<Buffer | ApiError>, next: NextFunction): void => {
+  playerDossierJsonNow(String(req.params.id), orgQuery(req.query.org)).then((bytes) => {
+    res.type('application/json').send(bytes);
+  }).catch((err: unknown) => {
+    if (err instanceof FrontOfficeRefusal || err instanceof DeskRefusal || err instanceof LeagueRefusal) res.status(err.status).json({ error: err.message });
+    else next(err);
+  });
+});
 v2Routes.get('/player/:id/notes', frontOffice<PlayerNotesView>((req) => playerNotesNow(String(req.params.id))));
 v2Routes.put('/player/:id/notes', frontOffice<PlayerNoteChange>((req) => setPlayerNoteNow(String(req.params.id), req.body)));
 v2Routes.delete('/player/:id/notes', frontOffice<PlayerNoteChange>((req) => undoFirstNoteNow(String(req.params.id))));

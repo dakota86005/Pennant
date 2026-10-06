@@ -20,7 +20,7 @@ import { NO_DATA, frontOfficeInputsKey, frontOfficeStampOf, onFrontOfficeKept, r
 import { addStaffNote, removeStaffNote, snapshotWriteCount, staffNotesOf } from './history.js';
 import { buildPlayerDossiers, type PlayerDossiersResult } from './playerDossierBuild.js';
 import { importedAt } from './playerStateRoutes.js';
-import { adoptAuthored, cell } from './presentation/claim.js';
+import { adoptAuthored, assertAuthored, cell } from './presentation/claim.js';
 import { COMPARE_FEWEST, COMPARE_MOST, compareView } from './presentation/player/compare.js';
 import { notesView } from './presentation/player/notes.js';
 import type {
@@ -34,18 +34,30 @@ interface Kept {
   stamp: string;
   orgId: number;
   importStamp: string | null;
-  views: Map<number, PlayerDossierView>;
+  /**
+   * Each dossier as the JSON the route sends (review M5): checked once when kept (`assertAuthored`), then held as bytes
+   * outside the JS heap and sent as they are, never rebuilt or re-serialized per request.
+   */
+  views: Map<number, Buffer>;
   /** The ids the export has no such player for. */
   missing: Set<number>;
 }
 
 const MAX_BUILDS = 2;
-/** At most this many players read on their first open are kept per build (our club's are kept whatever their number). */
-const MAX_OPENED = 400;
+/**
+ * At most this many players read on their first open are kept per build (our club's are kept whatever their number): a
+ * GM's working set of other clubs' players, held as bytes; the oldest opened is let go first (review M5).
+ */
+export const MAX_OPENED = 150;
+let openedLimit = MAX_OPENED;
+/** Tests only: a smaller limit, so a small league can show the limit at work; null puts MAX_OPENED back. */
+export function limitOpenedForTests(n: number | null): void {
+  openedLimit = n ?? MAX_OPENED;
+}
 const kept = new Map<string, Kept>();
 const warming = new Map<string, Promise<void>>();
-const building = new Map<string, Promise<PlayerDossierView | null>>();
-const stats = { warmBuilds: 0, warmMs: 0, opened: 0, hits: 0 };
+const building = new Map<string, Promise<Buffer | null>>();
+const stats = { warmBuilds: 0, warmMs: 0, opened: 0, hits: 0, readyMs: 0 };
 
 export function playerViewStats(): Readonly<typeof stats & { cached: number; players: number }> {
   return { ...stats, cached: kept.size, players: [...kept.values()].reduce((n, k) => n + k.views.size, 0) };
@@ -55,7 +67,8 @@ export function resetPlayerViews(): void {
   kept.clear();
   warming.clear();
   building.clear();
-  Object.assign(stats, { warmBuilds: 0, warmMs: 0, opened: 0, hits: 0 });
+  Object.assign(stats, { warmBuilds: 0, warmMs: 0, opened: 0, hits: 0, readyMs: 0 });
+  mainThreadReady = null;
 }
 
 export const NO_SUCH_PLAYER = 'Pennant doesn\'t know that player in this save.';
@@ -75,9 +88,18 @@ function entryFor(orgId: number): Kept {
   return entry;
 }
 
+/** A dossier checked as the route's last check would, then serialized once. */
+function serialized(view: PlayerDossierView): Buffer {
+  assertAuthored(adoptAuthored(view));
+  return Buffer.from(JSON.stringify(view));
+}
+
+/** A kept dossier as an object again (Compare and the tests read it), its claims adopted as authored. */
+const revived = (bytes: Buffer): PlayerDossierView => adoptAuthored(JSON.parse(bytes.toString('utf8')) as PlayerDossierView);
+
 function keep(entry: Kept, result: PlayerDossiersResult, generation: number): void {
   if (databaseGeneration() !== generation || kept.get(entry.key) !== entry || playerKey(entry.orgId) !== entry.key) return;
-  for (const view of result.views) entry.views.set(view.playerId, adoptAuthored(view));
+  for (const view of result.views) entry.views.set(view.playerId, serialized(view));
   for (const id of result.missing) entry.missing.add(id);
 }
 
@@ -125,8 +147,16 @@ const idOf = (param: string): number => {
   return id;
 };
 
-/** One player's dossier for the club (`automatic`, or a team id): kept, being read ahead, or read now and kept. */
+/** One player's dossier for the club, as an object (Compare reads it this way). */
 export async function playerDossierNow(param: string, org: string = 'automatic'): Promise<PlayerDossierView> {
+  return revived(await playerDossierJsonNow(param, org));
+}
+
+/**
+ * One player's dossier for the club (`automatic`, or a team id) as the JSON the route sends: kept, being read ahead, or
+ * read now and kept.
+ */
+export async function playerDossierJsonNow(param: string, org: string = 'automatic'): Promise<Buffer> {
   if (!tableExists('players')) throw new LeagueRefusal(NO_DATA, 404);
   const id = idOf(param);
   const orgId = resolveOrg(org);
@@ -136,6 +166,9 @@ export async function playerDossierNow(param: string, org: string = 'automatic')
   const hit = entry.views.get(id);
   if (hit) {
     stats.hits += 1;
+    // The most recently opened is let go last
+    entry.views.delete(id);
+    entry.views.set(id, hit);
     return hit;
   }
   if (entry.missing.has(id)) throw new LeagueRefusal(NO_SUCH_PLAYER, 404);
@@ -156,8 +189,8 @@ export async function playerDossierNow(param: string, org: string = 'automatic')
         stats.opened += 1;
         keep(entry, result, generation);
         const opened = [...entry.views.keys()].filter((p) => !organizationPlayerSet(entry).has(p));
-        if (opened.length > MAX_OPENED) entry.views.delete(opened[0]);
-        return result.views[0] ?? null;
+        while (opened.length > openedLimit) entry.views.delete(opened.shift()!);
+        return entry.views.get(id) ?? (result.views[0] ? serialized(result.views[0]) : null);
       })
       .finally(() => building.delete(buildKey));
     building.set(buildKey, pending);
@@ -292,7 +325,34 @@ export async function restoreStaffNoteNow(param: string, body: unknown): Promise
   return { done: cell('Staff note put back'), notes: notesOf(id), undo: null };
 }
 
-// After each kept build of the club's Front Office: our club's players, read ahead in the worker
+/**
+ * The server's own thread made ready for a first open (the cold-open cost of N11's review): once, when it is idle after a
+ * kept build, one dossier is built and thrown away, so the statements, modules and caches a build needs are in place
+ * before the GM's first click on another club's player. Never throws; keeps nothing.
+ */
+let mainThreadReady: string | null = null;
+export function readyMainThread(orgId: number): void {
+  const key = playerKey(orgId);
+  if (mainThreadReady === key) return;
+  mainThreadReady = key;
+  setImmediate(() => {
+    try {
+      if (!tableExists('players')) return;
+      const someone = db.prepare(`SELECT player_id FROM players WHERE organization_id <> ? AND organization_id > 0 AND COALESCE(retired, 0) = 0 LIMIT 1`).get(orgId) as { player_id: number } | undefined;
+      if (!someone) return;
+      const started = performance.now();
+      buildPlayerDossiers({ orgId, importStamp: importedAt.value, reportStamp: 'ready', playerIds: [Number(someone.player_id)] });
+      stats.readyMs = Math.round(performance.now() - started);
+    } catch (err) {
+      console.error('[players] getting ready for a first open failed; the first open pays for it:', err);
+    }
+  });
+}
+
+// After each kept build of the club's Front Office: our club's players, read ahead in the worker, and this thread made
+// ready for the first open of anyone else's
 onFrontOfficeKept((built) => {
-  if (currentOrganization()?.id === built.orgId) void warmPlayerDossiers(built.orgId);
+  if (currentOrganization()?.id !== built.orgId) return;
+  void warmPlayerDossiers(built.orgId);
+  readyMainThread(built.orgId);
 });

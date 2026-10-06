@@ -4,7 +4,7 @@ import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { historyDb, noteSnapshotsWritten } from '../server/history.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { importedAt } from '../server/playerStateRoutes.js';
-import { playerDossierNow, playerViewStats, resetPlayerViews, warmPlayerDossiers } from '../server/playerViewService.js';
+import { MAX_OPENED, limitOpenedForTests, playerDossierJsonNow, playerDossierNow, playerViewStats, readyMainThread, resetPlayerViews, warmPlayerDossiers } from '../server/playerViewService.js';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
 /**
@@ -70,5 +70,52 @@ describe('our club\'s players are ready when the GM opens them', () => {
   it('says in a sentence that it doesn\'t know a player the save doesn\'t have', async () => {
     await expect(playerDossierNow('99999999', String(save.org))).rejects.toMatchObject({ status: 404, message: 'Pennant doesn\'t know that player in this save.' });
     await expect(playerDossierNow('nobody', String(save.org))).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('the kept dossiers are bytes, a bounded set, and the first open is ready (review M5)', () => {
+  it('keeps a dossier as the JSON the route sends, the same bytes each time, readable as the dossier', async () => {
+    const a = await playerDossierJsonNow(String(ours[1]), String(save.org));
+    const b = await playerDossierJsonNow(String(ours[1]), String(save.org));
+    expect(Buffer.isBuffer(a)).toBe(true);
+    expect(b).toBe(a);
+    expect(JSON.parse(a.toString('utf8')).playerId).toBe(ours[1]);
+    expect((await playerDossierNow(String(ours[1]), String(save.org))).playerId).toBe(ours[1]);
+  });
+
+  it('keeps at most its limit of other clubs\' players, the least recently opened let go first, and all of ours', async () => {
+    expect(MAX_OPENED).toBeLessThanOrEqual(150);
+    // The small league has fewer other players than the limit: a limit of 20 shows it at work
+    const LIMIT = 20;
+    limitOpenedForTests(LIMIT);
+    resetPlayerViews();
+    await warmPlayerDossiers(save.org);
+    const others = (db.prepare('SELECT player_id FROM players WHERE organization_id <> ? AND organization_id > 0 ORDER BY player_id LIMIT ?').all(save.org, LIMIT + 3) as Array<{ player_id: number }>).map((r) => r.player_id);
+    expect(others.length).toBe(LIMIT + 3);
+    await playerDossierJsonNow(String(others[0]), String(save.org));
+    for (const id of others.slice(1)) {
+      await playerDossierJsonNow(String(id), String(save.org));
+      // The first one opened again each time: recently used, so never the one let go
+      await playerDossierJsonNow(String(others[0]), String(save.org));
+    }
+    try {
+      expect(playerViewStats().players).toBe(ours.length + LIMIT);
+      const opened = playerViewStats().opened;
+      await playerDossierJsonNow(String(others[0]), String(save.org));
+      expect(playerViewStats().opened).toBe(opened);
+      await playerDossierJsonNow(String(others[1]), String(save.org));
+      expect(playerViewStats().opened).toBe(opened + 1);
+    } finally {
+      limitOpenedForTests(null);
+    }
+  }, 120_000);
+
+  it('makes the server\'s thread ready for a first open once, when idle, keeping nothing', async () => {
+    resetPlayerViews();
+    readyMainThread(save.org);
+    readyMainThread(save.org);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(playerViewStats().readyMs).toBeGreaterThan(0);
+    expect(playerViewStats().players).toBe(0);
   });
 });
