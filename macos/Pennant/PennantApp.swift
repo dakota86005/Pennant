@@ -96,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = model.serverController
         self.model = model
         outside = OutsideTheWindow(model: model)
-        quit = QuitCoordinator(prepare: { model.beginShutdown() }, stop: { await controller.stop() })
+        quit = QuitCoordinator(prepare: { model.beginShutdown() }, lastWords: { model.lastNoteSaves() }, stop: { await controller.stop() })
         super.init()
         // The server starts now, while the windows are built (the launch budget); `applicationDidFinishLaunching` follows it
         model.startEarly()

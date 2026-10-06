@@ -154,6 +154,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testCompareByMenuAndDrag configured '{"theme":"light"}'
   prepare_ui_test testPlayerWindowRestored configured '{"theme":"light"}'
   prepare_ui_test testPlayerNarrowWindow configured '{"theme":"light"}'
+  prepare_ui_test testPlayerNoteKeptOnLeaving configured '{"theme":"light"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
   if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi
@@ -164,6 +165,8 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
     xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS' \
       -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" \
       -skipPackagePluginValidation ${signing[@]+"${signing[@]}"} test || failed=1
+  # The restoration test's saved windows, if a failure left them (the runner may not reach the folder itself)
+  rm -rf "$HOME/Library/Saved Application State/com.dakotawise.pennant.dev.savedState"
   # What each accessibility audit set aside, and why, and any finding: printed by the tests, repeated here for the CI log
   grep -E "^\[audit\]" "$LOGS/xcodebuild-test.log" | sort -u || true
   if grep -q "Failed to activate application" "$LOGS/xcodebuild-test.log"; then

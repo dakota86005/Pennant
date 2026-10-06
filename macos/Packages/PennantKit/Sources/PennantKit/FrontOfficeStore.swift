@@ -468,7 +468,7 @@ public final class FrontOfficeStore {
             let view = try await client.getDesk(path: .init(org: Self.org(key))).ok.body.json
             if claimDesk(sequence, key: key) { apply(deskView: view) }
         } catch {
-            log("could not read the desk again: \(error)")
+            log("could not read the desk again: \(RequestProblem.logLine(error))")
         }
     }
 

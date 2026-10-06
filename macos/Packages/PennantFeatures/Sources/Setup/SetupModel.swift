@@ -404,7 +404,7 @@ public final class SetupModel {
             await observe(try await client.getStatus().ok.body.json, fresh: true)
         } catch {
             // The event stream still brings the import's news
-            log("setup: reading the status: \(String(describing: error))")
+            log("setup: reading the status: \(RequestProblem.logLine(error))")
         }
     }
 

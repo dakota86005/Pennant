@@ -22,14 +22,41 @@ public enum RequestProblem: Error, Hashable, Sendable {
         }
     }
 
-    /// The kind of problem a thrown error is.
+    /// The kind of problem a thrown error is. Its detail is `logLine(error)`: never the error's own description.
     public static func from(_ error: any Error) -> RequestProblem {
         if let problem = error as? RequestProblem { return problem }
         let cause = (error as? ClientError)?.underlyingError ?? error
         if cause is URLError || (cause as NSError).domain == NSURLErrorDomain {
-            return .unreachable(detail: String(describing: error))
+            return .unreachable(detail: logLine(error))
         }
-        return .failed(detail: String(describing: error))
+        return .failed(detail: logLine(error))
+    }
+
+    /// A thrown error as the log and a help tag may keep it: the operation, the answer's status when there was one, and
+    /// the underlying error's domain and code. Never the error's own description: an OpenAPIRuntime `ClientError`
+    /// describes its `operationInput`, which for a note is the GM's own words (review H1, N11), and the app log persists.
+    public static func logLine(_ error: any Error) -> String {
+        if let problem = error as? RequestProblem { return problem.detail ?? "a served refusal" }
+        let client = error as? ClientError
+        let cause = client?.underlyingError ?? error
+        let ns = cause as NSError
+        var parts: [String] = []
+        if let client {
+            parts.append(client.operationID)
+            if let status = client.response?.status.code { parts.append("HTTP \(status)") }
+        }
+        parts.append("\(ns.domain) \(ns.code)")
+        return parts.joined(separator: ": ")
+    }
+
+    /// Whether a thrown error is only a cancelled request (a task or a URL load called off): a non-event, never a problem
+    /// line or a log line.
+    public static func isCancellation(_ error: any Error) -> Bool {
+        if error is CancellationError { return true }
+        let cause = (error as? ClientError)?.underlyingError ?? error
+        if cause is CancellationError { return true }
+        let ns = cause as NSError
+        return ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled
     }
 
     /// An answer with a status code the contract does not document.

@@ -10,6 +10,13 @@ final class Flag: @unchecked Sendable {
     func set(_ value: Bool = true) { lock.withLock { _value = value } }
 }
 
+final class OrderLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _all: [String] = []
+    var all: [String] { lock.withLock { _all } }
+    func add(_ step: String) { lock.withLock { _all.append(step) } }
+}
+
 /// Spins the main run loop (only its sources and blocks, never the main dispatch queue, since this runs inside a
 /// main-queue job) until the condition holds.
 @MainActor
@@ -40,6 +47,21 @@ struct QuitCoordinatorTests {
         while stopped.value == nil && Date.now < deadline { usleep(1_000) }
         #expect(stopped.value == true)
         // The reply comes through the main run loop, from inside this main-queue job
+        runMainLoop { replied.value != nil }
+        #expect(replied.value == true)
+    }
+
+    @Test("the last words (the notes not kept yet) reach the server before it stops, without the main queue")
+    func lastWordsFirst() {
+        let order = OrderLog()
+        let replied = Flag()
+        let quit = QuitCoordinator(prepare: {}, lastWords: {
+            { try? await Task.sleep(for: .milliseconds(20)); order.add("notes") }
+        }) { order.add("stop") }
+        #expect(quit.shouldTerminate { replied.set($0) } == .terminateLater)
+        let deadline = Date.now.addingTimeInterval(2)
+        while order.all.count < 2 && Date.now < deadline { usleep(1_000) }
+        #expect(order.all == ["notes", "stop"])
         runMainLoop { replied.value != nil }
         #expect(replied.value == true)
     }

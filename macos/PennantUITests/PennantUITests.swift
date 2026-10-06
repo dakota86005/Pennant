@@ -32,6 +32,16 @@ final class PennantUITests: XCTestCase {
         }
     }
 
+    /// A test of restoration leaves the app's saved windows behind if it fails midway: they are removed, so the next test
+    /// (and the next run) opens without them (review L6). The app's own saved-state folder, under the real home; a runner
+    /// that may not reach it leaves it, and `test.sh` removes it after the run as well.
+    override func tearDownWithError() throws {
+        guard let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir else { return }
+        let state = URL(fileURLWithPath: String(cString: home))
+            .appending(path: "Library/Saved Application State/com.dakotawise.pennant.dev.savedState", directoryHint: .isDirectory)
+        try? FileManager.default.removeItem(at: state)
+    }
+
     // MARK: Helpers
 
     /// The pretend OOTP save `test.sh` put in the test's folder: the `.lg` folder with the synthetic league's export.
@@ -1614,9 +1624,59 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(playerWindow(again, "1000").waitForExistence(timeout: 30), "his window was not restored at relaunch")
         XCTAssertTrue(element(again, "player.header").waitForExistence(timeout: 60), "the restored window did not load his dossier")
         keep(again.windows.firstMatch.screenshot(), named: "n11-player-window-restored")
-        // Closed, so the next launch of the app opens without it
-        again.typeKey("w", modifierFlags: .command)
+        // Closed by its own close button (⌘W goes to whichever window is key), so the next launch opens without it
+        let restored = again.windows.containing(.any, identifier: "player.window.1000").firstMatch
+        restored.buttons[XCUIIdentifierCloseWindow].click()
+        XCTAssertTrue(playerWindow(again, "1000").waitForNonExistence(timeout: 5), "his window did not close")
         quitCleanly(again)
+    }
+
+    /// The GM's note survives leaving it at once (review H2): typed, then another section chosen and the app quit at
+    /// once; typed again, then the window closed and the app quit at once. Each time the next launch reads it back.
+    @MainActor
+    func testPlayerNoteKeptOnLeaving() throws {
+        let notes = { (app: XCUIApplication) -> XCUIElement in
+            let tab = self.element(app, "player.sections").radioButtons.matching(NSPredicate(format: "label == 'Notes' OR title == 'Notes'")).firstMatch
+            XCTAssertTrue(tab.waitForExistence(timeout: 10))
+            tab.click()
+            let editor = self.element(app, "player.notes.editor")
+            XCTAssertTrue(editor.waitForExistence(timeout: 10), "the Notes section did not draw")
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in editor.isEnabled }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, "his note was not read")
+            return editor
+        }
+        let open = { () -> XCUIApplication in
+            let app = self.launch(arguments: ["-PennantDebugOpenPlayer", "1000"])
+            self.waitForShell(app)
+            XCTAssertTrue(self.playerWindow(app, "1000").waitForExistence(timeout: 15), "the player's window did not open")
+            XCTAssertTrue(self.element(app, "player.header").waitForExistence(timeout: 30))
+            return app
+        }
+        let reads = { (app: XCUIApplication, text: String) in
+            let editor = notes(app)
+            let kept = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in (editor.value as? String) == text }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [kept], timeout: 10), .completed, "the note read back \(String(describing: editor.value)), not \(text)")
+        }
+        // Typed, then another section at once, then quit at once
+        let first = open()
+        let editor = notes(first)
+        editor.click()
+        editor.typeText("Kept on switching")
+        element(first, "player.sections").radioButtons.matching(NSPredicate(format: "label == 'Overview' OR title == 'Overview'")).firstMatch.click()
+        quitCleanly(first)
+        let second = open()
+        reads(second, "Kept on switching")
+        // Typed again, then the window closed by its own button at once, then quit at once
+        let again = notes(second)
+        again.click()
+        again.typeKey("a", modifierFlags: .command)
+        again.typeText("Kept on closing")
+        second.windows.containing(.any, identifier: "player.window.1000").firstMatch.buttons[XCUIIdentifierCloseWindow].click()
+        quitCleanly(second)
+        let third = open()
+        reads(third, "Kept on closing")
+        third.windows.containing(.any, identifier: "player.window.1000").firstMatch.buttons[XCUIIdentifierCloseWindow].click()
+        quitCleanly(third)
     }
 
     /// A small player window (520 × 480): every section, five rounds, nothing cut off and the app up throughout (the N8

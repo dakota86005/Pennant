@@ -835,7 +835,7 @@ public final class AppModel {
     }
 
     private func note(_ error: any Error, reading what: String) {
-        lastRequestError = "\(what): \(error)"
-        controller.log.write("could not read the \(what): \(error)", source: "app")
+        lastRequestError = "\(what): \(RequestProblem.logLine(error))"
+        controller.log.write("could not read the \(what): \(RequestProblem.logLine(error))", source: "app")
     }
 }

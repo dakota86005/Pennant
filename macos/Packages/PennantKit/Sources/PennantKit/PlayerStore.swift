@@ -22,6 +22,22 @@ public final class PlayerStore {
     /// The served words of the last note change ("Note saved for …"), shown a moment.
     public private(set) var noteDone: [Int: String] = [:]
 
+    /// The GM's note as typed and not kept yet, by player (review H2, N11). It lives here, keyed by player, not in a
+    /// window: a section switch, a closed window or a quit flushes it (`AppModel.flushPlayerNote`, `lastNoteSaves`), and
+    /// a keystroke never cancels a save under way.
+    public private(set) var drafts: [Int: String] = [:]
+    /// The note last kept, as he typed it (the server keeps an all-blank note as none), by player.
+    private var keptTyped: [Int: String] = [:]
+    /// The players whose first note, typed here, is what followed them: emptying it again is the served undo.
+    private var followedByNote: Set<Int> = []
+    /// The wait after the last key, by player; a new key starts it again.
+    private var waits: [Int: Task<Void, Never>] = [:]
+    /// The save under way, by player: one at a time, the latest draft next. The save clears its own entry as its last
+    /// step, so whoever waited on it finds none when it resumes.
+    private var saving: [Int: (token: UUID, task: Task<Void, Never>)] = [:]
+    /// How long after the last key the note is saved.
+    public var noteDelay: Duration = .milliseconds(600)
+
     /// Each comparison as last served, by the players' ids in the order asked.
     public private(set) var comparisons: [[Int]: Components.Schemas.PlayerCompareView] = [:]
     public private(set) var compareProblems: [[Int]: RequestProblem] = [:]
@@ -59,7 +75,7 @@ public final class PlayerStore {
                 problem = await .undocumented(code, body: payload.body, operation: "getPlayerDossier", fromV2: true)
             }
         } catch {
-            if Task.isCancelled { return }
+            if Task.isCancelled || RequestProblem.isCancellation(error) { return }
             problem = .from(error)
         }
         guard asked[id] == key, !Task.isCancelled else { return }
@@ -81,15 +97,124 @@ public final class PlayerStore {
             case .ok(let answer):
                 notes[id] = try answer.body.json
                 noteProblems[id] = nil
+                // Read again with nothing typed or saving: the served note is the one shown (changed elsewhere, perhaps)
+                if drafts[id] == nil, saving[id] == nil { keptTyped[id] = nil }
             case .notFound(let refused): noteProblems[id] = .served(try refused.body.json.error)
             case .undocumented(let code, let payload):
                 noteProblems[id] = await .undocumented(code, body: payload.body, operation: "getPlayerNotes", fromV2: true)
             }
         } catch {
-            if Task.isCancelled { return }
+            if Task.isCancelled || RequestProblem.isCancellation(error) { return }
             let problem = RequestProblem.from(error)
             noteProblems[id] = problem
             if let detail = problem.detail { log("could not read a player's notes: \(detail)") }
+        }
+    }
+
+    // MARK: The note being typed
+
+    /// The note the editor shows: what he typed and hasn't had kept yet, else what was kept.
+    public func noteText(_ id: Int) -> String {
+        drafts[id] ?? keptTyped[id] ?? notes[id]?.note ?? ""
+    }
+
+    /// Whether his note was read (the editor waits for it), or he has typed since.
+    public func noteReady(_ id: Int) -> Bool {
+        notes[id] != nil || drafts[id] != nil
+    }
+
+    /// The GM typed: kept as the draft, and `save` called a moment after the last key, in the store's own task (the
+    /// next key restarts the wait; it never cancels a save under way).
+    public func type(_ id: Int, _ text: String, save: @escaping @MainActor (Int) async -> Void) {
+        drafts[id] = text
+        waits[id]?.cancel()
+        let delay = noteDelay
+        waits[id] = Task { @MainActor in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            await save(id)
+        }
+    }
+
+    /// Stops the wait after the last key (a flush saves now instead).
+    private func stopWaiting(_ id: Int) {
+        waits[id]?.cancel()
+        waits[id] = nil
+    }
+
+    /// The draft to save now, or nil when there is none or it is what was kept (the draft then dropped).
+    private func draftToSave(_ id: Int) -> String? {
+        guard let draft = drafts[id] else { return nil }
+        if draft == (keptTyped[id] ?? notes[id]?.note ?? "") {
+            drafts[id] = nil
+            return nil
+        }
+        return draft
+    }
+
+    /// A draft the server kept: the draft is dropped unless he typed on since.
+    private func kept(_ id: Int, _ typed: String) {
+        keptTyped[id] = typed
+        if drafts[id] == typed { drafts[id] = nil }
+    }
+
+    /// Every draft not kept yet, with whether emptying it is the first note's undo, and every wait stopped (the quit).
+    private func takeUnsaved() -> [Unsaved] {
+        for id in Array(waits.keys) { stopWaiting(id) }
+        var unsaved: [Unsaved] = []
+        for (id, text) in drafts where text != (keptTyped[id] ?? notes[id]?.note ?? "") {
+            let blank = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            unsaved.append(Unsaved(id: id, text: text, undoesFirstNote: followedByNote.contains(id) && blank))
+        }
+        return unsaved
+    }
+
+    private struct Unsaved: Sendable {
+        let id: Int
+        let text: String
+        let undoesFirstNote: Bool
+    }
+
+    /// Saves what the GM typed in his note on a player now, in a task of its own that no keystroke and no closed view
+    /// cancels: after the wait, on a section switch and on a closed window. One save at a time per player, the latest
+    /// draft next; a save that fails keeps the draft (said in `noteProblems`) for the next key or flush. `changed` runs
+    /// after the server kept a change (Following is read again: a note may follow him, or change his line there).
+    public func flush(_ id: Int, client: Client?, changed: @escaping @MainActor () async -> Void = {}) async {
+        stopWaiting(id)
+        while let running = saving[id] { await running.task.value }
+        guard let client, let draft = draftToSave(id) else { return }
+        let token = UUID()
+        let save = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { if saving[id]?.token == token { saving[id] = nil } }
+            if followedByNote.contains(id), draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // Emptied again: undo what the first note did (it followed him), as the server's undo says
+                guard await undoFirstNote(id, client: client) != nil else { return }
+                followedByNote.remove(id)
+            } else {
+                guard let change = await setNote(id, draft, client: client) else { return }
+                if change.undoUnfollows { followedByNote.insert(id) }
+            }
+            kept(id, draft)
+            await changed()
+        }
+        saving[id] = (token, save)
+        await save.value
+    }
+
+    /// The notes typed and not kept yet, as one send that needs no main actor (the quit's last words, sent before the
+    /// server stops); every wait is stopped. A save already under way finishes on its own.
+    public func lastSaves(client: Client?) -> @Sendable () async -> Void {
+        let unsaved = takeUnsaved()
+        guard let client, !unsaved.isEmpty else { return {} }
+        return {
+            for note in unsaved {
+                if note.undoesFirstNote {
+                    _ = try? await client.undoFirstPlayerNote(path: .init(id: note.id))
+                } else {
+                    _ = try? await client.setPlayerNote(path: .init(id: note.id), body: .json(.init(note: note.text)))
+                }
+            }
         }
     }
 
@@ -140,6 +265,8 @@ public final class PlayerStore {
                 return nil
             }
         } catch {
+            // A request called off is a non-event: no problem line, no log line
+            if RequestProblem.isCancellation(error) { return nil }
             let problem = RequestProblem.from(error)
             noteProblems[id] = problem
             if let detail = problem.detail { log("could not \(operation): \(detail)") }
@@ -164,7 +291,7 @@ public final class PlayerStore {
                 noteProblems[id] = await .undocumented(code, body: payload.body, operation: "removeStaffNote", fromV2: true)
             }
         } catch {
-            noteProblems[id] = .from(error)
+            if !RequestProblem.isCancellation(error) { noteProblems[id] = .from(error) }
         }
         return nil
     }
@@ -186,7 +313,7 @@ public final class PlayerStore {
                 noteProblems[id] = await .undocumented(code, body: payload.body, operation: "restoreStaffNote", fromV2: true)
             }
         } catch {
-            noteProblems[id] = .from(error)
+            if !RequestProblem.isCancellation(error) { noteProblems[id] = .from(error) }
         }
         return nil
     }
@@ -216,7 +343,7 @@ public final class PlayerStore {
                 problem = await .undocumented(code, body: payload.body, operation: "getPlayerCompare", fromV2: true)
             }
         } catch {
-            if Task.isCancelled { return }
+            if Task.isCancelled || RequestProblem.isCancellation(error) { return }
             problem = .from(error)
         }
         guard compareAsked[ids] == key, !Task.isCancelled else { return }
@@ -266,6 +393,24 @@ extension AppModel {
     /// Two to four players side by side for the current key.
     public func loadCompare(_ ids: [Int]) async {
         await players.loadCompare(ids, client: client, key: storeKey)
+    }
+
+    /// The GM typed in his note on a player: saved a moment after the last key (`flushPlayerNote`).
+    public func typePlayerNote(_ id: Int, _ text: String) {
+        players.type(id, text) { [weak self] id in await self?.flushPlayerNote(id) }
+    }
+
+    /// Saves what the GM typed in his note on a player now (`PlayerStore.flush`); Following is read again after a change.
+    public func flushPlayerNote(_ id: Int) async {
+        await players.flush(id, client: client) { [weak self] in
+            guard let self else { return }
+            await following.load(client: client, key: storeKey, force: true)
+        }
+    }
+
+    /// The notes typed and not kept yet, as one send that needs no main actor: the quit's last words (`QuitCoordinator`).
+    public func lastNoteSaves() -> @Sendable () async -> Void {
+        players.lastSaves(client: client)
     }
 
     /// Saves the GM's note as typed; Following is read again (a note may follow him, or change his line there).

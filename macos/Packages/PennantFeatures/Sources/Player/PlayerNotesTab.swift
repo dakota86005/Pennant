@@ -6,41 +6,37 @@ import SwiftUI
 
 /// Notes: the GM's own note on him, edited in place and saved as he types (a moment after the last key, exactly as typed:
 /// the server keeps his words on his follow, as the watchlist did), undone with ⌘Z like any text; and the notes the staff
-/// filed on him, each with who and when, removable (and that undone with ⌘Z too).
+/// filed on him, each with who and when, removable (and that undone with ⌘Z too). What he types lives in the player
+/// store, not in this view (review H2): leaving the section or closing the window saves it at once, and a quit sends it
+/// before the server stops.
 struct PlayerNotesTab: View {
     let playerId: Int
     @Environment(AppModel.self) private var model
-    @Environment(\.undoManager) private var undoManager
-    @State private var text = ""
-    /// The note as the server last kept it: typing differs from it until it is saved.
-    @State private var saved: String?
-    /// Whether this window's first note is what followed him (its emptying again stops following him, the served undo).
-    @State private var followedByNote = false
-    @State private var loaded = false
 
     var body: some View {
-        let notes = model.players.notes[playerId]
+        let store = model.players
+        let notes = store.notes[playerId]
         PlayerPage(id: "notes") {
             PlayerSection("Your Note", note: notes?.explain) {
-                TextEditor(text: $text)
+                TextEditor(text: Binding(get: { store.noteText(playerId) }, set: { model.typePlayerNote(playerId, $0) }))
                     .font(.body)
                     .scrollContentBackground(.hidden)
                     .padding(8)
                     .frame(minHeight: 160, maxHeight: 360)
                     .background(Color.readableChipFill, in: .rect(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.2)))
-                    .disabled(!loaded)
+                    .disabled(!store.noteReady(playerId))
                     .accessibilityLabel(Text("Your Note"))
                     .accessibilityIdentifier("player.notes.editor")
                 HStack(spacing: 6) {
-                    if text != (saved ?? "") && loaded {
+                    if store.drafts[playerId] != nil, store.noteProblems[playerId] == nil {
                         Text("Saving…").font(.caption).foregroundStyle(.readableSecondary)
-                    } else if let done = model.players.noteDone[playerId] {
+                    } else if let done = store.noteDone[playerId] {
                         Text(verbatim: done).font(.caption).foregroundStyle(.readableSecondary)
                             .accessibilityIdentifier("player.notes.done")
                     }
                 }
-                if let problem = model.players.noteProblems[playerId] { ProblemLine(problem) }
+                if let problem = store.noteProblems[playerId] { ProblemLine(problem) }
             }
             PlayerSection("Staff Notes") {
                 if let notes {
@@ -49,36 +45,9 @@ struct PlayerNotesTab: View {
                 }
             }
         }
-        .task(id: playerId) {
-            await model.loadPlayerNotes(playerId)
-            guard let served = model.players.notes[playerId] else { return }
-            if !loaded {
-                saved = served.note ?? ""
-                text = served.note ?? ""
-                loaded = true
-            }
-        }
-        // Saved a moment after the last key, as typed; the next key cancels the wait
-        .task(id: text) {
-            guard loaded, text != (saved ?? "") else { return }
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            await save(text)
-        }
-    }
-
-    private func save(_ typed: String) async {
-        if typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, followedByNote {
-            // Emptied again: undo what the first note did (it followed him), as the server's undo says
-            if await model.undoFirstPlayerNote(playerId) != nil {
-                followedByNote = false
-                saved = typed
-            }
-            return
-        }
-        guard let change = await model.savePlayerNote(playerId, typed) else { return }
-        if change.undoUnfollows { followedByNote = true }
-        saved = typed
+        .task(id: playerId) { await model.loadPlayerNotes(playerId) }
+        // Another section, or the window closed: what he typed is saved now, not lost with the view
+        .onDisappear { Task { await model.flushPlayerNote(playerId) } }
     }
 }
 

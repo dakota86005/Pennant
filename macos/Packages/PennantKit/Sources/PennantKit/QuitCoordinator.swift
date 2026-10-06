@@ -14,14 +14,21 @@ import AppKit
 @MainActor
 public final class QuitCoordinator {
     private let prepare: @MainActor () -> Void
+    private let lastWords: @MainActor () -> @Sendable () async -> Void
     private let stop: @Sendable () async -> Void
     /// A reply is owed to AppKit.
     public private(set) var replyPending = false
 
-    /// `prepare` runs at once, on the main actor (the model stops starting things); `stop` stops the server off the
-    /// main actor.
-    public init(prepare: @escaping @MainActor () -> Void, stop: @escaping @Sendable () async -> Void) {
+    /// `prepare` runs at once, on the main actor (the model stops starting things); `lastWords` is asked then, on the
+    /// main actor, for what must reach the server before it stops (the notes typed and not saved yet), which is sent
+    /// off the main actor; `stop` then stops the server off the main actor.
+    public init(
+        prepare: @escaping @MainActor () -> Void,
+        lastWords: @escaping @MainActor () -> @Sendable () async -> Void = { {} },
+        stop: @escaping @Sendable () async -> Void
+    ) {
         self.prepare = prepare
+        self.lastWords = lastWords
         self.stop = stop
     }
 
@@ -37,9 +44,11 @@ public final class QuitCoordinator {
     public func shouldTerminate(reply: @escaping @MainActor @Sendable (Bool) -> Void) -> NSApplication.TerminateReply {
         if replyPending { return .terminateCancel }
         replyPending = true
+        let last = lastWords()
         prepare()
         let stop = stop
         Task.detached(priority: .userInitiated) {
+            await last()
             await stop()
             Self.onMainRunLoop { reply(true) }
         }
