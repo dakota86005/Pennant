@@ -11,7 +11,8 @@
  *   game (`computeNextGame`) and our schedule's head-to-head (`computeSchedule`). It reads no odds and no posture.
  */
 import type { Computed } from './computed.js';
-import { computeNextGame } from './dashboard.js';
+import { computeNextGame, nextGames } from './dashboard.js';
+import { tableExists } from './db.js';
 import { placesOf, type StatedPlace } from './frontOffice/clubProfile.js';
 import { readTeamSeason, type ClubFacts } from './frontOffice/teamSeason.js';
 import { computeStandings, type Standings, type StandingsTeam } from './league.js';
@@ -48,7 +49,8 @@ function raceOf(orgId: number, s: Standings): RaceFacts | null {
   const mine = linesOf(s).find((x) => x.team.team_id === orgId);
   if (!mine) return null;
   const t = mine.team;
-  const played = known(t.g) ? t.g : (t.w ?? 0) + (t.l ?? 0);
+  // Games played not in the export stays not known (D-018), never "no games played yet"
+  const played = known(t.g) ? t.g : known(t.w) && known(t.l) ? t.w + t.l : null;
   const picture = playoffPicture(orgId);
   const leads = known(t.gb) && t.gb <= 0;
   return {
@@ -65,7 +67,27 @@ function raceOf(orgId: number, s: Standings): RaceFacts | null {
   };
 }
 
-/** The staff's rough read's numbers, or why it can't be made (D-060: only Standings reads it). */
+export const SEASON_DECIDED = 'The regular season is over, so the race is decided: the staff make no read of the odds or the deadline.';
+export const NO_SCHEDULE = 'The staff\'s rough read can\'t be made: the export has no schedule to count the games left.';
+
+/**
+ * Whether the club's regular season has a game left to play, from the export's schedule (the next game's own filter:
+ * regular-season games not yet played); null when the export can't say (no schedule, or one this reading can't read).
+ */
+function regularSeasonGameLeft(orgId: number): boolean | null {
+  if (!tableExists('games')) return null;
+  try {
+    return nextGames(orgId, 1).length > 0;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The staff's rough read's numbers, or why it can't be made (D-060: only Standings reads it). No read once the regular
+ * season is decided (no game left for the club), and none on a schedule the export doesn't carry (the model would assume
+ * 162 games: D-018).
+ */
 function staffReadOf(orgId: number): { read: StaffReadFacts | null; why: string | null } {
   const m = oddsModelOf(orgId);
   if (!m.model) {
@@ -74,6 +96,8 @@ function staffReadOf(orgId: number): { read: StaffReadFacts | null; why: string 
       : `The staff's rough read can't be made: ${m.reason.charAt(0).toLowerCase()}${m.reason.slice(1)}`;
     return { read: null, why };
   }
+  if (m.model.scheduleRead !== 'games') return { read: null, why: NO_SCHEDULE };
+  if (m.model.gamesLeft === 0 || regularSeasonGameLeft(orgId) === false) return { read: null, why: SEASON_DECIDED };
   const d = deadlineRead(orgId);
   if (!d) return { read: null, why: 'The staff\'s rough read can\'t be made for this club.' };
   const model = m.model;
@@ -92,6 +116,7 @@ function staffReadOf(orgId: number): { read: StaffReadFacts | null; why: string 
       expectedWins: d.pythagoreanWins,
       gap: model.gap,
       gapRead: model.gapRead,
+      holding: model.picture !== null && model.picture.route !== 'out',
       raceSummary: model.picture?.summary ?? null,
       daysToDeadline: d.daysToDeadline,
       deadlinePassed: d.deadlinePassed,

@@ -35,7 +35,8 @@ export interface RaceFacts {
   divisionGb: number | null;
   /** Games clear of the nearest club in the division, when leading it. */
   divisionLead: number | null;
-  gamesPlayed: number;
+  /** Games played; null when the export gives neither games nor wins and losses (not known, never "none yet"). */
+  gamesPlayed: number | null;
   /** How many wild cards the league gives (0: none); null when the race isn't read. */
   wildCards: number | null;
   /** `division` leading it, `wildcard` holding one, `out` otherwise; null when the race isn't read. */
@@ -65,6 +66,8 @@ export interface StaffReadFacts {
   /** Games to close (negative: a cushion to defend). */
   gap: number;
   gapRead: 'race' | 'no_race' | 'no_rival';
+  /** Whether the club holds a place now (the rival is then the closest chaser, not the club holding the place). */
+  holding: boolean;
   /** The race in a line, as the playoff picture says it; null when not read. */
   raceSummary: string | null;
   daysToDeadline: number | null;
@@ -219,7 +222,10 @@ function raceClaims(v: ClubhouseContext, race: RaceFacts | null) {
       ...(race.divisionGb !== null ? [{ label: 'Games back', value: race.divisionGb > 0 ? gamesText(race.divisionGb) : 'None' }] : []),
       ...(race.divisionLead !== null ? [{ label: 'Lead over the next club', value: games(race.divisionLead) }] : []),
     ],
-    unknown: p ? [] : ['The export doesn\'t give the club\'s games back.'],
+    unknown: [
+      ...(p ? [] : ['The export doesn\'t give the club\'s games back.']),
+      ...(race.gamesPlayed === null ? ['The export doesn\'t give the club\'s games played.'] : []),
+    ],
   }));
   if (race.wildCards !== null && race.wildCards > 0 && race.route !== 'division') {
     const words = race.route === 'wildcard'
@@ -248,12 +254,13 @@ function raceClaims(v: ClubhouseContext, race: RaceFacts | null) {
 
 // ── the staff's rough read (D-060) ──────────────────────────────────────────
 
+/** The posture in the staff's voice: a description of how they read the club, never an instruction (D-001). */
 const POSTURE_WORDS: Readonly<Record<StaffReadFacts['posture'], string>> = {
-  buy: 'buy',
-  'lean-buy': 'lean toward buying',
-  hold: 'hold; the season hasn\'t decided yet',
-  'lean-sell': 'lean toward selling',
-  sell: 'sell and look to next year',
+  buy: 'reads the club as a buyer',
+  'lean-buy': 'leans toward buying',
+  hold: 'hasn\'t decided yet',
+  'lean-sell': 'leans toward selling',
+  sell: 'reads the club as a seller',
 };
 
 const READ_STAMP = 'Provisional: a stated model, never fitted on this save';
@@ -279,7 +286,10 @@ function staffRead(v: ClubhouseContext, r: StaffReadFacts): LeagueStaffRead {
     { label: 'Record', value: `${r.w}–${r.l} in ${plural(r.gamesPlayed, 'game')}` },
     { label: 'Runs', value: `${r.rs} scored, ${r.ra} allowed (${signed(diff)})` },
     { label: 'Strength read from the runs', value: `A ${pctText(r.strength)} club (Pythagorean expectation, exponent 1.83): over a season a club's runs say more about what comes next than its record does.` },
-    { label: 'The rival', value: `A ${pctText(r.rival)} club, a stated strength never fitted on this save, holding the place in question.` },
+    {
+      label: 'The rival',
+      value: `A ${pctText(r.rival)} club, a stated strength never fitted on this save${r.gapRead === 'no_race' ? '' : r.holding ? ': the closest chaser, the club nearest to taking the place' : ': the club holding the place in question'}.`,
+    },
     { label: 'The gap', value: gapWords },
     { label: 'Games left', value: String(r.gamesLeft) },
     { label: 'How the chance is worked out', value: 'Over the games left, the difference in wins between the two clubs is read as roughly normal; it is shown between 1% and 99% while games are left.' },
@@ -293,13 +303,13 @@ function staffRead(v: ClubhouseContext, r: StaffReadFacts): LeagueStaffRead {
     unknown: LEAVES_OUT,
     wouldChange: ['A read built from the roster, planned to replace this one.'],
   });
-  const posture = factClaim(v, `${r.deadlinePassed ? 'The staff\'s rough read of the season (the deadline has passed)' : 'The staff\'s rough read at the deadline'}: ${POSTURE_WORDS[r.posture]}`, {
+  const posture = factClaim(v, `${r.deadlinePassed ? 'With the deadline passed, the staff\'s rough read of the season' : 'The staff\'s rough read at the deadline'} ${POSTURE_WORDS[r.posture]}`, {
     specialist: READ,
     how: 'provisional',
     stamp: READ_STAMP,
     because: [
       { label: 'The chance it rests on', value: chance },
-      { label: 'Where the lines fall', value: '75% or better reads as buy; 55% lean toward buying; 25% hold; 10% lean toward selling; below that, sell. Lines stated by the staff, not fitted.' },
+      { label: 'Where the lines fall', value: 'At 75% or better the staff read the club as a buyer; at 55%, leaning toward buying; at 25%, undecided; at 10%, leaning toward selling; below that, as a seller. Lines stated by the staff, not fitted.' },
       { label: 'The deadline', value: deadlineWords },
       ...because,
     ],
@@ -325,7 +335,7 @@ function staffRead(v: ClubhouseContext, r: StaffReadFacts): LeagueStaffRead {
 // ── the view ────────────────────────────────────────────────────────────────
 
 function base(v: ClubhouseContext, race: RaceFacts | null) {
-  const ours = race && race.gamesPlayed > 0 && race.divisionPlace
+  const ours = race && race.gamesPlayed !== 0 && race.divisionPlace
     ? `; yours is ${placeText(race.divisionPlace)} in the ${race.division}${race.divisionGb !== null && race.divisionGb > 0 ? `, ${games(race.divisionGb)} back` : ''}`
     : '';
   return head(v, 'Standings', {

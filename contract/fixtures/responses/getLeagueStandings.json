@@ -518,7 +518,7 @@
           },
           {
             "label": "The rival",
-            "value": "A .520 club, a stated strength never fitted on this save, holding the place in question."
+            "value": "A .520 club, a stated strength never fitted on this save: the club holding the place in question."
           },
           {
             "label": "The gap",
@@ -562,7 +562,7 @@
       }
     },
     "posture": {
-      "text": "The staff's rough read at the deadline: sell and look to next year",
+      "text": "The staff's rough read at the deadline reads the club as a seller",
       "tone": "neutral",
       "basis": {
         "because": [
@@ -572,7 +572,7 @@
           },
           {
             "label": "Where the lines fall",
-            "value": "75% or better reads as buy; 55% lean toward buying; 25% hold; 10% lean toward selling; below that, sell. Lines stated by the staff, not fitted."
+            "value": "At 75% or better the staff read the club as a buyer; at 55%, leaning toward buying; at 25%, undecided; at 10%, leaning toward selling; below that, as a seller. Lines stated by the staff, not fitted."
           },
           {
             "label": "The deadline",
@@ -592,7 +592,7 @@
           },
           {
             "label": "The rival",
-            "value": "A .520 club, a stated strength never fitted on this save, holding the place in question."
+            "value": "A .520 club, a stated strength never fitted on this save: the club holding the place in question."
           },
           {
             "label": "The gap",

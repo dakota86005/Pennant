@@ -2,11 +2,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { computeNextGame } from '../server/dashboard.js';
 import { FrontOfficeRefusal, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { computeStandings, type Standings } from '../server/league.js';
-import { opponentsOf, standingsViewOf, usVsThemOf } from '../server/leagueStandingsViews.js';
+import { db } from '../server/db.js';
+import { NO_SCHEDULE, SEASON_DECIDED, opponentsOf, standingsViewOf, usVsThemOf } from '../server/leagueStandingsViews.js';
+import { oddsModelOf } from '../server/posture.js';
 import { NOT_AN_OPPONENT, leagueStandingsNow, leagueUsVsThemNow, resetLeagueViews } from '../server/leagueViewService.js';
 import { officeContextFor } from '../server/leagueViewsBuild.js';
 import type { OfficeContext } from '../server/presentation/league/common.js';
-import { standingsView } from '../server/presentation/league/standings.js';
+import { standingsView, type RaceFacts, type StaffReadFacts } from '../server/presentation/league/standings.js';
 import type { LeagueStandingsView, LeagueUsVsThemView } from '../server/presentation/league/types.js';
 import { computeSchedule } from '../server/schedule.js';
 import { bannedInPayload } from './bannedJargon';
@@ -309,5 +311,85 @@ describe('before a game is played', () => {
     expect(us.headToHead).toBeNull();
     expect(oddsWordsIn(us)).toEqual([]);
     expect(bannedInPayload(us)).toEqual([]);
+  });
+});
+
+describe('once the regular season is decided (N12 Track B review, H1)', () => {
+  it('makes no read with no game left: one sentence says the season is decided, and the race\'s facts stay', () => {
+    const done = buildSave({ season: 2042, historySeasons: 0, gamesPerTeam: 40, playedShare: 1, clubs: 8, seed: 13, teamSeason: true, minors: false, lineups: false });
+    resetFrontOfficeCache();
+    resetLeagueViews();
+    const ctx = officeContextFor({ orgId: done.org, importStamp: '2042-11-01T12:00:00.000Z', reportStamp: 'r9' }, 'league');
+    const view = standingsViewOf(ctx, done.org);
+    expect(view.staffRead).toBeNull();
+    expect(view.staffReadWhy?.display).toBe(SEASON_DECIDED);
+    expect(strings(view).filter(({ text }) => /\d+%/.test(text))).toEqual([]);
+    expect(oddsWordsIn(view).map(({ text }) => text)).toEqual([SEASON_DECIDED]);
+    // The race's facts stay: the division's place, worked out from the final standings
+    expect(view.race.length).toBeGreaterThan(0);
+    expect(view.race[0].basis.certainty).toBe('fact');
+    expect(bannedInPayload(view)).toEqual([]);
+  });
+
+  it('makes no read on a schedule the export doesn\'t carry, never on an assumed 162 games', () => {
+    const bare = buildSave({ season: 2043, historySeasons: 0, gamesPerTeam: 60, playedShare: 0.5, clubs: 8, seed: 14, teamSeason: true, minors: false, lineups: false });
+    db.exec('DROP TABLE games');
+    resetFrontOfficeCache();
+    resetLeagueViews();
+    const m = oddsModelOf(bare.org);
+    expect(m.model?.scheduleRead).toBe('assumed');
+    const ctx = officeContextFor({ orgId: bare.org, importStamp: '2043-07-01T12:00:00.000Z', reportStamp: 'r8' }, 'league');
+    const view = standingsViewOf(ctx, bare.org);
+    expect(view.staffRead).toBeNull();
+    expect(view.staffReadWhy?.display).toBe(NO_SCHEDULE);
+    expect(strings(view).filter(({ text }) => /\d+%/.test(text))).toEqual([]);
+  });
+});
+
+describe('the staff\'s rough read describes and never orders (N12 Track B review, L1, L2, L3)', () => {
+  const facts = (over: Partial<StaffReadFacts>): StaffReadFacts => ({
+    posture: 'buy', odds: 0.8, w: 60, l: 40, gamesPlayed: 100, gamesLeft: 62, rs: 500, ra: 420, strength: 0.58, rival: 0.53,
+    expectedWins: 58, gap: -3, gapRead: 'race', holding: true, raceSummary: null, daysToDeadline: 12, deadlinePassed: false, ...over,
+  });
+  const race: RaceFacts = {
+    division: 'East', divisionPlace: { rank: 1, of: 4, tiedWith: 0 }, divisionGb: 0, divisionLead: 3, gamesPlayed: 100,
+    wildCards: 3, route: 'division', wildcardGb: null, wildcardRank: null, magicNumber: null,
+  };
+  const standingsOf = (): Standings => {
+    const c = computeStandings(save.org);
+    if (!c.ok) throw new Error(c.error);
+    return c.body;
+  };
+  const readOf = (over: Partial<StaffReadFacts>) => standingsView(v, { standings: standingsOf(), race, read: facts(over), readWhy: null }).staffRead!;
+
+  it('says each posture as the staff\'s reading of the club', () => {
+    const words: Record<StaffReadFacts['posture'], string> = {
+      buy: 'reads the club as a buyer', 'lean-buy': 'leans toward buying', hold: 'hasn\'t decided yet', 'lean-sell': 'leans toward selling', sell: 'reads the club as a seller',
+    };
+    for (const [posture, said] of Object.entries(words) as Array<[StaffReadFacts['posture'], string]>) {
+      const read = readOf({ posture });
+      expect(read.posture.text).toBe(`The staff's rough read at the deadline ${said}`);
+      expect(bannedInPayload(read)).toEqual([]);
+    }
+    expect(readOf({ posture: 'sell', deadlinePassed: true }).posture.text).toBe('With the deadline passed, the staff\'s rough read of the season reads the club as a seller');
+  });
+
+  it('bans the posture worded as an order', () => {
+    for (const order of ['The staff\'s rough read at the deadline: buy', 'The staff\'s rough read at the deadline: sell and look to next year', 'Lean toward selling']) {
+      expect(bannedInPayload({ text: order }).length, order).toBeGreaterThan(0);
+    }
+  });
+
+  it('names the rival as the closest chaser when we hold the place, and the club holding it when we chase', () => {
+    const rival = (holding: boolean) => readOf({ holding, gap: holding ? -3 : 4 }).odds.basis.because.find((b) => b.label === 'The rival')!.value;
+    expect(rival(true)).toMatch(/the closest chaser/);
+    expect(rival(true)).not.toMatch(/holding the place/);
+    expect(rival(false)).toMatch(/the club holding the place in question/);
+  });
+
+  it('says games played not in the export as not known, never "no games played yet"', () => {
+    const view = standingsView(v, { standings: standingsOf(), race: { ...race, gamesPlayed: null }, read: null, readWhy: 'x' });
+    expect(view.race[0].value?.display).not.toBe('No games played yet');
+    expect(view.race[0].basis.unknown).toContain('The export doesn\'t give the club\'s games played.');
   });
 });
