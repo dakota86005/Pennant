@@ -113,14 +113,18 @@ struct QuitCoordinatorTests {
         let ended = Flag()
         let lines = OrderLog()
         let quit = QuitCoordinator(prepare: {}, exitGrace: .milliseconds(50), forceExit: { ended.set() }, log: { lines.add($0) }) {}
-        #expect(quit.shouldTerminate { replied.set($0) } == .terminateLater)
+        #expect(quit.shouldTerminate { lines.add("the reply reached AppKit"); replied.set($0) } == .terminateLater)
         runMainLoop { replied.value != nil }
         #expect(replied.value == true)
         let deadline = Date.now.addingTimeInterval(2)
         while ended.value == nil && Date.now < deadline { usleep(1_000) }
         #expect(ended.value == true)
         #expect(lines.all.contains("quit: replied yes"))
-        #expect(lines.all.contains { $0.hasPrefix("quit: AppKit had not ended the app") })
+        #expect(lines.all.contains { $0.hasPrefix("quit: if AppKit has not ended the app") })
+        // The net is set before the reply goes out: AppKit ends the app inside the reply, so nothing after it would run
+        let net = lines.all.firstIndex { $0.hasPrefix("quit: if AppKit") }
+        let sent = lines.all.firstIndex(of: "the reply reached AppKit")
+        #expect(net != nil && sent != nil && net! < sent!)
     }
 
     @Test("a note send that never answers does not hold the quit: the server is stopped and the reply goes out by the deadline")
