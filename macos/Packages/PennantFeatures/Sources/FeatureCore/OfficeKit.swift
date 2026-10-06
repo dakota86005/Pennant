@@ -4,11 +4,13 @@ import PennantDesign
 import PennantKit
 import SwiftUI
 
-// The pieces League Office's and Scouting's views are drawn from (N12 Track B, D-072): a served table that can name a
-// club as well as a player (`OfficeTable`), its pane with the chosen row's detail, a block of lines, a view's head and
-// its loading state. They follow Major League Ops' (N8, N9) one for one, public here so both departments use them: each
-// draws what the server served and nothing more, and the only ordering is the unknown-last comparator over the served
-// sort keys (D-056).
+// The Office kit's Mac half (N12 Track B, D-072): the pieces League Office's and Scouting's views are drawn from, kept in
+// this one file so the front office's other tracks can share them (N12 Track A's `OfficeViews.swift` is the same kit for
+// Finance and Medical; the merge makes them one, SWIFTUI_REBUILD.md "As built at N12 (Track B)"): a served table that can
+// name a club as well as a player (`OfficeTable`), its pane with the chosen row's detail, a block of lines, a view's head
+// and its loading state. They follow Major League Ops' (N8, N9) one for one: each draws what the server served and
+// nothing more, and the only ordering is the unknown-last comparator over the served sort keys or words (D-056), or the
+// server's own order where it sorts.
 
 // MARK: Words
 
@@ -260,113 +262,6 @@ public struct OfficeSectionPicker: View {
     }
 }
 
-/// A pop-up of served choices (a club, a category), its current choice as its title; one that runs long truncates with
-/// its full title in a help tag, so it is never clipped on a narrow window.
-public struct OfficeChoiceMenu: View {
-    let title: LocalizedStringKey
-    let choices: [(text: String, hint: String?, selected: Bool)]
-    let id: String
-    let choose: (Int) -> Void
-
-    public init(_ title: LocalizedStringKey, choices: [(text: String, hint: String?, selected: Bool)], id: String, choose: @escaping (Int) -> Void) {
-        self.title = title
-        self.choices = choices
-        self.id = id
-        self.choose = choose
-    }
-
-    @State private var open = false
-
-    public var body: some View {
-        let current = choices.first(where: \.selected)?.text ?? choices.first?.text ?? ""
-        // A button that shows the choices in a popover, as the farm's and the clubhouse's filters do: a plain button the
-        // audit and VoiceOver read by its name, with the current choice as its value
-        Button {
-            open = true
-        } label: {
-            Label { Text(verbatim: current).lineLimit(1).truncationMode(.tail) } icon: { Image(systemName: "chevron.down") }
-                .labelStyle(.titleAndIcon)
-        }
-        .frame(maxWidth: 280, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
-        .help(Text(verbatim: current))
-        .accessibilityLabel(Text(title))
-        .accessibilityValue(Text(verbatim: current))
-        .accessibilityIdentifier(id)
-        .popover(isPresented: $open, arrowEdge: .bottom) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(Array(choices.enumerated()), id: \.offset) { index, choice in
-                        Button {
-                            open = false
-                            choose(index)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "checkmark").opacity(choice.selected ? 1 : 0).accessibilityHidden(true)
-                                Text(verbatim: choice.text)
-                                if let hint = choice.hint { Text(verbatim: hint).foregroundStyle(.readableSecondary) }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 10).padding(.vertical, 4)
-                        .accessibilityAddTraits(choice.selected ? .isSelected : [])
-                        .accessibilityIdentifier("\(id).\(index)")
-                    }
-                }
-                .padding(.vertical, 6)
-            }
-            .frame(minWidth: 240, maxHeight: 360)
-            .background(Color.readablePage)
-        }
-    }
-}
-
-// MARK: The window's search, scoped by a view
-
-/// A served search token as the window's search field holds it (N12 Track B: Player Search's position, level, club …).
-public struct ScopedSearchToken: Identifiable, Hashable, Sendable {
-    public let id: String
-    public let kind: String
-    public let text: String
-
-    public init(id: String, kind: String, text: String) {
-        self.id = id
-        self.kind = kind
-        self.text = text
-    }
-}
-
-/// The window's one search field (N7), which a view can scope to itself, as Finder's and Mail's search the folder or
-/// mailbox shown (N12 Track B): while a view scopes it, what is typed and the tokens chosen are the view's question
-/// (Player Search), the field offers the view's tokens, and the server's whole-league suggestions stand aside. A
-/// window has one search field: a second `.searchable` in the toolbar on a narrow window looped AppKit's layout.
-@Observable @MainActor
-public final class WindowSearch {
-    public var text = ""
-    public var tokens: [ScopedSearchToken] = []
-    /// The tokens the field offers for what is typed (the scoping view's).
-    public var suggested: [ScopedSearchToken] = []
-    /// The view scoping the field (its prompt); nil when the field searches the league.
-    public var scope: LocalizedStringKey?
-
-    public init() {}
-
-    /// The view scoping the field leaves it: back to the league's search, emptied.
-    public func unscope() {
-        scope = nil
-        tokens = []
-        suggested = []
-        text = ""
-    }
-}
-
-extension EnvironmentValues {
-    /// The window's search field (`MainWindowModel.search`); nil outside a main window (a preview, a snapshot).
-    @Entry public var windowSearch: WindowSearch?
-}
-
 // MARK: The table
 
 extension FocusedValues {
@@ -380,8 +275,13 @@ nonisolated public struct OfficeTableRow: Identifiable, Hashable, Sendable {
     public let index: Int
     public var id: String { row.id }
 
-    /// The served sort key for a column, or nil when it is unknown (sorted last whichever way).
-    func key(_ column: String) -> SortKey? {
+    /// The served sort key for a column, or nil when it is unknown (sorted last whichever way). A column that sorts by its
+    /// words (`byWords`) is served no keys: its cell's words are the key, an unknown cell last.
+    func key(_ column: String, byWords: Bool = false) -> SortKey? {
+        if byWords {
+            guard let cell = cell(column), Tone(cell.tone) != .unknown else { return nil }
+            return .text(cell.display)
+        }
         guard let served = row.sort.additionalProperties[column] ?? nil else { return nil }
         if let number = served.value1 { return .number(number) }
         if let text = served.value2 { return .text(text) }
@@ -391,26 +291,46 @@ nonisolated public struct OfficeTableRow: Identifiable, Hashable, Sendable {
     func cell(_ column: String) -> Components.Schemas.Cell? { row.cells.additionalProperties[column] }
 }
 
-/// Sorting a column by its served keys with the unknown-last rule (D-056).
+/// Sorting a column by its served keys (or its cells' words, `byWords`) with the unknown-last rule (D-056).
 nonisolated public struct OfficeSort: SortComparator, Hashable, Sendable {
     public let column: String
+    public var byWords: Bool
     public var order: SortOrder = .forward
 
-    public init(column: String, order: SortOrder = .forward) {
+    public init(column: String, byWords: Bool = false, order: SortOrder = .forward) {
         self.column = column
+        self.byWords = byWords
         self.order = order
     }
 
     public func compare(_ lhs: OfficeTableRow, _ rhs: OfficeTableRow) -> ComparisonResult {
         let direction: SortDirection = order == .forward ? .ascending : .descending
-        let a = lhs.key(column), b = rhs.key(column)
+        let a = lhs.key(column, byWords: byWords), b = rhs.key(column, byWords: byWords)
         if UnknownLast.precedes(a, b, direction: direction) { return .orderedAscending }
         if UnknownLast.precedes(b, a, direction: direction) { return .orderedDescending }
         return lhs.index < rhs.index ? .orderedAscending : lhs.index > rhs.index ? .orderedDescending : .orderedSame
     }
 
     func sorted(_ rows: [OfficeTableRow]) -> [OfficeTableRow] {
-        UnknownLast.sorted(rows, by: { $0.key(column) }, direction: order == .forward ? .ascending : .descending)
+        UnknownLast.sorted(rows, by: { $0.key(column, byWords: byWords) }, direction: order == .forward ? .ascending : .descending)
+    }
+}
+
+/// A served table's columns in up to four runs, in the served order: sortable, then not, then sortable, then not. A
+/// native `Table` takes a sortable column and one that isn't only in groups of their own; four runs keep every served
+/// table's order (Player Search's hands, Us vs Them's two clubs), and a fifth run, never served, joins the last of its kind.
+nonisolated struct OfficeColumnRuns: Sendable {
+    var runs: [[Components.Schemas.OfficeColumn]] = [[], [], [], []]
+
+    init(_ columns: [Components.Schemas.OfficeColumn]) {
+        var index = 0
+        for column in columns {
+            let sortable = column.sortable
+            // Runs 0 and 2 sort, 1 and 3 don't
+            if sortable != (index % 2 == 0) { index = min(index + 1, 3) }
+            if sortable != (index % 2 == 0) { index = sortable ? 2 : 3 }
+            runs[index].append(column)
+        }
     }
 }
 
@@ -427,6 +347,8 @@ public struct OfficeTable: View {
     /// The rows shown, by id, in the served order (a served filter's rows); nil shows every row.
     let only: Set<String>?
     @Binding var selection: Set<OfficeTableRow.ID>
+    /// The sort the server applies, where it sorts (`serverSorts`, Player Search): a column chosen asks it again.
+    let serverSort: Binding<OfficeSort?>?
     @State private var sortOrder: [OfficeSort] = []
     @SceneStorage private var customization: TableColumnCustomization<OfficeTableRow>
     @Environment(\.openWindow) private var openWindow
@@ -439,32 +361,49 @@ public struct OfficeTable: View {
         row.player != nil ? column == "player" : ["club", "team"].contains(column)
     }
 
-    static func minimumWidth(_ column: Components.Schemas.MlbColumn) -> CGFloat {
+    static func minimumWidth(_ column: Components.Schemas.OfficeColumn) -> CGFloat {
         if nameColumns.contains(column.id) { return 110 }
         return column.numeric ? 44 : 72
     }
 
-    static func idealWidth(_ column: Components.Schemas.MlbColumn) -> CGFloat {
+    static func idealWidth(_ column: Components.Schemas.OfficeColumn) -> CGFloat {
         if nameColumns.contains(column.id) { return 170 }
         return column.numeric ? 64 : 110
     }
 
-    public init(_ table: Components.Schemas.OfficeTable, id: String, name: String, only: Set<String>? = nil, selection: Binding<Set<OfficeTableRow.ID>>) {
+    public init(
+        _ table: Components.Schemas.OfficeTable,
+        id: String,
+        name: String,
+        only: Set<String>? = nil,
+        selection: Binding<Set<OfficeTableRow.ID>>,
+        serverSort: Binding<OfficeSort?>? = nil
+    ) {
         self.table = table
         self.id = id
         self.name = name
         self.only = only
         _selection = selection
+        self.serverSort = serverSort
         _customization = SceneStorage(wrappedValue: TableColumnCustomization<OfficeTableRow>(), "office.table.\(id)")
     }
+
+    /// Whether the server sorts this table (its rows carry no keys): a column chosen is asked of it, never applied here.
+    private var sortsOnServer: Bool { table.serverSorts == true && serverSort != nil }
 
     private var rows: [OfficeTableRow] {
         let served = table.rows.enumerated().compactMap { offset, row -> OfficeTableRow? in
             guard only?.contains(row.id) ?? true else { return nil }
             return OfficeTableRow(row: row, index: offset)
         }
-        guard let sort = sortOrder.first else { return served }
+        guard !sortsOnServer, let sort = sortOrder.first else { return served }
         return sort.sorted(served)
+    }
+
+    /// The table's sort: its own, or (where the server sorts) the server's, a column chosen asking it again.
+    private var order: Binding<[OfficeSort]> {
+        guard sortsOnServer, let serverSort else { return $sortOrder }
+        return Binding { serverSort.wrappedValue.map { [$0] } ?? [] } set: { serverSort.wrappedValue = $0.first }
     }
 
     public var body: some View {
@@ -482,29 +421,40 @@ public struct OfficeTable: View {
     }
 
     private var nativeTable: some View {
-        Table(of: OfficeTableRow.self, selection: $selection, sortOrder: $sortOrder, columnCustomization: $customization) {
-            TableColumnForEach(table.columns, id: \.id) { column in
-                TableColumn(Text(verbatim: column.title.display), sortUsing: OfficeSort(column: column.id)) { row in
-                    if let cell = row.cell(column.id) {
-                        if Self.isSubject(column.id, of: row.row), row.row.ratingsFill != nil || row.row.ours == true {
-                            HStack(spacing: 4) {
-                                if row.row.ours == true { OursMark() }
-                                OfficeCell(cell).monospacedDigit().lineLimit(1)
-                                if let fill = row.row.ratingsFill { RatingFillMark(fill) }
-                            }
-                        } else {
-                            OfficeCell(cell).monospacedDigit().lineLimit(1)
-                        }
-                    }
-                }
-                .width(min: Self.minimumWidth(column), ideal: Self.idealWidth(column))
-                .customizationID(column.id)
-                .defaultVisibility(column.hidden == true ? .hidden : .automatic)
+        let runs = OfficeColumnRuns(table.columns).runs
+        return Table(of: OfficeTableRow.self, selection: $selection, sortOrder: order, columnCustomization: $customization) {
+            // A column served as not sorting (`sortable: false`, one of mixed units) has no sort; the runs keep the order
+            TableColumnForEach(runs[0], id: \.id) { column in
+                TableColumn(Text(verbatim: column.title.display), sortUsing: OfficeSort(column: column.id, byWords: column.byWords == true)) { cellView($0, column) }
+                    .width(min: Self.minimumWidth(column), ideal: Self.idealWidth(column))
+                    .customizationID(column.id)
+                    .defaultVisibility(column.hidden == true ? .hidden : .automatic)
+            }
+            TableColumnForEach(runs[1], id: \.id) { column in
+                TableColumn(Text(verbatim: column.title.display)) { cellView($0, column) }
+                    .width(min: Self.minimumWidth(column), ideal: Self.idealWidth(column))
+                    .customizationID(column.id)
+                    .defaultVisibility(column.hidden == true ? .hidden : .automatic)
+            }
+            TableColumnForEach(runs[2], id: \.id) { column in
+                TableColumn(Text(verbatim: column.title.display), sortUsing: OfficeSort(column: column.id, byWords: column.byWords == true)) { cellView($0, column) }
+                    .width(min: Self.minimumWidth(column), ideal: Self.idealWidth(column))
+                    .customizationID(column.id)
+                    .defaultVisibility(column.hidden == true ? .hidden : .automatic)
+            }
+            TableColumnForEach(runs[3], id: \.id) { column in
+                TableColumn(Text(verbatim: column.title.display)) { cellView($0, column) }
+                    .width(min: Self.minimumWidth(column), ideal: Self.idealWidth(column))
+                    .customizationID(column.id)
+                    .defaultVisibility(column.hidden == true ? .hidden : .automatic)
             }
         } rows: {
             ForEach(rows) { row in
+                // A player's row drags as the player, a club's as the club (SWIFTUI_REBUILD.md section 3.6)
                 if let player = row.row.player {
                     TableRow(row).draggable(PlayerRef(id: player.playerId))
+                } else if let club = row.row.club {
+                    TableRow(row).draggable(ClubRef(id: club.teamId))
                 } else {
                     TableRow(row)
                 }
@@ -528,6 +478,22 @@ public struct OfficeTable: View {
                 openWindow(value: ClubRef(id: club.teamId))
             } else if let only = row.players, only.count == 1, let player = only.first {
                 openWindow(value: PlayerRef(id: player.playerId))
+            }
+        }
+    }
+
+    /// A row's cell under a column: our mark and the OSA mark beside the name it is about, else the cell alone.
+    @ViewBuilder
+    private func cellView(_ row: OfficeTableRow, _ column: Components.Schemas.OfficeColumn) -> some View {
+        if let cell = row.cell(column.id) {
+            if Self.isSubject(column.id, of: row.row), row.row.ratingsFill != nil || row.row.ours == true {
+                HStack(spacing: 4) {
+                    if row.row.ours == true { OursMark() }
+                    OfficeCell(cell).monospacedDigit().lineLimit(1)
+                    if let fill = row.row.ratingsFill { RatingFillMark(fill) }
+                }
+            } else {
+                OfficeCell(cell).monospacedDigit().lineLimit(1)
             }
         }
     }
@@ -665,6 +631,11 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
     let name: String
     let only: Set<String>?
     let detailShare: CGFloat
+    let serverSort: Binding<OfficeSort?>?
+    /// The chosen row as its detail draws it: the served row, or (the Draft Board) the row with what was read when it was
+    /// chosen; `chose` hears each choice, so a view can read it.
+    let detailOf: (Components.Schemas.OfficeRow) -> Components.Schemas.OfficeRow
+    let chose: (String?) -> Void
     let head: Head
     let notes: Notes
     @State private var selection: Set<OfficeTableRow.ID> = []
@@ -675,6 +646,9 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
         name: String,
         only: Set<String>? = nil,
         detailShare: CGFloat = 0.36,
+        serverSort: Binding<OfficeSort?>? = nil,
+        detailOf: @escaping (Components.Schemas.OfficeRow) -> Components.Schemas.OfficeRow = { $0 },
+        chose: @escaping (String?) -> Void = { _ in },
         @ViewBuilder head: () -> Head,
         @ViewBuilder notes: () -> Notes
     ) {
@@ -683,6 +657,9 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
         self.name = name
         self.only = only
         self.detailShare = detailShare
+        self.serverSort = serverSort
+        self.detailOf = detailOf
+        self.chose = chose
         self.head = head()
         self.notes = notes()
     }
@@ -691,16 +668,17 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
         TablePane(detailShare: detailShare, autosave: id) {
             head
         } table: {
-            OfficeTable(table, id: id, name: name, only: only, selection: $selection)
+            OfficeTable(table, id: id, name: name, only: only, selection: $selection, serverSort: serverSort)
         } detail: {
             VStack(alignment: .leading, spacing: 16) {
                 if let row = table.rows.first(where: { selection.contains($0.id) }) {
-                    OfficeRowDetail(row)
+                    OfficeRowDetail(detailOf(row))
                 } else if !table.rows.isEmpty {
                     Text("Select a row to see more.").font(.callout).foregroundStyle(.readableSecondary)
                 }
                 notes
             }
         }
+        .onChange(of: selection) { _, chosen in chose(table.rows.first { chosen.contains($0.id) }?.id) }
     }
 }

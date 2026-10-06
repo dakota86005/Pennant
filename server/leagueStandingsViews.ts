@@ -323,7 +323,7 @@ export function usVsThemOf(v: OfficeContext, orgId: number, team: number | null)
       return [x.team.team_id, value === null ? none(why) : { value, why: null }] as const;
     }));
   const measures: Measure[] = [
-    measureOf({ id: 'pct', section: 'season', label: 'Winning percentage', hint: 'Wins divided by games played', format: 'rate3', better: 'higher' },
+    measureOf({ id: 'pct', section: 'season', label: 'Win %', hint: 'Wins divided by games played', format: 'rate3', better: 'higher' },
       seasonFigure((t) => (games(t) !== null && known(t.pct) ? t.pct : null), 'No games played yet, or no record in the export'), orgId, themId),
     measureOf({ id: 'rsPerGame', section: 'season', label: 'Runs scored a game', hint: 'Runs scored divided by games played', format: 'dec2', better: 'higher' },
       seasonFigure((t) => (games(t) !== null && known(t.rs) ? t.rs / games(t)! : null), 'No runs scored or games played in the export'), orgId, themId),

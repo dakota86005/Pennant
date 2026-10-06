@@ -104,12 +104,15 @@ material implementation state changes.
   Office's worker after each import, others on their first open; `/api/v2/compare`
   lines up two to four; the GM's note is kept on his follow, as typed.
 - League Office and Scouting (N12 Track B, D-072): `GET /api/v2/views/:org/league/{standings, leaders,
-  orgComparison, franchiseHistory, usVsThem}` and `/scouting/{draftBoard, playerSearch}`, built in the Front
-  Office's worker after each import from the React pages' extracted routes and kept per import. Standings is the
-  one place the postseason odds and the deadline posture appear (the staff's rough read, provisional, with its
-  basis); the Draft Board reads grades only through `loadScoutedAbilities` (the React `/api/draft` route still
-  averages partial tools from the rating columns, left for the cutover); Player Search uses the palette's name
-  matcher and served tokens.
+  orgComparison, franchiseHistory, usVsThem}` and `/scouting/{draftBoard, draftBoard/prospects/:player,
+  playerSearch}`, built in the Front Office's worker after each import from the React pages' extracted routes and
+  kept per import (never per write of the live log; Org Comparison its own job). Standings is the one place the
+  postseason odds and the deadline posture appear (the staff's rough read, provisional, with its basis, in the
+  staff's descriptive words; none once the season is decided or with no schedule in the export); the Draft Board
+  reads grades only through `loadScoutedAbilities` (the React `/api/draft` route still averages partial tools from
+  the rating columns and reads an unknown grade now as zero, left for the cutover), serving its top 300 and a
+  prospect's reasons on selection; Player Search uses the palette's name matcher and served tokens, sorted over
+  every match on the server and paged 300 at a time.
 - After an import, the snapshots run in a worker and both refits at the same
   time (a post-import hook list later milestones register into); the
   destination-fit league populations are cached once per import.

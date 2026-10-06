@@ -22,8 +22,8 @@ struct LeagueOfficeSnapshotTests {
         try FileManager.default.createDirectory(at: Self.folder, withIntermediateDirectories: true)
     }
 
-    private func hosted(_ view: some View) -> some View {
-        let model = PreviewFixtures.ready()
+    private func hosted(_ view: some View, scouting: ScoutingStore? = nil) -> some View {
+        let model = PreviewFixtures.ready(scouting: scouting)
         let window = MainWindowModel(registry: DepartmentRegistry(allDepartments))
         return NavigationStack { view }
             .environment(model)
@@ -57,7 +57,7 @@ struct LeagueOfficeSnapshotTests {
         var chart = served
         chart.points = (1930...2015).map { year in
             let wins = 62 + (year * 37 % 41)
-            let result = year % 17 == 0 ? "title" : year % 5 == 0 ? "playoffs" : "none"
+            let result = year < 1940 ? "unknown" : year % 17 == 0 ? "title" : year % 5 == 0 ? "playoffs" : "none"
             return .init(year: year, wins: wins, losses: 162 - wins, result: result, display: "\(year): \(wins)-\(162 - wins)")
         }
         try draw(hosted(OfficePage { SeasonRecordChart(chart: chart) }), size: CGSize(width: 1000, height: 420), dark: dark, name: "league-franchise-chart-86")
@@ -68,9 +68,24 @@ struct LeagueOfficeSnapshotTests {
         try draw(hosted(UsVsThemView()), size: CGSize(width: 1100, height: 860), dark: dark, name: "league-us-vs-them")
     }
 
-    @Test("Draft Board", arguments: [false, true])
+    @Test("Draft Board on a published class: the board, its filters and the staff's short lists", arguments: [false, true])
     func draftBoard(dark: Bool) throws {
         try draw(hosted(DraftBoardView()), size: CGSize(width: 1180, height: 860), dark: dark, name: "scouting-draft-board")
+    }
+
+    @Test("Draft Board on a published class with nobody in it: its one sentence", arguments: [false, true])
+    func draftBoardEmptyClass(dark: Bool) throws {
+        try draw(hosted(DraftBoardView(), scouting: PreviewFixtures.scoutingEmptyClass), size: CGSize(width: 1000, height: 600), dark: dark, name: "scouting-draft-board-empty-class")
+    }
+
+    @Test("A prospect's reasons for his read, as the board's detail draws them when he is chosen", arguments: [false, true])
+    func prospectDetail(dark: Bool) throws {
+        let store = PreviewFixtures.scouting
+        let board = try #require(store.draftBoard)
+        let prospect = try #require(store.prospects.values.first)
+        var row = try #require(board.board.rows.first { $0.id == prospect.row })
+        row.detail = prospect.detail
+        try draw(hosted(OfficePage { OfficeRowDetail(row) }), size: CGSize(width: 900, height: 320), dark: dark, name: "scouting-draft-prospect")
     }
 
     @Test("Player Search as it opens", arguments: [false, true])

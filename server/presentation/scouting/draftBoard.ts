@@ -14,10 +14,11 @@ import { cell } from '../claim.js';
 import { ageCell, dayOrder, dayWords, factClaim, head, plural, player, type ClubhouseContext } from '../clubhouse/common.js';
 import { fillHint, fillMark, withFill, type RatingFill } from '../clubhouse/fill.js';
 import { column } from '../league/common.js';
-import type { OfficeRow, OfficeTable } from '../league/types.js';
+import { keysServed } from '../league/office.js';
+import type { OfficeChoiceGroup, OfficeRow, OfficeTable } from '../league/types.js';
 import { block, line, tableRow } from '../majorLeague/common.js';
 import type { MlbBlock, MlbLine } from '../majorLeague/types.js';
-import type { ScoutingDraftBoardView, ScoutingFilter } from './types.js';
+import type { ScoutingDraftBoardView, ScoutingProspectView } from './types.js';
 
 const BOARD = 'The scouting staff\'s draft board';
 const STAFF_STAMP = 'The scouting staff\'s lines: stated, not fitted';
@@ -57,19 +58,44 @@ export interface DraftBoardInput {
   rating: { scaleMax: number; roundToFive: boolean };
 }
 
-const GROUPS: Array<{ text: string; positions: string[] | null }> = [
-  { text: 'All positions', positions: null },
-  { text: 'Catchers', positions: ['C'] },
-  { text: 'Infielders', positions: ['1B', '2B', '3B', 'SS'] },
-  { text: 'Outfielders', positions: ['LF', 'CF', 'RF'] },
-  { text: 'Pitchers', positions: ['P'] },
+/** The position filter's choices: each sent back by its key (`?position=IF`), the first keeping every prospect. */
+const GROUPS: Array<{ key: string; text: string; positions: string[] | null }> = [
+  { key: 'all', text: 'All positions', positions: null },
+  { key: 'C', text: 'Catchers', positions: ['C'] },
+  { key: 'IF', text: 'Infielders', positions: ['1B', '2B', '3B', 'SS'] },
+  { key: 'OF', text: 'Outfielders', positions: ['LF', 'CF', 'RF'] },
+  { key: 'P', text: 'Pitchers', positions: ['P'] },
 ];
 
-const SCHOOLS: Array<{ text: string; school: BoardProspect['school'] | null }> = [
-  { text: 'High school and college', school: null },
-  { text: 'High school', school: 'High school' },
-  { text: 'College', school: 'College' },
+/** The school filter's choices, by key (`?school=HS`). */
+const SCHOOLS: Array<{ key: string; text: string; school: BoardProspect['school'] | null }> = [
+  { key: 'all', text: 'High school and college', school: null },
+  { key: 'HS', text: 'High school', school: 'High school' },
+  { key: 'college', text: 'College', school: 'College' },
 ];
+
+/** How many prospects the board serves at first, in its order: the rest are a filter or "Show all" away. */
+export const BOARD_PAGE = 300;
+
+/** What the board is asked for: a position group and a school by key, and whether every prospect is wanted. */
+export interface DraftBoardAsk {
+  position: string;
+  school: string;
+  all: boolean;
+}
+
+export const DEFAULT_BOARD: DraftBoardAsk = { position: 'all', school: 'all', all: false };
+
+/** A board ask from a request's query, its unknown keys read as every prospect (the choice is served back as read). */
+export function draftBoardAskFrom(query: Record<string, unknown>): DraftBoardAsk {
+  const text = (v: unknown): string => (typeof v === 'string' ? v : Array.isArray(v) && typeof v[0] === 'string' ? v[0] : '');
+  const position = GROUPS.some((g) => g.key === text(query.position)) ? text(query.position) : 'all';
+  const school = SCHOOLS.some((g) => g.key === text(query.school)) ? text(query.school) : 'all';
+  return { position, school, all: text(query.all) === '1' || text(query.all) === 'true' };
+}
+
+/** A board ask's key. */
+export const draftBoardKey = (ask: DraftBoardAsk): string => `${ask.position}|${ask.school}|${ask.all ? 'all' : 'top'}`;
 
 /** A grade as the save shows grades (rounded to fives only on the 20-80 scale, as the depth chart rounds them). */
 function grade(n: number | null, rating: DraftBoardInput['rating']): string | null {
@@ -117,17 +143,18 @@ function boardHead(v: ClubhouseContext) {
   });
 }
 
+// The columns of words sort by their words (no sort key on each row would only repeat them, N12 Track B review, M2)
 const BOARD_COLUMNS = [
   column('board', 'Board', true, { hint: 'The scouting staff\'s order: ceiling, then now' }),
-  column('player', 'Player'),
+  column('player', 'Player', false, { byWords: true }),
   column('age', 'Age', true),
-  column('position', 'Pos'),
-  column('bt', 'B/T', false, { hint: 'Bats / throws' }),
-  column('school', 'From'),
+  column('position', 'Pos', false, { byWords: true }),
+  column('bt', 'B/T', false, { hint: 'Bats / throws', byWords: true }),
+  column('school', 'From', false, { byWords: true }),
   column('current', 'Now', true, { hint: 'Our scouts\' grade now, on the 20–80 scale' }),
   column('ceiling', 'Ceiling', true, { hint: 'Our scouts\' grade at his ceiling, on the 20–80 scale' }),
   column('upside', 'Upside', true, { hint: 'Ceiling minus now: the projection still to happen' }),
-  column('read', 'Read', false, { hint: 'The kind of prospect the scouting staff reads him as' }),
+  column('read', 'Read', false, { hint: 'The kind of prospect the scouting staff reads him as', byWords: true }),
 ];
 
 /** The view when there is no board to show: no draft, or not published yet (one sentence and the calendar). */
@@ -141,6 +168,9 @@ function notShownView(v: ClubhouseContext, sentence: string, calendar: OfficeTab
     leftOut: null,
     shortLists: [],
     filters: [],
+    query: { ...DEFAULT_BOARD },
+    count: null,
+    more: null,
     board: { columns: BOARD_COLUMNS, rows: [], empty: cell(sentence) },
     empty: null,
   };
@@ -153,7 +183,7 @@ export function draftBoardUnreadView(v: ClubhouseContext, why: string): Scouting
 }
 
 /** The staff's lines for the read (`advise`), stated once in the view's lede, never on every row. */
-const READ_LINES = 'The read beside a name is the kind of prospect the staff reads him as, on stated lines: a ceiling of 55 or more with 15 or more still to come is a high ceiling with a long wait; within 8 of his ceiling and 45 or more now is close to ready; a ceiling of 52 or more is an everyday regular\'s; any other ceiling of 45 or more is a depth piece. Under 45, the staff gives no read. Select a player for his reasons.';
+const READ_LINES = 'The read beside a name is the kind of prospect the staff reads him as, on stated lines: a ceiling of 55 or more with 15 or more still to come is a high ceiling with a long wait; within 8 of his ceiling and 45 or more now is close to ready; a ceiling of 52 or more is an everyday regular\'s; any other ceiling of 45 or more is a depth piece. A prospect whose grade now isn\'t known is read on his ceiling alone, and the read says so. Under 45, the staff gives no read. Select a player for his reasons.';
 
 function prospectRow(p: BoardProspect, rank: number, rating: DraftBoardInput['rating']): OfficeRow {
   const now = grade(p.current, rating);
@@ -184,7 +214,8 @@ function prospectRow(p: BoardProspect, rank: number, rating: DraftBoardInput['ra
   const detail = withFill(p.fill, cells, ['current', 'ceiling', 'upside'], lines.length
     ? [block(p.read ? `Staff's read: ${p.read.label}` : 'His grades', lines)]
     : []);
-  return tableRow(`prospect-${p.playerId}`, cells, sort, { player: player(p.playerId, p.name, null), detail, ratingsFill: fillMark(p.fill) });
+  // The columns of words are served without their keys: they sort by their words (`byWords`)
+  return keysServed(tableRow(`prospect-${p.playerId}`, cells, sort, { player: player(p.playerId, p.name, null), detail, ratingsFill: fillMark(p.fill) }), BOARD_COLUMNS);
 }
 
 /** A short list's line: board place, name, position, grades and read; the OSA mark as its chip when it applies. */
@@ -267,19 +298,11 @@ function leftOutOf(input: DraftBoardInput): Cell | null {
   return parts.length ? cell(`Not on the board: ${parts.join(', ')}.`, { hint: 'A ceiling counts only when our scouts have graded every tool' }) : null;
 }
 
-function filtersOf(rows: OfficeRow[], prospects: BoardProspect[]): ScoutingFilter[] {
-  const ids = (keep: (p: BoardProspect) => boolean) => prospects.map((p, i) => (keep(p) ? rows[i].id : null)).filter((id): id is string => id !== null);
+/** The board's filters, served by key with the asked choice selected (each sent back as `?position=` and `?school=`). */
+function filtersOf(ask: DraftBoardAsk): OfficeChoiceGroup[] {
   return [
-    {
-      id: 'position',
-      title: cell('Position'),
-      choices: GROUPS.map((g) => ({ text: cell(g.text), rows: ids((p) => g.positions === null || g.positions.includes(p.positionName)) })),
-    },
-    {
-      id: 'school',
-      title: cell('From'),
-      choices: SCHOOLS.map((s) => ({ text: cell(s.text), rows: ids((p) => s.school === null || p.school === s.school) })),
-    },
+    { id: 'position', title: cell('Position'), choices: GROUPS.map((g) => ({ text: cell(g.text), selected: g.key === ask.position, value: g.key })) },
+    { id: 'school', title: cell('From'), choices: SCHOOLS.map((g) => ({ text: cell(g.text), selected: g.key === ask.school, value: g.key })) },
   ];
 }
 
@@ -298,6 +321,10 @@ export function draftBoardView(v: ClubhouseContext, input: DraftBoardInput): Sco
     return notShownView(v, sentence, calendar, false);
   }
   const rows = input.prospects.map((p, i) => prospectRow(p, i + 1, input.rating));
+  // An empty class is said as empty, never as "nobody graded" (N12 Track B review, M8)
+  const none = input.prospects.length + input.unrated === 0
+    ? 'Nobody is in this year\'s class.'
+    : 'Nobody in the class has a full scouted ceiling yet.';
   return {
     ...boardHead(v),
     published: true,
@@ -306,8 +333,57 @@ export function draftBoardView(v: ClubhouseContext, input: DraftBoardInput): Sco
     summary: summaryOf(v, league, input),
     leftOut: leftOutOf(input),
     shortLists: shortLists(v, input),
-    filters: filtersOf(rows, input.prospects),
-    board: { columns: BOARD_COLUMNS, rows, empty: cell('Nobody in the class has a full scouted ceiling yet.') },
+    filters: filtersOf(DEFAULT_BOARD),
+    query: { ...DEFAULT_BOARD },
+    count: null,
+    more: null,
+    board: { columns: BOARD_COLUMNS, rows, empty: cell(none) },
     empty: null,
   };
+}
+
+/**
+ * The board as served for an ask (N12 Track B review, M2): from the whole board built after the import (`draftBoardView`),
+ * the prospects the filters keep, in the board's order, the first `BOARD_PAGE` of them unless every one is asked for
+ * (a filter or "Show all"); each row without its reasons, which are read when he is chosen (`draftProspectOf`). Pure:
+ * it slices what it is handed.
+ */
+export function draftBoardServed(full: ScoutingDraftBoardView, ask: DraftBoardAsk): ScoutingDraftBoardView {
+  const filters = filtersOf(ask);
+  if (!full.published || full.board.rows.length === 0) return { ...full, filters: full.published ? filters : [], query: { ...ask } };
+  const group = GROUPS.find((g) => g.key === ask.position)!;
+  const school = SCHOOLS.find((g) => g.key === ask.school)!;
+  const kept = full.board.rows.filter((r) =>
+    (group.positions === null || group.positions.includes(r.cells.position?.display ?? '')) && (school.school === null || r.cells.school?.display === school.school));
+  const narrowed = group.positions !== null || school.school !== null;
+  const everyone = narrowed || ask.all;
+  const shown = everyone ? kept : kept.slice(0, BOARD_PAGE);
+  const total = full.board.rows.length;
+  const count = narrowed
+    ? cell(`${plural(kept.length, 'prospect')} of ${total.toLocaleString('en-US')} on the board`)
+    : shown.length < kept.length
+      ? cell(`The top ${shown.length} of ${total.toLocaleString('en-US')} on the board, in the staff's order`)
+      : cell(`${plural(total, 'prospect')} on the board, in the staff's order`);
+  const more = !everyone && shown.length < kept.length
+    ? { text: cell(`Show all ${kept.length.toLocaleString('en-US')}`), id: 'all', value: '1' }
+    : null;
+  return {
+    ...full,
+    filters,
+    query: { ...ask },
+    count,
+    more,
+    board: {
+      ...full.board,
+      rows: shown.map((r) => ({ ...r, detail: [] })),
+      empty: narrowed ? cell('Nobody on the board fits those choices.') : full.board.empty,
+    },
+  };
+}
+
+/** A prospect's reasons for his read, from the whole board, as his row's detail; null when he isn't on the board. */
+export function draftProspectOf(full: ScoutingDraftBoardView, playerId: number): ScoutingProspectView | null {
+  const row = full.board.rows.find((r) => r.player?.playerId === playerId);
+  if (!row) return null;
+  return { orgId: full.orgId, importStamp: full.importStamp, reportStamp: full.reportStamp, playerId, row: row.id, detail: row.detail };
 }

@@ -51,12 +51,12 @@ import type {
 
 import {
   leagueFranchiseNow, leagueLeadersNow, leagueOrgComparisonNow, leagueStandingsNow, leagueUsVsThemNow, scoutingDraftBoardNow,
-  scoutingPlayerSearchNow,
+  scoutingDraftProspectNow, scoutingPlayerSearchNow,
 } from './leagueViewService.js';
 import type {
   LeagueFranchiseView, LeagueLeadersView, LeagueOrgComparisonView, LeagueStandingsView, LeagueUsVsThemView,
 } from './presentation/league/types.js';
-import type { ScoutingDraftBoardView, ScoutingPlayerSearchView } from './presentation/scouting/types.js';
+import type { ScoutingDraftBoardView, ScoutingPlayerSearchView, ScoutingProspectView } from './presentation/scouting/types.js';
 
 export const v2Routes = Router();
 
@@ -241,7 +241,11 @@ v2Routes.get('/views/:org/league/leaders', frontOffice<LeagueLeadersView>((req) 
 v2Routes.get('/views/:org/league/orgComparison', frontOffice<LeagueOrgComparisonView>((req) => leagueOrgComparisonNow(String(req.params.org))));
 v2Routes.get('/views/:org/league/franchiseHistory', frontOffice<LeagueFranchiseView>((req) => leagueFranchiseNow(String(req.params.org))));
 v2Routes.get('/views/:org/league/usVsThem', frontOffice<LeagueUsVsThemView>((req) => leagueUsVsThemNow(String(req.params.org), req.query.team)));
-v2Routes.get('/views/:org/scouting/draftBoard', frontOffice<ScoutingDraftBoardView>((req) => scoutingDraftBoardNow(String(req.params.org))));
+v2Routes.get('/views/:org/scouting/draftBoard', frontOffice<ScoutingDraftBoardView>((req) =>
+  scoutingDraftBoardNow(String(req.params.org), req.query as Record<string, unknown>)));
+/** A prospect's reasons for the staff's read, read when he is chosen on the board (N12 Track B review, M2). */
+v2Routes.get('/views/:org/scouting/draftBoard/prospects/:player', frontOffice<ScoutingProspectView>((req) =>
+  scoutingDraftProspectNow(String(req.params.org), req.params.player)));
 v2Routes.get('/views/:org/scouting/playerSearch', frontOffice<ScoutingPlayerSearchView>((req) =>
   scoutingPlayerSearchNow(String(req.params.org), req.query as Record<string, unknown>)));
 

@@ -1228,7 +1228,7 @@ final class PennantUITests: XCTestCase {
         let views: [(dept: String, view: String, shows: String, table: Bool)] = [
             ("league", "standings", "table.standings.", true), ("league", "leaders", "table.leaders.", true),
             ("league", "orgComparison", "table.orgComparison.clubs", true), ("league", "franchiseHistory", "franchise.part", false),
-            ("league", "usVsThem", "table.usVsThem.", true), ("scouting", "draftBoard", "draftBoard.", false),
+            ("league", "usVsThem", "table.usVsThem.", true), ("scouting", "draftBoard", "table.draftBoard.board", true),
             ("scouting", "playerSearch", "table.playerSearch.results.", true),
         ]
         for round in 1...3 {
@@ -1281,7 +1281,19 @@ final class PennantUITests: XCTestCase {
                     }
                 case "standings":
                     XCTAssertTrue(element(app, "standings.division").exists, "round \(round): Standings offers no division")
+                case "draftBoard":
+                    // The published class (N12 Track B review, M8): the chosen prospect's reasons, read when he was chosen
+                    let reasons = element(app, "row.detail").staticTexts.matching(NSPredicate(format: "value BEGINSWITH %@ OR label BEGINSWITH %@", "Staff's read", "Staff's read")).firstMatch
+                    if !reasons.waitForExistence(timeout: 15) { keep(window.screenshot(), named: "n12b-narrow-900-no-reasons") }
+                    XCTAssertTrue(reasons.exists, "round \(round): the chosen prospect's reasons did not draw")
                 case "playerSearch":
+                    if round == 1 {
+                        // The whole first page (300 rows of season lines) audited once, as the GM first sees it (review, L10)
+                        let busy = app.progressIndicators.firstMatch
+                        if busy.exists { _ = busy.waitForNonExistence(timeout: 20) }
+                        up("audit of playerSearch's first page")
+                        try audit(app, named: "accessibility-audit-n12b-narrow-playerSearch-300")
+                    }
                     // A name typed in the window's search field (scoped to Player Search) is asked of the server, and the
                     // results drawn again: a few rows, so the audit below reads a short table (300 rows of season lines
                     // made each audit element's lookup take most of a second)

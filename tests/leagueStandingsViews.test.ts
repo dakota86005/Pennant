@@ -191,6 +191,26 @@ describe('Standings says what computeStandings computes', () => {
     expect(oddsWordsIn(read).length).toBeGreaterThan(0);
   });
 
+  it('serves every club in one table with a Division column, in the served order, as the React page shows the league (review, M5)', () => {
+    const all = view.all!;
+    expect(all.title.display).toBe('All divisions');
+    const order = standings.subLeagues.flatMap((sub) => sub.divisions.flatMap((d) => d.teams.map((t) => [t.team_id, d.name])));
+    expect(all.table.rows.map((r) => [r.club!.teamId, r.cells.division.display])).toEqual(order);
+    expect(all.table.columns.map((c) => c.id)).toEqual(['team', 'division', 'w', 'l', 'pct', 'gb', 'rs', 'ra', 'diff', 'streak', 'pace', 'magic']);
+    // The Division column sorts in the standings' order of the divisions, never alphabetically
+    const keys = all.table.rows.map((r) => r.sort.division as number);
+    expect(keys).toEqual([...keys].sort((a, b) => a - b));
+    expect(new Set(keys).size).toBe(standings.subLeagues.reduce((n, sub) => n + sub.divisions.length, 0));
+    // The same club's line as in its division's table
+    const divisionRows = new Map(view.groups.flatMap((g) => g.divisions.flatMap((d) => d.table.rows)).map((r) => [r.id, r]));
+    for (const r of all.table.rows) {
+      const { division, ...rest } = r.cells;
+      expect(rest).toEqual(divisionRows.get(r.id)!.cells);
+      expect(division).toBeTruthy();
+    }
+    expect(all.table.rows.filter((r) => r.ours).map((r) => r.club!.teamId)).toEqual([save.org]);
+  });
+
   it('states our place in the race as facts', () => {
     expect(view.race.length).toBeGreaterThan(0);
     const division = view.race[0];
@@ -266,11 +286,25 @@ describe('Us vs Them sets our club beside another, as facts (D-072)', () => {
     const h = (schedule.body.headToHead ?? []).find((x) => x.opponentId === view.them!.teamId);
     if (h && h.w + h.l > 0) {
       expect(view.headToHead?.value?.display).toBe(`${h.w}–${h.l} · runs ${h.rf}–${h.ra}`);
+      // The record in the line's own words, which the app draws (review, M6)
+      expect(view.headToHead?.text).toBe(`Against the ${view.them!.name} this season: ${h.w}–${h.l}, runs ${h.rf}–${h.ra}`);
       expect(view.headToHead?.basis.certainty).toBe('fact');
     } else expect(view.headToHead).toBeNull();
     const series = schedule.body.series.filter((s) => s.oppId === view.them!.teamId);
     // A line per series, and the next series (or none left) said last
     expect(view.meetings!.lines.length).toBe(series.length + 1);
+  });
+
+  it('serves its clubs\' columns as not sortable (each row its own unit), and the season\'s rate as "Win %" (review, M6, L8)', () => {
+    for (const section of view.sections) {
+      const cols = new Map(section.table.columns.map((c) => [c.id, c]));
+      expect(cols.get('us')?.sortable).toBe(false);
+      expect(cols.get('them')?.sortable).toBe(false);
+      expect(cols.get('measure')?.sortable).toBe(true);
+    }
+    const season = view.sections.find((x) => x.id === 'usVsThem-season')!;
+    expect(season.table.rows.some((r) => r.cells.measure.display === 'Win %')).toBe(true);
+    expect(JSON.stringify(view)).not.toMatch(/Winning percentage/);
   });
 
   it('never says odds, posture or a season-window word, in a line or a basis (D-060)', async () => {

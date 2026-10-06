@@ -198,8 +198,10 @@ function chartOf(v: ClubhouseContext, h: FranchiseHistory, carry: Reading): Leag
   if (!s || h.seasons.length === 0) return null;
   // Oldest first, so the eye reads the franchise forwards in time
   const points: LeagueSeasonPoint[] = [...h.seasons].reverse().map((x) => {
-    const result = carry.known(x.year) ? resultOf(x) : 'none';
-    const ended = result === 'title' ? ', won it all' : result === 'playoffs' ? ', made the playoffs' : '';
+    // A season whose ending the export doesn't record is its own mark, never drawn as a missed postseason (D-018)
+    const result = carry.results && carry.known(x.year) ? resultOf(x) : 'unknown';
+    const ended = result === 'title' ? ', won it all' : result === 'playoffs' ? ', made the playoffs'
+      : result === 'none' ? ', missed the playoffs' : ', how it ended not known';
     return { year: x.year, wins: x.w, losses: x.l, result, display: `${x.year}: ${x.w}-${x.l}${ended}` };
   });
   const span = s.firstYear === s.lastYear ? `${s.firstYear}` : `${s.firstYear} to ${s.lastYear}`;
@@ -228,7 +230,8 @@ function chartOf(v: ClubhouseContext, h: FranchiseHistory, carry: Reading): Leag
     legend: [
       { result: 'title', text: cell('Won it all', { hint: 'A season the club won the playoffs' }) },
       { result: 'playoffs', text: cell('Made the playoffs', { hint: 'Reached the playoffs without winning them' }) },
-      { result: 'none', text: carry.results ? cell('Other seasons') : cell('Every season', { hint: 'The export doesn\'t say how its seasons ended' }) },
+      { result: 'none', text: cell('Missed the playoffs') },
+      { result: 'unknown', text: cell('Not known', { hint: 'The export doesn\'t say how the season ended' }) },
     ],
   };
 }

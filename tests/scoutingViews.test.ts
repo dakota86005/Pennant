@@ -6,7 +6,8 @@ import { computePlayers } from '../server/league.js';
 import { officeContextFor } from '../server/leagueViewsBuild.js';
 import type { OfficeContext } from '../server/presentation/league/common.js';
 import type { ScoutingDraftBoardView, ScoutingPlayerSearchView } from '../server/presentation/scouting/types.js';
-import { computeDraft } from '../server/rosterops.js';
+import { BOARD_PAGE, DEFAULT_BOARD, draftBoardAskFrom, draftBoardServed, draftBoardView, draftProspectOf } from '../server/presentation/scouting/draftBoard.js';
+import { advise, adviseScouted, computeDraft, draftLeague } from '../server/rosterops.js';
 import {
   DEFAULT_SEARCH, draftBoardUnread, draftBoardViewOf, playerSearchAskFrom, playerSearchKey, playerSearchUnread, playerSearchViewOf,
   type PlayerSearchAsk,
@@ -17,6 +18,7 @@ import { BATTING_STATS } from '../server/presentation/statCatalog.js';
 import { bannedInPayload } from './bannedJargon';
 import { gradeOwners } from './ratingFillMarks';
 import request from './request.js';
+import { CLASS, addDraftClass } from './draftClassFixture';
 import { buildSave, insert, type BuiltSave } from './syntheticSave';
 
 /*
@@ -35,7 +37,6 @@ vi.mock('../server/scoutedEvidence.js', async (importOriginal) => {
 let save: BuiltSave;
 let v: OfficeContext;
 let base = '';
-const CLASS = 90000;
 
 /** Every visible string in a payload (`display`, `text`, `hint`, and a basis line's `value`). */
 function visible(value: unknown): string[] {
@@ -47,27 +48,11 @@ function visible(value: unknown): string[] {
 const ODDS_OR_POSTURE = [/postseason/i, /playoff/i, /\bodds\b/i, /\bbuy(?:er|ing)?\b/i, /\bsell(?:er|ing)?\b/i, /\bposture\b/i, /\bcontend/i, /\brebuild/i];
 const ORDERS = [/\bdraft (?:him|them|this)\b/i, /\btake (?:him|them)\b/i, /\bpick (?:him|them)\b/i, /\bgo get\b/i, /\bshould\b/i, /\bmust\b/i];
 
-/**
- * A draft class for the synthetic save (it has none): 30 amateurs flagged for its draft, one already drafted and one in
- * another league's draft; a hitter and a pitcher whose ceiling our scouts haven't graded in full, and a pitcher not graded
- * in full now.
- */
-function addDraftClass(): void {
-  let id = CLASS;
-  for (let i = 0; i < 30; i += 1) {
-    const pitcher = i % 3 === 0;
-    insert('players', { player_id: id, first_name: 'Draft', last_name: `Kid${i}`, age: 17 + (i % 6), position: pitcher ? 1 : 2 + (i % 9), role: 0, bats: 1 + (i % 3), throws: 1 + (i % 2), team_id: 0, organization_id: 0, retired: 0, hidden: 0, draft_eligible: 1, college: i % 2, picked_in_draft: i === 29 ? 1 : 0, draft_league_id: i === 28 ? 555 : save.leagueId });
-    if (pitcher) insert('players_pitching', { player_id: id, pitching_ratings_overall_stuff: 30 + i, pitching_ratings_overall_movement: 35, pitching_ratings_overall_control: i === 3 ? 0 : 40, pitching_ratings_talent_stuff: 50 + i, pitching_ratings_talent_movement: 55, pitching_ratings_talent_control: i === 6 ? 0 : 50 });
-    else insert('players_batting', { player_id: id, batting_ratings_overall_contact: 30 + i, batting_ratings_overall_gap: 40, batting_ratings_overall_power: 35, batting_ratings_overall_eye: 40, batting_ratings_overall_strikeouts: 40, batting_ratings_talent_contact: 50 + i, batting_ratings_talent_gap: 55, batting_ratings_talent_power: i === 4 ? 0 : 60, batting_ratings_talent_eye: 50, batting_ratings_talent_strikeouts: 50 });
-    id += 1;
-  }
-}
-
 const setLeague = (sql: string) => db.prepare(`UPDATE leagues SET ${sql} WHERE league_id = ?`).run(save.leagueId);
 
 beforeAll(async () => {
   save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true, minors: true });
-  addDraftClass();
+  addDraftClass(save);
   // A name with accents, for the palette's folding
   db.prepare(`UPDATE players SET first_name = 'José', last_name = 'Ramírez' WHERE player_id = ?`).run(save.regular);
   forgetSearchIndex();
@@ -181,17 +166,94 @@ describe('the Draft Board (N12)', () => {
     expect(thin.claims[0].basis.because.some((l) => l.label === 'The staff')).toBe(true);
   });
 
-  it('serves its filters with the rows each keeps, in the board\'s order, the first keeping every row', () => {
+  it('serves its filters by key, the asked choice selected, and keeps the board\'s order (review, M2)', () => {
     const order = view.board.rows.map((r) => r.id);
-    for (const f of view.filters) {
-      expect(f.choices[0].rows).toEqual(order);
-      for (const c of f.choices) expect(c.rows).toEqual(order.filter((id) => c.rows.includes(id)));
+    const served = draftBoardServed(view, DEFAULT_BOARD);
+    expect(served.filters.map((f) => [f.id, f.choices.map((c) => c.value), f.choices.filter((c) => c.selected).map((c) => c.value)])).toEqual([
+      ['position', ['all', 'C', 'IF', 'OF', 'P'], ['all']], ['school', ['all', 'HS', 'college'], ['all']],
+    ]);
+    expect(served.board.rows.map((r) => r.id)).toEqual(order);
+    // No row-id lists any longer: the filters are a few keys, whatever the size of the class
+    expect(JSON.stringify(served.filters)).not.toMatch(/prospect-/);
+    const pitchers = draftBoardServed(view, draftBoardAskFrom({ position: 'P' }));
+    expect(pitchers.query).toEqual({ position: 'P', school: 'all', all: false });
+    expect(pitchers.filters[0].choices.find((c) => c.selected)?.value).toBe('P');
+    expect(pitchers.board.rows.length).toBeGreaterThan(0);
+    expect(pitchers.board.rows.every((r) => r.cells.position.display === 'P')).toBe(true);
+    expect(pitchers.board.rows.map((r) => r.id)).toEqual(order.filter((id) => pitchers.board.rows.some((r) => r.id === id)));
+    expect(pitchers.count?.display).toBe(`${pitchers.board.rows.length === 1 ? '1 prospect' : `${pitchers.board.rows.length} prospects`} of ${order.length} on the board`);
+    const college = draftBoardServed(view, draftBoardAskFrom({ school: 'college' }));
+    expect(college.board.rows.length).toBeGreaterThan(0);
+    expect(college.board.rows.length).toBeLessThan(order.length);
+    expect(college.board.rows.every((r) => r.cells.school.display === 'College')).toBe(true);
+    // An unknown key reads as every prospect, served back as read
+    expect(draftBoardAskFrom({ position: 'XX', school: 'nope' })).toEqual(DEFAULT_BOARD);
+  });
+
+  it('serves the top 300 in the board\'s order, every prospect on a filter or "Show all", and a prospect\'s reasons when chosen (review, M2)', () => {
+    // A class of 650, as a big save has thousands: the served shape is the same
+    const big: ScoutingDraftBoardView = {
+      ...view,
+      board: { ...view.board, rows: Array.from({ length: 650 }, (_, i) => ({ ...view.board.rows[i % view.board.rows.length], id: `prospect-${i}` })) },
+    };
+    const top = draftBoardServed(big, DEFAULT_BOARD);
+    expect(top.board.rows.map((r) => r.id)).toEqual(big.board.rows.slice(0, BOARD_PAGE).map((r) => r.id));
+    expect(top.count?.display).toBe('The top 300 of 650 on the board, in the staff\'s order');
+    expect(top.more).toEqual({ text: { display: 'Show all 650' }, id: 'all', value: '1' });
+    const all = draftBoardServed(big, draftBoardAskFrom({ all: '1' }));
+    expect(all.board.rows).toHaveLength(650);
+    expect(all.more).toBeNull();
+    const filtered = draftBoardServed(big, draftBoardAskFrom({ position: 'IF' }));
+    expect(filtered.board.rows.length).toBe(big.board.rows.filter((r) => ['1B', '2B', '3B', 'SS'].includes(r.cells.position.display)).length);
+    expect(filtered.more).toBeNull();
+    // The rows carry no reasons; they are read when a prospect is chosen
+    expect(top.board.rows.every((r) => r.detail.length === 0)).toBe(true);
+    const withReasons = view.board.rows.find((r) => r.detail.length > 0)!;
+    const chosen = draftProspectOf(view, withReasons.player!.playerId)!;
+    expect(chosen.row).toBe(withReasons.id);
+    expect(chosen.detail).toEqual(withReasons.detail);
+    expect(draftProspectOf(view, 1)).toBeNull();
+    // The columns of words sort by their words: their rows carry no keys, the numbers' keys stay
+    const words = view.board.columns.filter((c) => c.byWords).map((c) => c.id);
+    expect(words).toEqual(['player', 'position', 'bt', 'school', 'read']);
+    for (const r of top.board.rows) {
+      for (const id of words) expect(id in r.sort, id).toBe(false);
+      expect(Object.keys(r.sort).sort()).toEqual(['age', 'board', 'ceiling', 'current', 'upside']);
     }
-    const pitchers = view.filters[0].choices.find((c) => c.text.display === 'Pitchers')!;
-    expect(pitchers.rows.map((id) => view.board.rows.find((r) => r.id === id)!.cells.position.display).every((p) => p === 'P')).toBe(true);
-    const college = view.filters[1].choices.find((c) => c.text.display === 'College')!;
-    expect(college.rows.length).toBeGreaterThan(0);
-    expect(college.rows.length).toBeLessThan(order.length);
+    console.log(`[n12b size] draft board, 650 prospects: whole ${JSON.stringify(big).length} bytes, top 300 served ${JSON.stringify(top).length} bytes`);
+  });
+
+  it('never reads a grade now that isn\'t known as zero: the read rests on the ceiling and says so (review, M4)', () => {
+    const thin = new Set<string>();
+    const prospect = { age: 20, positionName: 'SS', school: 'College', isPitcher: false };
+    // The React route's reading reads the unknown as zero ("close to ready" and a long wait need a grade now)
+    expect(adviseScouted({ ...prospect, cur: null, pot: 60, upside: null }, thin)?.label).toBe('Everyday-regular ceiling, now not graded');
+    expect(adviseScouted({ ...prospect, cur: null, pot: 48, upside: null }, thin)?.label).toBe('Depth piece, now not graded');
+    expect(adviseScouted({ ...prospect, cur: null, pot: 60, upside: null }, thin)?.reasons[1]).toMatch(/grade now isn't known/);
+    expect(adviseScouted({ ...prospect, cur: null, pot: 40, upside: null }, thin)).toBeNull();
+    expect(adviseScouted({ ...prospect, cur: null, pot: null, upside: null }, thin)).toBeNull();
+    // With both grades known it is the route's own read
+    for (const [cur, pot] of [[40, 60], [50, 55], [45, 53], [40, 47]]) {
+      expect(adviseScouted({ ...prospect, cur, pot, upside: pot - cur }, thin)).toEqual(advise({ ...prospect, cur, pot, upside: pot - cur }, thin));
+    }
+    const row = view.board.rows.find((r) => r.player?.playerId === CLASS + 3)!;
+    expect(row.sort.current).toBeNull();
+    expect(row.cells.read.display === 'No read' || /now not graded$/.test(row.cells.read.display)).toBe(true);
+    expect(row.cells.read.display).not.toMatch(/^(Close to ready|High ceiling, long wait)$/);
+  });
+
+  it('says an empty published class is empty, never that nobody in it is graded (review, M8)', () => {
+    const league = draftLeague(save.org)!;
+    const empty = draftBoardView(v, {
+      league, poolRule: 'flag', prospects: [], unrated: 0, excluded: { alreadyPicked: 0, otherDraft: 0 }, needs: [], needsBasis: '',
+      rating: { scaleMax: 80, roundToFive: false },
+    });
+    expect(empty.board.empty?.display).toBe('Nobody is in this year\'s class.');
+    const ungraded = draftBoardView(v, {
+      league, poolRule: 'flag', prospects: [], unrated: 4, excluded: { alreadyPicked: 0, otherDraft: 0 }, needs: [], needsBasis: '',
+      rating: { scaleMax: 80, roundToFive: false },
+    });
+    expect(ungraded.board.empty?.display).toBe('Nobody in the class has a full scouted ceiling yet.');
   });
 
   it('marks every graded row, and every short-list line, with OSA\'s view when it fills in for our scouts', () => {
@@ -314,7 +376,7 @@ describe('Player Search (N12)', () => {
     expect(rowsOf(short).length).toBe(rowsOf(playerSearchViewOf(v, save.org, DEFAULT_SEARCH)).length);
   });
 
-  it('shows at most 300, the most playing time first, and says how many match and how many are shown', () => {
+  it('shows 300 at a time, sorted over every match, and says how many match and how many are shown (review, M1)', () => {
     for (let i = 0; i < 320; i += 1) {
       insert('players', { player_id: 70000 + i, first_name: 'Depth', last_name: `Bat${i}`, age: 24, position: 2 + (i % 8), role: 0, bats: 1, throws: 1, team_id: save.farmClubs[0], organization_id: save.org, retired: 0, hidden: 0, draft_eligible: 0 });
     }
@@ -322,11 +384,42 @@ describe('Player Search (N12)', () => {
       const many = search('', ['scope:org']);
       expect(rowsOf(many)).toHaveLength(300);
       const total = (computePlayers({ level: 'all', orgId: String(save.org), limit: '1' }) as { ok: true; body: { total: number } }).body.total;
-      expect(many.count.display).toBe(`${total.toLocaleString('en-US')} batters match; the 300 with the most playing time this season shown`);
+      expect(many.count.display).toBe(`${total.toLocaleString('en-US')} batters match; 1 to 300 shown, most playing time first`);
+      expect(many.more).toEqual({ text: { display: `Show the next ${total - 300}`, hint: `${total - 300} more match` }, id: 'offset', value: '300' });
       // A man with no line this season says so, never a zero
       const unplayed = rowsOf(many).find((r) => r.cells.player.display.startsWith('Depth'))!;
       expect(unplayed.cells['stat.avg'].display).toBe('No line');
-      expect(unplayed.sort['stat.avg']).toBeNull();
+      // The server sorts: the rows carry no keys, and the table says so
+      expect(many.results.serverSorts).toBe(true);
+      expect(rowsOf(many).every((r) => Object.keys(r.sort).length === 0)).toBe(true);
+
+      // The next page, through its offset: the route's next 300, in the same order
+      const next = playerSearchViewOf(v, save.org, playerSearchAskFrom({ tokens: 'scope:org', offset: many.more!.value }));
+      const route = (q: Record<string, string>) => (computePlayers({ level: 'all', orgId: String(save.org), limit: '300', viewer: String(save.org), ...q }) as { ok: true; body: { players: Array<{ player_id: number }> } }).body.players.map((p) => p.player_id);
+      expect(rowsOf(next).map((r) => r.player?.playerId)).toEqual(route({ offset: '300' }));
+      expect(next.query.offset).toBe(300);
+      expect(next.count.display).toBe(`${total.toLocaleString('en-US')} batters match; 301 to ${total} shown, most playing time first`);
+      expect(next.more).toBeNull();
+
+      // A column's sort orders every match, not the page shown (the React page's whole-league sort, review M1)
+      const byAge = playerSearchViewOf(v, save.org, playerSearchAskFrom({ tokens: 'scope:org', sort: 'age', dir: 'asc' }));
+      expect(rowsOf(byAge).map((r) => r.player?.playerId)).toEqual(route({ sort: 'age', dir: 'asc' }));
+      expect(byAge.query).toMatchObject({ sort: 'age', dir: 'asc', offset: 0 });
+      expect(byAge.count.display).toMatch(/by age, youngest first$/);
+      const ages = rowsOf(byAge).map((r) => Number(r.cells.age.display));
+      expect(ages).toEqual([...ages].sort((a, b) => a - b));
+      const byOps = playerSearchViewOf(v, save.org, playerSearchAskFrom({ tokens: 'scope:org', sort: 'stat.ops', dir: 'desc' }));
+      expect(rowsOf(byOps).map((r) => r.player?.playerId)).toEqual(route({ sort: 'ops', dir: 'desc' }));
+      expect(byOps.count.display).toMatch(/by OPS, highest first$/);
+      // The best OPS of every match leads, though most of these batters were not in the first page by playing time
+      expect(rowsOf(byOps)[0].player?.playerId).toBe(route({ sort: 'ops', dir: 'desc' })[0]);
+      // A column that doesn't sort (hands) is served so, and asking it sorts nothing
+      expect(many.results.columns.find((c) => c.id === 'bt')?.sortable).toBe(false);
+      const byHands = playerSearchViewOf(v, save.org, playerSearchAskFrom({ tokens: 'scope:org', sort: 'bt' }));
+      expect(byHands.query.sort).toBeNull();
+      expect(rowsOf(byHands).map((r) => r.player?.playerId)).toEqual(rowsOf(many).map((r) => r.player?.playerId));
+      expect(playerSearchKey(playerSearchAskFrom({ sort: 'age', dir: 'asc' }))).not.toBe(playerSearchKey(playerSearchAskFrom({ sort: 'age' })));
+      expect(playerSearchAskFrom({ offset: '450' }).offset).toBe(300);
     } finally {
       db.exec('DELETE FROM players WHERE player_id >= 70000 AND player_id < 70400');
     }

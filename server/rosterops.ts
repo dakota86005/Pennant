@@ -597,7 +597,12 @@ export function advise(p: Prospect, thin: Set<string>): { label: string; reasons
   const cur = p.cur ?? 0;
   const upside = p.upside ?? 0;
   if (pot < 45) return null;
+  const { label, reasons } = adviseOnGrades(pot, cur, upside);
+  return { label, reasons: [...reasons, ...prospectContext(p, thin)] };
+}
 
+/** The read's label and its first reason, from a known ceiling, now and upside (`advise`'s stated lines). */
+function adviseOnGrades(pot: number, cur: number, upside: number): { label: string; reasons: string[] } {
   const reasons: string[] = [];
   let label: string;
 
@@ -614,7 +619,12 @@ export function advise(p: Prospect, thin: Set<string>): { label: string; reasons
     label = 'Depth piece';
     reasons.push(`${pot} ceiling — organizational depth rather than a future regular`);
   }
+  return { label, reasons };
+}
 
+/** The read's other reasons: his age against the class, his school, and whether he plays one of the thinnest spots. */
+function prospectContext(p: Prospect, thin: Set<string>): string[] {
+  const reasons: string[] = [];
   // Age is read against the class, not the calendar: the draft pool runs 16-25,
   // so the same ceiling at 18 is a much better bet than at 22
   if (p.age <= 18) reasons.push(`only ${p.age} — years of development still ahead`);
@@ -622,8 +632,31 @@ export function advise(p: Prospect, thin: Set<string>): { label: string; reasons
 
   if (p.school === 'HS') reasons.push('high schooler — further away, more variance');
   if (thin.has(p.positionName)) reasons.push(`${p.positionName} is among your thinnest spots today`);
+  return reasons;
+}
 
-  return { label, reasons };
+/**
+ * The staff's read for the Mac's Draft Board (N12 Track B review, M4; D-018): `advise`'s stated lines, with nothing
+ * unknown read as zero. No ceiling, no read. A prospect whose grade now isn't known is read on his ceiling alone (an
+ * everyday regular's ceiling or a depth piece), and the label says his grade now isn't known; the reads that need it
+ * (a long wait, close to ready) are never given without it. The React page's route keeps `advise`.
+ */
+export function adviseScouted(p: Prospect, thin: Set<string>): { label: string; reasons: string[] } | null {
+  if (p.pot === null || !Number.isFinite(p.pot) || p.pot < 45) return null;
+  const pot = p.pot;
+  if (p.cur !== null && Number.isFinite(p.cur)) {
+    const { label, reasons } = adviseOnGrades(pot, p.cur, pot - p.cur);
+    return { label, reasons: [...reasons, ...prospectContext(p, thin)] };
+  }
+  const regular = pot >= 52;
+  return {
+    label: `${regular ? 'Everyday-regular ceiling' : 'Depth piece'}, now not graded`,
+    reasons: [
+      regular ? `${pot} ceiling` : `${pot} ceiling — organizational depth rather than a future regular`,
+      'his grade now isn\'t known, so how far he has to go isn\'t either',
+      ...prospectContext(p, thin),
+    ],
+  };
 }
 
 /** Which rule finds the class in this save (`flag` or `class`), and the SQL that keeps its members (one `?`: the league). */

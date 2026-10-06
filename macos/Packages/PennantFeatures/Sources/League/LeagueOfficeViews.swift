@@ -50,9 +50,10 @@ private struct EmptyPage: View {
 
 // MARK: Standings
 
-/// Standings: one division at a time as a native table (our division first), the league's halves and divisions chosen
-/// above it; our place in the race as facts in the head, and, beneath the table, the staff's rough read of the season
-/// (the odds and the posture, D-060: only here, with their basis, never the headline).
+/// Standings: every club of the league in one native table with its division, as the React page shows the league (the
+/// served "All divisions", what the view opens on), or one division at a time, chosen above it; our place in the race as
+/// facts in the head, and, beneath the table, the staff's rough read of the season (the odds and the posture, D-060: only
+/// here, with their basis, never the headline).
 public struct StandingsView: View {
     @Environment(AppModel.self) private var model
     @State private var chosen: String?
@@ -62,17 +63,19 @@ public struct StandingsView: View {
     public var body: some View {
         let store = model.leagueOffice
         OfficeState(payload: store.standings, problem: store.problems["standings"]) { view in
-            let divisions = view.groups.flatMap { group in group.divisions.map { (group: group.title.display, division: $0) } }
-            let ours = divisions.first { $0.division.table.rows.contains { $0.ours == true } }?.division.id
-            let shownId = chosen ?? ours ?? divisions.first?.division.id
-            if let shown = divisions.first(where: { $0.division.id == shownId })?.division {
+            // The whole league first (served), then each division under its sub-league's name
+            let sections = (view.all.map { [(group: String?.none, division: $0)] } ?? [])
+                + view.groups.flatMap { group in group.divisions.map { (group: Optional(group.title.display), division: $0) } }
+            let shownId = chosen ?? sections.first?.division.id
+            if let shown = sections.first(where: { $0.division.id == shownId })?.division ?? sections.first?.division {
                 OfficeTablePane(shown.table, id: "standings.\(shown.id)", name: shown.title.display, detailShare: 0.42) {
                     HeadStack(title: view.title, lede: view.lede, refreshing: model.leagueOfficeUpdating("standings")) {
-                        OfficeChoiceMenu(
-                            "Division",
-                            choices: divisions.map { ("\($0.division.title.display)", $0.group, $0.division.id == shown.id) },
+                        ChoicePopover(
+                            Text("Division"),
+                            current: Text(verbatim: shown.title.display),
+                            choices: sections.map { .init(verbatim: $0.division.title.display, hint: $0.group, selected: $0.division.id == shown.id) },
                             id: "standings.division"
-                        ) { chosen = divisions[$0].division.id }
+                        ) { chosen = sections[$0].division.id }
                         if let summary = shown.summary {
                             Text(verbatim: summary.display).foregroundStyle(.readableSecondary).help(detail: summary.hint)
                         }
@@ -152,9 +155,10 @@ public struct LeadersView: View {
                         if view.groups.count > 1 {
                             OfficeSectionPicker(titles: view.groups.map(\.title.display), selection: $group, id: "leaders.groups")
                         }
-                        OfficeChoiceMenu(
-                            "Category",
-                            choices: sections.enumerated().map { ($0.element.title.display, $0.element.title.hint, $0.offset == index) },
+                        ChoicePopover(
+                            Text("Category"),
+                            current: Text(verbatim: shown.title.display),
+                            choices: sections.enumerated().map { .init(verbatim: $0.element.title.display, hint: $0.element.title.hint, selected: $0.offset == index) },
                             id: "leaders.category"
                         ) { category[groupIndex] = $0 }
                     } extra: {
@@ -261,38 +265,57 @@ public struct FranchiseHistoryView: View {
     }
 }
 
-/// The season record as Swift Charts: a bar per season, oldest first, its height the wins; a title and a playoff season
-/// each drawn in its own colour and with its own mark above the bar (never colour alone), named in the legend; the
-/// chart is one image to VoiceOver with its served summary and a descriptor of every season.
+/// The season record as Swift Charts: a bar per season, oldest first, its height the wins. Each way a season ended has a
+/// fixed, checked colour (never the system accent) and a mark of its own, so colour is never the only signal: a title a
+/// gold bar with a diamond above it, a playoff season a blue bar with a dot, a season that missed them a grey bar, and
+/// a season whose ending the export doesn't record drawn hollow (D-018: never as a missed postseason). The legend is the
+/// served words beside each mark; the chart is one image to VoiceOver with its served summary and a descriptor.
 struct SeasonRecordChart: View {
     let chart: Components.Schemas.LeagueSeasonChart
     @State private var picked: String?
 
-    private static let order = ["title", "playoffs", "none"]
-
     var body: some View {
         // Each season is a category of its own (its year as written), so every bar has its width whatever the span
         let labelled = Set(Self.labelled(chart))
+        let axis = chart.axis.display
+        // The hollow bar's wall, in wins: a fixed share of the tallest season
+        let wall = Double(max(chart.points.map(\.wins).max() ?? 1, 1)) * 0.02
         VStack(alignment: .leading, spacing: 8) {
             Text(verbatim: chart.title.display).font(.headline).help(detail: chart.title.hint).accessibilityAddTraits(.isHeader)
             Chart(chart.points, id: \.year) { point in
-                BarMark(x: .value("Season", String(point.year)), y: .value(chart.axis.display, point.wins), width: .ratio(0.8))
-                    .foregroundStyle(by: .value("Result", word(point.result)))
-                if point.result == "title" {
-                    PointMark(x: .value("Season", String(point.year)), y: .value(chart.axis.display, point.wins))
-                        .symbol(.diamond).symbolSize(28).offset(y: -8)
-                        .foregroundStyle(Tone.good.color)
+                let year = String(point.year)
+                if point.result == "unknown" {
+                    // Hollow: the outline in the readable grey, the page inside it
+                    BarMark(x: .value("Season", year), yStart: .value(axis, 0), yEnd: .value(axis, point.wins), width: .ratio(0.8))
+                        .foregroundStyle(Color.readableSecondary)
+                    if Double(point.wins) > wall * 2 {
+                        BarMark(x: .value("Season", year), yStart: .value(axis, wall), yEnd: .value(axis, Double(point.wins) - wall), width: .ratio(0.5))
+                            .foregroundStyle(Color.readablePage)
+                    }
+                } else {
+                    BarMark(x: .value("Season", year), y: .value(axis, point.wins), width: .ratio(0.8))
+                        .foregroundStyle(Self.fill(point.result))
                 }
-                if let picked, picked == String(point.year) {
-                    RuleMark(x: .value("Season", String(point.year)))
+                if point.result == "title" {
+                    PointMark(x: .value("Season", year), y: .value(axis, point.wins))
+                        .symbol(.diamond).symbolSize(28).offset(y: -8)
+                        .foregroundStyle(Color.readableChartTitle)
+                } else if point.result == "playoffs" {
+                    PointMark(x: .value("Season", year), y: .value(axis, point.wins))
+                        .symbol(.circle).symbolSize(16).offset(y: -7)
+                        .foregroundStyle(Color.readableChartPlayoffs)
+                }
+                if let picked, picked == year {
+                    RuleMark(x: .value("Season", year))
                         .foregroundStyle(Color.readableSecondary.opacity(0.4))
                         .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            // On a fixed, checked page, never a system background (macOS 26 draws them differently)
                             Text(verbatim: point.display).font(.callout).padding(6)
-                                .background(.background, in: RoundedRectangle(cornerRadius: 6))
+                                .background(Color.readablePage, in: RoundedRectangle(cornerRadius: 6))
+                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.readableSecondary.opacity(0.35)))
                         }
                 }
             }
-            .chartForegroundStyleScale(domain: Self.order.map(word), range: [Tone.good.color, Color.accentColor, Color.readableSecondary.opacity(0.55)])
             .chartXSelection(value: $picked)
             .chartXAxis {
                 AxisMarks { value in
@@ -302,7 +325,7 @@ struct SeasonRecordChart: View {
                     }
                 }
             }
-            .chartLegend(position: .bottom, alignment: .leading)
+            .chartLegend(.hidden)
             // Room above the bars for a season's words while it is pointed at, clear of the chart's title
             .padding(.top, 28)
             .frame(height: 248)
@@ -311,7 +334,17 @@ struct SeasonRecordChart: View {
             .accessibilityValue(Text(verbatim: chart.summary))
             .accessibilityChartDescriptor(SeasonChartDescriptor(chart: chart))
             .accessibilityIdentifier("franchise.chart")
+            SeasonChartLegend(legend: chart.legend)
             ClaimLine(chart.caption, font: .callout)
+        }
+    }
+
+    /// A result's fixed fill (the codes are structural; their words are served in the legend).
+    static func fill(_ result: String) -> Color {
+        switch result {
+        case "title": .readableChartTitle
+        case "playoffs": .readableChartPlayoffs
+        default: .readableChartOther
         }
     }
 
@@ -322,10 +355,49 @@ struct SeasonRecordChart: View {
         let step = [5, 10, 20, 25, 50].first { years.count / $0 <= 12 } ?? 50
         return years.filter { $0 % step == 0 }.map(String.init)
     }
+}
 
-    /// A result's served words for the legend (`chart.legend`); the codes are structural.
-    private func word(_ result: String) -> String {
-        chart.legend.first { $0.result == result }?.text.display ?? result
+/// The chart's legend: each served result's words beside its own swatch and mark, as the bars draw them (a gold bar and
+/// diamond, a blue bar and dot, a grey bar, a hollow bar), wrapping on a narrow window.
+struct SeasonChartLegend: View {
+    let legend: [Components.Schemas.LeagueChartLegend]
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) { entries }
+            VStack(alignment: .leading, spacing: 4) { entries }
+        }
+        .font(.callout)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("franchise.legend")
+    }
+
+    private var entries: some View {
+        ForEach(legend, id: \.result) { entry in
+            HStack(spacing: 5) {
+                swatch(entry.result)
+                Text(verbatim: entry.text.display).foregroundStyle(.readableSecondary)
+            }
+            .help(detail: entry.text.hint)
+        }
+    }
+
+    @ViewBuilder
+    private func swatch(_ result: String) -> some View {
+        ZStack {
+            if result == "unknown" {
+                RoundedRectangle(cornerRadius: 2).strokeBorder(Color.readableSecondary, lineWidth: 1.5)
+            } else {
+                RoundedRectangle(cornerRadius: 2).fill(SeasonRecordChart.fill(result))
+            }
+            if result == "title" {
+                Image(systemName: "diamond.fill").font(.system(size: 6)).foregroundStyle(Color.readablePage)
+            } else if result == "playoffs" {
+                Circle().fill(Color.readablePage).frame(width: 4, height: 4)
+            }
+        }
+        .frame(width: 12, height: 12)
+        .accessibilityHidden(true)
     }
 }
 
@@ -370,7 +442,12 @@ public struct UsVsThemView: View {
                     HeadStack(title: view.title, lede: view.lede, refreshing: refreshing) {
                         let choices = view.opponents.choices
                         if !choices.isEmpty {
-                            OfficeChoiceMenu("Opponent", choices: choices.map { ($0.text.display, $0.text.hint, $0.selected) }, id: "usVsThem.opponent") {
+                            ChoicePopover(
+                                Text(verbatim: view.opponents.title.display),
+                                current: Text(verbatim: choices.first(where: \.selected)?.text.display ?? choices[0].text.display),
+                                choices: choices.map { .init(verbatim: $0.text.display, hint: $0.text.hint, selected: $0.selected) },
+                                id: "usVsThem.opponent"
+                            ) {
                                 team = Int(choices[$0].value)
                             }
                         }
@@ -394,6 +471,20 @@ public struct UsVsThemView: View {
             }
         }
         .task(id: UsVsThemTask(key: model.storeKey, team: team)) { await store.loadUsVsThem(team, client: model.client, key: model.storeKey) }
+        // Another save or club: the club chosen belonged to the last one, so the view opens on the server's choice again
+        // (never asking the new one for a club it may not have)
+        .onChange(of: StoreIdentity(model.storeKey)) { team = nil }
+    }
+}
+
+/// A store key's save and club, without its stamps: what changes the clubs a view can choose among.
+private struct StoreIdentity: Equatable {
+    let saveId: String?
+    let club: ClubRef?
+
+    init(_ key: AppModel.StoreKey?) {
+        saveId = key?.saveId
+        club = key?.club
     }
 }
 

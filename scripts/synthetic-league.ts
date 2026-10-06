@@ -43,6 +43,9 @@ const { historyDb } = await import('../server/history.js');
 
 // With a farm (N10), as the contract's synthetic save has: the Farm & Development views read an affiliate and its players
 const save = buildSave({ season: 2040, historySeasons: 1, gamesPerTeam: 60, playedShare: 0.5, clubs: 4, seed: 11, teamSeason: true, minors: true, lineups: true });
+// A published draft class (N12 Track B review, M8): the Draft Board draws a board, and a prospect is chosen in the UI tests
+const { addDraftClass } = await import('../tests/draftClassFixture.js');
+addDraftClass(save);
 fs.mkdirSync(folder, { recursive: true });
 // One consistent file, whatever the journal mode
 db.exec(`VACUUM INTO '${out.replaceAll("'", "''")}'`);

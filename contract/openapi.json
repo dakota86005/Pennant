@@ -2623,7 +2623,7 @@
     "/api/v2/views/{org}/scouting/draftBoard": {
       "get": {
         "operationId": "getScoutingDraftBoard",
-        "summary": "Draft Board: once OOTP publishes the class, the staff's board in a stated order (our scouts' grades now and ceiling, each with the OSA mark where it applies), its short lists and filters; before then, one sentence and the calendar.",
+        "summary": "Draft Board: once OOTP publishes the class, the staff's board in a stated order (our scouts' grades now and ceiling, each with the OSA mark where it applies), its short lists and filters; before then, one sentence and the calendar. The top 300 at first; a filter or `all` serves every prospect it keeps.",
         "tags": [
           "v2"
         ],
@@ -2636,6 +2636,33 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "position",
+            "in": "query",
+            "required": false,
+            "description": "A position group's key, as served (`filters[].choices[].value`); every position by default.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "school",
+            "in": "query",
+            "required": false,
+            "description": "High school or college, by its served key; both by default.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "all",
+            "in": "query",
+            "required": false,
+            "description": "`1` serves every prospect on the board, not only its top 300.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2645,6 +2672,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ScoutingDraftBoardView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/scouting/draftBoard/prospects/{player}": {
+      "get": {
+        "operationId": "getScoutingDraftProspect",
+        "summary": "A prospect's reasons for the staff's read on the Draft Board, read when he is chosen: his board row's detail.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "player",
+            "in": "path",
+            "required": true,
+            "description": "The prospect's player id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoutingProspectView"
                 }
               }
             }
@@ -2695,6 +2773,33 @@
             "description": "The chosen tokens' ids, comma-separated, as served (`kinds[].tokens[].id`).",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "A sortable served column's id: every match is sorted by it, not only the page shown. The most playing time first by default.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dir",
+            "in": "query",
+            "required": false,
+            "description": "`asc` or `desc` (the default).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Where the page starts, as served in `more.value`; 0 by default.",
+            "schema": {
+              "type": "integer"
             }
           }
         ],
@@ -9634,7 +9739,7 @@
             "items": {
               "$ref": "#/components/schemas/LeagueChartLegend"
             },
-            "description": "What each mark means, one entry per result code (`title`, `playoffs`, `none`, in that order): the legend's words."
+            "description": "What each mark means, one entry per result code (`title`, `playoffs`, `none`, `unknown`, in that order): the legend's words."
           }
         },
         "required": [
@@ -9661,7 +9766,7 @@
           },
           "result": {
             "type": "string",
-            "description": "`title`, `playoffs` or `none`: which of the chart's fixed marks draws it."
+            "description": "`title`, `playoffs`, `none` (missed them) or `unknown` (the export doesn't say): which of the chart's fixed marks draws it."
           },
           "display": {
             "type": "string",
@@ -9754,6 +9859,10 @@
           "yardsticks": {
             "$ref": "#/components/schemas/Claim",
             "description": "Where the review's yardsticks come from (fitted on this save, or the starting values), with the detail in its basis."
+          },
+          "all": {
+            "$ref": "#/components/schemas/OfficeSection",
+            "description": "Every club of the league in one table with a Division column, in the served order (what the view opens on); null with none."
           },
           "groups": {
             "type": "array",
@@ -12376,6 +12485,37 @@
         ],
         "description": "A club a view names: its id, its name, whether it is ours, and where it opens (its club window)."
       },
+      "OfficeColumn": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "numeric": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hidden until the GM shows it from the table's columns (N9: a roster's other season lines); absent is shown."
+          },
+          "sortable": {
+            "type": "boolean"
+          },
+          "byWords": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "numeric",
+          "sortable",
+          "title"
+        ],
+        "description": "A table's column: N8's column (its id, title with its hint, whether it holds numbers, hidden until shown), whether it sorts (a column of mixed units, Us vs Them's figures, doesn't), and whether it sorts by its cells' words: then its rows carry no sort key for it (they would only repeat the words), and the app sorts by the words, an unknown cell last."
+      },
       "OfficeRow": {
         "type": "object",
         "properties": {
@@ -12482,7 +12622,7 @@
           "columns": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MlbColumn"
+              "$ref": "#/components/schemas/OfficeColumn"
             }
           },
           "rows": {
@@ -12493,6 +12633,10 @@
           },
           "empty": {
             "$ref": "#/components/schemas/Cell"
+          },
+          "serverSorts": {
+            "type": "boolean",
+            "description": "The server sorts this table, over more rows than it serves (Player Search's whole league): a column's sort is asked for (`sort`, `dir`), its rows carry no sort keys, and the app shows them as served. Absent: the app sorts by the keys."
           }
         },
         "required": [
@@ -15313,6 +15457,26 @@
         ],
         "description": "What `POST /api/save-source` answers once the save folder is set or cleared."
       },
+      "ScoutingBoardQuery": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string"
+          },
+          "school": {
+            "type": "string"
+          },
+          "all": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "position",
+          "school",
+          "all"
+        ],
+        "description": "What the board was asked for: a position group and a school by key (`all`: every one), and whether every prospect."
+      },
       "ScoutingDraftBoardView": {
         "type": "object",
         "properties": {
@@ -15369,11 +15533,24 @@
           "filters": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ScoutingFilter"
-            }
+              "$ref": "#/components/schemas/OfficeChoiceGroup"
+            },
+            "description": "Where they play and where they come from, by key, the asked choice selected (sent back as `?position=`, `?school=`)."
+          },
+          "query": {
+            "$ref": "#/components/schemas/ScoutingBoardQuery"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How many the board shows of how many (\"The top 300 of 2,076 on the board\"); null before there is a board."
+          },
+          "more": {
+            "$ref": "#/components/schemas/ScoutingMore",
+            "description": "\"Show all 2,076\" (`all=1`) while only the top of the board is served; null otherwise."
           },
           "board": {
-            "$ref": "#/components/schemas/OfficeTable"
+            "$ref": "#/components/schemas/OfficeTable",
+            "description": "The board's rows in the staff's order, without their reasons (read when a prospect is chosen)."
           },
           "empty": {
             "$ref": "#/components/schemas/Cell"
@@ -15386,52 +15563,32 @@
           "lede",
           "orgId",
           "published",
+          "query",
           "reportStamp",
           "shortLists",
           "title"
         ]
       },
-      "ScoutingFilter": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "$ref": "#/components/schemas/Cell"
-          },
-          "choices": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScoutingFilterChoice"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "choices"
-        ],
-        "description": "A filter of the board (where they play, where they come from): its choices, the first keeping every row."
-      },
-      "ScoutingFilterChoice": {
+      "ScoutingMore": {
         "type": "object",
         "properties": {
           "text": {
             "$ref": "#/components/schemas/Cell"
           },
-          "rows": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "id": {
+            "type": "string",
+            "description": "The query parameter it is sent as."
+          },
+          "value": {
+            "type": "string"
           }
         },
         "required": [
           "text",
-          "rows"
+          "id",
+          "value"
         ],
-        "description": "One filter's choice: its words and the board rows it keeps, in the board's order (the app shows those)."
+        "description": "What asks for more of a list: its words (\"Show the next 300\") and the query parameter it sets (`offset=300`, `all=1`)."
       },
       "ScoutingPlayerSearchView": {
         "type": "object",
@@ -15482,10 +15639,15 @@
           },
           "count": {
             "$ref": "#/components/schemas/Cell",
-            "description": "How many match and how many are shown (\"312 match, the 300 with the most playing time shown\")."
+            "description": "How many match and how many are shown (\"2,412 batters match; 1 to 300 shown, most playing time first\")."
           },
           "results": {
-            "$ref": "#/components/schemas/OfficeTable"
+            "$ref": "#/components/schemas/OfficeTable",
+            "description": "This page of the results, in the served order: sorted on the server over every match (a column's sort is asked for, never applied to the page alone), so the app shows the rows as served, page after page."
+          },
+          "more": {
+            "$ref": "#/components/schemas/ScoutingMore",
+            "description": "The next page; null when this is the last."
           },
           "empty": {
             "$ref": "#/components/schemas/Cell"
@@ -15505,6 +15667,45 @@
           "title"
         ]
       },
+      "ScoutingProspectView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "row": {
+            "type": "string",
+            "description": "His board row's id."
+          },
+          "detail": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MlbBlock"
+            }
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "playerId",
+          "row",
+          "detail"
+        ],
+        "description": "A prospect's reasons for the staff's read, read when he is chosen (`GET …/scouting/draftBoard/prospects/:player`): his board row's detail, which the board itself doesn't carry."
+      },
       "ScoutingSearchQuery": {
         "type": "object",
         "properties": {
@@ -15516,13 +15717,39 @@
             "items": {
               "type": "string"
             }
+          },
+          "sort": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dir": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "offset": {
+            "$ref": "#/components/schemas/Integer"
           }
         },
         "required": [
           "q",
-          "tokens"
+          "tokens",
+          "sort",
+          "dir",
+          "offset"
         ],
-        "description": "What a search asks: the words typed and the tokens chosen, sent back exactly as served."
+        "description": "What a search asks: the words typed and the tokens chosen, sent back exactly as served; the column it is sorted by (a served column's id, null: the most playing time first) and which way, and where its page starts."
       },
       "ScoutingSearchToken": {
         "type": "object",

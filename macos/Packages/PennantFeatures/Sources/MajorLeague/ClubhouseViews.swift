@@ -71,54 +71,6 @@ struct SectionSummary: View {
     }
 }
 
-/// A served choice among several (one of the organization's clubs): a button that opens the choices in a popover,
-/// each a button (N8's what-if pattern: a pop-up `Picker` was found by the audit with no action to press).
-struct ChoicePopover: View {
-    let current: String
-    let choices: [(text: String, hint: String?, selected: Bool)]
-    let id: String
-    let choose: (Int) -> Void
-    @State private var open = false
-
-    var body: some View {
-        Button {
-            open = true
-        } label: {
-            Label { Text(verbatim: current) } icon: { Image(systemName: "chevron.down") }
-                .labelStyle(.titleAndIcon)
-        }
-        .popover(isPresented: $open, arrowEdge: .bottom) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(Array(choices.enumerated()), id: \.offset) { index, choice in
-                        Button {
-                            open = false
-                            choose(index)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "checkmark").opacity(choice.selected ? 1 : 0).accessibilityHidden(true)
-                                Text(verbatim: choice.text)
-                                if let hint = choice.hint { Text(verbatim: hint).foregroundStyle(.readableSecondary) }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 10).padding(.vertical, 4)
-                        .accessibilityAddTraits(choice.selected ? .isSelected : [])
-                        .accessibilityIdentifier("\(id).\(index)")
-                    }
-                }
-                .padding(.vertical, 6)
-            }
-            .frame(minWidth: 240, maxHeight: 360)
-            .background(Color.readablePage)
-        }
-        .fixedSize()
-        .accessibilityIdentifier(id)
-    }
-}
-
 // MARK: Lineup
 
 /// The view's ask and the window's key, as one task id: a new choice or a new import reads again.
@@ -400,8 +352,9 @@ struct RostersView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     if clubs.count > 1 {
                         ChoicePopover(
-                            current: current,
-                            choices: clubs.map { ($0.text.display, $0.text.hint, $0.selected) },
+                            Text("Club"),
+                            current: Text(verbatim: current),
+                            choices: clubs.map { .init(verbatim: $0.text.display, hint: $0.text.hint, selected: $0.selected) },
                             id: "rosters.club"
                         ) { team = clubs[$0].query.team }
                     }

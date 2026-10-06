@@ -87,7 +87,7 @@
     ]
   },
   "headToHead": {
-    "text": "Against the Club 4 N this season",
+    "text": "Against the Club 4 N this season: 5–5, runs 55–56",
     "tone": "neutral",
     "basis": {
       "because": [
@@ -326,7 +326,8 @@
             "title": {
               "display": "Line"
             },
-            "numeric": false
+            "numeric": false,
+            "sortable": true
           },
           {
             "id": "us",
@@ -334,14 +335,16 @@
               "display": "Club 1 N",
               "hint": "Your club"
             },
-            "numeric": true
+            "numeric": true,
+            "sortable": false
           },
           {
             "id": "them",
             "title": {
               "display": "Club 4 N"
             },
-            "numeric": true
+            "numeric": true,
+            "sortable": false
           }
         ],
         "rows": [
@@ -372,7 +375,7 @@
             "id": "season-pct",
             "cells": {
               "measure": {
-                "display": "Winning percentage",
+                "display": "Win %",
                 "hint": "Wins divided by games played"
               },
               "us": {
@@ -384,7 +387,7 @@
               }
             },
             "sort": {
-              "measure": "Winning percentage",
+              "measure": "Win %",
               "us": 0.5,
               "them": 0.367
             },
@@ -531,7 +534,8 @@
             "title": {
               "display": "Line"
             },
-            "numeric": false
+            "numeric": false,
+            "sortable": true
           },
           {
             "id": "us",
@@ -539,14 +543,16 @@
               "display": "Club 1 N",
               "hint": "Your club"
             },
-            "numeric": true
+            "numeric": true,
+            "sortable": false
           },
           {
             "id": "them",
             "title": {
               "display": "Club 4 N"
             },
-            "numeric": true
+            "numeric": true,
+            "sortable": false
           }
         ],
         "rows": [
@@ -758,7 +764,8 @@
             "title": {
               "display": "Line"
             },
-            "numeric": false
+            "numeric": false,
+            "sortable": true
           },
           {
             "id": "us",
@@ -766,14 +773,16 @@
               "display": "Club 1 N",
               "hint": "Your club"
             },
-            "numeric": true
+            "numeric": true,
+            "sortable": false
           },
           {
             "id": "them",
             "title": {
               "display": "Club 4 N"
             },
-            "numeric": true
+            "numeric": true,
+            "sortable": false
           }
         ],
         "rows": [

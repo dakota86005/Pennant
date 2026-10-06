@@ -26,7 +26,8 @@ import { adoptAuthored, assertAuthored } from './presentation/claim.js';
 import type {
   LeagueFranchiseView, LeagueLeadersView, LeagueOrgComparisonView, LeagueStandingsView, LeagueUsVsThemView,
 } from './presentation/league/types.js';
-import type { ScoutingDraftBoardView, ScoutingPlayerSearchView } from './presentation/scouting/types.js';
+import { draftBoardAskFrom, draftBoardKey, draftBoardServed, draftProspectOf } from './presentation/scouting/draftBoard.js';
+import type { ScoutingDraftBoardView, ScoutingPlayerSearchView, ScoutingProspectView } from './presentation/scouting/types.js';
 import { playerSearchAskFrom, playerSearchKey } from './scoutingViews.js';
 import { currentOrganization } from './viewingOrganization.js';
 
@@ -42,6 +43,8 @@ interface Kept {
   searches: Map<string, ScoutingPlayerSearchView>;
   /** Org Comparison, built on its own after the rest; null until asked or warmed (and again after a failed build). */
   comparison: Promise<LeagueOrgComparisonView> | null;
+  /** The Draft Board as served for each ask (a filter, every prospect), sliced from the build's whole board. */
+  boards: Map<string, ScoutingDraftBoardView>;
 }
 
 const MAX_BUILDS = 2;
@@ -91,7 +94,7 @@ async function current(orgId: number): Promise<Kept> {
       stats.builds += 1;
       // What a worker posts back is checked again claim by claim and registered before a route sends it
       adoptAuthored(result);
-      const entry: Kept = { key, stamp, orgId, importStamp: request.importStamp, result, asked: new Map(), searches: new Map(), comparison: null };
+      const entry: Kept = { key, stamp, orgId, importStamp: request.importStamp, result, asked: new Map(), searches: new Map(), comparison: null, boards: new Map() };
       // Kept only when nothing moved under it: no swap to another import, the same inputs
       if (databaseGeneration() === startedGeneration && frontOfficeImportKey(orgId) === key) {
         kept.delete(key);
@@ -197,9 +200,31 @@ export async function leagueUsVsThemNow(org: string, team?: unknown): Promise<Le
   return served(entry.orgId, await pending);
 }
 
-export async function scoutingDraftBoardNow(org: string): Promise<ScoutingDraftBoardView> {
+export const NOT_ON_THE_BOARD = 'That player isn\'t on the draft board.';
+
+/**
+ * The Draft Board for an ask (`?position=&school=&all=`): its top 300 in the staff's order, or every prospect a filter
+ * keeps; sliced from the build's whole board and kept with it (N12 Track B review, M2).
+ */
+export async function scoutingDraftBoardNow(org: string, query: Record<string, unknown> = {}): Promise<ScoutingDraftBoardView> {
   const entry = await current(resolveOrg(org));
-  return served(entry.orgId, entry.result.draftBoard);
+  const ask = draftBoardAskFrom(query);
+  const key = draftBoardKey(ask);
+  let view = entry.boards.get(key);
+  if (!view) {
+    view = draftBoardServed(entry.result.draftBoard, ask);
+    entry.boards.set(key, view);
+  }
+  return served(entry.orgId, view);
+}
+
+/** A prospect's reasons for his read, read when he is chosen: from the build's whole board. */
+export async function scoutingDraftProspectNow(org: string, player: unknown): Promise<ScoutingProspectView> {
+  const entry = await current(resolveOrg(org));
+  const id = Number(player);
+  const view = Number.isInteger(id) ? draftProspectOf(entry.result.draftBoard, id) : null;
+  if (!view) throw new FrontOfficeRefusal(NOT_ON_THE_BOARD, 404);
+  return served(entry.orgId, view);
 }
 
 /**

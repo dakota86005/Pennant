@@ -166,8 +166,9 @@ function sectionOf(id: Measure['section'], title: string, us: OfficeClub, them: 
     table: {
       columns: [
         column('measure', 'Line'),
-        column('us', us.name, true, { hint: 'Your club' }),
-        column('them', them.name, true),
+        // Each row is a different figure in its own unit, so neither club's column sorts (N12 Track B review, M6)
+        column('us', us.name, true, { hint: 'Your club', sortable: false }),
+        column('them', them.name, true, { sortable: false }),
       ],
       rows,
       empty: cell('No figures for these clubs in the export.'),
@@ -269,7 +270,8 @@ export function usVsThemView(v: ClubhouseContext, input: UsVsThemInput): LeagueU
   });
   const h = input.headToHead;
   const headToHead = h && h.w + h.l > 0
-    ? factClaim(v, `Against the ${them.name} this season`, {
+    // The record in the words themselves: the line is drawn as words, its value only beside it (review, M6)
+    ? factClaim(v, `Against the ${them.name} this season: ${h.w}–${h.l}, runs ${h.rf}–${h.ra}`, {
       specialist: SPECIALIST,
       value: servedValue(h.w, 'wins', `${h.w}–${h.l} · runs ${h.rf}–${h.ra}`),
       because: [

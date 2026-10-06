@@ -178,6 +178,39 @@ function teamRow(t: StandingsTeam, scheduled: number | null, leader: boolean): O
   });
 }
 
+/**
+ * Every club of the league in one table, the React page's whole-league view (N12 Track B review, M5): a Division column
+ * (its words, sorting in the served order of the divisions), then the division tables' columns, every club in the served
+ * order (sub-league by sub-league, division by division, OOTP's own order within each).
+ */
+function allSection(s: Standings): OfficeSection {
+  let order = 0;
+  const rows = s.subLeagues.flatMap((sub) => sub.divisions.flatMap((d) => {
+    order += 1;
+    const place = order;
+    return d.teams.map((t, i) => {
+      const row = teamRow(t, s.scheduledGames, i === 0 && known(t.gb) && t.gb <= 0);
+      return {
+        ...row,
+        cells: { team: row.cells.team, division: cell(d.name, s.subLeagues.length > 1 ? { hint: sub.name } : {}), ...row.cells },
+        sort: { ...row.sort, division: place },
+      };
+    });
+  }));
+  const [team, ...rest] = columns();
+  return {
+    id: 'standings-all',
+    title: cell('All divisions'),
+    summary: null,
+    table: {
+      columns: [team, column('division', 'Division', false, { hint: 'The club\'s division; sorts in the standings\' order' }), ...rest],
+      rows,
+      empty: cell('No major league clubs in this league\'s standings.'),
+    },
+    note: null,
+  };
+}
+
 function divisionSection(name: string, teams: StandingsTeam[], scheduled: number | null, id: string): OfficeSection {
   return {
     id,
@@ -367,6 +400,7 @@ export function standingsView(v: ClubhouseContext, input: StandingsInput): Leagu
   const any = groups.some((g) => g.divisions.some((d) => d.table.rows.length));
   return {
     ...base(v, input.race),
+    all: any ? allSection(s) : null,
     groups,
     race: raceClaims(v, input.race),
     staffRead: input.read ? staffRead(v, input.read) : null,
@@ -379,5 +413,5 @@ export function standingsView(v: ClubhouseContext, input: StandingsInput): Leagu
 /** The standings when they couldn't be read: the sentence why, nothing else. */
 export function standingsUnreadView(v: ClubhouseContext, why: string): LeagueStandingsView {
   const text = /[.!?]$/.test(why.trim()) ? why.trim() : `${why.trim()}.`;
-  return { ...base(v, null), groups: [], race: [], staffRead: null, note: note(v), empty: cell(text) };
+  return { ...base(v, null), all: null, groups: [], race: [], staffRead: null, note: note(v), empty: cell(text) };
 }

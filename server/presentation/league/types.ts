@@ -9,62 +9,14 @@
  * club as well as a player (`OfficeRow`), which Scouting's views use too. Standings is the one place the season's odds
  * and the deadline posture appear (D-060): as the staff's rough read, labelled with its basis, never the headline.
  */
-import type { Cell, Claim, Target } from '../../contract/presentation.js';
+import type { Cell, Claim } from '../../contract/presentation.js';
 import type { Integer } from '../../contract/primitives.js';
-import type { MlbBlock, MlbColumn, MlbRow, MlbViewHead } from '../majorLeague/types.js';
+import type { MlbBlock, MlbViewHead } from '../majorLeague/types.js';
 
-// ── What League Office and Scouting share ───────────────────────────────────
+// ── What League Office and Scouting share: the Office kit (`./office.ts`, its own file) ───────────────────────
 
-/** A club a view names: its id, its name, whether it is ours, and where it opens (its club window). */
-export interface OfficeClub {
-  teamId: Integer;
-  name: string;
-  abbr: string | null;
-  ours: boolean;
-  open: Target;
-}
-
-/**
- * A row of a League Office or Scouting table: N8's row (its cells and sort keys, the player it is about with his OSA
- * mark, its detail and what it offers to open), the club it is about when it is about one (a standings line), and
- * whether it is ours (drawn marked, never the only signal: the club's or player's cell says so too).
- */
-export interface OfficeRow extends MlbRow {
-  club?: OfficeClub;
-  ours?: boolean;
-}
-
-/** A table, ready to show: its columns, its rows in the served order, and its sentence when it has none. */
-export interface OfficeTable {
-  columns: MlbColumn[];
-  rows: OfficeRow[];
-  empty: Cell | null;
-}
-
-/** A titled table of a view (a division, a leader category, the season by season): its line above it and a note under it. */
-export interface OfficeSection {
-  /** Structural: where the app keeps the table's columns, never shown. */
-  id: string;
-  title: Cell;
-  summary: Cell | null;
-  table: OfficeTable;
-  note: Claim | null;
-}
-
-/** One choice of a group, sent back exactly as served (`?<group id>=<value>`). */
-export interface OfficeChoice {
-  text: Cell;
-  selected: boolean;
-  value: string;
-}
-
-/** A group of the GM's choices for a view (the opponent, the batters or the pitchers): the query parameter it sets. */
-export interface OfficeChoiceGroup {
-  /** The query parameter the choice is sent as (`team`). */
-  id: string;
-  title: Cell;
-  choices: OfficeChoice[];
-}
+export type { OfficeChoice, OfficeChoiceGroup, OfficeClub, OfficeColumn, OfficeRow, OfficeSection, OfficeTable } from './office.js';
+import type { OfficeChoiceGroup, OfficeClub, OfficeSection, OfficeTable } from './office.js';
 
 // ── Standings ───────────────────────────────────────────────────────────────
 
@@ -90,6 +42,8 @@ export interface LeagueStaffRead {
 }
 
 export interface LeagueStandingsView extends MlbViewHead {
+  /** Every club of the league in one table with a Division column, in the served order (what the view opens on); null with none. */
+  all: OfficeSection | null;
   groups: LeagueStandingsGroup[];
   /** Our club's place in the race as facts (the division, the wild card); empty when it isn't in these standings. */
   race: Claim[];
@@ -140,7 +94,7 @@ export interface LeagueSeasonPoint {
   year: Integer;
   wins: Integer;
   losses: Integer;
-  /** `title`, `playoffs` or `none`: which of the chart's fixed marks draws it. */
+  /** `title`, `playoffs`, `none` (missed them) or `unknown` (the export doesn't say): which of the chart's fixed marks draws it. */
   result: string;
   /** The season in words, for the chart's help and VoiceOver ("1987: 96-66, won it all"). */
   display: string;
@@ -154,7 +108,7 @@ export interface LeagueSeasonChart {
   points: LeagueSeasonPoint[];
   /** The chart in a sentence, for VoiceOver's chart summary. */
   summary: string;
-  /** What each mark means, one entry per result code (`title`, `playoffs`, `none`, in that order): the legend's words. */
+  /** What each mark means, one entry per result code (`title`, `playoffs`, `none`, `unknown`, in that order): the legend's words. */
   legend: LeagueChartLegend[];
 }
 

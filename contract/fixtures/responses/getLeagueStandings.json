@@ -31,6 +31,461 @@
     "links": []
   },
   "yardsticks": null,
+  "all": {
+    "id": "standings-all",
+    "title": {
+      "display": "All divisions"
+    },
+    "summary": null,
+    "table": {
+      "columns": [
+        {
+          "id": "team",
+          "title": {
+            "display": "Team",
+            "hint": "The club; yours is marked"
+          },
+          "numeric": false,
+          "sortable": true
+        },
+        {
+          "id": "division",
+          "title": {
+            "display": "Division",
+            "hint": "The club's division; sorts in the standings' order"
+          },
+          "numeric": false,
+          "sortable": true
+        },
+        {
+          "id": "w",
+          "title": {
+            "display": "W",
+            "hint": "Wins."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "l",
+          "title": {
+            "display": "L",
+            "hint": "Losses."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "pct",
+          "title": {
+            "display": "Win %",
+            "hint": "Winning percentage: wins divided by games played."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "gb",
+          "title": {
+            "display": "GB",
+            "hint": "Games behind the division leader"
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "rs",
+          "title": {
+            "display": "RS",
+            "hint": "Runs scored across the season so far."
+          },
+          "numeric": true,
+          "sortable": true,
+          "hidden": true
+        },
+        {
+          "id": "ra",
+          "title": {
+            "display": "RA",
+            "hint": "Runs allowed across the season so far."
+          },
+          "numeric": true,
+          "sortable": true,
+          "hidden": true
+        },
+        {
+          "id": "diff",
+          "title": {
+            "display": "Run diff",
+            "hint": "Runs scored minus runs allowed"
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "streak",
+          "title": {
+            "display": "Streak",
+            "hint": "Current streak. W3 means three straight wins, L2 two straight losses."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "pace",
+          "title": {
+            "display": "Pace",
+            "hint": "The record this club is on course for at its current rate"
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "magic",
+          "title": {
+            "display": "Magic #",
+            "hint": "Wins plus a chaser's losses that clinch the division"
+          },
+          "numeric": true,
+          "sortable": true
+        }
+      ],
+      "rows": [
+        {
+          "id": "club-3",
+          "cells": {
+            "team": {
+              "display": "Club 3 N"
+            },
+            "division": {
+              "display": "East Division"
+            },
+            "w": {
+              "display": "19"
+            },
+            "l": {
+              "display": "11"
+            },
+            "pct": {
+              "display": ".633"
+            },
+            "gb": {
+              "display": "–",
+              "hint": "No games behind the division's leader"
+            },
+            "rs": {
+              "display": "157"
+            },
+            "ra": {
+              "display": "131"
+            },
+            "diff": {
+              "display": "+26",
+              "tone": "good"
+            },
+            "streak": {
+              "display": "W1"
+            },
+            "pace": {
+              "display": "38–22",
+              "hint": "At this rate over a 60-game schedule"
+            },
+            "magic": {
+              "display": "Not known",
+              "tone": "unknown",
+              "hint": "OOTP hasn't published one for this club"
+            }
+          },
+          "sort": {
+            "team": "Club 3 N",
+            "w": 19,
+            "l": 11,
+            "pct": 0.6333333333333333,
+            "gb": 0,
+            "rs": 157,
+            "ra": 131,
+            "diff": 26,
+            "streak": 1,
+            "pace": 38,
+            "magic": null,
+            "division": 1
+          },
+          "player": null,
+          "detail": [],
+          "actions": [
+            {
+              "text": {
+                "display": "Open the Club 3 N"
+              },
+              "open": {
+                "kind": "club",
+                "teamId": 3
+              }
+            }
+          ],
+          "club": {
+            "teamId": 3,
+            "name": "Club 3 N",
+            "abbr": "C3",
+            "ours": false,
+            "open": {
+              "kind": "club",
+              "teamId": 3
+            }
+          }
+        },
+        {
+          "id": "club-1",
+          "cells": {
+            "team": {
+              "display": "Club 1 N",
+              "hint": "Your club"
+            },
+            "division": {
+              "display": "East Division"
+            },
+            "w": {
+              "display": "15"
+            },
+            "l": {
+              "display": "15"
+            },
+            "pct": {
+              "display": ".500"
+            },
+            "gb": {
+              "display": "4"
+            },
+            "rs": {
+              "display": "161"
+            },
+            "ra": {
+              "display": "177"
+            },
+            "diff": {
+              "display": "-16",
+              "tone": "bad"
+            },
+            "streak": {
+              "display": "L1"
+            },
+            "pace": {
+              "display": "30–30",
+              "hint": "At this rate over a 60-game schedule"
+            },
+            "magic": {
+              "display": "–",
+              "hint": "Shown only for a division leader"
+            }
+          },
+          "sort": {
+            "team": "Club 1 N",
+            "w": 15,
+            "l": 15,
+            "pct": 0.5,
+            "gb": 4,
+            "rs": 161,
+            "ra": 177,
+            "diff": -16,
+            "streak": -1,
+            "pace": 30,
+            "magic": null,
+            "division": 1
+          },
+          "player": null,
+          "detail": [],
+          "actions": [
+            {
+              "text": {
+                "display": "Open the Club 1 N"
+              },
+              "open": {
+                "kind": "club",
+                "teamId": 1
+              }
+            }
+          ],
+          "club": {
+            "teamId": 1,
+            "name": "Club 1 N",
+            "abbr": "C1",
+            "ours": true,
+            "open": {
+              "kind": "club",
+              "teamId": 1
+            }
+          },
+          "ours": true
+        },
+        {
+          "id": "club-2",
+          "cells": {
+            "team": {
+              "display": "Club 2 N"
+            },
+            "division": {
+              "display": "East Division"
+            },
+            "w": {
+              "display": "15"
+            },
+            "l": {
+              "display": "15"
+            },
+            "pct": {
+              "display": ".500"
+            },
+            "gb": {
+              "display": "4"
+            },
+            "rs": {
+              "display": "150"
+            },
+            "ra": {
+              "display": "148"
+            },
+            "diff": {
+              "display": "+2",
+              "tone": "good"
+            },
+            "streak": {
+              "display": "W1"
+            },
+            "pace": {
+              "display": "30–30",
+              "hint": "At this rate over a 60-game schedule"
+            },
+            "magic": {
+              "display": "–",
+              "hint": "Shown only for a division leader"
+            }
+          },
+          "sort": {
+            "team": "Club 2 N",
+            "w": 15,
+            "l": 15,
+            "pct": 0.5,
+            "gb": 4,
+            "rs": 150,
+            "ra": 148,
+            "diff": 2,
+            "streak": 1,
+            "pace": 30,
+            "magic": null,
+            "division": 1
+          },
+          "player": null,
+          "detail": [],
+          "actions": [
+            {
+              "text": {
+                "display": "Open the Club 2 N"
+              },
+              "open": {
+                "kind": "club",
+                "teamId": 2
+              }
+            }
+          ],
+          "club": {
+            "teamId": 2,
+            "name": "Club 2 N",
+            "abbr": "C2",
+            "ours": false,
+            "open": {
+              "kind": "club",
+              "teamId": 2
+            }
+          }
+        },
+        {
+          "id": "club-4",
+          "cells": {
+            "team": {
+              "display": "Club 4 N"
+            },
+            "division": {
+              "display": "East Division"
+            },
+            "w": {
+              "display": "11"
+            },
+            "l": {
+              "display": "19"
+            },
+            "pct": {
+              "display": ".367"
+            },
+            "gb": {
+              "display": "8"
+            },
+            "rs": {
+              "display": "141"
+            },
+            "ra": {
+              "display": "153"
+            },
+            "diff": {
+              "display": "-12",
+              "tone": "bad"
+            },
+            "streak": {
+              "display": "L1"
+            },
+            "pace": {
+              "display": "22–38",
+              "hint": "At this rate over a 60-game schedule"
+            },
+            "magic": {
+              "display": "–",
+              "hint": "Shown only for a division leader"
+            }
+          },
+          "sort": {
+            "team": "Club 4 N",
+            "w": 11,
+            "l": 19,
+            "pct": 0.36666666666666664,
+            "gb": 8,
+            "rs": 141,
+            "ra": 153,
+            "diff": -12,
+            "streak": -1,
+            "pace": 22,
+            "magic": null,
+            "division": 1
+          },
+          "player": null,
+          "detail": [],
+          "actions": [
+            {
+              "text": {
+                "display": "Open the Club 4 N"
+              },
+              "open": {
+                "kind": "club",
+                "teamId": 4
+              }
+            }
+          ],
+          "club": {
+            "teamId": 4,
+            "name": "Club 4 N",
+            "abbr": "C4",
+            "ours": false,
+            "open": {
+              "kind": "club",
+              "teamId": 4
+            }
+          }
+        }
+      ],
+      "empty": {
+        "display": "No major league clubs in this league's standings."
+      }
+    },
+    "note": null
+  },
   "groups": [
     {
       "title": {
@@ -51,7 +506,8 @@
                   "display": "Team",
                   "hint": "The club; yours is marked"
                 },
-                "numeric": false
+                "numeric": false,
+                "sortable": true
               },
               {
                 "id": "w",
@@ -59,7 +515,8 @@
                   "display": "W",
                   "hint": "Wins."
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               },
               {
                 "id": "l",
@@ -67,7 +524,8 @@
                   "display": "L",
                   "hint": "Losses."
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               },
               {
                 "id": "pct",
@@ -75,7 +533,8 @@
                   "display": "Win %",
                   "hint": "Winning percentage: wins divided by games played."
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               },
               {
                 "id": "gb",
@@ -83,7 +542,8 @@
                   "display": "GB",
                   "hint": "Games behind the division leader"
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               },
               {
                 "id": "rs",
@@ -92,6 +552,7 @@
                   "hint": "Runs scored across the season so far."
                 },
                 "numeric": true,
+                "sortable": true,
                 "hidden": true
               },
               {
@@ -101,6 +562,7 @@
                   "hint": "Runs allowed across the season so far."
                 },
                 "numeric": true,
+                "sortable": true,
                 "hidden": true
               },
               {
@@ -109,7 +571,8 @@
                   "display": "Run diff",
                   "hint": "Runs scored minus runs allowed"
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               },
               {
                 "id": "streak",
@@ -117,7 +580,8 @@
                   "display": "Streak",
                   "hint": "Current streak. W3 means three straight wins, L2 two straight losses."
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               },
               {
                 "id": "pace",
@@ -125,7 +589,8 @@
                   "display": "Pace",
                   "hint": "The record this club is on course for at its current rate"
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               },
               {
                 "id": "magic",
@@ -133,7 +598,8 @@
                   "display": "Magic #",
                   "hint": "Wins plus a chaser's losses that clinch the division"
                 },
-                "numeric": true
+                "numeric": true,
+                "sortable": true
               }
             ],
             "rows": [

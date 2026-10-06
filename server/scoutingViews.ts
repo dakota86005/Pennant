@@ -15,22 +15,32 @@ import { positionNeeds } from './positionNeeds.js';
 import type { OfficeContext } from './presentation/league/common.js';
 import { draftBoardUnreadView, draftBoardView, type BoardProspect } from './presentation/scouting/draftBoard.js';
 import {
-  SEARCH_CAP, SEARCH_TOKENS, clubToken, playerSearchUnreadView, playerSearchView, type SearchGroup, type TokenDef,
+  SEARCH_CAP, SEARCH_TOKENS, clubToken, playerSearchUnreadView, playerSearchView, searchSortOf, type SearchGroup, type TokenDef,
 } from './presentation/scouting/playerSearch.js';
 import type { ScoutingDraftBoardView, ScoutingPlayerSearchView } from './presentation/scouting/types.js';
-import { advise, draftClassMembers, draftExcluded, draftLeague, draftPool } from './rosterops.js';
+import { adviseScouted, draftClassMembers, draftExcluded, draftLeague, draftPool } from './rosterops.js';
 import { loadScoutedAbilities, ratingFillOf, type ToolKey } from './scoutedEvidence.js';
 import { matches, queryOf, searchIndex } from './search.js';
 import { loadSettings } from './settings.js';
 import { ratingScaleMax } from './valuation.js';
 
-/** What a player search asks: the words typed and the token ids chosen, in a stable order. */
+/**
+ * What a player search asks: the words typed, the token ids chosen (in a stable order), the column the GM sorted by (a
+ * served column's id; null: the most playing time first) and its direction, and where the page starts (a multiple of
+ * the page, `SEARCH_CAP`). The sort orders every match, not the page shown (the React page's whole-league sort).
+ */
 export interface PlayerSearchAsk {
   q: string;
   tokens: string[];
+  sort: string | null;
+  dir: 'asc' | 'desc';
+  offset: number;
 }
 
-export const DEFAULT_SEARCH: PlayerSearchAsk = { q: '', tokens: [] };
+export const DEFAULT_SEARCH: PlayerSearchAsk = { q: '', tokens: [], sort: null, dir: 'desc', offset: 0 };
+
+/** The furthest a page may start: past every player any save has (the route counts the rest). */
+const MAX_OFFSET = 100_000;
 
 /**
  * A search ask from a request's query (`q`, `tokens` comma-separated). Tokens of one kind (the part before the colon:
@@ -47,11 +57,17 @@ export function playerSearchAskFrom(query: Record<string, unknown>): PlayerSearc
     latest.set(kind, t);
   }
   const tokens = [...new Set(latest.values())].sort();
-  return { q, tokens };
+  const sortText = text(query.sort).trim();
+  const sort = /^[A-Za-z][\w.]{0,40}$/.test(sortText) ? sortText : null;
+  const dir = text(query.dir) === 'asc' ? 'asc' : 'desc';
+  const asked = Number(text(query.offset));
+  const offset = Number.isFinite(asked) && asked > 0 ? Math.min(MAX_OFFSET, Math.floor(asked / SEARCH_CAP) * SEARCH_CAP) : 0;
+  return { q, tokens, sort, dir: sort === null ? 'desc' : dir, offset };
 }
 
-/** A search ask's key: its words (folded) and its tokens. */
-export const playerSearchKey = (ask: PlayerSearchAsk): string => `${ask.q.toLowerCase()}|${ask.tokens.join(',')}`;
+/** A search ask's key: its words (folded), its tokens, its sort and its page. */
+export const playerSearchKey = (ask: PlayerSearchAsk): string =>
+  `${ask.q.toLowerCase()}|${ask.tokens.join(',')}|${ask.sort ?? ''}:${ask.dir}|${ask.offset}`;
 
 // ── Draft Board ─────────────────────────────────────────────────────────────
 
@@ -87,7 +103,8 @@ export function draftBoardViewOf(v: OfficeContext, orgId: number): ScoutingDraft
     const positionName = POSITION_NAMES[m.position as number] ?? '?';
     const school = m.college === 1 ? 'College' : 'High school';
     const age = typeof m.age === 'number' && Number.isFinite(m.age) && m.age > 0 ? m.age : null;
-    const read = advise({
+    // Nothing unknown read as zero: a grade now not known gives a ceiling-only read that says so (D-018)
+    const read = adviseScouted({
       // An age the export doesn't carry reads as neither young nor old for the class (never a stand-in age)
       age: age ?? Number.NaN,
       positionName,
@@ -173,18 +190,25 @@ export function playerSearchViewOf(v: OfficeContext, orgId: number, ask: PlayerS
   if (has('scope', 'scope:fa')) drop((t) => t.kind !== 'club' && t.kind !== 'level');
   if (has('club')) drop((t) => t.id !== 'scope:org');
 
-  const query: Record<string, unknown> = { group, level: 'all', limit: String(SEARCH_CAP), offset: '0', viewer: String(orgId) };
+  // The column sorted by, as the route sorts (every match, then the page cut): a served column's id to the route's own
+  const routeSort = ask.sort === null ? null : searchSortOf(ask.sort, group);
+  const query: Record<string, unknown> = {
+    group, level: 'all', limit: String(SEARCH_CAP), offset: String(ask.offset), viewer: String(orgId),
+    ...(routeSort ? { sort: routeSort, dir: ask.dir } : {}),
+  };
   for (const t of chosen) for (const [k, value] of Object.entries(t.query)) query[k] = value === 'ours' ? String(orgId) : value;
   const ids = nameMatches(ask.q, v.ctx.build.importStamp);
   const computed = ids !== null && ids.length === 0
     ? null
     : computePlayers(query, ids === null ? undefined : { playerIds: ids });
   const page = computed === null
-    ? { total: 0, offset: 0, limit: SEARCH_CAP, sort: null, dir: 'desc' as const, players: [] }
+    ? { total: 0, offset: ask.offset, limit: SEARCH_CAP, sort: null, dir: 'desc' as const, players: [] }
     : computed.ok ? computed.body : computed.error;
   return playerSearchView(v, {
     q: ask.q,
     asked: ask.tokens,
+    sort: routeSort ? { column: ask.sort!, dir: ask.dir } : null,
+    offset: ask.offset,
     group,
     offered,
     chosen,

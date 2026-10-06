@@ -14,27 +14,44 @@ extension AppModel {
 // MARK: Draft Board
 
 /// The Draft Board: before OOTP publishes the class, its one sentence and the calendar; once it has, the staff's board as
-/// a native table in its stated order (our scouts' grades now and ceiling, the OSA mark where it applies), its served
-/// filters, and beneath it the chosen prospect's read, or the staff's short lists.
+/// a native table in its stated order (our scouts' grades now and ceiling, the OSA mark where it applies): its top 300 at
+/// first, every prospect a served filter keeps or "Show all" asks for; and beneath it the chosen prospect's reasons for
+/// his read (read when he is chosen), or the staff's short lists.
 public struct DraftBoardView: View {
     @Environment(AppModel.self) private var model
-    /// The choice of each served filter, by the filter's id (the first choice keeps every row).
-    @State private var filters: [String: Int] = [:]
+    /// The board asked for: the served filters' keys and whether every prospect.
+    @State private var asked = ScoutingStore.BoardQuery()
+    /// The prospect chosen on the board, by his player id: his reasons are read then.
+    @State private var chosen: Int?
 
     public init() {}
 
     public var body: some View {
         let store = model.scouting
-        OfficeState(payload: store.draftBoard, problem: store.problems["draftBoard"]) { view in
-            let refreshing = model.scoutingUpdating("draftBoard")
-            if view.published, !view.board.rows.isEmpty {
-                OfficeTablePane(view.board, id: "draftBoard.board", name: view.title.display, only: kept(view), detailShare: 0.36) {
+        let held = store.board(asked) ?? store.lastBoard
+        OfficeState(payload: held, problem: store.problems[ScoutingStore.boardName(asked)]) { view in
+            let refreshing = model.scoutingUpdating(ScoutingStore.boardName(asked)) || store.board(asked) == nil
+            if view.published, !view.board.rows.isEmpty || view.query.position != "all" || view.query.school != "all" {
+                OfficeTablePane(
+                    view.board,
+                    id: "draftBoard.board",
+                    name: view.title.display,
+                    detailShare: 0.36,
+                    detailOf: { row in
+                        // The row's reasons, read when it was chosen
+                        guard let id = row.player?.playerId, let read = store.prospects[id], read.row == row.id else { return row }
+                        var shown = row
+                        shown.detail = read.detail
+                        return shown
+                    },
+                    chose: { id in chosen = view.board.rows.first { $0.id == id }?.player?.playerId }
+                ) {
                     VStack(alignment: .leading, spacing: 12) {
                         OfficeHead(title: view.title, lede: view.lede, refreshing: refreshing)
                         if let summary = view.summary { ClaimLine(summary) }
                         ViewThatFits(in: .horizontal) {
-                            HStack(alignment: .firstTextBaseline, spacing: 12) { filterMenus(view) }
-                            VStack(alignment: .leading, spacing: 8) { filterMenus(view) }
+                            HStack(alignment: .firstTextBaseline, spacing: 12) { controls(view) }
+                            VStack(alignment: .leading, spacing: 8) { controls(view) }
                         }
                     }
                 } notes: {
@@ -58,31 +75,61 @@ public struct DraftBoardView: View {
                 }
             }
         }
-        .task(id: model.storeKey) { await store.loadDraftBoard(client: model.client, key: model.storeKey) }
+        .task(id: BoardTask(key: model.storeKey, query: asked)) { await store.loadDraftBoard(asked, client: model.client, key: model.storeKey) }
+        .task(id: ProspectTask(key: model.storeKey, player: chosen)) {
+            if let chosen { await store.loadProspect(chosen, client: model.client, key: model.storeKey) }
+        }
+        .onChange(of: StoreIdentity(model.storeKey)) {
+            asked = ScoutingStore.BoardQuery()
+            chosen = nil
+        }
     }
 
+    /// The served filters (each choice sent back by its key) and, while only the top of the board is shown, its count and
+    /// "Show all".
     @ViewBuilder
-    private func filterMenus(_ view: Components.Schemas.ScoutingDraftBoardView) -> some View {
+    private func controls(_ view: Components.Schemas.ScoutingDraftBoardView) -> some View {
         ForEach(view.filters, id: \.id) { filter in
-            let current = min(filters[filter.id] ?? 0, max(filter.choices.count - 1, 0))
-            OfficeChoiceMenu(
-                LocalizedStringKey(filter.title.display),
-                choices: filter.choices.enumerated().map { ($0.element.text.display, $0.element.text.hint, $0.offset == current) },
+            ChoicePopover(
+                Text(verbatim: filter.title.display),
+                current: Text(verbatim: filter.choices.first(where: \.selected)?.text.display ?? filter.choices.first?.text.display ?? ""),
+                choices: filter.choices.map { .init(verbatim: $0.text.display, hint: $0.text.hint, selected: $0.selected) },
                 id: "draftBoard.filter.\(filter.id)"
-            ) { filters[filter.id] = $0 }
+            ) { index in
+                let value = filter.choices[index].value
+                if filter.id == "position" { asked.position = value } else if filter.id == "school" { asked.school = value }
+            }
+        }
+        if let count = view.count {
+            Text(verbatim: count.display).foregroundStyle(.readableSecondary).help(detail: count.hint)
+                .accessibilityIdentifier("draftBoard.count")
+        }
+        if let more = view.more {
+            Button { asked.all = true } label: { Text(verbatim: more.text.display) }
+                .help(detail: more.text.hint)
+                .accessibilityIdentifier("draftBoard.more")
         }
     }
+}
 
-    /// The rows every chosen filter keeps (each served with its rows); nil when no filter narrows the board.
-    private func kept(_ view: Components.Schemas.ScoutingDraftBoardView) -> Set<String>? {
-        var kept: Set<String>?
-        for filter in view.filters {
-            let index = filters[filter.id] ?? 0
-            guard index > 0, filter.choices.indices.contains(index) else { continue }
-            let rows = Set(filter.choices[index].rows)
-            kept = kept.map { $0.intersection(rows) } ?? rows
-        }
-        return kept
+private struct BoardTask: Hashable {
+    let key: AppModel.StoreKey?
+    let query: ScoutingStore.BoardQuery
+}
+
+private struct ProspectTask: Hashable {
+    let key: AppModel.StoreKey?
+    let player: Int?
+}
+
+/// A store key's save and club, without its stamps: what changes the choices a view can make.
+private struct StoreIdentity: Equatable {
+    let saveId: String?
+    let club: ClubRef?
+
+    init(_ key: AppModel.StoreKey?) {
+        saveId = key?.saveId
+        club = key?.club
     }
 }
 
@@ -117,7 +164,9 @@ private struct CalendarGrid: View {
 /// Player Search: the window's own search field, scoped to Player Search while it is shown (as Finder's search scopes
 /// to the folder shown), with the served tokens (a position, a level, a club, an age, a hand, free agents) suggested as
 /// the GM types and kept as tokens, one of each kind; batters or pitchers chosen above the results; the results a native
-/// table whose rows open their players and compare several. Asked again a moment after the GM stops typing.
+/// table whose rows open their players and compare several. Asked again a moment after the GM stops typing. A column
+/// clicked sorts every match on the server (the React page's whole-league sort), and the next 300 are a click away,
+/// appended in the served order.
 public struct PlayerSearchView: View {
     @Environment(AppModel.self) private var model
     /// The palette's "in Player Search" result opens the view on the words typed there (its route's `key`).
@@ -126,6 +175,8 @@ public struct PlayerSearchView: View {
     @Environment(\.windowSearch) private var search
     /// Batters or pitchers: the served group choice's value, sent with the field's tokens (nil: as the server opens).
     @State private var group: String?
+    /// The column the server sorts every match by, as the table's header chose it (nil: its own order).
+    @State private var sort: OfficeSort?
     @State private var asked = ScoutingStore.SearchQuery()
 
     public init() {}
@@ -135,11 +186,19 @@ public struct PlayerSearchView: View {
 
     public var body: some View {
         let store = model.scouting
-        let query = ScoutingStore.SearchQuery(q: text, tokens: tokens.map(\.id) + (group.map { [$0] } ?? [])).normalized
+        let query = ScoutingStore.SearchQuery(
+            q: text,
+            tokens: tokens.map(\.id) + (group.map { [$0] } ?? []),
+            sort: sort?.column,
+            dir: sort?.order == .forward ? "asc" : "desc"
+        ).normalized
         let held = store.search(query) ?? store.lastSearch
         OfficeState(payload: held, problem: store.problems[ScoutingStore.searchName(asked)]) { view in
             let refreshing = model.scoutingUpdating(ScoutingStore.searchName(asked)) || store.search(query) == nil
-            OfficeTablePane(view.results, id: "playerSearch.results.\(groupId(view))", name: view.title.display, detailShare: 0.26) {
+            // Every page read, as one table in the served order; the latest page's count and what asks for more
+            let results = store.search(query).flatMap { _ in store.searchResults(query) } ?? view.results
+            let latest = store.search(query).flatMap { _ in store.lastPage(query) } ?? view
+            OfficeTablePane(results, id: "playerSearch.results.\(groupId(view))", name: view.title.display, detailShare: 0.26, serverSort: $sort) {
                 VStack(alignment: .leading, spacing: 12) {
                     OfficeHead(title: view.title, lede: view.lede, refreshing: refreshing)
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -154,8 +213,18 @@ public struct PlayerSearchView: View {
                             .fixedSize()
                             .accessibilityIdentifier("playerSearch.group")
                         }
-                        Text(verbatim: view.count.display).foregroundStyle(.readableSecondary).help(detail: view.count.hint)
+                        Text(verbatim: latest.count.display).foregroundStyle(.readableSecondary).help(detail: latest.count.hint)
                             .accessibilityIdentifier("playerSearch.count")
+                        if let more = latest.more, let offset = Int(more.value) {
+                            Button {
+                                Task { await store.loadMore(query, offset: offset, client: model.client, key: model.storeKey) }
+                            } label: {
+                                Text(verbatim: more.text.display)
+                            }
+                            .help(detail: more.text.hint)
+                            .disabled(store.loading.contains { $0.hasSuffix("@\(offset)") })
+                            .accessibilityIdentifier("playerSearch.more")
+                        }
                     }
                 }
             } notes: {
@@ -163,6 +232,7 @@ public struct PlayerSearchView: View {
                     Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
                 }
             }
+            .onChange(of: groupId(view)) { sort = nil }
             .onChange(of: Suggesting(text: text, tokens: tokens.map(\.id), offered: view.kinds.count), initial: true) {
                 search?.suggested = Self.suggestions(view, typed: text, chosen: tokens)
             }

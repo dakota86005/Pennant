@@ -242,7 +242,8 @@
           "display": "Club",
           "hint": "Every major league club in your league; yours is marked"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true
       },
       {
         "id": "record",
@@ -250,7 +251,8 @@
           "display": "Record",
           "hint": "Wins and losses this season, as the export states them"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "rosterWins",
@@ -258,7 +260,8 @@
           "display": "Roster, rest of 2040",
           "hint": "Wins the roster is expected to add; sorts by the most likely"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "farmWins",
@@ -266,7 +269,8 @@
           "display": "Farm, 2041",
           "hint": "Wins the farm is expected to add in the majors next season"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "contract",
@@ -274,7 +278,8 @@
           "display": "Contract value",
           "hint": "What the roster's contracts are worth beyond what they pay"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "payroll",
@@ -282,7 +287,8 @@
           "display": "Payroll",
           "hint": "This season's payroll, as the club's finances state it"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "budget",
@@ -291,6 +297,7 @@
           "hint": "The club's budget, as its finances state it"
         },
         "numeric": true,
+        "sortable": true,
         "hidden": true
       },
       {
@@ -299,7 +306,8 @@
           "display": "Top farm contributor",
           "hint": "The minor leaguer expected to add the most next season"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true
       },
       {
         "id": "players",
@@ -307,7 +315,8 @@
           "display": "Players",
           "hint": "On the major league roster · in the farm system"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       }
     ],
     "rows": [

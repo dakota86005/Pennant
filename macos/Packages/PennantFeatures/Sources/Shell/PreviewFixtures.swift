@@ -258,13 +258,21 @@ nonisolated public enum PreviewFixtures {
         )
     }
 
-    /// Scouting's captured views (`getScouting…`, N12 Track B): the Draft Board and Player Search as it opens.
+    /// Scouting's captured views (`getScouting…`, N12 Track B): the Draft Board on a published class with its first
+    /// prospect's reasons (`getScoutingDraftBoard-published`, `getScoutingDraftProspect`), and Player Search as it opens.
     @MainActor
     public static var scouting: ScoutingStore {
         .preview(
-            draftBoard: decode(Components.Schemas.ScoutingDraftBoardView.self, "getScoutingDraftBoard"),
+            draftBoard: decode(Components.Schemas.ScoutingDraftBoardView.self, "getScoutingDraftBoard-published"),
+            prospects: [decode(Components.Schemas.ScoutingProspectView.self, "getScoutingDraftProspect")].compactMap { $0 },
             search: decode(Components.Schemas.ScoutingPlayerSearchView.self, "getScoutingPlayerSearch")
         )
+    }
+
+    /// Scouting's Draft Board on the synthetic save as it is: OOTP has published a class with nobody in it.
+    @MainActor
+    public static var scoutingEmptyClass: ScoutingStore {
+        .preview(draftBoard: decode(Components.Schemas.ScoutingDraftBoardView.self, "getScoutingDraftBoard"))
     }
 
     /// The captured search answer for "club".
@@ -318,7 +326,8 @@ nonisolated public enum PreviewFixtures {
         following: FollowingStore? = nil,
         clubOwed: Components.Schemas.ClubOwed? = nil,
         farm: FarmStore? = nil,
-        players: PlayerStore? = nil
+        players: PlayerStore? = nil,
+        scouting: ScoutingStore? = nil
     ) -> AppModel {
         var status = status(configured: configured)
         if let clubOwed { status?.clubOwed = clubOwed }
@@ -359,7 +368,7 @@ nonisolated public enum PreviewFixtures {
             clubhouse: configured ? clubhouse : nil,
             players: configured ? (players ?? Self.players) : nil,
             leagueOffice: configured ? leagueOffice : nil,
-            scouting: configured ? scouting : nil
+            scouting: configured ? (scouting ?? Self.scouting) : nil
         )
     }
 

@@ -2949,16 +2949,24 @@ SWIFTUI_REBUILD.md section 3.5, "As built at N12 (Track B)".
   old routes answer exactly what their extracted modules compute (the franchise's financial columns are now read only when
   the export has them, where the route used to fail; the tenure's names are read in one batch, not one query each).
 - **Built after each import, in the worker.** Standings, Leaders, Org Comparison, Franchise History, Us vs Them against
-  the club it opens on, the Draft Board and Player Search as it opens are built once per state of the club's inputs
-  (`frontOfficeInputsKey`) and served from the cache; another club's (`:org`) on its first open, kept, two builds at
-  most. Us vs Them against another club is read in the worker on its first ask and kept with its build. Player Search
-  with words or tokens is a bounded query read in process and kept (64 at most).
+  the club it opens on, the Draft Board and Player Search as it opens are built once per import, calibration revision,
+  settings and config (`frontOfficeImportKey`: never the live log, which none of them reads, so a write to it during play
+  rebuilds nothing; a kept payload is served stamped with the Front Office's current stamp) and served from the cache;
+  Org Comparison is its own worker job after the rest, so its 1.7 s on a real save holds up no other view; another
+  club's (`:org`) on its first open, kept, two builds at most. Us vs Them against another club is read in the worker on
+  its first ask and kept with its build. Player Search with words or tokens is a bounded query read in process and kept
+  (64 at most).
 - **Standings is the one place the odds and the posture appear** (D-060). They are the staff's rough read, a card beneath
-  the division's table, never the view's lede or anything above the standings: "The staff's rough read: about 7% to
-  reach the postseason", with a provisional basis (the record, the runs, a strength from runs, the rival of a stated
+  the table, never the view's lede or anything above the standings: "The staff's rough read: about 7% to reach the
+  postseason", with a provisional basis (the record, the runs, a strength from runs, the rival of a stated
   .520 strength never fitted, the gap, the games left, how the chance is worked out) and what it leaves out (injuries, the
   roster, the schedule, more than one rival, trades) said. Before a game is played there is no read, and one sentence
-  says it waits for the first game. Our place in the race (the division, the wild card, the magic number) is facts.
+  says it waits for the first game; once the regular season is decided (no game left for the club) there is none either,
+  one sentence says the season is decided, and none on a schedule the export doesn't carry (never an assumed 162 games).
+  The posture is the staff's description of the club ("reads the club as a buyer", "leans toward buying", "hasn't decided
+  yet", "leans toward selling", "reads the club as a seller"), never an order. Our place in the race (the division, the
+  wild card, the magic number) is facts. The view opens on every club of the league in one table with its division, as
+  the React page shows the league, and offers each division on its own.
 - **Us vs Them is defined here** (the plan named it only): our club beside one other major league club of the league,
   as facts. The season, at the plate and on the mound, each figure with both clubs' league places (D-057: a place among
   the clubs that have the figure, ties said), their meetings this season and the next series. No odds, no posture, no
@@ -2970,11 +2978,14 @@ SWIFTUI_REBUILD.md section 3.5, "As built at N12 (Track B)".
   there and reads the rating columns itself (a deviation left in that route, which the cutover deletes). A prospect
   whose ceiling our scouts can't give is left off the board and counted. The board is the scouting staff's view in its
   stated order (ceiling, then now), never an order to draft; the read labels are the staff's stated lines (policy, their
-  rule said once).
+  rule said once), and a prospect whose grade now isn't known is read on his ceiling alone and says so, never as a zero.
+  It serves its top 300 in that order, every prospect a position or school filter (sent by key) or "Show all" asks for,
+  and a prospect's reasons only when he is chosen (`…/draftBoard/prospects/:player`).
 - **Player Search finds a name the way the palette does** (one matcher, `server/search.ts`), and its tokens (a position,
   a level, a club, an age band, a hand, free agents, our organization) are served, so the search field suggests only what
   the server knows. The palette's player matches end with "All N in Player Search", which opens the view on the words
-  typed. The results are capped and say how many match and how many are shown. On the Mac it is the window's one
+  typed. The results come 300 at a time and say how many match and how many are shown; a column's sort orders every
+  match on the server, as the React page's did, and the next 300 are a click away. On the Mac it is the window's one
   search field, scoped to Player Search while it is shown (as Finder's search scopes to the folder shown), never a
   second field.
 - **Org Comparison is Player Value's** (D-052): each figure a range with its most likely value inside it, never one
@@ -2985,7 +2996,8 @@ SWIFTUI_REBUILD.md section 3.5, "As built at N12 (Track B)".
   chosen in any of these tables are compared at once (Compare in the Player menu, ⌥⌘C, takes them all).
 
 **Calls for the owner** (the builder's, made so the work could go on): "Win %" for the winning percentage (PCT is on the
-banned list outside the glossary); the staff's read's posture words ("buy", "lean toward buying", "hold; the season hasn't
-decided yet", "lean toward selling", "sell and look to next year"); Us vs Them's opening club and its counting stats as
+banned list outside the glossary), in Us vs Them too; the staff's read's posture words, after the review the staff's
+description ("reads the club as a buyer", "leans toward buying", "hasn't decided yet", "leans toward selling", "reads
+the club as a seller"); no read once the regular season is decided; Us vs Them's opening club and its counting stats as
 season totals; a zero historical payroll or attendance read as not known; Player Value's production stamp as the
-certainty of the org comparison's figures; Leaders' season named only when the league's own data names it.
+certainty of the org comparison's figures (the farm's figure the ratings model's, which it rests on); Leaders' season named only when the league's own data names it.

@@ -240,8 +240,8 @@
         "year": 2039,
         "wins": 30,
         "losses": 30,
-        "result": "none",
-        "display": "2039: 30-30"
+        "result": "unknown",
+        "display": "2039: 30-30, how it ended not known"
       }
     ],
     "summary": "Wins in each of 1 season, 2039, oldest first; best record 30-30 in 2039; worst 30-30 in 2039.",
@@ -263,8 +263,14 @@
       {
         "result": "none",
         "text": {
-          "display": "Every season",
-          "hint": "The export doesn't say how its seasons ended"
+          "display": "Missed the playoffs"
+        }
+      },
+      {
+        "result": "unknown",
+        "text": {
+          "display": "Not known",
+          "hint": "The export doesn't say how the season ended"
         }
       }
     ]
@@ -284,7 +290,8 @@
           "title": {
             "display": "Year"
           },
-          "numeric": true
+          "numeric": true,
+          "sortable": true
         },
         {
           "id": "team",
@@ -292,7 +299,8 @@
             "display": "Team",
             "hint": "The club's name that season"
           },
-          "numeric": false
+          "numeric": false,
+          "sortable": true
         },
         {
           "id": "w",
@@ -300,7 +308,8 @@
             "display": "W",
             "hint": "Wins."
           },
-          "numeric": true
+          "numeric": true,
+          "sortable": true
         },
         {
           "id": "l",
@@ -308,7 +317,8 @@
             "display": "L",
             "hint": "Losses."
           },
-          "numeric": true
+          "numeric": true,
+          "sortable": true
         },
         {
           "id": "pct",
@@ -316,7 +326,8 @@
             "display": "Win %",
             "hint": "Winning percentage: wins divided by games played."
           },
-          "numeric": true
+          "numeric": true,
+          "sortable": true
         },
         {
           "id": "finish",
@@ -324,7 +335,8 @@
             "display": "Finish",
             "hint": "Where the club finished in the standings"
           },
-          "numeric": true
+          "numeric": true,
+          "sortable": true
         },
         {
           "id": "gb",
@@ -332,7 +344,8 @@
             "display": "GB",
             "hint": "Games behind the division leader."
           },
-          "numeric": true
+          "numeric": true,
+          "sortable": true
         },
         {
           "id": "result",
@@ -340,7 +353,8 @@
             "display": "Result",
             "hint": "How the season ended, as the export records it"
           },
-          "numeric": false
+          "numeric": false,
+          "sortable": true
         },
         {
           "id": "best",
@@ -349,6 +363,7 @@
             "hint": "The season's best hitter and pitcher, as the export names them"
           },
           "numeric": false,
+          "sortable": true,
           "hidden": true
         },
         {
@@ -358,6 +373,7 @@
             "hint": "What the club spent on players that season"
           },
           "numeric": true,
+          "sortable": true,
           "hidden": true
         },
         {
@@ -367,6 +383,7 @@
             "hint": "The season's home attendance"
           },
           "numeric": true,
+          "sortable": true,
           "hidden": true
         }
       ],

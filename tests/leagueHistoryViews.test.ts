@@ -252,7 +252,10 @@ describe('Franchise History serves every season (N12)', () => {
     expect(view.seasons.table.rows.map((r) => r.sort.year)).toEqual(years);
     expect(view.chart!.points[0].year).toBe(FIRST);
     expect(view.chart!.summary).toMatch(new RegExp(`86 seasons, ${FIRST} to ${SEASON - 1}`));
-    expect(view.chart!.legend.map((l) => l.result)).toEqual(['title', 'playoffs', 'none']);
+    // A fourth mark for a season whose ending isn't known, never drawn as a missed postseason (review, M7; D-018)
+    expect(view.chart!.legend.map((l) => [l.result, l.text.display])).toEqual([
+      ['title', 'Won it all'], ['playoffs', 'Made the playoffs'], ['none', 'Missed the playoffs'], ['unknown', 'Not known'],
+    ]);
     expect(view.empty).toBeNull();
     expect(view.club).toMatchObject({ teamId: save.org, ours: true });
   });
@@ -265,7 +268,7 @@ describe('Franchise History serves every season (N12)', () => {
     for (const p of view.chart!.points) {
       const s = byYear.get(p.year)!;
       expect(p.result).toBe(s.wonTitle ? 'title' : s.madePlayoffs ? 'playoffs' : 'none');
-      expect(p.display).toBe(`${p.year}: ${s.w}-${s.l}${s.wonTitle ? ', won it all' : s.madePlayoffs ? ', made the playoffs' : ''}`);
+      expect(p.display).toBe(`${p.year}: ${s.w}-${s.l}${s.wonTitle ? ', won it all' : s.madePlayoffs ? ', made the playoffs' : ', missed the playoffs'}`);
     }
     for (const r of view.seasons.table.rows) {
       const s = byYear.get(r.sort.year as number)!;
@@ -314,13 +317,14 @@ describe('Franchise History serves every season (N12)', () => {
         expect(r.cells.result).toMatchObject({ display: 'Not known', tone: 'unknown' });
         expect(r.sort.result).toBeNull();
       }
-      expect(view.chart!.points.slice(0, 10).every((p) => p.result === 'none' && !p.display.includes(','))).toBe(true);
+      expect(view.chart!.points.slice(0, 10).every((p) => p.result === 'unknown' && p.display.endsWith(', how it ended not known'))).toBe(true);
+      expect(view.chart!.points.slice(10).every((p) => p.result !== 'unknown')).toBe(true);
       expect(view.chart!.caption.basis.unknown.join(' ')).toMatch(/How 10 seasons ended/);
       // None at all: nothing is marked, and the titles are not known rather than zero
       db.prepare(`DELETE FROM team_history WHERE team_id = ?`).run(save.org);
       const none = franchiseViewOf(v, save.org);
       expect(none.seasons.table.rows.every((r) => r.cells.result.display === 'Not known')).toBe(true);
-      expect(none.chart!.points.every((p) => p.result === 'none')).toBe(true);
+      expect(none.chart!.points.every((p) => p.result === 'unknown')).toBe(true);
       expect(none.figures.find((f) => f.text === 'Titles')!.value).toMatchObject({ n: null, display: 'Not known' });
       expect(bannedInPayload(none)).toEqual([]);
     } finally {

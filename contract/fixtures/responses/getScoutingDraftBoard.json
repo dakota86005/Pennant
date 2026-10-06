@@ -12,7 +12,7 @@
       "because": [
         {
           "label": "How to read it",
-          "value": "Every draft-eligible player our scouts have graded all the way to a ceiling, in the scouting staff's order: the highest ceiling first, then the best now. It is the staff's view of the class, never an order to draft anyone, and every grade on an amateur rests on the few looks the staff has had. The class shows only once OOTP publishes it. The read beside a name is the kind of prospect the staff reads him as, on stated lines: a ceiling of 55 or more with 15 or more still to come is a high ceiling with a long wait; within 8 of his ceiling and 45 or more now is close to ready; a ceiling of 52 or more is an everyday regular's; any other ceiling of 45 or more is a depth piece. Under 45, the staff gives no read. Select a player for his reasons."
+          "value": "Every draft-eligible player our scouts have graded all the way to a ceiling, in the scouting staff's order: the highest ceiling first, then the best now. It is the staff's view of the class, never an order to draft anyone, and every grade on an amateur rests on the few looks the staff has had. The class shows only once OOTP publishes it. The read beside a name is the kind of prospect the staff reads him as, on stated lines: a ceiling of 55 or more with 15 or more still to come is a high ceiling with a long wait; within 8 of his ceiling and 45 or more now is close to ready; a ceiling of 52 or more is an everyday regular's; any other ceiling of 45 or more is a depth piece. A prospect whose grade now isn't known is read on his ceiling alone, and the read says so. Under 45, the staff gives no read. Select a player for his reasons."
         }
       ],
       "source": {
@@ -40,14 +40,16 @@
         "title": {
           "display": "Event"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true
       },
       {
         "id": "date",
         "title": {
           "display": "Date"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       }
     ],
     "rows": [
@@ -231,31 +233,36 @@
           "text": {
             "display": "All positions"
           },
-          "rows": []
+          "selected": true,
+          "value": "all"
         },
         {
           "text": {
             "display": "Catchers"
           },
-          "rows": []
+          "selected": false,
+          "value": "C"
         },
         {
           "text": {
             "display": "Infielders"
           },
-          "rows": []
+          "selected": false,
+          "value": "IF"
         },
         {
           "text": {
             "display": "Outfielders"
           },
-          "rows": []
+          "selected": false,
+          "value": "OF"
         },
         {
           "text": {
             "display": "Pitchers"
           },
-          "rows": []
+          "selected": false,
+          "value": "P"
         }
       ]
     },
@@ -269,23 +276,33 @@
           "text": {
             "display": "High school and college"
           },
-          "rows": []
+          "selected": true,
+          "value": "all"
         },
         {
           "text": {
             "display": "High school"
           },
-          "rows": []
+          "selected": false,
+          "value": "HS"
         },
         {
           "text": {
             "display": "College"
           },
-          "rows": []
+          "selected": false,
+          "value": "college"
         }
       ]
     }
   ],
+  "query": {
+    "position": "all",
+    "school": "all",
+    "all": false
+  },
+  "count": null,
+  "more": null,
   "board": {
     "columns": [
       {
@@ -294,28 +311,34 @@
           "display": "Board",
           "hint": "The scouting staff's order: ceiling, then now"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "player",
         "title": {
           "display": "Player"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
       },
       {
         "id": "age",
         "title": {
           "display": "Age"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "position",
         "title": {
           "display": "Pos"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
       },
       {
         "id": "bt",
@@ -323,14 +346,18 @@
           "display": "B/T",
           "hint": "Bats / throws"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
       },
       {
         "id": "school",
         "title": {
           "display": "From"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
       },
       {
         "id": "current",
@@ -338,7 +365,8 @@
           "display": "Now",
           "hint": "Our scouts' grade now, on the 20–80 scale"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "ceiling",
@@ -346,7 +374,8 @@
           "display": "Ceiling",
           "hint": "Our scouts' grade at his ceiling, on the 20–80 scale"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "upside",
@@ -354,7 +383,8 @@
           "display": "Upside",
           "hint": "Ceiling minus now: the projection still to happen"
         },
-        "numeric": true
+        "numeric": true,
+        "sortable": true
       },
       {
         "id": "read",
@@ -362,12 +392,14 @@
           "display": "Read",
           "hint": "The kind of prospect the scouting staff reads him as"
         },
-        "numeric": false
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
       }
     ],
     "rows": [],
     "empty": {
-      "display": "Nobody in the class has a full scouted ceiling yet."
+      "display": "Nobody is in this year's class."
     }
   },
   "empty": null

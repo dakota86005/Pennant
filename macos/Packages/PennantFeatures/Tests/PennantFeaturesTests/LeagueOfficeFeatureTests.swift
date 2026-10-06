@@ -19,6 +19,7 @@ struct LeagueOfficeFeatureTests {
 
     private var tables: [Components.Schemas.OfficeTable] {
         var out: [Components.Schemas.OfficeTable] = []
+        if let all = league.standings?.all { out.append(all.table) }
         out += league.standings?.groups.flatMap { $0.divisions.map(\.table) } ?? []
         out += league.leaders?.groups.flatMap { $0.sections.map(\.table) } ?? []
         if let clubs = league.orgComparison?.clubs { out.append(clubs) }
@@ -32,18 +33,73 @@ struct LeagueOfficeFeatureTests {
         return out
     }
 
-    @Test("every view's fixture decodes, and every served table has a cell and a sort key for every column")
+    @Test("every view's fixture decodes, and every served table has a cell for every column and a key for every column it sorts by")
     func everyColumnServed() {
         #expect(league.standings != nil && league.leaders != nil && league.orgComparison != nil && league.franchise != nil)
         #expect(league.usVsThem(nil) != nil && scouting.draftBoard != nil && scouting.lastSearch != nil)
         #expect(tables.count >= 6)
         for table in tables {
             let columns = Set(table.columns.map(\.id))
+            // A column of words sorts by its words, and a table the server sorts carries no keys (review, M2)
+            let keyed = table.serverSorts == true ? [] : Set(table.columns.filter { $0.byWords != true }.map(\.id))
             for row in table.rows {
                 #expect(Set(row.cells.additionalProperties.keys) == columns)
-                #expect(Set(row.sort.additionalProperties.keys) == columns)
+                #expect(Set(row.sort.additionalProperties.keys) == keyed)
             }
         }
+        // The board is a published class with rows; the search is sorted on the server
+        #expect(scouting.draftBoard?.published == true && (scouting.draftBoard?.board.rows.count ?? 0) > 10)
+        #expect(scouting.lastSearch?.results.serverSorts == true)
+    }
+
+    @Test("a column of words sorts by its words, an unknown cell last both ways (review, M2)")
+    func sortsByWords() throws {
+        let board = try #require(scouting.draftBoard?.board)
+        let column = try #require(board.columns.first { $0.byWords == true && $0.id == "player" })
+        let held = board.rows.enumerated().map { OfficeTableRow(row: $0.element, index: $0.offset) }
+        let names = OfficeSort(column: column.id, byWords: true).sorted(held).compactMap { $0.cell("player")?.display }
+        #expect(names == names.sorted())
+        #expect(held.allSatisfy { $0.key("player", byWords: true) != nil && $0.key("player") == nil })
+        // A cell in the unknown tone has no key, so it sorts last
+        var unknown = board.rows[0]
+        unknown.cells.additionalProperties["player"] = .init(display: "Not known", tone: .init(value1: .unknown, value2: "unknown"))
+        #expect(OfficeTableRow(row: unknown, index: 0).key("player", byWords: true) == nil)
+    }
+
+    @Test("columns served as not sorting keep the served order in the table's runs, sortable and not (review, M6)")
+    func columnRuns() throws {
+        let usVsThem = try #require(league.usVsThem(nil)?.sections.first?.table.columns)
+        #expect(usVsThem.map(\.sortable) == [true, false, false])
+        let runs = OfficeColumnRuns(usVsThem).runs
+        #expect(runs.map { $0.map(\.id) } == [["measure"], ["us", "them"], [], []])
+        let search = try #require(scouting.lastSearch?.results.columns)
+        let searchRuns = OfficeColumnRuns(search).runs
+        #expect(searchRuns.flatMap { $0 }.map(\.id) == search.map(\.id))
+        #expect(searchRuns[1].map(\.id) == ["bt"])
+    }
+
+    @Test("a search's pages make one table in the served order, and its latest page says how many and what is next (review, M1)")
+    func searchPages() throws {
+        let store = PreviewFixtures.scouting
+        let first = try #require(store.lastSearch)
+        let query = ScoutingStore.SearchQuery(first.query)
+        let table = try #require(store.searchResults(query))
+        #expect(table.rows.map(\.id) == first.results.rows.map(\.id))
+        #expect(store.lastPage(query)?.count.display == first.count.display)
+        // A sorted search is another question than the same words in the server's own order
+        #expect(ScoutingStore.searchName(query) != ScoutingStore.searchName(ScoutingStore.SearchQuery(q: query.q, tokens: query.tokens, sort: "age", dir: "asc")))
+        #expect(ScoutingStore.SearchQuery(sort: nil, dir: "asc").dir == "desc")
+    }
+
+    @Test("a prospect's reasons are the chosen row's detail, read when he is chosen (review, M2)")
+    func prospectReasons() throws {
+        let board = try #require(scouting.draftBoard)
+        #expect(board.board.rows.allSatisfy { $0.detail.isEmpty })
+        let prospect = try #require(scouting.prospects.values.first)
+        #expect(board.board.rows.contains { $0.id == prospect.row && $0.player?.playerId == prospect.playerId })
+        #expect(!prospect.detail.isEmpty)
+        #expect(board.filters.map(\.id) == ["position", "school"])
+        #expect(board.filters.allSatisfy { filter in filter.choices.filter { $0.selected }.count == 1 })
     }
 
     @Test("every player a table names opens in his own window, every club in its own, and Compare takes each player once")
