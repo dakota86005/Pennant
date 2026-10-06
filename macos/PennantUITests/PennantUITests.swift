@@ -1775,7 +1775,7 @@ final class PennantUITests: XCTestCase {
     @MainActor
     func testCompareByMenuAndDrag() throws {
         // The Compare window against the screen's trailing edge, so its trailing side shows beside the main window
-        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugCompareWindowSize", "520x600"])
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugCompareWindowSize", "560x600"])
         waitForShell(app)
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30))

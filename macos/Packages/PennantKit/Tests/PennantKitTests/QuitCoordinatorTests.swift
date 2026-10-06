@@ -90,6 +90,23 @@ struct QuitCoordinatorTests {
         #expect(replied.value == true)
     }
 
+    @Test("asked again while the quit is under way, it is cancelled; asked again after the reply, it quits at once (PR #58)")
+    func askedAgain() {
+        let replied = Flag()
+        let lines = OrderLog()
+        let quit = QuitCoordinator(prepare: {}, log: { lines.add($0) }) {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(quit.shouldTerminate { replied.set($0) } == .terminateLater)
+        #expect(quit.shouldTerminate { _ in Issue.record("a second reply") } == .terminateCancel)
+        runMainLoop { replied.value != nil }
+        #expect(replied.value == true)
+        #expect(quit.replied)
+        // AppKit asking again on its way out: the quit is already decided, so it is never cancelled now
+        #expect(quit.shouldTerminate { _ in Issue.record("no reply is owed") } == .terminateNow)
+        #expect(lines.all.contains("quit: asked again after the reply; quitting now"))
+    }
+
     @Test("a note send that never answers does not hold the quit: the server is stopped and the reply goes out by the deadline")
     func lastWordsNeverAnswer() async {
         let order = OrderLog()

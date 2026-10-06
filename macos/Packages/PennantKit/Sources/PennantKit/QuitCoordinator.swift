@@ -26,6 +26,8 @@ public final class QuitCoordinator {
     let replyDeadline: Duration
     /// A reply is owed to AppKit.
     public private(set) var replyPending = false
+    /// The reply has gone out: the app is quitting, so a later ask (AppKit can ask again on its way out) quits at once.
+    public private(set) var replied = false
 
     /// `prepare` runs at once, on the main actor (the model stops starting things); `lastWords` is asked then, on the
     /// main actor, for what must reach the server before it stops (the notes typed and not saved yet), which is sent
@@ -58,13 +60,28 @@ public final class QuitCoordinator {
     /// then reply; the reply goes out at `replyDeadline` if the stop has not ended by then, and only once. A second
     /// request while a reply is owed is cancelled (the first one is still under way).
     public func shouldTerminate(reply: @escaping @MainActor @Sendable (Bool) -> Void) -> NSApplication.TerminateReply {
-        if replyPending { return .terminateCancel }
+        // Asked again after the reply (PR #58 on GitHub's macOS 26 runner: after a window was closed the quit stopped
+        // short, the app's log showing the server stopped and the reply sent): the quit is already decided, so it goes
+        // on rather than being cancelled
+        if replied {
+            log("quit: asked again after the reply; quitting now")
+            return .terminateNow
+        }
+        if replyPending {
+            log("quit: asked again while the first quit is under way")
+            return .terminateCancel
+        }
         replyPending = true
         log("quit: asked")
         let last = lastWords()
         prepare()
         let stop = stop, log = log, lastWordsDeadline = lastWordsDeadline, replyDeadline = replyDeadline
         let answer = Once()
+        let send: @MainActor @Sendable (Bool) -> Void = { [weak self] ok in
+            self?.replied = ok
+            self?.replyPending = false
+            reply(ok)
+        }
         Task.detached(priority: .userInitiated) {
             if await Self.finishes(within: lastWordsDeadline, last) {
                 log("quit: the last words are sent")
@@ -73,13 +90,13 @@ public final class QuitCoordinator {
             }
             await stop()
             log("quit: the server is stopped")
-            if answer.claim() { Self.onMainRunLoop { reply(true) } }
+            if answer.claim() { Self.onMainRunLoop { send(true) } }
         }
         Task.detached(priority: .userInitiated) {
             try? await Task.sleep(for: replyDeadline)
             guard answer.claim() else { return }
             log("quit: the stop took longer than \(replyDeadline); quitting anyway")
-            Self.onMainRunLoop { reply(true) }
+            Self.onMainRunLoop { send(true) }
         }
         return .terminateLater
     }
