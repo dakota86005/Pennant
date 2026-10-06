@@ -1242,13 +1242,25 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
         let up = { (step: String) in
             XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
+            // Not in front: another app, or another Pennant (another worktree's test run shares the bundle id, so the
+            // frontmost app's id alone can't tell them apart; this app's own state can)
             let front = NSWorkspace.shared.frontmostApplication
-            if let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
-                let note = "[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back"
+            let other = front.map { !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains($0.bundleIdentifier ?? "") } ?? false
+            if app.state != .runningForeground || other {
+                let note = "[narrow] \(front?.localizedName ?? front?.bundleIdentifier ?? "another process") was frontmost at \(step) (Pennant's state \(app.state.rawValue)); Pennant brought back"
                 print(note)
                 XCTContext.runActivity(named: note) { _ in }
                 app.activate()
                 _ = app.wait(for: .runningForeground, timeout: 5)
+            }
+        }
+        // The sidebar can be pressed and scrolled: it has a hit point (nothing over it, the window in front). A scroll or
+        // click on a container with none fails the test outright ("Unable to find hit point"), so it is waited for
+        let pressable = { (target: XCUIElement, step: String) in
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in target.exists && target.isHittable }, object: nil)
+            if XCTWaiter.wait(for: [ready], timeout: 10) != .completed {
+                up("\(step), waiting for a hit point")
+                XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, "\(step): no hit point after 20 s")
             }
         }
         let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
@@ -1270,6 +1282,7 @@ final class PennantUITests: XCTestCase {
                 let item = element(app, "sidebar.\(view.department).\(view.view)")
                 let sidebar = element(app, "sidebar")
                 up("before \(view.view), round \(round)")
+                pressable(sidebar, "the sidebar before \(view.view), round \(round)")
                 if !item.isHittable { reveal(item, in: sidebar) }
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
                 within(item, in: sidebar)
@@ -1277,6 +1290,7 @@ final class PennantUITests: XCTestCase {
                 // for the list it was scrolling
                 settle(item)
                 up("before \(view.view), round \(round)")
+                pressable(item, "\(view.view)'s row, round \(round)")
                 // On the row's own point: wholly inside the list already, so no scroll-to-visible of XCTest's (it judged a
                 // row near the list's foot hidden and found no hit point for the list it then scrolled)
                 XCTAssertTrue(item.frame.minY >= sidebar.frame.minY && item.frame.maxY <= sidebar.frame.maxY, "round \(round): \(view.view)'s row is not in the sidebar's frame")
@@ -1288,6 +1302,8 @@ final class PennantUITests: XCTestCase {
                 if view.table, !shown.identifier.hasSuffix(".empty") {
                     let row = firstRow(of: shown)
                     XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                    up("\(view.view)'s first row, round \(round)")
+                    pressable(row, "\(view.view)'s first row, round \(round)")
                     leading(row)
                     XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s chosen row has no detail")
                     XCTAssertGreaterThanOrEqual(shown.frame.height, 100, "round \(round): \(view.view)'s table is \(shown.frame.height) pt tall")
