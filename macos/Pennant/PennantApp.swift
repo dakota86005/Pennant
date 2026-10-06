@@ -89,6 +89,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The served notification when a new export is read, and the desk's count on the Dock icon (N7).
     private let outside: OutsideTheWindow
     private let quit: QuitCoordinator
+    /// The app's own log (the quit's steps).
+    private let appLog: @Sendable (String) -> Void
     private var terminationSignal: (any DispatchSourceSignal)?
 
     override init() {
@@ -97,9 +99,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.model = model
         outside = OutsideTheWindow(model: model)
         let log = controller.log
+        appLog = { log.write($0, source: "app") }
         quit = QuitCoordinator(
             prepare: { model.beginShutdown() },
             lastWords: { model.lastNoteSaves() },
+            forceExit: { exit(0) },
             log: { log.write($0, source: "app") },
             stop: { await controller.stop() }
         )
@@ -250,6 +254,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quit waits for the server (SIGTERM, up to 5 seconds, then SIGKILL; SWIFTUI_REBUILD.md section 5.3), without
     /// depending on the main queue (`QuitCoordinator`).
+    /// Said in the app's log, so a quit that stops short shows how far AppKit got (PR #58).
+    func applicationWillTerminate(_ notification: Notification) {
+        appLog("quit: AppKit is ending the app")
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         quit.shouldTerminate { ok in NSApp.reply(toApplicationShouldTerminate: ok) }
     }

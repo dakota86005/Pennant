@@ -24,6 +24,10 @@ public final class QuitCoordinator {
     let lastWordsDeadline: Duration
     /// How long AppKit waits for the reply at most: the server's stop has its own grace and kill within it.
     let replyDeadline: Duration
+    /// How long AppKit has to end the app once the quit is answered yes; after it the app ends itself (`forceExit`).
+    let exitGrace: Duration
+    /// Ends the process when AppKit has not: the app hands `exit(0)`; nothing by default, so a test process is never ended.
+    private let forceExit: @Sendable () -> Void
     /// A reply is owed to AppKit.
     public private(set) var replyPending = false
     /// The reply has gone out: the app is quitting, so a later ask (AppKit can ask again on its way out) quits at once.
@@ -38,6 +42,8 @@ public final class QuitCoordinator {
         lastWords: @escaping @MainActor () -> @Sendable () async -> Void = { {} },
         lastWordsDeadline: Duration = .seconds(2),
         replyDeadline: Duration = .seconds(12),
+        exitGrace: Duration = .seconds(5),
+        forceExit: @escaping @Sendable () -> Void = {},
         log: @escaping @Sendable (String) -> Void = { _ in },
         stop: @escaping @Sendable () async -> Void
     ) {
@@ -45,6 +51,8 @@ public final class QuitCoordinator {
         self.lastWords = lastWords
         self.lastWordsDeadline = lastWordsDeadline
         self.replyDeadline = replyDeadline
+        self.exitGrace = exitGrace
+        self.forceExit = forceExit
         self.log = log
         self.stop = stop
     }
@@ -77,10 +85,22 @@ public final class QuitCoordinator {
         prepare()
         let stop = stop, log = log, lastWordsDeadline = lastWordsDeadline, replyDeadline = replyDeadline
         let answer = Once()
+        let exitGrace = exitGrace, forceExit = forceExit
         let send: @MainActor @Sendable (Bool) -> Void = { [weak self] ok in
             self?.replied = ok
             self?.replyPending = false
+            log("quit: replied \(ok ? "yes" : "no")")
             reply(ok)
+            guard ok else { return }
+            // The quit is decided and the server stopped: if AppKit has not ended the app by now (PR #58 on GitHub's
+            // macOS 26 runner, after a restored window was closed: the reply went out and the app stayed), it ends
+            // itself rather than leave the GM with an app that will not quit. Off the main thread, which may be the
+            // one held.
+            Task.detached(priority: .userInitiated) {
+                try? await Task.sleep(for: exitGrace)
+                log("quit: AppKit had not ended the app \(exitGrace) after the reply; ending it")
+                forceExit()
+            }
         }
         Task.detached(priority: .userInitiated) {
             if await Self.finishes(within: lastWordsDeadline, last) {

@@ -107,6 +107,22 @@ struct QuitCoordinatorTests {
         #expect(lines.all.contains("quit: asked again after the reply; quitting now"))
     }
 
+    @Test("once the quit is answered yes, an app AppKit has not ended within the grace ends itself, and says so (PR #58)")
+    func endsItselfAfterTheGrace() {
+        let replied = Flag()
+        let ended = Flag()
+        let lines = OrderLog()
+        let quit = QuitCoordinator(prepare: {}, exitGrace: .milliseconds(50), forceExit: { ended.set() }, log: { lines.add($0) }) {}
+        #expect(quit.shouldTerminate { replied.set($0) } == .terminateLater)
+        runMainLoop { replied.value != nil }
+        #expect(replied.value == true)
+        let deadline = Date.now.addingTimeInterval(2)
+        while ended.value == nil && Date.now < deadline { usleep(1_000) }
+        #expect(ended.value == true)
+        #expect(lines.all.contains("quit: replied yes"))
+        #expect(lines.all.contains { $0.hasPrefix("quit: AppKit had not ended the app") })
+    }
+
     @Test("a note send that never answers does not hold the quit: the server is stopped and the reply goes out by the deadline")
     func lastWordsNeverAnswer() async {
         let order = OrderLog()
