@@ -208,6 +208,12 @@ nonisolated public enum PreviewFixtures {
         return try? JSONDecoder().decode(type, from: data)
     }
 
+    /// A fuller Finance payload than the contract's synthetic save makes (`contract/fixtures/finance/`, N12).
+    public static func financeFixture<T: Decodable>(_ type: T.Type, _ name: String) -> T? {
+        guard let data = try? Data(contentsOf: repositoryRoot.appending(path: "contract/fixtures/finance/\(name).json")) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
     /// The captured wire and a rival's report (`getWire`, `getClubReport`).
     @MainActor
     public static var league: LeagueStore {
@@ -242,6 +248,20 @@ nonisolated public enum PreviewFixtures {
             fortyMan: decode(Components.Schemas.MlbFortyManView.self, "getMajorLeagueFortyMan"),
             roster: decode(Components.Schemas.MlbRostersView.self, "getMajorLeagueRosters"),
             trends: decode(Components.Schemas.MlbSeasonTrendsView.self, "getMajorLeagueSeasonTrends")
+        )
+    }
+
+    /// Finance's and Medical's captured views (`getFinance…`, `getMedicalInjuryReport`, N12).
+    @MainActor
+    public static var office: OfficeStore {
+        .preview(
+            payroll: decode(Components.Schemas.FinancePayrollView.self, "getFinancePayroll"),
+            contracts: decode(Components.Schemas.FinanceContractsView.self, "getFinanceContracts"),
+            // The contract's save has no free agent: the fuller payload worded from it with four released (N12)
+            freeAgents: financeFixture(Components.Schemas.FinanceFreeAgentsView.self, "free-agents")
+                ?? decode(Components.Schemas.FinanceFreeAgentsView.self, "getFinanceFreeAgents"),
+            horizon: decode(Components.Schemas.FinanceHorizonView.self, "getFinanceHorizon"),
+            injuries: decode(Components.Schemas.MedicalInjuryReportView.self, "getMedicalInjuryReport")
         )
     }
 
@@ -335,7 +355,8 @@ nonisolated public enum PreviewFixtures {
             farm: configured ? (farm ?? Self.farm) : nil,
             majorLeague: configured ? majorLeague : nil,
             clubhouse: configured ? clubhouse : nil,
-            players: configured ? (players ?? Self.players) : nil
+            players: configured ? (players ?? Self.players) : nil,
+            office: configured ? office : nil
         )
     }
 

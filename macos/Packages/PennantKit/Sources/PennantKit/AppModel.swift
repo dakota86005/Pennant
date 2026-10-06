@@ -71,6 +71,8 @@ public final class AppModel {
     public private(set) var majorLeague: MajorLeagueStore
     /// Major League Ops' clubhouse tools (`ClubhouseStore`, N9), loaded on `storeKey`.
     public private(set) var clubhouse: ClubhouseStore
+    /// Finance's and Medical's views (`OfficeStore`, N12), loaded on `storeKey`.
+    public private(set) var office: OfficeStore
     /// The player windows and Compare (N11): each player's dossier, the GM's notes, comparisons.
     public private(set) var players: PlayerStore
     /// The club question still open for the chosen save, as the server last said on the status or the settings (N7,
@@ -137,6 +139,7 @@ public final class AppModel {
         farm = FarmStore { line in log.write(line, source: "app") }
         majorLeague = MajorLeagueStore { line in log.write(line, source: "app") }
         clubhouse = ClubhouseStore { line in log.write(line, source: "app") }
+        office = OfficeStore { line in log.write(line, source: "app") }
         players = PlayerStore { line in log.write(line, source: "app") }
     }
 
@@ -160,7 +163,8 @@ public final class AppModel {
         farm: FarmStore? = nil,
         majorLeague: MajorLeagueStore? = nil,
         clubhouse: ClubhouseStore? = nil,
-        players: PlayerStore? = nil
+        players: PlayerStore? = nil,
+        office: OfficeStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -187,6 +191,10 @@ public final class AppModel {
             clubhouse.previewAdopt(model.storeKey)
         }
         if let players { model.players = players }
+        if let office {
+            model.office = office
+            office.previewAdopt(model.storeKey)
+        }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }
@@ -755,6 +763,7 @@ public final class AppModel {
         if let served = next.reportStamp, served != reportStamp { reportStamp = served }
         majorLeague.follow(storeKey)
         clubhouse.follow(storeKey)
+        office.follow(storeKey)
         let stamp = next.lastImport?.finishedAt ?? ""
         guard stamp != importStamp else { return }
         importStamp = stamp
@@ -817,6 +826,7 @@ public final class AppModel {
         // Another save or club: Major League Ops drops what it holds at once (never another club's view)
         majorLeague.follow(storeKey)
         clubhouse.follow(storeKey)
+        office.follow(storeKey)
         if storeKey != nil, !loggedKey {
             loggedKey = true
             controller.log.write("store key known \(launchClock)", source: "app")

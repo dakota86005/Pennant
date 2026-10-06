@@ -1,6 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { computeContracts } from '../server/contracts.js';
 import { orgInjuries } from '../server/dashboard.js';
+import { db, tableColumns } from '../server/db.js';
 import { getDataStatus } from '../server/dataStatus.js';
 import { computeFreeAgents } from '../server/freeagents.js';
 import { FrontOfficeRefusal, resetFrontOfficeCache } from '../server/frontOfficeService.js';
@@ -10,6 +13,7 @@ import {
   resetOfficeViews, setFinanceBudget,
 } from '../server/officeViewService.js';
 import { computePayroll } from '../server/payroll.js';
+import { freeAgentsView } from '../server/presentation/finance/freeAgents.js';
 import { horizonView, type HorizonInput } from '../server/presentation/finance/horizon.js';
 import { payrollView } from '../server/presentation/finance/payroll.js';
 import { injuryReportView } from '../server/presentation/medical/injuryReport.js';
@@ -245,5 +249,48 @@ describe('kept per import (N12)', () => {
 
   it('refuses an unknown club in a sentence', async () => {
     await expect(financeContractsNow('99999')).rejects.toBeInstanceOf(FrontOfficeRefusal);
+  });
+});
+
+/*
+ * A fuller Free Agents payload than the contract's synthetic save makes (it has no free agent), worded by the real
+ * adapter from the synthetic save with four players released the way the export writes a free agent, one of them read
+ * from OSA's view, for the Mac app's previews and snapshots (`contract/fixtures/finance/`). Written with
+ * `npm run contract:fixtures`, checked here otherwise.
+ */
+describe('fixtures for the Mac app\'s Finance previews (N12)', () => {
+  const FOLDER = path.join(process.cwd(), 'contract', 'fixtures', 'finance');
+  const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
+
+  it('free agents available now, one read from OSA\'s view', () => {
+    for (const column of ['free_agent', 'last_league_id']) {
+      if (!tableColumns('players').includes(column)) db.prepare(`ALTER TABLE players ADD COLUMN ${column} INTEGER DEFAULT 0`).run();
+    }
+    db.prepare('UPDATE players SET free_agent = 0, last_league_id = ?').run(save.leagueId);
+    const orgOf = db.prepare('SELECT organization_id AS org FROM players WHERE player_id = ?');
+    const released = save.hitters.filter((id) => (orgOf.get(id) as { org: number }).org !== save.org).slice(0, 3);
+    released.push(save.prospects[0]);
+    for (const id of released) {
+      db.prepare('UPDATE players SET team_id = 0, organization_id = 0, free_agent = 1, last_league_id = ? WHERE player_id = ?').run(save.leagueId, id);
+      db.prepare('DELETE FROM players_roster_status WHERE player_id = ?').run(id);
+      db.prepare('DELETE FROM team_roster WHERE player_id = ?').run(id);
+      db.prepare(`UPDATE players_contract SET team_id = 0, contract_team_id = 0, years = 0, season_year = 0, is_major = 0,
+        salary0 = 0, salary1 = 0, salary2 = 0, salary3 = 0 WHERE player_id = ?`).run(id);
+    }
+    const filled = released[1];
+    const view = freeAgentsView(ctx(), computeFreeAgents(save.org, getDataStatus()),
+      (id) => (id === filled ? { mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' } : null));
+    const available = view.lists.find((l) => l.id === 'available')!;
+    expect(available.table.rows.length).toBe(released.length);
+    expect(available.table.rows.find((r) => r.player?.playerId === filled)?.ratingsFill?.display).toBe('OSA');
+    expect(bannedInPayload(view)).toEqual([]);
+    const file = path.join(FOLDER, 'free-agents.json');
+    if (process.env.CONTRACT_FIXTURES === 'write') {
+      fs.mkdirSync(FOLDER, { recursive: true });
+      fs.writeFileSync(file, json(view));
+      return;
+    }
+    expect(fs.existsSync(file), 'free-agents.json is missing: run npm run contract:fixtures').toBe(true);
+    expect(fs.readFileSync(file, 'utf8'), 'free-agents.json differs: run npm run contract:fixtures').toBe(json(view));
   });
 });

@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "$": {
+      "extractionState": "manual"
+    },
+    "%@ (%lld)": {
+      "extractionState": "manual"
+    },
     "%lld of %lld": {
       "extractionState": "manual"
     },
@@ -143,6 +149,15 @@
     "Commands": {
       "extractionState": "manual"
     },
+    "Committed": {
+      "extractionState": "manual"
+    },
+    "Committed Salary": {
+      "extractionState": "manual"
+    },
+    "Committed salary by season": {
+      "extractionState": "manual"
+    },
     "Conclusion": {
       "extractionState": "manual"
     },
@@ -195,6 +210,9 @@
     "Draft Board": {
       "extractionState": "manual"
     },
+    "Every Contract": {
+      "extractionState": "manual"
+    },
     "Every item to decide, from every department": {
       "extractionState": "manual"
     },
@@ -210,6 +228,9 @@
     "Farm's next man": {
       "extractionState": "manual"
     },
+    "Filter": {
+      "extractionState": "manual"
+    },
     "Finance": {
       "extractionState": "manual"
     },
@@ -217,6 +238,9 @@
       "extractionState": "manual"
     },
     "Find Automatically": {
+      "extractionState": "manual"
+    },
+    "Find a player": {
       "extractionState": "manual"
     },
     "Find anything": {
@@ -393,6 +417,9 @@
       "extractionState": "manual"
     },
     "No key needed": {
+      "extractionState": "manual"
+    },
+    "No players match these filters.": {
       "extractionState": "manual"
     },
     "No save chosen": {
@@ -583,10 +610,16 @@
     "Season Trends": {
       "extractionState": "manual"
     },
+    "Seasons": {
+      "extractionState": "manual"
+    },
     "Section": {
       "extractionState": "manual"
     },
     "Select a player to see his assignment.": {
+      "extractionState": "manual"
+    },
+    "Select a row to see more.": {
       "extractionState": "manual"
     },
     "Select a row to see the staff's read.": {
@@ -609,6 +642,9 @@
       "extractionState": "manual"
     },
     "Show Decision": {
+      "extractionState": "manual"
+    },
+    "Show Everyone": {
       "extractionState": "manual"
     },
     "Show Inspector": {
@@ -820,6 +856,9 @@
     "Where Pennant looked": {
       "extractionState": "manual"
     },
+    "Which players": {
+      "extractionState": "manual"
+    },
     "Who could take the job": {
       "extractionState": "manual"
     },
@@ -854,6 +893,9 @@
       "extractionState": "manual"
     },
     "Your club": {
+      "extractionState": "manual"
+    },
+    "million": {
       "extractionState": "manual"
     },
     "↩": {

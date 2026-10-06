@@ -1169,6 +1169,89 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Finance's and Medical's views (N12, D-071) at 900 × 700 with the inspector open: each view drawn from one click in
+    /// the sidebar, a row chosen in each table and its detail drawn, Payroll's every contract and back, Free Agents' lists
+    /// and filter, three rounds, each view audited on its first visit (no new set-aside). Running is what matters (a
+    /// constraint loop or a crash stops it).
+    @MainActor
+    func testFinanceNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in
+            XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
+            let front = NSWorkspace.shared.frontmostApplication
+            if let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
+                let note = "[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back"
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
+                app.activate()
+                _ = app.wait(for: .runningForeground, timeout: 5)
+            }
+        }
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        let any = { (prefix: String) in app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch }
+        // Each view: its department, what shows it drew (an identifier's prefix), and whether it is a table to choose a row in
+        let views: [(department: String, view: String, shows: String, table: Bool)] = [
+            ("finance", "payrollBudget", "payroll.chart", false), ("finance", "contracts", "table.contracts", true),
+            ("finance", "freeAgents", "table.freeAgents.", true), ("finance", "horizonBoard", "horizon.page", false),
+            ("medical", "injuryReport", "table.injuryReport", true),
+        ]
+        for round in 1...3 {
+            for view in views {
+                let item = element(app, "sidebar.\(view.department).\(view.view)")
+                let sidebar = element(app, "sidebar")
+                up("before \(view.view), round \(round)")
+                if !item.isHittable { reveal(item, in: sidebar) }
+                XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                within(item, in: sidebar)
+                up("before \(view.view), round \(round)")
+                item.click()
+                let shown = any(view.shows)
+                if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12-narrow-900-missing-\(view.view)") }
+                XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
+                // A table with rows: choose the first and see its detail (an empty table says so instead)
+                if view.table, !shown.identifier.hasSuffix(".empty") {
+                    let row = firstRow(of: shown)
+                    XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                    leading(row)
+                    XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s chosen row has no detail")
+                    XCTAssertGreaterThanOrEqual(shown.frame.height, 100, "round \(round): \(view.view)'s table is \(shown.frame.height) pt tall")
+                }
+                switch view.view {
+                case "payrollBudget":
+                    // Every contract, a row chosen, then the seasons again
+                    let mode = element(app, "payroll.mode").radioButtons
+                    XCTAssertTrue(mode.element(boundBy: 1).waitForExistence(timeout: 10), "round \(round): Payroll offers no second mode")
+                    mode.element(boundBy: 1).click()
+                    let table = element(app, "table.payroll.contracts")
+                    XCTAssertTrue(table.waitForExistence(timeout: 10), "round \(round): every contract did not draw")
+                    leading(firstRow(of: table))
+                    if round == 1 { keep(window.screenshot(), named: "n12-narrow-900-payroll-contracts") }
+                    mode.element(boundBy: 0).click()
+                    XCTAssertTrue(element(app, "payroll.chart").waitForExistence(timeout: 10), "round \(round): the seasons did not come back")
+                case "freeAgents":
+                    // Another list, drawn
+                    let lists = element(app, "freeAgents.list")
+                    if lists.radioButtons.count > 1 {
+                        lists.radioButtons.element(boundBy: 1).click()
+                        XCTAssertTrue(any("table.freeAgents.").waitForExistence(timeout: 10), "round \(round): the second list did not draw")
+                        lists.radioButtons.element(boundBy: 0).click()
+                    }
+                default:
+                    break
+                }
+                if round == 1 { keep(window.screenshot(), named: "n12-narrow-900-\(view.view)") }
+                up("\(view.view), round \(round)")
+                if round == 1 { try audit(app, named: "accessibility-audit-n12-narrow-\(view.view)") }
+            }
+        }
+        quitCleanly(app)
+    }
+
     /// The clubhouse tools at 1280 × 820, the size the GM most often uses (N9 review): each view drawn, a row chosen in
     /// its table, captured in the light theme (`testClubhouseWideWindowDark` in the dark one).
     @MainActor
