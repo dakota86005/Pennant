@@ -66,7 +66,9 @@ function majorRow(ctx: PhilosophyContext, s: StaffMember, index: number): MlbRow
       age: cell(String(s.age)),
       experience: cell(`${s.experience} ${s.experience === 1 ? 'year' : 'years'}`),
       contract: cell(contract, s.salary ? {} : { tone: 'unknown' }),
-      ratings: cell(ratingsText(s.ratings), s.ratings.some((r) => rated(r.value) !== null) ? { hint: 'OOTP\'s 1–200 scale for coaches' } : { tone: 'unknown' }),
+      ratings: cell(ratingsText(s.ratings), s.ratings.some((r) => rated(r.value) !== null)
+        ? { hint: 'OOTP\'s 1–200 scale for coaches' }
+        : s.ratings.length ? { tone: 'unknown' } : {}),
     }, {
       role: index,
       coach: s.name,

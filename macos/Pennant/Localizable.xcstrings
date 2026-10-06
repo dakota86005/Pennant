@@ -937,6 +937,9 @@
     "Change Note": {
       "extractionState": "manual"
     },
+    "Clear Deal": {
+      "extractionState": "manual"
+    },
     "Clear Note": {
       "extractionState": "manual"
     },
@@ -1060,6 +1063,9 @@
     "Compare Players": {
       "extractionState": "manual"
     },
+    "Compare Players in the Deal": {
+      "extractionState": "manual"
+    },
     "Record": {
       "extractionState": "manual"
     },
@@ -1136,6 +1142,66 @@
       "extractionState": "manual"
     },
     "Compare Window": {
+      "extractionState": "manual"
+    },
+    "Find a player to receive": {
+      "extractionState": "manual"
+    },
+    "Find a player to send": {
+      "extractionState": "manual"
+    },
+    "Follow-Up Question": {
+      "extractionState": "manual"
+    },
+    "Move or Remove": {
+      "extractionState": "manual"
+    },
+    "Move to Receive": {
+      "extractionState": "manual"
+    },
+    "Move to Send": {
+      "extractionState": "manual"
+    },
+    "Offers on the Table": {
+      "extractionState": "manual"
+    },
+    "Organizational Identity": {
+      "extractionState": "manual"
+    },
+    "Remove from Deal": {
+      "extractionState": "manual"
+    },
+    "Select a coach to see his ratings.": {
+      "extractionState": "manual"
+    },
+    "Send": {
+      "extractionState": "manual"
+    },
+    "Take Him off the Deal": {
+      "extractionState": "manual"
+    },
+    "They send": {
+      "extractionState": "manual"
+    },
+    "Thinking": {
+      "extractionState": "manual"
+    },
+    "Trade Fits Around the League": {
+      "extractionState": "manual"
+    },
+    "Trade Talk in Your Inbox": {
+      "extractionState": "manual"
+    },
+    "Weighing": {
+      "extractionState": "manual"
+    },
+    "Weighing the deal": {
+      "extractionState": "manual"
+    },
+    "What Makes Up the Difference": {
+      "extractionState": "manual"
+    },
+    "You send": {
       "extractionState": "manual"
     }
   },
