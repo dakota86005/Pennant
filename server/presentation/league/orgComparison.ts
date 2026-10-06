@@ -24,10 +24,12 @@ const VALUE = 'Player Value';
 const FINANCES = 'Club finances';
 
 export interface OrgComparisonInput {
-  /** The route's answer, or why it couldn't be read ("Unknown org", "The league's current season is not in the export"). */
+  /** The route's answer, or the sentence it was refused with (worded by the reader: never an internal message). */
   comparison: OrgComparison | string;
   /** How Player Value's figures are called on this save: its own fit, or the starting numbers (D-041, D-053). */
   valueCalled: { how: Certainty; stamp: string };
+  /** How the farm's figure is called: the ratings model's own fit or its starting numbers (a minor leaguer's arrival). */
+  farmCalled: { how: Certainty; stamp: string };
 }
 
 type Club = OrgComparison['clubs'][number];
@@ -104,15 +106,15 @@ function sumCell(sum: OrgSum, none: string, noneHint: string): { cell: Cell; sor
 }
 
 /** A sum's detail: its reading with how it adds up in the basis, and the players left out, named (up to twelve). */
-function sumBlock(v: ClubhouseContext, input: OrgComparisonInput, title: string, sum: OrgSum, none: string): MlbBlock {
+function sumBlock(v: ClubhouseContext, called: OrgComparisonInput['valueCalled'], title: string, sum: OrgSum, none: string): MlbBlock {
   const reading = readingOf(sum);
   const text = reading
     ? `${reading.single ? 'Most likely' : 'Most likely between'} ${reading.text} · could be ${reading.couldBe}`
     : none;
   const read = factClaim(v, text, {
     specialist: VALUE,
-    how: input.valueCalled.how,
-    stamp: input.valueCalled.stamp,
+    how: called.how,
+    stamp: called.stamp,
     tone: reading ? 'neutral' : 'unknown',
     value: valueOfSum(sum, none),
     because: [
@@ -185,10 +187,10 @@ function clubRowOf(v: ClubhouseContext, input: OrgComparisonInput, data: OrgComp
     ])
     : null;
   const detail = [
-    sumBlock(v, input, `Roster, rest of ${data.season}`, c.roster.wins, 'Not projected'),
-    sumBlock(v, input, `Farm, ${data.nextSeason}`, c.farm.wins, 'Not projected'),
+    sumBlock(v, input.valueCalled, `Roster, rest of ${data.season}`, c.roster.wins, 'Not projected'),
+    sumBlock(v, input.farmCalled, `Farm, ${data.nextSeason}`, c.farm.wins, 'Not projected'),
     ...(topBlock ? [topBlock] : []),
-    sumBlock(v, input, 'Contract value', c.roster.contract, 'Not valued'),
+    sumBlock(v, input.valueCalled, 'Contract value', c.roster.contract, 'Not valued'),
     money,
   ];
   return clubRow(`club-${c.team_id}`, club, cells, sort, {
@@ -203,12 +205,12 @@ function figuresOf(v: ClubhouseContext, input: OrgComparisonInput, data: OrgComp
   if (!me) return [];
   const middleText = (m: { low: number; high: number } | null, range: (low: number, high: number) => string): string | null =>
     (m === null ? null : `League middle: ${range(m.low, m.high)}`);
-  const sumFigure = (title: string, sum: OrgSum, none: string, middle: string | null, tip: string) => {
+  const sumFigure = (title: string, sum: OrgSum, none: string, middle: string | null, tip: string, called = input.valueCalled) => {
     const reading = readingOf(sum);
     return factClaim(v, title, {
       specialist: VALUE,
-      how: input.valueCalled.how,
-      stamp: input.valueCalled.stamp,
+      how: called.how,
+      stamp: called.stamp,
       tone: reading ? 'neutral' : 'unknown',
       value: valueOfSum(sum, none),
       ...(hintIf(middle) ? { hint: hintIf(middle) } : {}),
@@ -229,7 +231,7 @@ function figuresOf(v: ClubhouseContext, input: OrgComparisonInput, data: OrgComp
   const payrollMiddle = data.league.payroll === null ? null : `League middle: ${money(data.league.payroll)}`;
   return [
     sumFigure(`Roster, rest of ${data.season}`, me.roster.wins, 'Not projected', middleText(data.league.rosterWins, winsRange), TIP_ROSTER_WINS(data.season)),
-    sumFigure(`Farm, ${data.nextSeason}`, me.farm.wins, 'Not projected', middleText(data.league.farmWins, winsRange), TIP_FARM_WINS(data.nextSeason)),
+    sumFigure(`Farm, ${data.nextSeason}`, me.farm.wins, 'Not projected', middleText(data.league.farmWins, winsRange), TIP_FARM_WINS(data.nextSeason), input.farmCalled),
     sumFigure('Contract value', me.roster.contract, 'Not valued',
       contractUnit === 'dollars' ? middleText(data.league.contract, (a, b) => rangeText(a, b, signedMoney)) : null,
       contractUnit === 'wins' ? `${TIP_CONTRACT} This league's dollars aren't known here, so it is in wins.` : TIP_CONTRACT),
@@ -321,7 +323,7 @@ export function orgComparisonView(v: ClubhouseContext, input: OrgComparisonInput
       ...base, freshness: null, figures: [],
       clubs: { columns: columnsOf(null, null), rows: [], empty: cell('No clubs to compare.') },
       note: noteOf(v, null, null),
-      empty: cell(`The organizations couldn't be compared: ${data.charAt(0).toLowerCase()}${data.slice(1).replace(/\.$/, '')}.`),
+      empty: cell(/[.!?]$/.test(data.trim()) ? data.trim() : `${data.trim()}.`),
     };
   }
   const none = 'No clubs to compare: the export has no major-league clubs in your league.';

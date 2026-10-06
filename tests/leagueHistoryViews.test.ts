@@ -1,11 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import type { AddressInfo } from 'node:net';
 import { api } from '../server/api.js';
 import { db, tableExists } from '../server/db.js';
 import { computeFranchise, computeOrgComparison, type OrgComparison } from '../server/franchise.js';
 import { computeTenure } from '../server/gameplan.js';
-import { franchiseUnread, franchiseViewOf, orgComparisonUnread, orgComparisonViewOf } from '../server/leagueHistoryViews.js';
+import { ORG_COMPARISON_UNREAD, franchiseUnread, franchiseViewOf, orgComparisonUnread, orgComparisonViewOf } from '../server/leagueHistoryViews.js';
+import { marketLeagueOfClub, productionModelFor, ratingsModelFor } from '../server/playerValue.js';
 import { officeContextFor } from '../server/leagueViewsBuild.js';
 import { assertAuthored } from '../server/presentation/claim.js';
 import type { OfficeContext } from '../server/presentation/league/common.js';
@@ -405,7 +406,8 @@ describe('Org Comparison: Player Value\'s bands with their basis, never a verdic
     const sum = mine.roster.contract.figure ? mine.roster.contract : mine.roster.wins;
     sum.figure = { ...f, central: null, centralRange: { low: f.low + (f.high - f.low) * 0.25, high: f.low + (f.high - f.low) * 0.75 } };
     mine.payroll = { value: null, source: 'not in the export', note: null };
-    const view = orgComparisonView(v, { comparison: data, valueCalled: { how: 'provisional', stamp: 'Starting numbers' } });
+    const called = { how: 'provisional' as const, stamp: 'Starting numbers' };
+    const view = orgComparisonView(v, { comparison: data, valueCalled: called, farmCalled: called });
     assertAuthored(view);
     const row = view.clubs.rows.find((r) => r.ours)!;
     const key = sum === mine.roster.contract ? 'contract' : 'rosterWins';
@@ -437,11 +439,41 @@ describe('Org Comparison: Player Value\'s bands with their basis, never a verdic
     expect(bannedInPayload(view)).toEqual([]);
     const unknown = orgComparisonViewOf(v, 999_999);
     expect(unknown.clubs.rows).toEqual([]);
-    expect(unknown.empty?.display).toBe('The organizations couldn\'t be compared: unknown org.');
+    expect(unknown.empty?.display).toBe('This club isn\'t in the export.');
     expect(bannedInPayload(unknown)).toEqual([]);
     const unread = orgComparisonUnread(v, 'The organizations\' comparison couldn\'t be read this time');
     expect(unread.empty?.display).toBe('The organizations\' comparison couldn\'t be read this time.');
     expect(bannedInPayload(unread)).toEqual([]);
     assertAuthored(unknown);
+  });
+
+  it('never shows an internal error: anything but its two refusals is logged and said in one fixed sentence (review, M9)', () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    db.exec('ALTER TABLE teams RENAME COLUMN level TO level_set_aside');
+    try {
+      const view = orgComparisonViewOf(v, save.org);
+      expect(view.clubs.rows).toEqual([]);
+      expect(view.empty?.display).toBe(ORG_COMPARISON_UNREAD);
+      for (const { at, text } of allStrings(view)) expect(text, at).not.toMatch(/no such column|level_set_aside|SQLITE|Error/i);
+      expect(logged).toHaveBeenCalledTimes(1);
+      assertAuthored(view);
+    } finally {
+      db.exec('ALTER TABLE teams RENAME COLUMN level_set_aside TO level');
+      logged.mockRestore();
+    }
+  });
+
+  it('stamps the farm\'s figure with the ratings model it rests on, the roster\'s with production\'s (review, L4)', () => {
+    const view = orgComparisonViewOf(v, save.org);
+    const league = marketLeagueOfClub(save.org)!;
+    const stampOf = (s: { run?: string | null; basis: string }) => (s.run ?? s.basis).trim();
+    const farm = view.figures.find((f) => f.text.startsWith('Farm, '))!;
+    const roster = view.figures.find((f) => f.text.startsWith('Roster, '))!;
+    expect(farm.basis.stamp).toBe(stampOf(ratingsModelFor(league).provenance.stamp));
+    expect(roster.basis.stamp).toBe(stampOf(productionModelFor(league).provenance.stamp));
+    expect(farm.basis.stamp).not.toBe(roster.basis.stamp);
+    const ours = view.clubs.rows.find((r) => r.ours)!;
+    const farmBlock = ours.detail.find((b) => b.title?.display.startsWith('Farm, '))!;
+    expect(JSON.stringify(farmBlock)).toContain(JSON.stringify(farm.basis.stamp));
   });
 });

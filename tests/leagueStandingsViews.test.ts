@@ -1,17 +1,25 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { computeNextGame } from '../server/dashboard.js';
-import { FrontOfficeRefusal, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { DATA_DIR, saveConfig } from '../server/config.js';
+import {
+  FrontOfficeRefusal, forgetLiveLog, frontOfficeInputsKey, frontOfficeStampOf, relocateLiveLog, resetFrontOfficeCache,
+} from '../server/frontOfficeService.js';
 import { computeStandings, type Standings } from '../server/league.js';
 import { db } from '../server/db.js';
 import { NO_SCHEDULE, SEASON_DECIDED, opponentsOf, standingsViewOf, usVsThemOf } from '../server/leagueStandingsViews.js';
 import { oddsModelOf } from '../server/posture.js';
-import { NOT_AN_OPPONENT, leagueStandingsNow, leagueUsVsThemNow, resetLeagueViews } from '../server/leagueViewService.js';
+import {
+  NOT_AN_OPPONENT, leagueOrgComparisonNow, leagueStandingsNow, leagueUsVsThemNow, leagueViewStats, resetLeagueViews,
+} from '../server/leagueViewService.js';
 import { officeContextFor } from '../server/leagueViewsBuild.js';
 import type { OfficeContext } from '../server/presentation/league/common.js';
 import { standingsView, type RaceFacts, type StaffReadFacts } from '../server/presentation/league/standings.js';
 import type { LeagueStandingsView, LeagueUsVsThemView } from '../server/presentation/league/types.js';
 import { computeSchedule } from '../server/schedule.js';
 import { bannedInPayload } from './bannedJargon';
+import { makeSave, tx } from './liveLogFixture';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
 /*
@@ -391,5 +399,45 @@ describe('the staff\'s rough read describes and never orders (N12 Track B review
     const view = standingsView(v, { standings: standingsOf(), race: { ...race, gamesPlayed: null }, read: null, readWhy: 'x' });
     expect(view.race[0].value?.display).not.toBe('No games played yet');
     expect(view.race[0].basis.unknown).toContain('The export doesn\'t give the club\'s games played.');
+  });
+});
+
+describe('kept per import, never per write of OOTP\'s live log (N12 Track B review, M3)', () => {
+  it('serves the kept views after the log moves, stamped current, and builds Org Comparison on its own', async () => {
+    const kept = buildSave({ season: 2044, historySeasons: 0, gamesPerTeam: 60, playedShare: 0.5, clubs: 8, seed: 15, teamSeason: true, minors: false, lineups: false });
+    const fake = makeSave({ rows: [{ date: '20440520', teamId: kept.org, text: tx.released([701, 'Someone 1'], 'RP') }] });
+    try {
+      saveConfig({ csvDir: fake.csvDir, saveName: null });
+      relocateLiveLog();
+      resetFrontOfficeCache();
+      resetLeagueViews();
+      const org = String(kept.org);
+      const first = await leagueStandingsNow(org);
+      // Standings waited on no comparison: Org Comparison is its own job, built when asked (or warmed) and then kept
+      expect(leagueViewStats().comparisons).toBe(0);
+      await leagueOrgComparisonNow(org);
+      await leagueOrgComparisonNow(org);
+      expect(leagueViewStats().comparisons).toBe(1);
+      const builds = leagueViewStats().builds;
+      expect(builds).toBe(1);
+
+      // OOTP writes its live log during play: the Front Office's key moves, these views' doesn't
+      const before = frontOfficeInputsKey(kept.org);
+      fake.add([{ date: '20440521', teamId: kept.org, text: tx.released([702, 'Someone 2'], 'RP') }]);
+      expect(frontOfficeInputsKey(kept.org)).not.toBe(before);
+      const again = await leagueStandingsNow(org);
+      await leagueOrgComparisonNow(org);
+      expect(leagueViewStats().builds).toBe(builds);
+      expect(leagueViewStats().comparisons).toBe(1);
+      expect(again.groups).toBe(first.groups);
+      // Stamped with the Front Office's current stamp, for which it is still the answer
+      expect(again.reportStamp).toBe(frontOfficeStampOf(frontOfficeInputsKey(kept.org)));
+      expect(again.reportStamp).not.toBe(first.reportStamp);
+    } finally {
+      fake.cleanup();
+      forgetLiveLog();
+      fs.rmSync(path.join(DATA_DIR, 'config.json'), { force: true });
+      resetLeagueViews();
+    }
   });
 });

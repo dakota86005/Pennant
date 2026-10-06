@@ -4,8 +4,9 @@
  * `presentation/league/` and `presentation/scouting/`. The service (`leagueViewService.ts`) runs it in the Front
  * Office's worker thread, so no request waits behind it.
  *
- * Built ahead for the club: Standings, Leaders, Org Comparison, Franchise History, Us vs Them against the default
- * opponent, the Draft Board, and Player Search as it opens. Asked on a click and kept: Us vs Them against another club.
+ * Built ahead for the club: Standings, Leaders, Franchise History, Us vs Them against the default opponent, the Draft
+ * Board, and Player Search as it opens; then Org Comparison on its own (`buildLeagueAsk`), so its 1.7 s on a real save
+ * holds up no other view. Asked on a click and kept: Us vs Them against another club.
  * Player Search with words or tokens is read in process (`leagueViewService.ts`): it is a bounded query.
  */
 import type { DeptId } from './contract/presentation.js';
@@ -36,7 +37,6 @@ export interface LeagueViewsRequest {
 export interface LeagueViewsResult {
   standings: LeagueStandingsView;
   leaders: LeagueLeadersView;
-  orgComparison: LeagueOrgComparisonView;
   franchise: LeagueFranchiseView;
   /** Us vs Them against the club it opens on (the next opponent, else the nearest in the standings). */
   usVsThem: LeagueUsVsThemView;
@@ -51,8 +51,8 @@ export interface LeagueViewsResult {
   ms: Record<string, number>;
 }
 
-/** One view asked on a click: Us vs Them against another club. */
-export type LeagueAsk = { kind: 'usVsThem'; team: number };
+/** One view built on its own: Us vs Them against another club (asked on a click), or Org Comparison (after the rest). */
+export type LeagueAsk = { kind: 'usVsThem'; team: number } | { kind: 'orgComparison' };
 
 export interface LeagueAskRequest extends LeagueViewsRequest {
   ask: LeagueAsk;
@@ -103,23 +103,26 @@ export function buildLeagueViews(request: LeagueViewsRequest): LeagueViewsResult
   const orgId = request.orgId;
   const standings = part('standings', 'The standings', () => standingsViewOf(league, orgId), (why) => standingsUnread(league, why));
   const leaders = part('leaders', 'The league leaders', () => leadersViewOf(league, orgId), (why) => leadersUnread(league, why));
-  const orgComparison = part('orgComparison', 'The organizations\' comparison', () => orgComparisonViewOf(league, orgId),
-    (why) => orgComparisonUnread(league, why));
   const franchise = part('franchise', 'The franchise\'s history', () => franchiseViewOf(league, orgId), (why) => franchiseUnread(league, why));
   const opponents = part('opponents', 'The other clubs', () => opponentsOf(orgId), () => []);
   const usVsThem = part('usVsThem', 'Us vs Them', () => usVsThemOf(league, orgId, null), (why) => usVsThemUnread(league, null, why));
   const draftBoard = part('draftBoard', 'The draft board', () => draftBoardViewOf(scouting, orgId), (why) => draftBoardUnread(scouting, why));
   const playerSearch = part('playerSearch', 'Player search', () => playerSearchViewOf(scouting, orgId, DEFAULT_SEARCH),
     (why) => playerSearchUnread(scouting, DEFAULT_SEARCH, why));
-  return { standings, leaders, orgComparison, franchise, usVsThem, opponents, draftBoard, playerSearch, failed, ms };
+  return { standings, leaders, franchise, usVsThem, opponents, draftBoard, playerSearch, failed, ms };
 }
 
-/** One view asked on a click (in the worker): Us vs Them against another club. */
-export function buildLeagueAsk(request: LeagueAskRequest): LeagueUsVsThemView {
+/** One view built on its own (in the worker): Us vs Them against another club, or Org Comparison. */
+export function buildLeagueAsk(request: LeagueAskRequest): LeagueUsVsThemView | LeagueOrgComparisonView {
   const league = officeContextFor(request, 'league');
   const failed: string[] = [];
-  return partOf(failed, `usVsThem ${request.ask.team}`, 'Us vs Them', () => usVsThemOf(league, request.orgId, request.ask.team),
-    (why) => usVsThemUnread(league, request.ask.team, why));
+  const ask = request.ask;
+  if (ask.kind === 'orgComparison') {
+    return partOf(failed, 'orgComparison', 'The organizations\' comparison', () => orgComparisonViewOf(league, request.orgId),
+      (why) => orgComparisonUnread(league, why));
+  }
+  return partOf(failed, `usVsThem ${ask.team}`, 'Us vs Them', () => usVsThemOf(league, request.orgId, ask.team),
+    (why) => usVsThemUnread(league, ask.team, why));
 }
 
 /** Player Search for one ask, read in process (a bounded query); its words are the scouting staff's. */
