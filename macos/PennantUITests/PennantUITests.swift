@@ -1236,6 +1236,17 @@ final class PennantUITests: XCTestCase {
                 let item = element(app, "sidebar.\(view.dept).\(view.view)")
                 let sidebar = element(app, "sidebar")
                 up("before \(view.view), round \(round)")
+                if !item.exists {
+                    // The department folded: its row chosen and opened from the keyboard (→), as the outline does
+                    let department = element(app, "sidebar.\(view.dept)")
+                    if !department.isHittable { reveal(department, in: sidebar) }
+                    XCTAssertTrue(department.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.dept)")
+                    within(department, in: sidebar)
+                    let row = app.outlines["sidebar"].outlineRows.containing(.any, identifier: "sidebar.\(view.dept)").firstMatch
+                    let triangle = row.disclosureTriangles.firstMatch
+                    if triangle.exists { triangle.click() } else { department.click(); app.typeKey(.rightArrow, modifierFlags: []) }
+                    if !item.waitForExistence(timeout: 5) { keep(window.screenshot(), named: "n12b-narrow-900-folded-\(view.dept)") }
+                }
                 if !item.isHittable { reveal(item, in: sidebar) }
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
                 within(item, in: sidebar)
@@ -1249,7 +1260,8 @@ final class PennantUITests: XCTestCase {
                     let row = firstRow(of: shown)
                     XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
                     leading(row)
-                    XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s row showed no detail")
+                    if !element(app, "row.detail").waitForExistence(timeout: 10) { keep(window.screenshot(), named: "n12b-narrow-900-no-detail-\(view.view)") }
+                    XCTAssertTrue(element(app, "row.detail").exists, "round \(round): \(view.view)'s row showed no detail")
                 }
                 switch view.view {
                 case "franchiseHistory":
