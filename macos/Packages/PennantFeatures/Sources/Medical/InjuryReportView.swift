@@ -17,7 +17,7 @@ struct InjuryReportView: View {
             let kept = officeRowsKept(view.table, filters: view.filters, chosen: chosen, search: "")
             OfficeTablePane(view.table, id: "injuryReport", name: view.title.display, kept: kept, detailShare: 0.3) {
                 VStack(alignment: .leading, spacing: 10) {
-                    OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness,
+                    OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
                                refreshing: model.office.updating(.injuryReport, for: model.storeKey))
                     OfficeFigures(view.figures)
                 }

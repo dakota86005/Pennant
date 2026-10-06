@@ -1215,6 +1215,19 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Waits (at most five seconds) until an element's frame is the same at two looks in a row: a list scrolled by the test
+    /// has come to rest.
+    @MainActor
+    private func settle(_ target: XCUIElement) {
+        var last = CGRect.null
+        let still = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let now = target.exists ? target.frame : .null
+            defer { last = now }
+            return now == last
+        }, object: nil)
+        _ = XCTWaiter.wait(for: [still], timeout: 5)
+    }
+
     /// Finance's and Medical's views (N12, D-071) at 900 × 700 with the inspector open: each view drawn from one click in
     /// the sidebar, a row chosen in each table and its detail drawn, Payroll's every contract and back, Free Agents' lists
     /// and filter, three rounds, each view audited on its first visit (no new set-aside). Running is what matters (a
@@ -1260,8 +1273,14 @@ final class PennantUITests: XCTestCase {
                 if !item.isHittable { reveal(item, in: sidebar) }
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
                 within(item, in: sidebar)
+                // The sidebar at rest before the click: a long reveal left it still moving, and XCTest found no hit point
+                // for the list it was scrolling
+                settle(item)
                 up("before \(view.view), round \(round)")
-                item.click()
+                // On the row's own point: wholly inside the list already, so no scroll-to-visible of XCTest's (it judged a
+                // row near the list's foot hidden and found no hit point for the list it then scrolled)
+                XCTAssertTrue(item.frame.minY >= sidebar.frame.minY && item.frame.maxY <= sidebar.frame.maxY, "round \(round): \(view.view)'s row is not in the sidebar's frame")
+                item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
                 let shown = any(view.shows)
                 if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12-narrow-900-missing-\(view.view)") }
                 XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
@@ -1287,18 +1306,34 @@ final class PennantUITests: XCTestCase {
                     XCTAssertTrue(element(app, "payroll.chart").waitForExistence(timeout: 10), "round \(round): the seasons did not come back")
                 case "freeAgents":
                     // Another list, drawn
+                    // Another list, drawn: from the segmented control, or on a narrow column from the button's popover
                     let lists = element(app, "freeAgents.list")
-                    if lists.radioButtons.count > 1 {
-                        lists.radioButtons.element(boundBy: 1).click()
-                        XCTAssertTrue(any("table.freeAgents.").waitForExistence(timeout: 10), "round \(round): the second list did not draw")
-                        lists.radioButtons.element(boundBy: 0).click()
+                    let choose = { (index: Int) in
+                        if lists.radioButtons.count > 1 {
+                            lists.radioButtons.element(boundBy: index).click()
+                        } else {
+                            lists.click()
+                            let choice = self.element(app, "freeAgents.list.\(index)")
+                            XCTAssertTrue(choice.waitForExistence(timeout: 10), "round \(round): the lists' popover did not open")
+                            choice.click()
+                        }
+                        XCTAssertTrue(any("table.freeAgents.").waitForExistence(timeout: 10) || any("table.freeAgents.").exists,
+                                      "round \(round): list \(index) did not draw")
                     }
+                    choose(1)
+                    choose(0)
                 default:
                     break
                 }
                 if round == 1 { keep(window.screenshot(), named: "n12-narrow-900-\(view.view)") }
                 up("\(view.view), round \(round)")
-                if round == 1 { try audit(app, named: "accessibility-audit-n12-narrow-\(view.view)") }
+                if round == 1 {
+                    // The sidebar at its top and settled first: revealing a lower row left the club card half under the
+                    // title bar's edge, where the audit measured it mid-scroll (2.1:1 by its washed pixels)
+                    sidebarAtTop(app)
+                    settle(element(app, "club.card"))
+                    try audit(app, named: "accessibility-audit-n12-narrow-\(view.view)")
+                }
             }
         }
         quitCleanly(app)

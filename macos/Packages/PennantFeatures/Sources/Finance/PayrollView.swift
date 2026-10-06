@@ -31,29 +31,39 @@ struct PayrollView: View {
         OfficeState(payload: store.payroll, problem: store.problems[OfficeStore.View.payrollBudget.rawValue]) { view in
             Group {
                 switch mode {
-                case .seasons: PayrollSeasonsPage(view: view, refreshing: model.officeUpdating(.payrollBudget))
+                case .seasons: PayrollSeasonsPage(view: view, refreshing: model.officeUpdating(.payrollBudget), mode: $mode)
                 case .contracts:
                     OfficeTablePane(view.contracts, id: "payroll.contracts", name: view.title.display, detailShare: 0.3) {
-                        OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness,
-                                   refreshing: model.officeUpdating(.payrollBudget))
+                        VStack(alignment: .leading, spacing: 10) {
+                            OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
+                                       refreshing: model.officeUpdating(.payrollBudget))
+                            PayrollModePicker(mode: $mode)
+                        }
                     } notes: {
                         EmptyView()
                     }
                 }
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Picker(selection: $mode) {
-                    ForEach(PayrollMode.allCases) { m in Text(m.title).tag(m) }
-                } label: {
-                    Text("Show")
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("payroll.mode")
-            }
-        }
         .task(id: model.storeKey) { await model.loadOffice() }
+    }
+}
+
+/// Seasons or every contract: a segmented control in the view's head (in the toolbar it was crowded out at a narrow
+/// width, beside the app's search and the inspector's buttons).
+struct PayrollModePicker: View {
+    @Binding var mode: PayrollMode
+
+    var body: some View {
+        Picker(selection: $mode) {
+            ForEach(PayrollMode.allCases) { m in Text(m.title).tag(m) }
+        } label: {
+            Text("Show")
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .accessibilityIdentifier("payroll.mode")
     }
 }
 
@@ -61,13 +71,17 @@ struct PayrollView: View {
 struct PayrollSeasonsPage: View {
     let view: Components.Schemas.FinancePayrollView
     let refreshing: Bool
+    var mode: Binding<PayrollMode>? = nil
 
     var body: some View {
         // The head stays put above the page, as a TablePane's does: never under the toolbar's scroll edge
         VStack(alignment: .leading, spacing: 0) {
-            OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness, refreshing: refreshing)
-                .padding(.horizontal, 28).padding(.top, 16).padding(.bottom, 10)
-                .frame(maxWidth: 1100, alignment: .leading)
+            VStack(alignment: .leading, spacing: 10) {
+                OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness, refreshing: refreshing)
+                if let mode { PayrollModePicker(mode: mode) }
+            }
+            .padding(.horizontal, 28).padding(.top, 16).padding(.bottom, 10)
+            .frame(maxWidth: 1100, alignment: .leading)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {

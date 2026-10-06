@@ -67,13 +67,15 @@ public func officeRowsKept(_ table: OfficeTable, filters: [OfficeFilterGroup], c
 public struct OfficeHead: View {
     let title: String
     let byline: Components.Schemas.Cell
+    let parts: [Components.Schemas.Cell]
     let lede: Components.Schemas.Claim
     let freshness: Components.Schemas.Claim?
     let refreshing: Bool
 
-    public init(title: String, byline: Components.Schemas.Cell, lede: Components.Schemas.Claim, freshness: Components.Schemas.Claim?, refreshing: Bool) {
+    public init(title: String, byline: Components.Schemas.Cell, parts: [Components.Schemas.Cell] = [], lede: Components.Schemas.Claim, freshness: Components.Schemas.Claim?, refreshing: Bool) {
         self.title = title
         self.byline = byline
+        self.parts = parts.isEmpty ? [byline] : parts
         self.lede = lede
         self.freshness = freshness
         self.refreshing = refreshing
@@ -81,16 +83,26 @@ public struct OfficeHead: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(verbatim: byline.display)
-                .font(.callout)
-                .foregroundStyle(.readableSecondary)
-                .help(detail: byline.hint)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(verbatim: title)
                     .font(.system(size: 30, weight: .bold, design: .serif))
                     .accessibilityAddTraits(.isHeader)
                 if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
             }
+            // The byline on one line where it fits, else its served parts each on a line of its own: never broken inside
+            // a date. A wrapped byline ("… Through May" over "6, 2040") failed the contrast audit in any colour (14.9:1
+            // by its pixels in the label colour) wherever it sat, and on one line it passed
+            ViewThatFits(in: .horizontal) {
+                Text(verbatim: byline.display).lineLimit(1).fixedSize()
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
+                        Text(verbatim: part.display).lineLimit(1).truncationMode(.tail).help(detail: part.hint ?? part.display)
+                    }
+                }
+            }
+            .font(.callout)
+            .foregroundStyle(.readableSecondary)
+            .help(detail: byline.hint)
             ClaimText(lede, edge: .bottom) {
                 Text(verbatim: lede.text).font(.title3).multilineTextAlignment(.leading)
             }
@@ -490,5 +502,37 @@ public struct OfficeFilterButton: View {
                 .background(Color.readablePage)
             }
         }
+    }
+}
+
+/// The GM's words to find a player in the table: a field in the view's head (the window's toolbar already holds the app's
+/// own search, and a second toolbar search field made AppKit's layout loop at a narrow width). Matches the served names.
+public struct OfficeFindField: View {
+    @Binding var text: String
+    let id: String
+
+    public init(text: Binding<String>, id: String) {
+        _text = text
+        self.id = id
+    }
+
+    public var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.readableSecondary).accessibilityHidden(true)
+            TextField(text: $text, prompt: Text("Find a player")) { Text("Find a player") }
+                .textFieldStyle(.plain)
+            if !text.isEmpty {
+                Button { text = "" } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.readableSecondary)
+                    .help(Text("Clear"))
+                    .accessibilityLabel(Text("Clear"))
+            }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(Color.readableChipFill, in: .rect(cornerRadius: 6))
+        .frame(minWidth: 120, idealWidth: 200, maxWidth: 220)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(id)
     }
 }

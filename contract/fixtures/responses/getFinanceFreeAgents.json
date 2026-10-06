@@ -8,6 +8,15 @@
   "byline": {
     "display": "Prepared by the front office · Through May 6, 2040"
   },
+  "bylineParts": [
+    {
+      "display": "Prepared by the front office"
+    },
+    {
+      "display": "Through May 6, 2040",
+      "hint": "The last game day in the imported export"
+    }
+  ],
   "lede": {
     "text": "What each player is expected to produce, and what that costs on this league's market",
     "tone": "neutral",

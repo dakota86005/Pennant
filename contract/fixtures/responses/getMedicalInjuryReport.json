@@ -9,6 +9,16 @@
     "display": "Prepared by Ana Frey, team doctor · Through May 6, 2040",
     "hint": "From the club's staff in the save"
   },
+  "bylineParts": [
+    {
+      "display": "Prepared by Ana Frey, team doctor",
+      "hint": "From the club's staff in the save"
+    },
+    {
+      "display": "Through May 6, 2040",
+      "hint": "The last game day in the imported export"
+    }
+  ],
   "lede": {
     "text": "Every injured player in the organization, majors to rookie ball",
     "tone": "neutral",

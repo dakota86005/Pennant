@@ -1305,12 +1305,12 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   keys, unknown last, several rows chosen, Compare, the player window on Return or a double-click, Follow, Copy Name, a
   player's row dragged as the player, the OSA mark beside a filled player's name), the chosen row's facts, claims and
   seasons beneath; the served filters are one toolbar button whose popover holds each as a radio group, a name the
-  toolbar's search field. Payroll's seasons are a page: the figures, the price and cost lines, Swift Charts with
+  search field in the head. Payroll's seasons are a page: the figures, the price and cost lines, Swift Charts with
   committed money as bars, the projected range a hatched bar beside each (never stacked) and the budget a dashed
   `RuleMark` (the budget the GM expects a dotted one), with an `AXChartDescriptor`; each season's words beneath; the
   budget field (millions, saved on Return or leaving it). The Horizon Board is a grid (a row per position, a column per
   season, the pipeline last), a card per position on a narrow column, each status's reason a click away, and committed
-  salary against the budget in a chart of its own. Free Agents' lists are a segmented control in the head (a pop-up where
+  salary against the budget in a chart of its own. Free Agents' lists are a segmented control in the head (a button and a popover where
   there is no room).
 - **Measured** (in process over HTTP on an M4 under tsx; read-only scratch copies). The synthetic save: the build 0.16 s
   (Payroll 65 ms, Free Agents 46 ms, Contracts 23 ms, the board 17 ms). The owner's export: the build 2.2 s on the
@@ -1319,6 +1319,15 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   (780 kB: 334 players across the three lists), the board 0.7 / 1.0 (62 kB), injuries 0.4 / 0.8 (30 kB); another club's
   first open 1.7 s, then 1.9 / 4.2 ms. USBL: the build 1.1 s (0.94 s through the worker), warm p95 at most 4.5 ms;
   another club's first open 0.94 s.
+- *Found in the narrow test (900 × 700, inspector open):* a second toolbar `.searchable` beside the window's own search
+  made AppKit's layout loop and the app stop (an exception in `_layoutSubtreeWithOldSize`) on opening Contracts: the
+  name search is a field in the view's head (`OfficeFindField`). Payroll's Seasons / Every Contract choice was crowded out
+  of the toolbar there (XCTest found no hit point for it) and is a segmented control in the head; Free Agents' lists fall
+  back from a segmented control to a button and a popover of choices (a pop-up `Picker` had no action to press, the
+  audit's "Action is missing"). The byline is served in parts too (`bylineParts`) and set on one line, or each part on a
+  line of its own: wrapped inside its date ("… Through May" over "6, 2040") it failed the contrast audit in every colour
+  tried (14.9:1 by its pixels in the label colour) and wherever it sat, while on one line it passed. The test brings the
+  sidebar to rest before each click and audit (a long reveal left it scrolling, the club card half under the title bar).
 - *Left for later:* the React Payroll page's club value of a win (playoff odds) is not served (D-060); Payroll's
   sparkline is replaced by the chart; Free Agents' payload is the largest of the department views on a full league.
 

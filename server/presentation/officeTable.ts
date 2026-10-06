@@ -97,6 +97,11 @@ export interface OfficeViewHead {
   title: Cell;
   /** "The front office · Through May 5, 2040". */
   byline: Cell;
+  /**
+   * The byline's parts (who prepared it, how current), so a narrow column sets each on a line of its own rather than
+   * breaking the byline inside a date.
+   */
+  bylineParts: Cell[];
   /** What the view is and how to read it: one line, the full explanation in its basis. */
   lede: Claim;
   /** How current the league data is, when it is not current (the React pages' freshness cue); null when it is. */
@@ -224,6 +229,7 @@ export function officeHead(ctx: OfficeContext, title: string, lede: Claim, speci
     reportStamp: ctx.reportStamp,
     title: cell(title),
     byline: cell(`${ctx.preparedBy.display} · ${through}`, ctx.preparedBy.hint ? { hint: ctx.preparedBy.hint } : {}),
+    bylineParts: [ctx.preparedBy, cell(through, day ? { hint: 'The last game day in the imported export' } : { tone: 'unknown' })],
     lede,
     freshness: freshnessClaim(ctx, specialist),
   };

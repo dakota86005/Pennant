@@ -19,7 +19,7 @@ struct HorizonBoardView: View {
         OfficeState(payload: store.horizon, problem: store.problems[OfficeStore.View.horizonBoard.rawValue]) { view in
             VStack(alignment: .leading, spacing: 0) {
             // The head stays put above the board, never under the toolbar's scroll edge
-            OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness,
+            OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
                        refreshing: model.officeUpdating(.horizonBoard))
                 .padding(.horizontal, 28).padding(.top, 16).padding(.bottom, 10)
             Divider()

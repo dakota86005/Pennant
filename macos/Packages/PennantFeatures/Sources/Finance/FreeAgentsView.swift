@@ -22,7 +22,7 @@ struct FreeAgentsView: View {
             let kept = officeRowsKept(current.table, filters: current.filters, chosen: chosen, search: search)
             OfficeTablePane(current.table, id: "freeAgents.\(current.id)", name: current.title.display, kept: kept) {
                 VStack(alignment: .leading, spacing: 8) {
-                    OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness,
+                    OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
                                refreshing: model.officeUpdating(.freeAgents))
                     if let needs = view.needs {
                         ClaimText(needs, edge: .bottom) {
@@ -30,7 +30,16 @@ struct FreeAgentsView: View {
                         }
                         .accessibilityIdentifier("freeAgents.needs")
                     }
-                    ListChoice(lists: view.lists, current: current.id) { list = $0; chosen = [:] }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            ListChoice(lists: view.lists, current: current.id) { list = $0; chosen = [:] }
+                            OfficeFindField(text: $search, id: "freeAgents.find")
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            ListChoice(lists: view.lists, current: current.id) { list = $0; chosen = [:] }
+                            OfficeFindField(text: $search, id: "freeAgents.find")
+                        }
+                    }
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         ClaimText(current.explain, edge: .bottom) {
                             Text(verbatim: current.explain.text).font(.headline)
@@ -54,35 +63,75 @@ struct FreeAgentsView: View {
                 }
             }
         }
-        .searchable(text: $search, placement: .toolbar, prompt: Text("Find a player"))
         .task(id: model.storeKey) { await model.loadOffice() }
     }
 }
 
-/// The three lists as a segmented control where there is room, a pop-up menu where there is not; each list's count beside
-/// its served title.
+/// The three lists as a segmented control where there is room; where there is not, a button naming the list shown that
+/// opens the three in a popover, each a button (N8's choice pattern: a pop-up menu was found by the audit with no action
+/// to press). Each list's count beside its served title.
 struct ListChoice: View {
     let lists: [Components.Schemas.FinanceFreeAgentList]
     let current: String
     let choose: (String) -> Void
+    @State private var open = false
 
     var body: some View {
-        let binding = Binding(get: { current }, set: { choose($0) })
         ViewThatFits(in: .horizontal) {
-            picker(binding).pickerStyle(.segmented).fixedSize()
-            picker(binding).pickerStyle(.menu).fixedSize()
+            Picker(selection: Binding(get: { current }, set: { choose($0) })) {
+                ForEach(lists, id: \.id) { list in
+                    Text("\(list.title.display) (\(list.count))").tag(list.id)
+                }
+            } label: {
+                Text("Which players")
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .fixedSize()
+            .accessibilityIdentifier("freeAgents.list")
+            narrow
         }
-        .accessibilityIdentifier("freeAgents.list")
     }
 
-    private func picker(_ binding: Binding<String>) -> some View {
-        Picker(selection: binding) {
-            ForEach(lists, id: \.id) { list in
-                Text("\(list.title.display) (\(list.count))").tag(list.id)
+    private var narrow: some View {
+        let shown = lists.first { $0.id == current }
+        let title = shown?.title.display ?? ""
+        let count = shown?.count ?? 0
+        return Button { open = true } label: {
+            Label {
+                Text("\(title) (\(count))")
+            } icon: {
+                Image(systemName: "chevron.down")
             }
-        } label: {
-            Text("Which players")
+            .labelStyle(.titleAndIcon)
         }
-        .labelsHidden()
+        .accessibilityLabel(Text("Which players"))
+        .accessibilityValue(Text(verbatim: title))
+        .accessibilityIdentifier("freeAgents.list")
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(Array(lists.enumerated()), id: \.element.id) { index, list in
+                    Button {
+                        open = false
+                        choose(list.id)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark").opacity(list.id == current ? 1 : 0).accessibilityHidden(true)
+                            Text("\(list.title.display) (\(list.count))")
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .accessibilityAddTraits(list.id == current ? .isSelected : [])
+                    .accessibilityIdentifier("freeAgents.list.\(index)")
+                }
+            }
+            .padding(.vertical, 6)
+            .frame(minWidth: 240, alignment: .leading)
+            .background(Color.readablePage)
+        }
+        .fixedSize()
     }
 }

@@ -20,9 +20,12 @@ struct ContractsView: View {
             let kept = officeRowsKept(view.table, filters: view.filters, chosen: chosen, search: search)
             OfficeTablePane(view.table, id: "contracts", name: view.title.display, kept: kept) {
                 VStack(alignment: .leading, spacing: 8) {
-                    OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness,
+                    OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
                                refreshing: model.officeUpdating(.contracts))
-                    ShownCount(shown: kept?.count ?? view.table.rows.count, of: view.table.rows.count)
+                    HStack(spacing: 12) {
+                        OfficeFindField(text: $search, id: "contracts.find")
+                        ShownCount(shown: kept?.count ?? view.table.rows.count, of: view.table.rows.count)
+                    }
                 }
             } notes: {
                 VStack(alignment: .leading, spacing: 12) {
@@ -37,7 +40,6 @@ struct ContractsView: View {
                 }
             }
         }
-        .searchable(text: $search, placement: .toolbar, prompt: Text("Find a player"))
         .task(id: model.storeKey) { await model.loadOffice() }
     }
 }

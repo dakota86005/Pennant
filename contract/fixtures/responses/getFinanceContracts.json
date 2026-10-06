@@ -8,6 +8,15 @@
   "byline": {
     "display": "Prepared by the front office · Through May 6, 2040"
   },
+  "bylineParts": [
+    {
+      "display": "Prepared by the front office"
+    },
+    {
+      "display": "Through May 6, 2040",
+      "hint": "The last game day in the imported export"
+    }
+  ],
   "lede": {
     "text": "What each deal costs, how long the club controls him and what he's worth",
     "tone": "neutral",

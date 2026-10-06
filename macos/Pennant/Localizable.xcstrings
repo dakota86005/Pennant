@@ -133,6 +133,9 @@
     "Chosen in Settings": {
       "extractionState": "manual"
     },
+    "Clear": {
+      "extractionState": "manual"
+    },
     "Close": {
       "extractionState": "manual"
     },
