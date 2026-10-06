@@ -1308,9 +1308,14 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   The difference is Swift Charts (the range, the most likely as a point or a stretch, zero dashed, on the served scale), one
   image element with its `AXChartDescriptor`; its parts a grid in a disclosure. The AI desk says it is off, or asks with a
   button and takes follow-ups, each answer marked as the AI's. Offers, trade talk and fits are cards; "Review" puts the deal
-  on the builder and scrolls to it. Organizational Philosophy is a grouped `Form` (a slider for each preference, sent on
-  letting go or a moment after the arrow keys, a pop-up for each policy, the reset behind a confirmation), ⌘Z undoing
-  through the served request, what it did said and announced. Coaching Staff is a `TablePane` with the served sections as a
+  on the builder and scrolls to it. Organizational Philosophy is grouped sections laid out as System Settings lays out a
+  pane, each group's rows in the design's card (SwiftUI's grouped `Form` draws its rows vibrant on a system background,
+  which the contrast audit failed): AppKit's own slider for each preference (sent when a drag ends, its own mouse tracking
+  telling a drag from the keyboard or VoiceOver, or a moment after any other change settles; SwiftUI's slider with its
+  label hidden left its thumb with no description), what each preference weighs in its label's help tag and the slider's
+  VoiceOver help, a pop-up for each policy, the reset behind a confirmation; ⌘Z undoes through the served request (its redo
+  registered while undoing), and what a change did is said in a status strip under the editor, named for VoiceOver and
+  announced. Coaching Staff is a `TablePane` with the served sections as a
   segmented control and the chosen coach's ratings beneath (a gauge against OOTP's 1–200 where the rating is known).
 - **Measured** (in process over HTTP, M-series Mac, under tsx, with other tracks' tests running beside it). The owner's export
   (a scratch copy): the desk built in 2.8 s on the server's thread on a cold start, 1.1 s through the worker; warm GETs p50 /

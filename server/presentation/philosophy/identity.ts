@@ -17,7 +17,7 @@ export const DIMENSION_WORDS: Record<string, { label: string; low: string; high:
   },
   riskTolerance: {
     label: 'Risk tolerance', low: 'Prefer floor and certainty', high: 'Take on variance for upside', short: 'risk tolerance',
-    description: 'Tolerance for uncertain projections, volatile players, injury risk and high-variance outcomes.',
+    description: 'Tolerance for uncertain projections, volatile players, injury risk and outcomes that swing widely.',
   },
   payrollFlexibility: {
     label: 'Payroll flexibility', low: 'Comfortable with commitments', high: 'Protect future flexibility', short: 'payroll flexibility',

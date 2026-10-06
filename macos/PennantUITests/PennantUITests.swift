@@ -1588,7 +1588,8 @@ final class PennantUITests: XCTestCase {
         let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
         for round in 1...3 {
             // The Trade Desk: an offer from the inbox onto the builder, weighed, its difference drawn
-            element(app, "sidebar.trades.tradeDesk").click()
+            up("⌘5, round \(round)")
+            app.typeKey("5", modifierFlags: .command)
             let sent = element(app, "trades.side.sent")
             XCTAssertTrue(sent.waitForExistence(timeout: 30), "round \(round): the Trade Desk did not draw its builder")
             inside(sent, "round \(round): the side sent")
@@ -1596,8 +1597,10 @@ final class PennantUITests: XCTestCase {
             let review = element(app, "trades.offer.review")
             // Scrolled into view over the content (between the sidebar and the inspector), a step at a time
             let content = window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.6))
-            for _ in 0..<12 where !(review.exists && review.isHittable && review.frame.maxY < window.frame.maxY - 30) {
-                content.scroll(byDeltaX: 0, deltaY: -300)
+            let reviewShown = { review.exists && review.frame.minY > window.frame.minY + 80 && review.frame.maxY < window.frame.maxY - 30 }
+            for _ in 0..<20 where !reviewShown() {
+                // Up when it has passed above the window's top, else down
+                content.scroll(byDeltaX: 0, deltaY: review.exists && review.frame.minY <= window.frame.minY + 80 ? 150 : -150)
                 _ = review.waitForExistence(timeout: 1)
             }
             XCTAssertTrue(review.exists, "round \(round): the inbox's offer is not on the desk")
@@ -1617,6 +1620,7 @@ final class PennantUITests: XCTestCase {
             up("the Trade Desk, round \(round)")
 
             // Organizational Philosophy: a preference moved, what it did said; ⌘Z puts it back
+            up("⌘9, round \(round)")
             app.typeKey("9", modifierFlags: .command)
             let form = element(app, "detail.philosophy.organizationalPhilosophy")
             XCTAssertTrue(form.waitForExistence(timeout: 30), "round \(round): ⌘9 did not open the philosophy editor")
@@ -1624,16 +1628,18 @@ final class PennantUITests: XCTestCase {
             XCTAssertTrue(element(app, "philosophy.identity").exists, "round \(round): the philosophy editor did not draw")
             inside(form, "round \(round): the philosophy editor")
             let slider = app.sliders["philosophy.dimension.competitiveWindow"]
-            // Into view over the form where a step at a time gets it there (the editor opens at its top); the slider's
-            // own value is what is set, so it is moved wherever it is
+            // Into view over the form, a step at a time (the editor opens at its top); the slider's
+            // own value is then what is set
             let over = window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.6))
-            for _ in 0..<8 where slider.exists && slider.frame.maxY > window.frame.maxY - 60 {
+            XCTAssertTrue(slider.waitForExistence(timeout: 10), "round \(round): the competitive window has no slider")
+            for _ in 0..<8 where slider.frame.maxY > window.frame.maxY - 60 {
                 over.scroll(byDeltaX: 0, deltaY: -150)
                 _ = slider.waitForExistence(timeout: 0.5)
             }
-            _ = slider.waitForExistence(timeout: 10)
-            XCTAssertTrue(slider.exists, "round \(round): the competitive window has no slider")
-            // Moved up the scale as an assistive app moves it (the slider's own value), sent once it settles
+            XCTAssertLessThan(slider.frame.maxY, window.frame.maxY - 30, "round \(round): the competitive window's slider is not in view")
+            // Moved up the scale as an assistive app moves it (the slider's own value), sent once it settles; the app
+            // brought back first if another process took the front (logged)
+            up("the slider, round \(round)")
             slider.adjust(toNormalizedSliderPosition: 0.72)
             let said = element(app, "philosophy.said")
             // Static text reads its words as its value on macOS, a combined element as its label
@@ -1644,6 +1650,7 @@ final class PennantUITests: XCTestCase {
             if XCTWaiter.wait(for: [set], timeout: 15) != .completed { keep(window.screenshot(), named: "n12c-narrow-900-missing-said") }
             XCTAssertTrue(said.exists && saying().contains("Competitive window set to") && !saying().contains("set to 50:"),
                           "round \(round): the change did not say what it did")
+            up("the undo, round \(round)")
             app.typeKey("z", modifierFlags: .command)
             let undone = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && saying().contains("set to 50:") }, object: nil)
             let undid = XCTWaiter.wait(for: [undone], timeout: 15)
@@ -1659,6 +1666,7 @@ final class PennantUITests: XCTestCase {
             up("the philosophy, round \(round)")
 
             // Coaching Staff: a coach chosen, his ratings beneath
+            up("Coaching Staff, round \(round), before")
             element(app, "sidebar.philosophy.coachingStaff").click()
             let table = element(app, "table.staff.major")
             XCTAssertTrue(table.waitForExistence(timeout: 30), "round \(round): Coaching Staff did not draw its table")

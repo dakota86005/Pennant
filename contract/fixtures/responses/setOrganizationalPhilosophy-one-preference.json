@@ -215,7 +215,7 @@
               "display": "Risk tolerance"
             },
             "description": {
-              "display": "Tolerance for uncertain projections, volatile players, injury risk and high-variance outcomes."
+              "display": "Tolerance for uncertain projections, volatile players, injury risk and outcomes that swing widely."
             },
             "value": 50,
             "position": {

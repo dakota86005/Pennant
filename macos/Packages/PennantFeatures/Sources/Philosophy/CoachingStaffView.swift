@@ -30,7 +30,7 @@ struct CoachingStaffView: View {
                     .fixedSize()
                     .accessibilityIdentifier("staff.sections")
                 }
-                if view.sections.indices.contains(index), let summary = view.sections[index].summary { CellWords(summary, quiet: true).font(.callout) }
+                if view.sections.indices.contains(index), let summary = view.sections[index].summary { CellWords(summary).font(.callout) }
                 if let empty = view.empty { CellWords(empty, quiet: true) }
             }
             if view.sections.indices.contains(index) {

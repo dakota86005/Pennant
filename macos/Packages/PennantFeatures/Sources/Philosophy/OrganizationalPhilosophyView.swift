@@ -6,15 +6,15 @@ import PennantKit
 import SwiftUI
 
 /// Organizational Philosophy (N12 Track C; D-073): the editor as grouped sections, as System Settings lays out its panes
-/// (a header over each group, its rows in a card, its footer beneath), with the system's own controls (a slider for each
-/// preference, a pop-up for each policy) and every word the server's: the identity, the comparable clubs, each label and
-/// where a setting reads. The groups are the design's cards on the content colour rather than `Form`'s grouped rows:
-/// those are drawn vibrant on a system background, which the contrast audit can't read (the brief's rule: never text on a
-/// system background). Its descriptions are in the primary colour at a smaller size (the audit read wrapped lines in
-/// the secondary colour as too faint), the hierarchy carried by size and weight. A change is sent when the GM lets go of a slider (or a moment after its value stops moving, as
-/// the arrow keys and VoiceOver move it), or picks a policy; the server checks it, writes it and says what it did in the
-/// status strip under the editor, and ⌘Z undoes it through the request it answered with. The settings order the choices
-/// the staff already finds sound; nothing here makes a move allowed or not (D-003, D-019, D-045).
+/// (a header over each group, its rows in a card, its footer beneath), with the system's own controls (AppKit's slider for
+/// each preference, a pop-up for each policy) and every word the server's: the identity, the comparable clubs, each label
+/// and where a setting reads. What a preference weighs is its label's help tag and its slider's VoiceOver help (the house
+/// style puts an explanation in the hover). The groups are the design's cards on the content colour rather than `Form`'s
+/// grouped rows, which are drawn vibrant on a system background (the brief's rule: never text on one). A change is sent
+/// when the GM lets go of a slider, or a moment after its value stops moving (the arrow keys, VoiceOver), or picks a
+/// policy; the server checks it, writes it and says what it did in the status strip under the editor, and ⌘Z undoes it
+/// through the request it answered with. The settings order the choices the staff already finds sound; nothing here makes
+/// a move allowed or not (D-003, D-019, D-045).
 struct OrganizationalPhilosophyView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
@@ -241,19 +241,20 @@ private struct DimensionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
+                // What the preference weighs is its hover (AGENTS.md "Writing for the GM": the explanation in the help tag)
                 Text(verbatim: dimension.label.display).font(.body.weight(.semibold))
+                    .help(detail: dimension.description.display)
                 Spacer()
                 Text(verbatim: String(Int(value.rounded())))
                     .font(.body.monospacedDigit().weight(.semibold))
                     .accessibilityHidden(true)
                 CellWords(dimension.position, quiet: Int(value.rounded()) != dimension.value).font(.callout)
             }
-            CellWords(dimension.description).font(.callout)
             // The system's slider (AppKit's own, continuous, rounded to a whole number when sent), named for VoiceOver
             PreferenceSlider(
                 value: $value,
                 label: dimension.label.display,
-                hint: dimension.position.display,
+                hint: "\(dimension.description.display) \(dimension.position.display)",
                 identifier: "philosophy.dimension.\(dimension.id)"
             ) { editing in
                 dragging = editing
