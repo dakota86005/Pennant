@@ -27,7 +27,8 @@ struct PlayerNotesTab: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.2)))
                     .disabled(!store.noteReady(playerId))
                     .accessibilityLabel(Text("Your Note"))
-                    .accessibilityIdentifier("player.notes.editor")
+                    // Named once his note is read (a UI test waits on it), "loading" before
+                    .accessibilityIdentifier(store.noteReady(playerId) ? "player.notes.editor" : "player.notes.loading")
                 HStack(spacing: 6) {
                     if store.drafts[playerId] != nil, store.noteProblems[playerId] == nil {
                         Text("Saving…").font(.caption).foregroundStyle(.readableSecondary)

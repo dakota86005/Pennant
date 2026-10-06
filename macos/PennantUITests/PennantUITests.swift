@@ -1639,10 +1639,9 @@ final class PennantUITests: XCTestCase {
             let tab = self.element(app, "player.sections").radioButtons.matching(NSPredicate(format: "label == 'Notes' OR title == 'Notes'")).firstMatch
             XCTAssertTrue(tab.waitForExistence(timeout: 10))
             tab.click()
+            // The editor is named so once his note is read
             let editor = self.element(app, "player.notes.editor")
-            XCTAssertTrue(editor.waitForExistence(timeout: 10), "the Notes section did not draw")
-            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in editor.isEnabled }, object: nil)
-            XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, "his note was not read")
+            XCTAssertTrue(editor.waitForExistence(timeout: 20), "his note was not read")
             return editor
         }
         let open = { () -> XCUIApplication in
