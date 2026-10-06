@@ -1554,6 +1554,107 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Trades and Philosophy & Staff in a 900 × 700 window with the inspector open (N12 Track C): the Trade Desk (an offer
+    /// put on the builder, the difference drawn, the deal cleared), the philosophy editor (a preference changed, what it
+    /// did said, and ⌘Z undoing it) and Coaching Staff (a coach chosen, his ratings beneath), round after round, each inside
+    /// the window; every view audited on its first visit.
+    @MainActor
+    func testTradesNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("5", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.trades.tradeDesk").waitForExistence(timeout: 30), "⌘5 did not open the Trade Desk")
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in
+            XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
+            let front = NSWorkspace.shared.frontmostApplication
+            if let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
+                let note = "[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back"
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
+                app.activate()
+                _ = app.wait(for: .runningForeground, timeout: 5)
+            }
+        }
+        let inside = { (target: XCUIElement, step: String) in
+            let frame = target.frame, bounds = window.frame
+            XCTAssertGreaterThanOrEqual(frame.minX, bounds.minX - 1, "\(step) starts left of the window")
+            XCTAssertLessThanOrEqual(frame.maxX, bounds.maxX + 1, "\(step) runs past the window's right edge")
+            XCTAssertGreaterThan(frame.width, 0, "\(step) has no width")
+        }
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        for round in 1...3 {
+            // The Trade Desk: an offer from the inbox onto the builder, weighed, its difference drawn
+            element(app, "sidebar.trades.tradeDesk").click()
+            let page = element(app, "detail.trades.tradeDesk")
+            let sent = element(app, "trades.side.sent")
+            XCTAssertTrue(sent.waitForExistence(timeout: 30), "round \(round): the Trade Desk did not draw its builder")
+            inside(sent, "round \(round): the side sent")
+            inside(element(app, "trades.side.received"), "round \(round): the side received")
+            let review = element(app, "trades.offer.review")
+            reveal(review, in: page)
+            XCTAssertTrue(review.exists, "round \(round): the inbox's offer is not on the desk")
+            review.click()
+            let headline = element(app, "trades.difference.headline")
+            if !headline.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12c-narrow-900-missing-difference") }
+            XCTAssertTrue(headline.exists, "round \(round): the offer put on the builder was not weighed")
+            inside(element(app, "trades.difference"), "round \(round): the difference")
+            XCTAssertTrue(element(app, "trades.chart").exists, "round \(round): the difference has no chart")
+            XCTAssertTrue(element(app, "trades.ai.off").exists, "round \(round): AI is off, and the desk doesn't say so")
+            if round == 1 {
+                keep(window.screenshot(), named: "n12c-narrow-900-trade-desk")
+                try audit(app, named: "accessibility-audit-trade-desk")
+            }
+            let clear = element(app, "trades.clear")
+            if clear.waitForExistence(timeout: 5) { clear.click() }
+            up("the Trade Desk, round \(round)")
+
+            // Organizational Philosophy: a preference moved, what it did said; ⌘Z puts it back
+            app.typeKey("9", modifierFlags: .command)
+            let form = element(app, "philosophy.form")
+            XCTAssertTrue(form.waitForExistence(timeout: 30), "round \(round): the philosophy editor did not draw")
+            inside(form, "round \(round): the philosophy editor")
+            let slider = app.sliders["philosophy.dimension.competitiveWindow"]
+            reveal(slider, in: form)
+            XCTAssertTrue(slider.exists, "round \(round): the competitive window has no slider")
+            slider.adjust(toNormalizedSliderPosition: 0.7)
+            let said = element(app, "philosophy.said")
+            reveal(said, in: form)
+            let set = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && said.label.contains("70") }, object: nil)
+            if XCTWaiter.wait(for: [set], timeout: 15) != .completed { keep(window.screenshot(), named: "n12c-narrow-900-missing-said") }
+            XCTAssertTrue(said.label.contains("70"), "round \(round): the change did not say what it did")
+            app.typeKey("z", modifierFlags: .command)
+            let undone = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && said.label.contains("50") }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [undone], timeout: 15), .completed, "round \(round): ⌘Z did not put the preference back")
+            if round == 1 {
+                keep(window.screenshot(), named: "n12c-narrow-900-philosophy")
+                try audit(app, named: "accessibility-audit-philosophy")
+            }
+            up("the philosophy, round \(round)")
+
+            // Coaching Staff: a coach chosen, his ratings beneath
+            element(app, "sidebar.philosophy.coachingStaff").click()
+            let table = element(app, "table.staff.major")
+            XCTAssertTrue(table.waitForExistence(timeout: 30), "round \(round): Coaching Staff did not draw its table")
+            inside(table, "round \(round): the staff table")
+            let row = firstRow(of: table)
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): the staff table has no row")
+            leading(row)
+            let detail = element(app, "staff.detail")
+            XCTAssertTrue(detail.waitForExistence(timeout: 10), "round \(round): the chosen coach drew nothing beneath")
+            inside(detail, "round \(round): the coach's ratings")
+            if round == 1 {
+                keep(window.screenshot(), named: "n12c-narrow-900-coaching-staff")
+                try audit(app, named: "accessibility-audit-coaching-staff")
+            }
+            up("Coaching Staff, round \(round)")
+        }
+        quitCleanly(app)
+    }
+
     /// Farm & Development in dark: the views the GM reads longest, audited.
     @MainActor
     func testFarmViewsDark() throws {

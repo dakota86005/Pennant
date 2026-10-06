@@ -103,6 +103,11 @@ material implementation state changes.
   `/api/player/:id` answers with); our club's players are read ahead in the Front
   Office's worker after each import, others on their first open; `/api/v2/compare`
   lines up two to four; the GM's note is kept on his follow, as typed.
+- Trades and Philosophy & Staff on the Mac (N12 Track C, D-073): the Trade Desk
+  (`/api/v2/views/:org/trades/…`: the desk built after each import for our club, a
+  deal weighed on Player Value when it changes, the optional AI desk in
+  `tradeDeskAsk.ts`), the philosophy editor with its identity worded on the server
+  and a change checked whole and undone through the server, and Coaching Staff.
 - After an import, the snapshots run in a worker and both refits at the same
   time (a post-import hook list later milestones register into); the
   destination-fit league populations are cached once per import.
@@ -236,7 +241,9 @@ Present on `main`:
 - Fifteen 0–100 preference dimensions plus explicit contract/trade policies.
 - Manual, staff, and hybrid modes in the stored type/normalizer.
 - A React Organizational Philosophy page and settings API for reading,
-  updating, and resetting a profile.
+  updating, and resetting a profile; on the Mac (N12, D-073) a native editor whose
+  identity summary, comparable clubs and labels are served, and whose v2 endpoint
+  refuses an unknown setting, an off-scale value or a choice not offered in words.
 - Philosophy consumers: preference among defensible assignments
   (`assignmentPreference.ts`), position-player and pitcher minor-league plan
   ranking, and retention scoring/pressure. Philosophy does not enter Player

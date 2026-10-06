@@ -1286,6 +1286,41 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
 - *Left for later:* the per-view sidebar counts; a player opens his club until N11's player windows land (the views use
   the served `open`, so N11's window takes over).
 
+**As built at N12, Track C (2026-10-06): Trades and Philosophy & Staff (server and Mac).** Branch
+`feature/swiftui-n12-trades`; D-073 (BEHAVIOR_CASES.md "Pennant for Mac", the `tradeDesk.test.ts`, `philosophyViews.test.ts`,
+`TradesFeatureTests` and `PhilosophyFeatureTests` rows).
+- **Server.** The routes the React pages read compute in callable functions, each old route answering exactly as before
+  (`computeTradeFits`, `computeTradeProposals`, `computeTradeTalk`, `computeStaff`, `savePhilosophyForOrg`; the proposals'
+  and the staff's readers made schema tolerant on the way). `GET /api/v2/views/:org/trades/tradeDesk` (`TradeDeskView`: the
+  inbox's offers with the analyser's reading, the staff's trade talk, the league's fits, whether the AI desk is on, the
+  builder's words), `GET …/trades/analysis?sent=&received=` (`TradeAnalysisView`: each side's players with contract value,
+  range, control, production, keeping him and our view, the side totals, the difference with its range chart's served
+  scale and its parts, our view, the salary moving), `POST …/trades/ask` (the AI desk; a 409 in words with no key),
+  `GET|PUT|DELETE …/philosophy/organizationalPhilosophy` (`PhilosophyView`, `PhilosophyChange` with what it did and its
+  undo) and `GET …/philosophy/coachingStaff` (`CoachingStaffView`, three served sections). The adapters are
+  `server/presentation/trades/` and `server/presentation/philosophy/`; the desk is built in the Front Office's worker
+  (`tradeDesk` job) after each kept build for our club, another club's on its first open; a deal is weighed on the click and
+  kept on the inputs key with its players. The club's value of a win is not read for the desk (D-060).
+- **Mac.** `TradesStore` and `PhilosophyStore` (PennantKit). The Trade Desk is one page: the builder's two sides (side by
+  side where each gets a readable column, else one above the other), each a drop target for a `PlayerRef` and a field that
+  finds a player by name through the server's search as native text suggestions; a player's row opens his window, compares
+  and follows from his name, and moves or comes off from its menu; the toolbar compares everyone on the deal and clears it.
+  The difference is Swift Charts (the range, the most likely as a point or a stretch, zero dashed, on the served scale), one
+  image element with its `AXChartDescriptor`; its parts a grid in a disclosure. The AI desk says it is off, or asks with a
+  button and takes follow-ups, each answer marked as the AI's. Offers, trade talk and fits are cards; "Review" puts the deal
+  on the builder and scrolls to it. Organizational Philosophy is a grouped `Form` (a slider for each preference, sent on
+  letting go or a moment after the arrow keys, a pop-up for each policy, the reset behind a confirmation), ⌘Z undoing
+  through the served request, what it did said and announced. Coaching Staff is a `TablePane` with the served sections as a
+  segmented control and the chosen coach's ratings beneath (a gauge against OOTP's 1–200 where the rating is known).
+- **Measured** (in process over HTTP, M-series Mac, under tsx, with other tracks' tests running beside it). The owner's export
+  (a scratch copy): the desk built in 2.8 s on the server's thread on a cold start, 1.1 s through the worker; warm GETs p50 /
+  p95: Trade Desk 4.3 / 8.6 ms (12 kB), a deal of two for three 1.5 / 3.1 ms (36 kB, 76 ms on first ask), Organizational
+  Philosophy 3.0 / 4.2 ms, Coaching Staff 2.5 / 7.9 ms (80 kB); another club's desk 1.9 s on first open, then 8.3 / 18 ms.
+  USBL (a scratch copy): the desk 1.3 s cold, 1.0 s through the worker; warm p95 at most 6.7 ms; another club's 1.0 s first.
+  The synthetic save: the desk 0.4 s through the worker, warm p95 at most 2.5 ms.
+- *Left for later:* a staff window (a coach opens nothing of his own); the philosophy's staff-driven and hybrid modes (the
+  editor serves "Set by you"); keys in the Keychain (N13).
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2478,6 +2513,9 @@ owner's calls listed in D-069.
 
 **N11 (2026-10-04)** on `feature/swiftui-n11-player`: the player window and Compare, server and Mac (section 3.1, "As built at
 N11"; D-070), with the OSA mark drawn wherever a grade is shown and PennantKit's live-pipe test made deterministic.
+
+**N12, Track C (2026-10-06)** on `feature/swiftui-n12-trades`: Trades and Philosophy & Staff, server and Mac (section 3.5,
+"As built at N12, Track C"; D-073). Left open: a staff window, and the philosophy's staff-driven modes.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

@@ -2926,3 +2926,56 @@ routes they serve); `GET /api/v2/player/:id`, `GET|PUT|DELETE /api/v2/player/:id
 - **Kept as bytes** (review M5, 2026-10-05): each dossier is checked once when kept and held as the JSON the route sends;
   at most 150 of other clubs' players per build, the least recently opened let go first; after a kept build the server's
   thread builds one dossier on idle so the first open of anyone else's doesn't pay for initialization.
+
+## D-073 — Trades and Philosophy & Staff on the Mac: the Trade Desk weighs a dropped deal; the philosophy's identity is the server's
+
+**Status:** Proposed (N12 Track C builder, 2026-10-06; the supervisor renumbers on a collision; Track A holds D-071, Track B
+D-072). Applies D-065 to Trades and Philosophy & Staff and refines D-001 (the AI desk), D-003, D-019 and D-045 (the
+authority chain in the editor's words), D-052 (a deal is a range), D-056 (the words) and D-060 for the presentation layer
+only: no value, rights, development or philosophy judgment changes. **Implementation:** `server/presentation/trades/` and
+`server/presentation/philosophy/` (the words, the identity included), `server/tradeDeskBuild.ts` (the reader, run in the
+Front Office's worker), `server/tradeDeskService.ts` (the cache, a deal weighed), `server/tradeDeskAsk.ts` (the AI desk,
+the only Trade Desk module that reaches `ai.ts`), `server/philosophyViewService.ts`; the extractions `computeTradeFits`,
+`computeTradeProposals`, `computeTradeTalk` (`server/trade.ts`), `computeStaff` (`server/rosterops.ts`),
+`savePhilosophyForOrg` (`server/settings.ts`) and `tradeAiState`, `askTradeDesk` (`server/ai.ts`), each old route
+answering as before; `GET /api/v2/views/:org/trades/tradeDesk`, `GET …/trades/analysis?sent=&received=`, `POST
+…/trades/ask`, `GET|PUT|DELETE …/philosophy/organizationalPhilosophy`, `GET …/philosophy/coachingStaff`; the Mac app's
+`TradesStore`, `PhilosophyStore` and PennantFeatures' Trades and Philosophy targets. SWIFTUI_REBUILD.md section 3.5, "As
+built at N12 (Track C)".
+
+- **The desk is built after every import; a deal is weighed when it changes.** The desk (the inbox's offers with the
+  analyser's reading, the staff's trade talk, the league's fits) is one payload, built for our club in the Front Office's
+  worker after each kept build and kept on its inputs key; another club's on its first open. Whether the AI desk is on is
+  read on every request, never kept. A deal (at most ten players a side, a player on one side only) is weighed on the
+  server's thread when asked, kept on the inputs key with its players (64 at most). The club's value of a win, which the
+  React analysis reads beside the deal, is not read for the desk at all (D-060: it belongs with the standings).
+- **A deal is a range around zero, never a verdict.** Each player is "most likely" with "could be", the difference is what
+  comes in less what goes out with its parts, drawn on a scale symmetric about zero with zero always on it (the server
+  serves the scale: `scaleOf`, the port of `src/tradeDifferenceGeometry.ts`); a player whose value isn't known is named and
+  left out, never zero. The Mac draws the served figures in Swift Charts and adds none.
+- **The builder takes players from anywhere.** Each side is a drop target for a `PlayerRef` (a table's row, a name, the
+  palette, Following, another window); a player dropped on the other side moves across; each side also finds a player by
+  name through the server's search (`/api/v2/search`, its players only) as native text suggestions. "Review" puts an
+  offer's two sides, or a target alone on the side received, on the builder.
+- **The AI desk is optional and in a module of its own** (D-001). With no key the desk says "AI is off. Everything on the
+  desk works without it." with the reason in its basis, and asking anyway is a 409 in words. With a key the answer is the
+  same trade desk the React page asks, its words marked as the AI's explanation of Pennant's figures ("decides nothing"),
+  its conversation the deal's (cleared when the deal changes). `tradeDeskAsk.ts` is on the evidence boundary's list of
+  modules that may reach an AI module; the desk's own service and reader may not.
+- **The philosophy's identity is the server's.** The React page's client-side identity (the headline, tags, summary and
+  nuance, the position words, the comparable clubs) is worded on the server from the settings alone, never the club's
+  record, odds or a posture; its lines are stated (policy). The visible words keep Player Value's method words off the
+  screen ("value for the money", "pay for ability"). The comparable clubs are shown closest first with how near in words,
+  without the React page's "#1" rank.
+- **The editor orders, never permits** (D-003, D-019, D-045). Its lede says the settings order the choices the staff
+  already finds sound and never make a move allowed or rule one out; "Promotion aggression" reads "among the moves Player
+  Development finds sound, how much the club prefers the quicker one".
+- **A change is checked whole and undone through the server.** An unknown setting, a preference off 0–100 or not a whole
+  number, or a policy choice not offered is a 400 in words and writes nothing (the React route clamps silently; the v2 one
+  refuses). Each change answers with the editor, what it did ("Competitive window set to 70: Maximize current wins.") and
+  the request that undoes it; ⌘Z sends that request, its redo the original. Writing the settings moves the Front Office's
+  inputs, so every kept build that reads the philosophy is built again.
+- **Coaching Staff is the export's staff.** OOTP's 1–200 coach ratings as exported; a blank, zero or missing rating is
+  "not known", and a seat rating the export doesn't carry makes "who is ready for a job up here" not known rather than
+  "nobody" (the old route failed on such an export; it now answers without that seat). A coach opens nothing of his own
+  until a staff window exists; an affiliate's row opens its club.
