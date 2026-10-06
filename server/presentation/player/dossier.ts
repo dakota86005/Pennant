@@ -18,7 +18,7 @@ import type {
   PlayerRatingRow, PlayerRatingsView, PlayerRightsAction, PlayerTable, PlayerTableRow, PlayerTile, PlayerValueTotal, PlayerValueView,
 } from './types.js';
 import {
-  TIP_CONTACT, TIP_CONTRACT, TIP_CONTRACT_VALUE, TIP_COULD_BE, TIP_IF_KEPT, TIP_KEEPING_HIM, TIP_NO_SINGLE, TIP_OUR_VIEW, TIP_SCOUTED,
+  TIP_CONTACT, TIP_CONTRACT, TIP_CONTRACT_VALUE, TIP_OPTION_YEARS, TIP_COULD_BE, TIP_IF_KEPT, TIP_KEEPING_HIM, TIP_NO_SINGLE, TIP_OUR_VIEW, TIP_SCOUTED,
   TIP_SPLITS, TIP_WINS_ONLY, afterColon, afterLine, capitalized, coneCostText, coneRangeWords, controlEndWords, costRangeText, heldText,
   listSeasons, money, notValuedLine, ordinal, perWin, plural, rangeText, rate3, salaryLine, scaleLow, scaleWords, seasonsText, sentence,
   signedMoney, signedTenths, termLine, totalHeadline, usageText, winsText, type SeasonInput, type TotalInput, type ViewInput,
@@ -262,6 +262,42 @@ function rightsAction(ctx: DossierInput, a: ActionRights): PlayerRightsAction {
         certainty: a.status === 'indeterminate' ? 'unknown' : 'fact',
       }),
     }),
+  };
+}
+
+/**
+ * Option years left, as Player Rights states them (`optionYearsOf`), behind the same current-state gate as the actions:
+ * an export behind the save or not read states none. An `indeterminate` standing is "Not established" with Rights'
+ * reason; never a count guessed from the parts that are known (review M1, N11).
+ */
+function optionYearsFact(ctx: DossierInput): PlayerFact | null {
+  const rights = ctx.body.rights;
+  if (!rights) return null;
+  const oy = rights.optionYears;
+  const stale = rights.evidence.currentState === 'behind' || rights.evidence.currentState === 'unavailable';
+  const label = 'Option years left';
+  const hint = 'Seasons he can still be sent down without passing through waivers';
+  const because = (lines: BasisLine[], unknown: string[], certainty: 'fact' | 'unknown') => basis({
+    because: [{ label: 'What it is', value: TIP_OPTION_YEARS }, ...lines],
+    source: sourceOf(ctx, 'majorLeague', PLAYER_RIGHTS),
+    unknown: plainAll(unknown), wouldChange: [], lean: null, certainty,
+  });
+  if (stale || oy.standing === 'indeterminate') {
+    const why = stale
+      ? plain(rights.actions.option.missing[0]?.message ?? 'Rights cannot be stated: roster data is not current.')
+      : plain(oy.reason ?? 'Player Rights does not establish his option years.');
+    return {
+      label: cell(label), value: cell('Not established', { tone: 'unknown', hint }),
+      claim: claim({ text: 'Option years not established', tone: 'unknown', basis: because([], [why], 'unknown') }),
+    };
+  }
+  const used = oy.used ?? 0;
+  const text = oy.standing === 'available' ? String(oy.remaining ?? 0) : 'None left';
+  const lines: BasisLine[] = [{ label: 'Used', value: plural(used, 'option year') }];
+  if (oy.usedThisSeason !== null) lines.push({ label: 'This season', value: oy.usedThisSeason > 0 ? 'Optioned this season' : 'Not optioned this season' });
+  return {
+    label: cell(label), value: cell(text, { hint }),
+    claim: claim({ text: `${label}: ${text}`, tone: 'neutral', basis: because(lines, [], 'fact') }),
   };
 }
 
@@ -841,11 +877,8 @@ function contractView(ctx: DossierInput): PlayerContractView {
       })))
     : null;
   const rights = relevantRights(ctx);
-  const r = d.rights;
-  const rightsFacts: PlayerFact[] = [];
-  const oy = r?.optionYears as unknown as { remaining?: { value?: number | null } | number | null; used?: unknown } | undefined;
-  const remaining = typeof oy?.remaining === 'number' ? oy.remaining : (oy?.remaining as { value?: number | null } | null | undefined)?.value ?? null;
-  if (r) rightsFacts.push(fact('Option years left', remaining === null ? 'Not established' : String(remaining), remaining === null ? { tone: 'unknown' } : {}));
+  const option = optionYearsFact(ctx);
+  const rightsFacts: PlayerFact[] = option ? [option] : [];
   return {
     facts,
     schedule,

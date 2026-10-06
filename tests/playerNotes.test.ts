@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { followNow } from '../server/aroundTheLeague.js';
 import { follows } from '../server/frontOfficeMemory.js';
 import { addStaffNote } from '../server/history.js';
 import {
@@ -48,6 +49,33 @@ describe('the GM\'s note is his own words, stored as he typed them (D-058)', () 
     const cleared = await setPlayerNoteNow(String(id), { note: '   ' });
     expect(cleared.notes).toMatchObject({ note: null, following: true });
     await undoFirstNoteNow(String(id));
+  });
+
+  it('undoes a note\'s follow only while the note is what follows him (review L1)', async () => {
+    // His note followed him; then he followed him on purpose: the note's undo clears the note and keeps him followed
+    const id = save.hitters[5];
+    await setPlayerNoteNow(String(id), { note: 'Watch the walk rate.' });
+    expect(followed(id)?.source).toBe('note');
+    await followNow({ kind: 'player', id });
+    expect(followed(id)?.source).toBe('gm');
+    const undone = await undoFirstNoteNow(String(id));
+    expect(followed(id)).toMatchObject({ note: null, source: 'gm' });
+    expect(undone.notes).toMatchObject({ note: null, following: true });
+    // Followed before his first note: the note never owned the follow
+    const other = save.hitters[6];
+    await followNow({ kind: 'player', id: other });
+    const first = await setPlayerNoteNow(String(other), { note: 'Plus arm.' });
+    expect(first.undoUnfollows).toBe(false);
+    expect(followed(other)?.source).toBe('gm');
+    await undoFirstNoteNow(String(other));
+    expect(followed(other)).toMatchObject({ note: null, source: 'gm' });
+    // A note's follow whose note is only edited stays the note's: its undo still unfollows
+    const third = save.hitters[7];
+    await setPlayerNoteNow(String(third), { note: 'One.' });
+    await setPlayerNoteNow(String(third), { note: 'Two.' });
+    expect(followed(third)?.source).toBe('note');
+    await undoFirstNoteNow(String(third));
+    expect(followed(third)).toBeNull();
   });
 
   it('follows nobody when an empty note is written on a player he doesn\'t follow', async () => {

@@ -97,6 +97,11 @@ export function ordinal(n: number): string {
 
 // ── the hovers, in the GM's words (`src/ValueSection.tsx`, `src/PlayerHeaderValue.tsx`) ──────────────────────
 
+export const TIP_OPTION_YEARS =
+  'How many more seasons he can be sent down to the minors without passing through waivers, as Player Rights reads ' +
+  'his record: a player gets three, and each season he is optioned uses one. When the export does not say how many he ' +
+  'has used, or whether this season already counted, it is not established rather than guessed.';
+
 export const TIP_CONTRACT =
   "His deal as the export states it: this season's salary, the last season it covers (a signed extension included), and " +
   "what happens after this season: signed, an option, arbitration, pre-arbitration or free agency, with when the club's " +

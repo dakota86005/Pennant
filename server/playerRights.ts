@@ -107,6 +107,8 @@ export interface OptionYears {
   remaining: number | null;
   usedThisSeason: number | null;
   standing: 'available' | 'exhausted' | 'exhausted_charged_this_season' | 'indeterminate';
+  /** Why the standing is `indeterminate` (what is missing or not observed); null otherwise. */
+  reason: string | null;
 }
 
 export interface RuleFiveStanding {
@@ -289,12 +291,14 @@ export function optionYearsOf(ctx: RightsContext): OptionYears {
   const enabled = ctx.league.minorLeagueOptions.value;
   const remaining = used === null ? null : Math.max(0, OPTION_YEARS - used);
   let standing: OptionYears['standing'] = 'indeterminate';
-  if (enabled === true && used !== null) {
-    if (used < OPTION_YEARS) standing = 'available';
-    else if (thisSeason === null) standing = 'indeterminate';
-    else standing = thisSeason === 0 ? 'exhausted' : 'exhausted_charged_this_season';
-  }
-  return { used, remaining, usedThisSeason: thisSeason, standing };
+  let reason: string | null = null;
+  if (enabled === null) reason = 'The league\'s minor-league options rule is not in the export.';
+  else if (enabled === false) reason = 'This league does not use minor-league options.';
+  else if (used === null) reason = 'The option years he has used are not in the export.';
+  else if (used < OPTION_YEARS) standing = 'available';
+  else if (thisSeason === null) reason = `He has used ${used} option years; whether one was charged this season is not in the export.`;
+  else standing = thisSeason === 0 ? 'exhausted' : 'exhausted_charged_this_season';
+  return { used, remaining, usedThisSeason: thisSeason, standing, reason };
 }
 
 // ── actions ─────────────────────────────────────────────────────────────────

@@ -2039,9 +2039,41 @@
           "display": "Option years left"
         },
         "value": {
-          "display": "3"
+          "display": "3",
+          "hint": "Seasons he can still be sent down without passing through waivers"
         },
-        "claim": null
+        "claim": {
+          "text": "Option years left: 3",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "What it is",
+                "value": "How many more seasons he can be sent down to the minors without passing through waivers, as Player Rights reads his record: a player gets three, and each season he is optioned uses one. When the export does not say how many he has used, or whether this season already counted, it is not established rather than guessed."
+              },
+              {
+                "label": "Used",
+                "value": "0 option years"
+              },
+              {
+                "label": "This season",
+                "value": "Not optioned this season"
+              }
+            ],
+            "source": {
+              "department": "majorLeague",
+              "specialist": "Player Rights",
+              "asOf": "2040-05-06T12:00:00.000Z",
+              "gameDate": "2040-5-6"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "fact",
+            "called": "A fact from the export"
+          },
+          "links": []
+        }
       }
     ]
   },

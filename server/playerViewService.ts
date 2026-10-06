@@ -236,7 +236,7 @@ export async function setPlayerNoteNow(param: string, body: unknown): Promise<Pl
   const note = b.note.trim() === '' ? '' : b.note;
   // Clearing the note of a player he doesn't follow changes nothing and follows nobody
   if (!before && note === '') return { done: cell('Nothing to save'), notes: notesOf(id), undo: { note: '' }, undoUnfollows: false };
-  await follow('player', id, name, note);
+  await follow('player', id, name, note, 'note');
   await followingChanged();
   return {
     done: cell(before ? (note === '' ? `Note cleared for ${name}` : `Note saved for ${name}`) : `Note saved, and following ${name}`),
@@ -246,10 +246,21 @@ export async function setPlayerNoteNow(param: string, body: unknown): Promise<Pl
   };
 }
 
-/** Stops following a player whose note followed him (the undo of a first note): his note goes with the follow. */
+/**
+ * The undo of a first note: stops following a player whose note followed him, and only while that is still so (the
+ * follow's `source` is `note`). One he has since followed on purpose, or followed before the note, stays followed; the
+ * note is cleared instead.
+ */
 export async function undoFirstNoteNow(param: string): Promise<PlayerNoteChange> {
   const id = idOf(param);
   if (!snapshotsAllowed()) throw new LeagueRefusal(NOT_IMPORTED, 400);
+  await followingView();
+  const before = follows().find((x) => x.kind === 'player' && x.id === id) ?? null;
+  if (before && before.source !== 'note') {
+    await follow('player', id, before.name, '');
+    await followingChanged();
+    return { done: cell(`Note cleared for ${before.name ?? playerName(id) ?? 'him'}`), notes: notesOf(id), undo: { note: before.note ?? '' }, undoUnfollows: false };
+  }
   const gone = await unfollow('player', id);
   if (gone) await followingChanged();
   return { done: cell(gone ? 'Note removed, and no longer following him' : 'Nothing to undo'), notes: notesOf(id), undo: { note: gone?.note ?? '' }, undoUnfollows: false };

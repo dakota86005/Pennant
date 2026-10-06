@@ -540,8 +540,12 @@ export interface FollowRecord {
   id: number;
   name: string | null;
   note: string | null;
-  /** How the follow began: the GM, or a copy of his watchlist. */
-  source: 'gm' | 'watchlist';
+  /**
+   * How the follow began: the GM, a copy of his watchlist, or his first note on a player he didn't follow (N11). A note's
+   * follow becomes the GM's own when he then follows the player on purpose; only a note's follow is undone with the note.
+   * An older build reads `note` as the GM's own.
+   */
+  source: 'gm' | 'watchlist' | 'note';
   createdAt: string;
   updatedAt: string;
 }
@@ -551,7 +555,7 @@ const followOf = (r: Record<string, unknown>): FollowRecord => ({
   id: Number(r.subject_id),
   name: typeof r.name === 'string' && r.name !== '' ? r.name : null,
   note: typeof r.note === 'string' && r.note !== '' ? r.note : null,
-  source: r.source === 'watchlist' ? 'watchlist' : 'gm',
+  source: r.source === 'watchlist' ? 'watchlist' : r.source === 'note' ? 'note' : 'gm',
   createdAt: String(r.created_at),
   updatedAt: String(r.updated_at),
 });
@@ -575,8 +579,14 @@ export function followedSets(saveKey: string = memoryKey()): { clubs: Set<number
   };
 }
 
-/** Follows a club or a player (or changes the note of one followed). Returns the record it replaced, and the new one. */
-export async function follow(kind: FollowKind, id: number, name: string | null, note: string | undefined): Promise<{ previous: FollowRecord | null; now: FollowRecord }> {
+/**
+ * Follows a club or a player (or changes the note of one followed). Returns the record it replaced, and the new one.
+ * `source` is how a new follow begins (`note`: his first note followed him); `gm` on one a note began makes it the
+ * GM's own (he followed him on purpose since). A watchlist copy keeps its source.
+ */
+export async function follow(
+  kind: FollowKind, id: number, name: string | null, note: string | undefined, source?: 'gm' | 'note',
+): Promise<{ previous: FollowRecord | null; now: FollowRecord }> {
   await ensureMemoryBackup();
   const saveKey = memoryKey();
   const now = new Date().toISOString();
@@ -584,11 +594,12 @@ export async function follow(kind: FollowKind, id: number, name: string | null, 
   const previous = row ? followOf(row) : null;
   const kept = note === undefined ? previous?.note ?? '' : note;
   if (row) {
-    historyDb.prepare(`UPDATE following SET name = COALESCE(?, name), note = ?, updated_at = ? WHERE save_key = ? AND kind = ? AND subject_id = ?`)
-      .run(name, kept, now, saveKey, kind, id);
+    const owned = source === 'gm' && previous?.source === 'note' ? 'gm' : previous?.source ?? 'gm';
+    historyDb.prepare(`UPDATE following SET name = COALESCE(?, name), note = ?, source = ?, updated_at = ? WHERE save_key = ? AND kind = ? AND subject_id = ?`)
+      .run(name, kept, owned, now, saveKey, kind, id);
   } else {
-    historyDb.prepare(`INSERT INTO following (save_key, kind, subject_id, name, note, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'gm', ?, ?)`)
-      .run(saveKey, kind, id, name, kept, now, now);
+    historyDb.prepare(`INSERT INTO following (save_key, kind, subject_id, name, note, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(saveKey, kind, id, name, kept, source ?? 'gm', now, now);
   }
   changed();
   return { previous, now: follows(saveKey).find((f) => f.kind === kind && f.id === id)! };

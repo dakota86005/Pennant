@@ -736,7 +736,7 @@ function activeClearingOption(
   const rights = picture?.rights;
   const opt = rights?.actions.option;
   const dfa = rights?.actions.designateForAssignment;
-  const years: OptionYears = rights?.optionYears ?? { used: null, remaining: null, usedThisSeason: null, standing: 'indeterminate' };
+  const years: OptionYears = rights?.optionYears ?? { used: null, remaining: null, usedThisSeason: null, standing: 'indeterminate', reason: null };
 
   let transaction: ClearingOption['transaction'] = 'option';
   let klass: ClearingClass = 'unresolved';
@@ -790,7 +790,7 @@ function fortyManClearingOption(
   picture: Picture | undefined
 ): ClearingOption | null {
   const rights = picture?.rights;
-  const years: OptionYears = rights?.optionYears ?? { used: null, remaining: null, usedThisSeason: null, standing: 'indeterminate' };
+  const years: OptionYears = rights?.optionYears ?? { used: null, remaining: null, usedThisSeason: null, standing: 'indeterminate', reason: null };
   const onActive = m.onActive === true;
   const base = {
     playerId: m.playerId, name: m.name, age: m.age, role: m.role, constraint: 'forty_man' as const,

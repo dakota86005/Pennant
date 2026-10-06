@@ -152,6 +152,31 @@ describe('contract & rights and history keep their sources apart (D-020, D-023)'
     expect(stale.contract.rightsNote?.display.length).toBeGreaterThan(0);
   });
 
+  it('states option years as Player Rights does, behind the same stale-export gate, with a hover and a basis (review M1)', () => {
+    const optionYears = (v: PlayerDossierView) => v.contract.rightsFacts.find((f) => f.label.display === 'Option years left')!;
+    const withYears = (oy: Partial<NonNullable<PlayerDossierBody['rights']>['optionYears']>, stale = false) => view((input) => {
+      const rights = input.body.rights!;
+      Object.assign(rights.optionYears, oy);
+      if (stale) rights.evidence.currentState = 'behind';
+    });
+    const known = optionYears(withYears({ used: 1, remaining: 2, usedThisSeason: 0, standing: 'available', reason: null }));
+    expect(known.value.display).toBe('2');
+    expect(known.value.hint?.length).toBeGreaterThan(0);
+    expect(known.claim?.basis.source.specialist).toBe('Player Rights');
+    // The options rule not observed: Rights' reason, never a count
+    const rule = optionYears(withYears({ used: 1, remaining: 2, usedThisSeason: 0, standing: 'indeterminate', reason: 'The league\'s minor-league options rule is not in the export.' }));
+    expect(rule.value).toMatchObject({ display: 'Not established', tone: 'unknown' });
+    expect(rule.claim?.basis.unknown.join(' ')).toMatch(/options rule/);
+    // All three used, this season unknown: remaining 0 is not stated as "none left"
+    const spent = optionYears(withYears({ used: 3, remaining: 0, usedThisSeason: null, standing: 'indeterminate', reason: 'He has used 3 option years; whether one was charged this season is not in the export.' }));
+    expect(spent.value.display).toBe('Not established');
+    expect(spent.claim?.basis.unknown.join(' ')).toMatch(/charged this season/);
+    // A stale export: the gate the actions have, whatever Rights counted
+    const stale = optionYears(withYears({ used: 1, remaining: 2, usedThisSeason: 0, standing: 'available', reason: null }, true));
+    expect(stale.value.display).toBe('Not established');
+    expect(stale.claim?.basis.certainty).toBe('unknown');
+  });
+
   it('says what the log says, in its words, and never names a move the log does not', () => {
     const event = {
       id: 'team_transactions:1', provenance: 'explicit_log', kind: 'unsupported', supported: false, date: '2040-05-02', rawDate: '2040-5-2', season: 2040,

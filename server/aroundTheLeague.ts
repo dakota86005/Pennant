@@ -259,7 +259,8 @@ export async function followNow(body: unknown): Promise<FollowChange> {
       view,
     };
   }
-  const { previous } = await follow(b.kind, id, name, b.note === undefined ? undefined : b.note.trim());
+  // A plain follow is on purpose: a follow his note began becomes his own (its note's undo no longer unfollows)
+  const { previous } = await follow(b.kind, id, name, b.note === undefined ? undefined : b.note.trim(), b.note === undefined ? 'gm' : undefined);
   const view = await followingView();
   publish({ type: 'following-changed', followStamp: view.followStamp });
   return {
