@@ -1286,6 +1286,42 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
 - *Left for later:* the per-view sidebar counts; a player opens his club until N11's player windows land (the views use
   the served `open`, so N11's window takes over).
 
+**As built at N12, Track A (2026-10-06): Finance and Medical (server and Mac).** Branch `feature/swiftui-n12-finance`;
+D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `OfficeFeatureTests` rows).
+- **Served** (`server/presentation/finance/`, `server/presentation/medical/`, the shared `presentation/officeTable.ts`):
+  `GET /api/v2/views/:org/finance/payrollBudget` (the club's figures, the price of a win with "How it's measured" in its
+  basis, what a controlled season costs, committed salary by season with what the controlled seasons could cost beside
+  it and the room, the budget rule, the budget the GM expects next season, who leaves, who stays, who is not known yet,
+  dead money, and every contract season by season), `/contracts` (the figures, the price, the groups and all players or
+  pitchers as filters, every contract with its seasons under control and what his figures rest on), `/freeAgents` (the
+  thinnest positions and the three lists, each with its filters: players, position, age, our thin spots), `/horizonBoard`
+  (each position against the next three seasons, the pipeline apart, committed salary against the budget) and
+  `GET /api/v2/views/:org/medical/injuryReport` (the figures, every injured player, the level as a filter);
+  `PUT …/finance/payrollBudget/nextSeasonBudget` sets the React page's setting. Read by `officeViewsBuild.ts` through
+  the routes' modules, kept by `officeViewService.ts` on the Front Office's key (one `officeViews` worker job after each
+  kept build; another club's on first open, four builds at most).
+- **Drawn** (the Finance and Medical targets, FeatureCore's `OfficeViews.swift`, `OfficeStore` in PennantKit): Contracts,
+  Free Agents, Payroll's every contract and the Injury Report are native `Table`s in a `TablePane` (served columns, sort
+  keys, unknown last, several rows chosen, Compare, the player window on Return or a double-click, Follow, Copy Name, a
+  player's row dragged as the player, the OSA mark beside a filled player's name), the chosen row's facts, claims and
+  seasons beneath; the served filters are one toolbar button whose popover holds each as a radio group, a name the
+  toolbar's search field. Payroll's seasons are a page: the figures, the price and cost lines, Swift Charts with
+  committed money as bars, the projected range a hatched bar beside each (never stacked) and the budget a dashed
+  `RuleMark` (the budget the GM expects a dotted one), with an `AXChartDescriptor`; each season's words beneath; the
+  budget field (millions, saved on Return or leaving it). The Horizon Board is a grid (a row per position, a column per
+  season, the pipeline last), a card per position on a narrow column, each status's reason a click away, and committed
+  salary against the budget in a chart of its own. Free Agents' lists are a segmented control in the head (a pop-up where
+  there is no room).
+- **Measured** (in process over HTTP on an M4 under tsx; read-only scratch copies). The synthetic save: the build 0.16 s
+  (Payroll 65 ms, Free Agents 46 ms, Contracts 23 ms, the board 17 ms). The owner's export: the build 2.2 s on the
+  server's thread (Payroll 1.28 s, Free Agents 0.36 s, the board 0.24 s, Contracts 0.08 s, injuries 8 ms), 1.8 s through
+  the worker; warm GETs p50 / p95: Payroll 1.9 / 4.9 ms (199 kB), Contracts 1.6 / 1.9 (182 kB), Free Agents 5.9 / 6.6
+  (780 kB: 334 players across the three lists), the board 0.7 / 1.0 (62 kB), injuries 0.4 / 0.8 (30 kB); another club's
+  first open 1.7 s, then 1.9 / 4.2 ms. USBL: the build 1.1 s (0.94 s through the worker), warm p95 at most 4.5 ms;
+  another club's first open 0.94 s.
+- *Left for later:* the React Payroll page's club value of a win (playoff odds) is not served (D-060); Payroll's
+  sparkline is replaced by the chart; Free Agents' payload is the largest of the department views on a full league.
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2177,7 +2213,7 @@ sizes, not dates.
 | **N9** | Clubhouse tools | Lineup, pitching availability, depth chart, schedule and game plans, trends (Charts), 40-man and options, rosters | 3 |
 | **N10** | Farm & Development | Server: farm copy, Prospects words and Development movers moved. App: Overview, Organization, Affiliates, Assignments, Decision, Prospects, Development tracking | 5 |
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
-| **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon; Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
+| **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
 | **N13** | AI surfaces, native | Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
 | **N14** | macOS integration and release | App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
