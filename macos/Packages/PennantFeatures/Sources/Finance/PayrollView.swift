@@ -63,9 +63,14 @@ struct PayrollSeasonsPage: View {
     let refreshing: Bool
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness, refreshing: refreshing)
+        // The head stays put above the page, as a TablePane's does: never under the toolbar's scroll edge
+        VStack(alignment: .leading, spacing: 0) {
+            OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness, refreshing: refreshing)
+                .padding(.horizontal, 28).padding(.top, 16).padding(.bottom, 10)
+                .frame(maxWidth: 1100, alignment: .leading)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
                 OfficeFigures(view.cards)
                 VStack(alignment: .leading, spacing: 6) {
                     if let price = view.price { ClaimLine(price, font: .callout) }
@@ -87,11 +92,13 @@ struct PayrollSeasonsPage: View {
                     .accessibilityIdentifier("payroll.section.\(section.id)")
                 }
                 ClaimLine(view.deadMoney, font: .callout)
+                }
+                .padding(.horizontal, 28).padding(.vertical, 20)
+                .frame(maxWidth: 1100, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 28).padding(.vertical, 24)
-            .frame(maxWidth: 1100, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.readablePage)
     }
 }

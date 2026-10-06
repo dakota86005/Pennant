@@ -1202,6 +1202,12 @@ final class PennantUITests: XCTestCase {
         ]
         for round in 1...3 {
             for view in views {
+                // Each department opened by its shortcut first (⌘6 Finance, ⌘7 Medical), so its views are in the sidebar
+                if view.view == "payrollBudget" || view.view == "injuryReport" {
+                    up("before \(view.department), round \(round)")
+                    app.typeKey(view.department == "finance" ? "6" : "7", modifierFlags: .command)
+                    XCTAssertTrue(element(app, "detail.\(view.department).report").waitForExistence(timeout: 30), "round \(round): \(view.department) did not open")
+                }
                 let item = element(app, "sidebar.\(view.department).\(view.view)")
                 let sidebar = element(app, "sidebar")
                 up("before \(view.view), round \(round)")

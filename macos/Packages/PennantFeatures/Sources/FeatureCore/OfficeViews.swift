@@ -118,18 +118,24 @@ public struct OfficeFigures: View {
         if !figures.isEmpty {
             ViewThatFits(in: .horizontal) {
                 ReportFigures(figures: figures)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .leading)], alignment: .leading, spacing: 8) {
-                    ForEach(Array(figures.enumerated()), id: \.offset) { _, figure in
-                        ClaimText(figure) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(verbatim: figure.value?.display ?? "").font(.headline).monospacedDigit()
-                                Text(verbatim: figure.text).font(.callout).foregroundStyle(.readableSecondary)
+                // Three to a row where the box score has no room (the narrow column), each with its basis a click away
+                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 18, verticalSpacing: 10) {
+                    ForEach(Array(stride(from: 0, to: figures.count, by: 3)), id: \.self) { start in
+                        GridRow {
+                            ForEach(Array(figures[start..<min(start + 3, figures.count)].enumerated()), id: \.offset) { _, figure in
+                                ClaimText(figure) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(verbatim: figure.value?.display ?? "").font(.headline).monospacedDigit()
+                                        Text(verbatim: figure.text).font(.callout).foregroundStyle(.readableSecondary)
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
             .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("Key Figures"))
             .accessibilityIdentifier("office.figures")
         }
     }

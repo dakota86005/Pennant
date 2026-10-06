@@ -17,10 +17,14 @@ struct HorizonBoardView: View {
     var body: some View {
         let store = model.office
         OfficeState(payload: store.horizon, problem: store.problems[OfficeStore.View.horizonBoard.rawValue]) { view in
+            VStack(alignment: .leading, spacing: 0) {
+            // The head stays put above the board, never under the toolbar's scroll edge
+            OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness,
+                       refreshing: model.officeUpdating(.horizonBoard))
+                .padding(.horizontal, 28).padding(.top, 16).padding(.bottom, 10)
+            Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    OfficeHead(title: view.title.display, byline: view.byline, lede: view.lede, freshness: view.freshness,
-                               refreshing: model.officeUpdating(.horizonBoard))
                     ViewThatFits(in: .horizontal) {
                         HorizonGrid(view: view).frame(minWidth: 760)
                         HorizonCards(view: view)
@@ -30,10 +34,12 @@ struct HorizonBoardView: View {
                         Label { Text(verbatim: unknown.display) } icon: { ToneMark(served: unknown.tone) }.font(.callout)
                     }
                 }
-                .padding(.horizontal, 28).padding(.vertical, 24)
+                .padding(.horizontal, 28).padding(.vertical, 20)
                 .frame(maxWidth: 1200, alignment: .leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.readablePage)
             .accessibilityIdentifier("horizon.page")
         }
