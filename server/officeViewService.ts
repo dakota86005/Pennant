@@ -3,16 +3,19 @@
  * club's inputs in the Front Office's worker (`officeViewsBuild.ts`), so a view switch is a cached read and no request
  * waits behind a build.
  *
- * - **Keyed on what the answer depends on**, the Front Office's own key (`frontOfficeInputsKey`: the club, the import,
- *   the settings and configuration files, the live log, the calibration revision). The budget the GM expects next season
- *   is a setting, so entering it moves the key and the next read builds again. A build that read across an import's swap
- *   is handed to the requests waiting on it and not kept.
+ * - **Keyed on what the answer depends on** (`officeViewsKey`): the club, the import, the settings and configuration
+ *   files and the calibration revision (the Front Office's key without OOTP's live log), and the export's freshness as
+ *   derived (its state and how many days behind). The views read the live log only through that freshness (Payroll and
+ *   Contracts leave service time blank when the export is behind), so a write to the log that leaves it as it was keeps
+ *   them (N12 review, M1). The budget the GM expects next season is a setting, so entering it moves the key and the next
+ *   read builds again. A build that read across an import's swap is handed to the requests waiting on it and not kept.
  * - **Warmed** after each kept build of the club's Front Office (`onFrontOfficeKept`): after an import, the club's
  *   Finance and Medical views are ready by the time the GM opens them. Another club's are built on its first open, then
  *   kept until the next import. **Bounded:** four builds, oldest dropped first.
  */
 import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
-import { FrontOfficeRefusal, NO_DATA, frontOfficeInputsKey, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
+import { freshnessCue, getDataStatus } from './dataStatus.js';
+import { FrontOfficeRefusal, NO_DATA, frontOfficeInputsKeyWithoutLog, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
 import { buildOfficeViews, type OfficePart, type OfficeViewsResult } from './officeViewsBuild.js';
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored } from './presentation/claim.js';
@@ -45,6 +48,15 @@ export function resetOfficeViews(): void {
   Object.assign(stats, { builds: 0, hits: 0 });
 }
 
+/**
+ * What the club's views depend on, as one string: the Front Office's inputs without the live log, and the export's
+ * freshness as derived from the save and the log (never the log's raw file stats).
+ */
+export function officeViewsKey(orgId: number): string {
+  const cue = freshnessCue(getDataStatus({ importedAt: importedAt.value }));
+  return `${frontOfficeInputsKeyWithoutLog(orgId)}|${cue.state}/${cue.lagDays}`;
+}
+
 /** The club's Finance and Medical views for the current inputs: the kept ones, the ones being built, or a new build. */
 async function current(orgId: number): Promise<Kept> {
   if (!tableExists('players')) throw new FrontOfficeRefusal(NO_DATA, 404);
@@ -53,7 +65,7 @@ async function current(orgId: number): Promise<Kept> {
     await upgrade;
     return current(orgId);
   }
-  const key = frontOfficeInputsKey(orgId);
+  const key = officeViewsKey(orgId);
   const hit = kept.get(key);
   if (hit) {
     stats.hits += 1;
@@ -70,7 +82,7 @@ async function current(orgId: number): Promise<Kept> {
       adoptAuthored(result);
       const entry: Kept = { key, result };
       // Kept only when nothing moved under it: no swap to another import, the same inputs
-      if (databaseGeneration() === startedGeneration && frontOfficeInputsKey(orgId) === key) {
+      if (databaseGeneration() === startedGeneration && officeViewsKey(orgId) === key) {
         kept.delete(key);
         kept.set(key, entry);
         while (kept.size > MAX_BUILDS) kept.delete(kept.keys().next().value!);

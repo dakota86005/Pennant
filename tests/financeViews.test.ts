@@ -1,16 +1,18 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { computeContracts } from '../server/contracts.js';
 import { orgInjuries } from '../server/dashboard.js';
 import { db, tableColumns } from '../server/db.js';
-import { getDataStatus } from '../server/dataStatus.js';
+import { freshnessCue, getDataStatus } from '../server/dataStatus.js';
 import { computeFreeAgents } from '../server/freeagents.js';
-import { FrontOfficeRefusal, resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { loadConfig, saveConfig } from '../server/config.js';
+import { FrontOfficeRefusal, frontOfficeInputsKey, relocateLiveLog, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { buildOfficeViews } from '../server/officeViewsBuild.js';
 import {
   financeContractsNow, financeFreeAgentsNow, financeHorizonNow, financePayrollNow, medicalInjuryReportNow, officeViewStats,
-  resetOfficeViews, setFinanceBudget,
+  officeViewsKey, resetOfficeViews, setFinanceBudget,
 } from '../server/officeViewService.js';
 import { computePayroll } from '../server/payroll.js';
 import { freeAgentsView } from '../server/presentation/finance/freeAgents.js';
@@ -300,6 +302,41 @@ describe('kept per import (N12)', () => {
     await Promise.all([financeContractsNow(String(save.org)), financeFreeAgentsNow(String(save.org)), financeHorizonNow(String(save.org)), medicalInjuryReportNow(String(save.org))]);
     expect(officeViewStats().builds).toBe(builds);
     expect(officeViewStats().hits).toBeGreaterThanOrEqual(4);
+  });
+
+  it('keeps the views through a write to OOTP\'s live log that leaves the export\'s freshness as it was', async () => {
+    // A pretend save with a live log beside it, chosen by hand: the Front Office keys on the log's files, the views on
+    // the freshness derived from them
+    const lg = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-live-log-')) + '/Pretend.lg';
+    fs.mkdirSync(path.join(lg, 'temp'), { recursive: true });
+    fs.mkdirSync(path.join(lg, 'import_export', 'csv'), { recursive: true });
+    const wal = path.join(lg, 'temp', 'text_data.sqlite3-wal');
+    fs.writeFileSync(path.join(lg, 'temp', 'text_data.sqlite3'), 'not a log');
+    fs.writeFileSync(wal, 'x');
+    const before = loadConfig();
+    try {
+      saveConfig({ ...before, lgPath: lg });
+      relocateLiveLog();
+      resetOfficeViews();
+      await financePayrollNow(String(save.org));
+      const builds = officeViewStats().builds;
+      const officeKey = officeViewsKey(save.org);
+      const rawKey = frontOfficeInputsKey(save.org);
+      fs.appendFileSync(wal, 'another write');
+      fs.utimesSync(wal, new Date(), new Date(Date.now() + 5_000));
+      expect(frontOfficeInputsKey(save.org)).not.toBe(rawKey);
+      expect(officeViewsKey(save.org)).toBe(officeKey);
+      // The freshness stays in the key: an export gone behind blanks service time in Payroll and Contracts
+      const cue = freshnessCue(getDataStatus());
+      expect(officeKey.endsWith(`|${cue.state}/${cue.lagDays}`)).toBe(true);
+      await financePayrollNow(String(save.org));
+      expect(officeViewStats().builds).toBe(builds);
+    } finally {
+      saveConfig(before);
+      relocateLiveLog();
+      fs.rmSync(path.dirname(lg), { recursive: true, force: true });
+      resetOfficeViews();
+    }
   });
 
   it('builds another club\'s on its first open and keeps it', async () => {

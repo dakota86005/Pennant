@@ -160,18 +160,21 @@ export function forgetLiveLog(): void {
   located = null;
 }
 
-/** Everything the answer for this club depends on, as one string. */
-function inputsKey(orgId: number): string {
-  const config = statKey(path.join(DATA_DIR, 'config.json'));
-  const live = liveLogFiles();
+/** Everything the answer for this club depends on but OOTP's live log: the club, the import, the revision, the files. */
+function inputsKeyWithoutLog(orgId: number): string {
   return [
     orgId,
     importedAt.value ?? 'none',
     revision,
     statKey(path.join(DATA_DIR, 'settings.json')),
-    config,
-    live ? `${statKey(live.db)}/${statKey(live.wal)}` : 'no-log',
+    statKey(path.join(DATA_DIR, 'config.json')),
   ].join('|');
+}
+
+/** Everything the answer for this club depends on, as one string. */
+function inputsKey(orgId: number): string {
+  const live = liveLogFiles();
+  return `${inputsKeyWithoutLog(orgId)}|${live ? `${statKey(live.db)}/${statKey(live.wal)}` : 'no-log'}`;
 }
 
 /** A build's stamp: a short hash of its key (FNV-1a), the same for the same inputs. */
@@ -284,6 +287,14 @@ export async function runDepartmentJob<T>(job: DepartmentJob, inProcess: () => T
 /** Everything a club's answers depend on, as one string (N10: the farm's views key on the Front Office's inputs). */
 export function frontOfficeInputsKey(orgId: number): string {
   return inputsKey(orgId);
+}
+
+/**
+ * The same key without OOTP's live log (N12 review, M1): for a consumer that depends on the log only through what it
+ * derives from it (the export's freshness), and so keys on that instead of on every write to the log.
+ */
+export function frontOfficeInputsKeyWithoutLog(orgId: number): string {
+  return inputsKeyWithoutLog(orgId);
 }
 
 /** A key's stamp, as every payload built for it carries (`reportStamp`). */
