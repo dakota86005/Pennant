@@ -1415,9 +1415,12 @@ final class PennantUITests: XCTestCase {
     func testPlayerSearchFullPageAudit() throws {
         let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
         waitForShell(app)
-        app.typeKey("4", modifierFlags: .command)
         let item = element(app, "sidebar.scouting.playerSearch")
         let sidebar = element(app, "sidebar")
+        if !item.waitForExistence(timeout: 5) {
+            // Scouting folded: the Go menu opens it (⌘4), unfolding its views, as the narrow test does
+            app.typeKey("4", modifierFlags: .command)
+        }
         XCTAssertTrue(item.waitForExistence(timeout: 30), "the sidebar has no Player Search")
         if !item.isHittable { reveal(item, in: sidebar) }
         within(item, in: sidebar)
