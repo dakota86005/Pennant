@@ -160,7 +160,6 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testPlayerWindowRestored configured '{"theme":"light"}'
   prepare_ui_test testPlayerNarrowWindow configured '{"theme":"light"}'
   prepare_ui_test testPlayerNoteKeptOnLeaving configured '{"theme":"light"}'
-  prepare_ui_test testFindAnythingAfterAWindowClosedAndAQuitAtOnce configured '{"theme":"light"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
   for only in ${PENNANT_TEST_ONLY:-}; do signing+=("-only-testing:$only"); done

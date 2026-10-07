@@ -1936,28 +1936,13 @@ final class PennantUITests: XCTestCase {
         quitCleanly(again)
     }
 
-    /// ⌘K answers at the launch after the GM closed a player's window and quit at once (PR #58: on GitHub's macOS 26
-    /// runner, the launch after testPlayerNoteKeptOnLeaving, whose last launches close his window and quit at once,
-    /// received no key at all, though it was in front with its window key).
-    @MainActor
-    func testFindAnythingAfterAWindowClosedAndAQuitAtOnce() throws {
-        let first = launch(arguments: ["-PennantDebugOpenPlayer", "1000"])
-        waitForShell(first)
-        XCTAssertTrue(playerWindow(first, "1000").waitForExistence(timeout: 15), "the player's window did not open")
-        XCTAssertTrue(element(first, "player.header").waitForExistence(timeout: 30))
-        first.windows.containing(.any, identifier: "player.window.1000").firstMatch.buttons[XCUIIdentifierCloseWindow].click()
-        quitCleanly(first)
-        let again = launch()
-        waitForShell(again)
-        XCTAssertTrue(element(again, "masthead").waitForExistence(timeout: 30))
-        again.typeKey("k", modifierFlags: .command)
-        XCTAssertTrue(paletteOpened(again, element(again, "palette.query")), "⌘K did not open the palette at the next launch")
-        again.typeKey(.escape, modifierFlags: [])
-        quitCleanly(again)
-    }
-
     /// The GM's note survives leaving it at once (review H2): typed, then another section chosen and the app quit at
     /// once; typed again, then the window closed and the app quit at once. Each time the next launch reads it back.
+    /// The window is closed with ⌘W (File ▸ Close, the close button's own `performClose`), never by a click on its close
+    /// button: that click leaves the pointer resting on the button, and on GitHub's 1024 × 768 runner the player's window
+    /// (920 points wide, centred at x 52) has its close button exactly where the next launch's main window (at x 0) has
+    /// its zoom button. Resting there, the pointer opens macOS 26's window-tiling menu over the next test's window
+    /// (AppKit's ThemeWidgetControlViewService), and that menu takes every key the test types (PR #58).
     @MainActor
     func testPlayerNoteKeptOnLeaving() throws {
         let notes = { (app: XCUIApplication) -> XCUIElement in
@@ -1990,16 +1975,17 @@ final class PennantUITests: XCTestCase {
         quitCleanly(first)
         let second = open()
         reads(second, "Kept on switching")
-        // Typed again, then the window closed by its own button at once, then quit at once
+        // Typed again, then the window closed at once (⌘W), then quit at once
         let again = notes(second)
         again.click()
         again.typeKey("a", modifierFlags: .command)
         again.typeText("Kept on closing")
-        second.windows.containing(.any, identifier: "player.window.1000").firstMatch.buttons[XCUIIdentifierCloseWindow].click()
+        second.typeKey("w", modifierFlags: .command)
         quitCleanly(second)
         let third = open()
         reads(third, "Kept on closing")
-        third.windows.containing(.any, identifier: "player.window.1000").firstMatch.buttons[XCUIIdentifierCloseWindow].click()
+        third.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(playerWindow(third, "1000").waitForNonExistence(timeout: 5), "⌘W did not close his window")
         quitCleanly(third)
     }
 
