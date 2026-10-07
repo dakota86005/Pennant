@@ -11,6 +11,8 @@ import XCTest
 final class PennantUITests: XCTestCase {
     private var environment: [String: String] { ProcessInfo.processInfo.environment }
     private var scratch: URL!
+    /// Whether this test has launched the app yet (its first launch starts from fresh defaults).
+    private var launchedThisTest = false
     private var dataFolder: URL!
 
     /// The running test's method name (`testSetupFlowOnAScratchFolder`), the name of its prepared folder.
@@ -91,7 +93,11 @@ final class PennantUITests: XCTestCase {
         // running the tests (Pennant asks at the first export read while it is in front, L4)
         // (N11: a test of restoration keeps the windows open at quit and restores them at the next launch)
         let state = restoresState ? ["-ApplePersistenceIgnoreState", "NO", "-NSQuitAlwaysKeepsWindows", "YES"] : ["-ApplePersistenceIgnoreState", "YES"]
-        app.launchArguments += state + ["-PennantNotifiesNewExport", "NO"] + arguments
+        // Each test's first launch starts from fresh app defaults (window frames, choices), so nothing an earlier test
+        // left there reaches it; a test's later launches keep what its own first launch wrote
+        let fresh = launchedThisTest ? [] : ["-PennantTestFreshDefaults", "YES"]
+        launchedThisTest = true
+        app.launchArguments += state + fresh + ["-PennantNotifiesNewExport", "NO"] + arguments
         app.launch()
         return app
     }
@@ -114,6 +120,14 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(sidebar.exists)
         // The shell is drawn while the server starts (N6, Stage B2): the view says "Starting…" until it is ready
         XCTAssertTrue(element(app, "server.waiting").waitForNonExistence(timeout: 60), "the server did not become ready; see \(scratch.path)/logs/server.log")
+        // Key equivalents (⌘K, ⌘1…) go to the app in front; a launch that left Pennant behind another app is said and
+        // brought forward (PR #58 on the runner: ⌘K and ⌘4 typed after a launch reached no Pennant window, while typing
+        // into a clicked field, which brings the app forward, worked)
+        if app.state != .runningForeground {
+            print("[focus] \(methodName): Pennant was not in front after launch (state \(app.state.rawValue)); brought forward")
+            app.activate()
+            _ = app.wait(for: .runningForeground, timeout: 5)
+        }
     }
 
     @MainActor
@@ -428,6 +442,15 @@ final class PennantUITests: XCTestCase {
     /// ⌘Q, and the app gone within 20 seconds with its server stopped. ⌘Q goes to the app in front: one that is not (its
     /// last key window just closed) is brought forward first, and said in the log. A quit that does not finish says the
     /// app's state and windows; the app's own log (`logs/server.log`, kept by `test.sh`) says how far the quit went.
+    /// The palette's field appeared after ⌘K; when it did not, the windows then are printed for the CI log (PR #58).
+    @MainActor
+    private func paletteOpened(_ app: XCUIApplication, _ query: XCUIElement) -> Bool {
+        if query.waitForExistence(timeout: 5) { return true }
+        let windows = app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame) key=\($0.isHittable)" }
+        print("[palette] \(methodName): no palette 5 s after ⌘K (state \(app.state.rawValue)); windows: \(windows)")
+        return false
+    }
+
     @MainActor
     private func quitCleanly(_ app: XCUIApplication) {
         if app.state != .runningForeground {
@@ -787,7 +810,7 @@ final class PennantUITests: XCTestCase {
         // ⌘K: the palette, its query, the arrow keys and Return
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
-        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        XCTAssertTrue(paletteOpened(app, query), "⌘K did not open the palette")
         // The query takes the keyboard as the palette opens; a click makes sure of it on a runner whose window is slow
         // to become key
         query.click()
@@ -1500,7 +1523,7 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30))
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
-        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        XCTAssertTrue(paletteOpened(app, query), "⌘K did not open the palette")
         query.click()
         query.typeText("club 3")
         let result = element(app, "palette.result.search.club.3")
@@ -1900,7 +1923,7 @@ final class PennantUITests: XCTestCase {
         // From the palette: the server's player result opens his window
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
-        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        XCTAssertTrue(paletteOpened(app, query), "⌘K did not open the palette")
         query.click()
         query.typeText("p 1000")
         let result = element(app, "palette.result.search.player.1000")
