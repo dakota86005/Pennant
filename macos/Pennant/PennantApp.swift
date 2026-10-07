@@ -151,6 +151,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.noteLaunchStep("the app finished launching")
         terminationSignal = Self.quitOnTerminationSignal()
+        #if DEBUG
+        // A UI test's launch: each key equivalent and the modifier keys held, said in the app's log (PR #58)
+        if UserDefaults.standard.bool(forKey: "PennantTestLogKeys") { KeyEquivalentLog.start(appLog) }
+        #endif
         outside.start()
         Task { await model.start() }
         #if DEBUG

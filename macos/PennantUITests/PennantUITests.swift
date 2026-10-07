@@ -97,9 +97,28 @@ final class PennantUITests: XCTestCase {
         // left there reaches it; a test's later launches keep what its own first launch wrote
         let fresh = launchedThisTest ? [] : ["-PennantTestFreshDefaults", "YES"]
         launchedThisTest = true
-        app.launchArguments += state + fresh + ["-PennantNotifiesNewExport", "NO"] + arguments
+        // Each key equivalent the app receives, and the modifier keys held at launch, said in its log (PR #58)
+        app.launchArguments += state + fresh + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
         app.launch()
         return app
+    }
+
+    /// A launch's arguments on a Mac with a larger screen than GitHub's runner, as the runner's 1024 × 768 screen holds
+    /// the main window (`PENNANT_UI_WINDOW_CAP=1024x677`, set as `TEST_RUNNER_PENNANT_UI_WINDOW_CAP` for `test.sh`): a
+    /// `-PennantDebugWindowSize` asked for is made no larger, and one is added where none was, so a local run reproduces
+    /// the runner's window. Without it the arguments are unchanged.
+    private func capped(_ arguments: [String]) -> [String] {
+        guard let cap = environment["PENNANT_UI_WINDOW_CAP"]?.split(separator: "x").compactMap({ Int($0) }), cap.count == 2 else {
+            return arguments
+        }
+        var arguments = arguments
+        if let at = arguments.firstIndex(of: "-PennantDebugWindowSize"), at + 1 < arguments.count {
+            let asked = arguments[at + 1].split(separator: "x").compactMap { Int($0) }
+            if asked.count == 2 { arguments[at + 1] = "\(min(asked[0], cap[0]))x\(min(asked[1], cap[1]))" }
+        } else {
+            arguments += ["-PennantDebugWindowSize", "\(cap[0])x\(cap[1])"]
+        }
+        return arguments
     }
 
     @MainActor
@@ -433,6 +452,14 @@ final class PennantUITests: XCTestCase {
         let item = view.menus.menuItems["Find Anything…"]
         let shown = item.exists ? "exists, enabled \(item.isEnabled)" : "missing"
         print("[palette] \(methodName): menu bar View \(view.exists ? "exists" : "missing"); View ▸ Find Anything… \(shown)")
+        // The keyboard as the system holds it now (a modifier key stuck down turns ⌘K into another shortcut), and the app
+        // in front by the system's account
+        let held = CGEventSource.flagsState(.combinedSessionState)
+        let names: [(CGEventFlags, String)] = [(.maskCommand, "⌘"), (.maskShift, "⇧"), (.maskAlternate, "⌥"), (.maskControl, "⌃"),
+                                              (.maskAlphaShift, "caps lock"), (.maskSecondaryFn, "fn")]
+        let keys = names.filter { held.contains($0.0) }.map(\.1)
+        let front = NSWorkspace.shared.frontmostApplication.map { "\($0.bundleIdentifier ?? "?") pid \($0.processIdentifier)" } ?? "none"
+        print("[palette] \(methodName): modifier keys held now: \(keys.isEmpty ? "none" : keys.joined(separator: " ")); frontmost app: \(front); see the app's log for the keys it received")
         return false
     }
 
