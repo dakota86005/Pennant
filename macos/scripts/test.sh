@@ -183,8 +183,8 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   # printed by the tests, repeated here for the CI log
   grep -E "^\[(audit|quit|palette|focus)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
   # Each test's app log (the server's lines and the app's own: the launch, the quit's steps), kept with the run's logs
-  # (the CI artifact): the synthetic league's only
-  for log in "$UI_SCRATCH"/*/logs/server*.log; do
+  # (the CI artifact): the synthetic league's only. With them, a hung main thread's stack (`hang-*.log`, PR #60)
+  for log in "$UI_SCRATCH"/*/logs/server*.log "$UI_SCRATCH"/*/logs/hang-*.log; do
     [ -f "$log" ] || continue
     test_name="$(basename "$(dirname "$(dirname "$log")")")"
     mkdir -p "$LOGS/ui-tests/$test_name"

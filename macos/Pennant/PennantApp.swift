@@ -92,6 +92,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The app's own log (the quit's steps).
     private let appLog: @Sendable (String) -> Void
     private var terminationSignal: (any DispatchSourceSignal)?
+    #if DEBUG
+    private var watchdog: MainThreadWatchdog?
+    #endif
 
     override init() {
         #if DEBUG
@@ -153,7 +156,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         terminationSignal = Self.quitOnTerminationSignal()
         #if DEBUG
         // A UI test's launch: each key equivalent and the modifier keys held, said in the app's log (PR #58)
-        if UserDefaults.standard.bool(forKey: "PennantTestLogKeys") { KeyEquivalentLog.start(appLog) }
+        if UserDefaults.standard.bool(forKey: "PennantTestLogKeys") {
+            KeyEquivalentLog.start(appLog)
+            // …and the main thread's stack when it stops answering for 5 s (PR #60)
+            let watchdog = MainThreadWatchdog(folder: model.serverController.log.url.deletingLastPathComponent(), log: appLog)
+            watchdog.start()
+            self.watchdog = watchdog
+        }
         #endif
         outside.start()
         Task { await model.start() }

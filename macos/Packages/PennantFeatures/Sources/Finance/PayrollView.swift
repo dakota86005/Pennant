@@ -131,7 +131,13 @@ struct PayrollChart: View {
         return palette.isNeutral ? Color.accentColor : palette.accent
     }
 
+    /// The money axis, fixed from every figure drawn (`MoneyScale`: why it is never Charts' automatic one).
+    static func scale(_ view: Components.Schemas.FinancePayrollView) -> MoneyScale {
+        MoneyScale(view.seasons.flatMap { [$0.committed, $0.projected?.high, $0.budget].compactMap { $0 } } + [view.budget.amount].compactMap { $0 })
+    }
+
     var body: some View {
+        let scale = Self.scale(view)
         Chart {
             ForEach(view.seasons, id: \.season) { season in
                 BarMark(
@@ -150,7 +156,7 @@ struct PayrollChart: View {
                     )
                     .foregroundStyle(accent.opacity(0.25))
                     .position(by: .value("Money", "Projected"))
-                    .annotation(position: .overlay) {
+                    .annotation(position: .overlay, overflowResolution: .init(x: .disabled, y: .disabled)) {
                         Rectangle().strokeBorder(accent, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
                     }
                 }
@@ -167,7 +173,8 @@ struct PayrollChart: View {
                         height: .fixed(expected ? 1.5 : 2)
                     )
                     .foregroundStyle(Color.primary.opacity(expected ? 0.5 : 0.7))
-                    .annotation(position: expected ? .bottom : .top, alignment: .leading) {
+                    .annotation(position: expected ? .bottom : .top, alignment: .leading,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
                         if index == 0 {
                             Text(verbatim: view.budget.label.display).font(.caption).foregroundStyle(.readableSecondary)
                         } else if expected, index == 1, let label = view.expectedBudget?.label {
@@ -177,16 +184,10 @@ struct PayrollChart: View {
                 }
             }
         }
-        .chartYAxis {
-            AxisMarks { value in
-                AxisGridLine()
-                AxisValueLabel {
-                    if let dollars = value.as(Double.self) {
-                        Text(dollars, format: .currency(code: "USD").notation(.compactName).precision(.fractionLength(0)))
-                    }
-                }
-            }
-        }
+        // Both axes fixed: the seasons served, and the money scale (never sized by the plot, PR #60)
+        .chartXScale(domain: view.seasons.map { String($0.season) })
+        .chartYScale(domain: scale.domain)
+        .chartYAxis { scale.axisMarks }
         .chartLegend(.hidden)
         .frame(height: 240)
         .accessibilityElement(children: .ignore)
@@ -211,10 +212,9 @@ struct PayrollDescriptor: AXChartDescriptorRepresentable {
     func makeChartDescriptor() -> AXChartDescriptor {
         let seasons = view.seasons.map { String($0.season) }
         let x = AXCategoricalDataAxisDescriptor(title: String(localized: "Season"), categoryOrder: seasons)
-        let high = max(view.seasons.map { max($0.committed, $0.projected?.high ?? 0, $0.budget ?? 0) }.max() ?? 1, view.budget.amount ?? 0, 1)
         let y = AXNumericDataAxisDescriptor(
             title: String(localized: "Committed"),
-            range: 0...high,
+            range: PayrollChart.scale(view).domain,
             gridlinePositions: view.budget.amount.map { [$0] } ?? [],
             valueDescriptionProvider: audioGraphDollars
         )
