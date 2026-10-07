@@ -12,6 +12,7 @@ import SwiftUI
 /// inspector, the sidebar and its open departments; SWIFTUI_REBUILD.md section 3.1).
 struct MainWindowScene: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(AppRouting.self) private var routing
     @SceneStorage("pennant.history") private var historyData = Data()
     @SceneStorage("pennant.inspector") private var inspectorPresented = false
     @SceneStorage("pennant.sidebarVisible") private var sidebarVisible = true
@@ -40,6 +41,8 @@ struct MainWindowScene: View {
                 sidebarVisible: sidebarVisible,
                 expanded: expanded
             )
+            // Find Anything (⌘K) chosen with every main window closed: this one opens with the palette up
+            if routing.takePaletteRequest() { restored.showPalette() }
             #if DEBUG
             // A Debug build launched by a script for window screenshots can open with the ⌘K palette up
             // (`-PennantDebugPalette <query>`) or with a route (`-PennantDebugRoute department.view`, or

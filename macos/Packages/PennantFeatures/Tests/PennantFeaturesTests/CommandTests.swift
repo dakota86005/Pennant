@@ -35,6 +35,35 @@ struct CommandAvailabilityTests {
         #expect(!down.goToDepartment && !down.back && !down.forward && !down.inspector)
     }
 
+    @Test("Find Anything works from any window once the server is ready (a player's window key, or none)")
+    func findAnythingFromAnyWindow() {
+        #expect(CommandAvailability(serverReady: true, configured: true, importing: false, window: nil).findAnything)
+        #expect(CommandAvailability(serverReady: true, configured: true, importing: false, window: (false, false)).findAnything)
+        #expect(!CommandAvailability(serverReady: false, configured: true, importing: false, window: nil).findAnything)
+    }
+
+    @MainActor
+    @Test("the palette asked from another window comes up and stays up, its query cleared")
+    func showPalette() {
+        let window = MainWindowModel(registry: DepartmentRegistry(allDepartments))
+        window.paletteQuery = "old"
+        window.showPalette()
+        #expect(window.paletteShown && window.paletteQuery.isEmpty)
+        window.paletteQuery = "typed"
+        window.showPalette()
+        #expect(window.paletteShown && window.paletteQuery == "typed")
+    }
+
+    @MainActor
+    @Test("a palette asked with every main window closed is taken once, by the next main window")
+    func paletteRequest() {
+        let routing = AppRouting()
+        #expect(!routing.takePaletteRequest())
+        routing.requestPalette()
+        #expect(routing.takePaletteRequest())
+        #expect(!routing.takePaletteRequest())
+    }
+
     @MainActor
     @Test("reads the app's model and the key window")
     func fromModel() {

@@ -20,6 +20,8 @@ public final class AppRouting {
     public var settingsTab: SettingsTab = .general
     /// Club ▸ Data Status: General scrolls to the data status once.
     public var revealDataStatus = false
+    /// Find Anything (⌘K) with every main window closed: the main window that opens next opens with its palette up.
+    private var paletteRequestPending = false
     /// Bumped each time something asks the Setup window to start again at the save step.
     public private(set) var setupRequest = 0
     /// A request to start again that the Setup window has not taken yet (it may open only after the request is made).
@@ -102,6 +104,17 @@ public final class AppRouting {
         return true
     }
 
+    /// Find Anything (⌘K) with no main window open: the next main window opens with its palette up.
+    public func requestPalette() {
+        paletteRequestPending = true
+    }
+
+    /// The request for the palette, once: the main window that opens next takes it.
+    public func takePaletteRequest() -> Bool {
+        defer { paletteRequestPending = false }
+        return paletteRequestPending
+    }
+
     /// Club ▸ Data Status: Settings, on General, at the data status.
     public func showDataStatus() {
         settingsTab = .general
@@ -119,7 +132,8 @@ public struct CommandAvailability: Equatable, Sendable {
     public var back: Bool
     public var forward: Bool
     public var inspector: Bool
-    /// View ▸ Find Anything… (⌘K): a key main window whose server is ready.
+    /// View ▸ Find Anything… (⌘K): the server is ready, whichever window is key (PR #58). With no main window key the
+    /// main window used last comes forward with its palette, or a new one opens with it.
     public var findAnything: Bool
 
     /// - Parameters:
@@ -135,7 +149,7 @@ public struct CommandAvailability: Equatable, Sendable {
         back = serverReady && (window?.canGoBack ?? false)
         forward = serverReady && (window?.canGoForward ?? false)
         inspector = window != nil && serverReady
-        findAnything = window != nil && serverReady
+        findAnything = serverReady
     }
 
     /// For the app's model and the key window.

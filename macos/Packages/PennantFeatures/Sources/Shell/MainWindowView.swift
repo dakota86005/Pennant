@@ -28,6 +28,8 @@ public struct MainWindowView: View {
             }
         }
         .focusedSceneValue(\.mainWindow, model.isReady ? window : nil)
+        // The main window used last, for Find Anything from any other window (PR #58)
+        .background(MainWindowTracker(model: window))
         .onAppear { AfterNextFrame.run { model.noteLaunchStep("the main window's first frame is drawn") } }
         .onChange(of: model.needsSetup, initial: true) { _, needsSetup in
             if routing.shouldOpenSetupAutomatically(needsSetup: needsSetup) {

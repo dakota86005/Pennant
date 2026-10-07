@@ -24,6 +24,11 @@ final class PennantUITests: XCTestCase {
         guard let root = environment["PENNANT_UI_SCRATCH"] else {
             throw XCTSkip("PENNANT_UI_SCRATCH is not set: the UI tests run only on scratch data folders (macos/scripts/test.sh)")
         }
+        // Independent of the test before it (PR #58 on the runner: a quit that did not finish left that app running past
+        // its tear-down, writing its saved windows again, and the next tests found the keyboard elsewhere): no earlier
+        // instance still running, and no saved windows, before anything is launched
+        endEarlierInstances()
+        removeSavedState()
         scratch = URL(fileURLWithPath: root).appending(path: methodName, directoryHint: .isDirectory)
         dataFolder = scratch.appending(path: "data", directoryHint: .isDirectory)
         guard FileManager.default.fileExists(atPath: dataFolder.appending(path: "league.db").path(percentEncoded: false)) else {
@@ -36,10 +41,33 @@ final class PennantUITests: XCTestCase {
     /// (and the next run) opens without them (review L6). The app's own saved-state folder, under the real home; a runner
     /// that may not reach it leaves it, and `test.sh` removes it after the run as well.
     override func tearDownWithError() throws {
+        removeSavedState()
+    }
+
+    /// The app's saved windows (its saved-state folder, under the real home), removed.
+    private func removeSavedState() {
         guard let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir else { return }
         let state = URL(fileURLWithPath: String(cString: home))
             .appending(path: "Library/Saved Application State/com.dakotawise.pennant.dev.savedState", directoryHint: .isDirectory)
         try? FileManager.default.removeItem(at: state)
+    }
+
+    /// The app this suite drives (its Debug build's identifier): any instance still running from an earlier test (one whose
+    /// quit did not finish) is asked to quit, then ended if it has not within 20 seconds, so a test never starts beside it.
+    private func endEarlierInstances() {
+        let id = "com.dakotawise.pennant.dev"
+        func running() -> [NSRunningApplication] { NSRunningApplication.runningApplications(withBundleIdentifier: id) }
+        func waitForNone(_ seconds: TimeInterval) -> Bool {
+            let deadline = Date.now.addingTimeInterval(seconds)
+            while !running().isEmpty, Date.now < deadline { RunLoop.current.run(until: Date.now.addingTimeInterval(0.2)) }
+            return running().isEmpty
+        }
+        guard !running().isEmpty else { return }
+        print("[quit] \(methodName): an earlier instance of the app is still running; asking it to quit")
+        running().forEach { $0.terminate() }
+        if waitForNone(20) { return }
+        running().forEach { $0.forceTerminate() }
+        XCTAssertTrue(waitForNone(10), "an earlier instance of the app is still running")
     }
 
     // MARK: Helpers
@@ -51,6 +79,8 @@ final class PennantUITests: XCTestCase {
 
     @MainActor
     private func launch(arguments: [String] = [], environment: [String: String] = [:], restoresState: Bool = false) -> XCUIApplication {
+        // The last launch has quit (`quitCleanly`) or is ended now, never left beside this one
+        endEarlierInstances()
         let app = XCUIApplication()
         app.launchEnvironment["PENNANT_DEV_DATA_DIR"] = dataFolder.path(percentEncoded: false)
         app.launchEnvironment["PENNANT_DEV_LOG_DIR"] = scratch.appending(path: "logs").path(percentEncoded: false)
@@ -289,8 +319,12 @@ final class PennantUITests: XCTestCase {
                 setAside.append(line + String(format: " (text on a 1× screen whose own pixels read at %.1f:1)", ratio))
             } else if issue.auditType == .contrast {
                 // Never set aside: its own pixels are measured only to help find it
-                let ratio = windows.first { $0.frame.contains(frame) }?.pixels?.contrast(in: frame)
-                issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""))
+                let holder = windows.first { $0.frame.contains(frame) }
+                let ratio = holder?.pixels?.contrast(in: frame)
+                // Where no pixels were read, the windows as measured, so the line says why (PR #58: a finding with none)
+                let unread = " (no pixels read: windows " + shots.map { "\($0.frame) pictured \(Int($0.shot.image.size.width))×\(Int($0.shot.image.size.height))" }
+                    .joined(separator: ", ") + (holder == nil ? "; none holds it)" : "; its window's picture is not at one scale)")
+                issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? unread))
                 pictured.append(element)
             } else {
                 issues.append(line)
@@ -391,10 +425,27 @@ final class PennantUITests: XCTestCase {
         XCTFail("the report did not come to rest at its top")
     }
 
+    /// ⌘Q, and the app gone within 20 seconds with its server stopped. ⌘Q goes to the app in front: one that is not (its
+    /// last key window just closed) is brought forward first, and said in the log. A quit that does not finish says the
+    /// app's state and windows; the app's own log (`logs/server.log`, kept by `test.sh`) says how far the quit went.
     @MainActor
     private func quitCleanly(_ app: XCUIApplication) {
+        if app.state != .runningForeground {
+            print("[quit] \(methodName): the app was not in front (state \(app.state.rawValue)); brought forward for ⌘Q")
+            app.activate()
+        }
         app.typeKey("q", modifierFlags: .command)
-        XCTAssertTrue(app.wait(for: .notRunning, timeout: 20))
+        let ended = app.wait(for: .notRunning, timeout: 20)
+        if !ended {
+            let windows = app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame)" }
+            print("[quit] \(methodName): still running 20 s after ⌘Q (state \(app.state.rawValue)); windows: \(windows)")
+            // Which process is it: the one that quit (its pid is in the app's log, "launch: this is process …"), or
+            // another instance something launched as it went (PR #58 on the macOS 26 runner)
+            let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.dakotawise.pennant.dev")
+                .map { "pid \($0.processIdentifier) launched \($0.launchDate.map { "\($0)" } ?? "?") terminated \($0.isTerminated)" }
+            print("[quit] \(methodName): Pennant processes now: \(running)")
+        }
+        XCTAssertTrue(ended, "the app did not quit within 20 s of ⌘Q; see \(scratch.path)/logs/server.log")
         XCTAssertFalse(FileManager.default.fileExists(atPath: dataFolder.appending(path: "server.lock").path))
     }
 
@@ -1838,7 +1889,8 @@ final class PennantUITests: XCTestCase {
 
     /// A player opens in his own window from anywhere (N11): the palette's served result, a table's row (a double-click),
     /// a name in a decision opened from the desk, and Following; opening him again brings his window forward rather than
-    /// a second one. Every section draws; the window is audited alone.
+    /// a second one. ⌘K in his window brings the main window forward with its palette (PR #58). Every section draws; the
+    /// window is audited alone.
     @MainActor
     func testPlayerWindows() throws {
         let app = launch(arguments: ["-PennantDebugWindowSize", "1280x820"])
@@ -1911,6 +1963,13 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(playerWindow(app, namedId).waitForExistence(timeout: 10), "a player named in the decision did not open his window")
         XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
         keep(app.windows.firstMatch.screenshot(), named: "n11-player-window-from-decision")
+        // ⌘K in his window (PR #58): the main window comes forward with its palette up; Escape puts it away
+        app.typeKey("k", modifierFlags: .command)
+        let palette = element(app, "palette.query")
+        XCTAssertTrue(palette.waitForExistence(timeout: 5), "⌘K in his window did not open the palette")
+        XCTAssertTrue(app.windows.firstMatch.identifier.hasPrefix("main"), "⌘K in his window left \(app.windows.firstMatch.identifier) in front")
+        palette.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element(app, "palette").waitForNonExistence(timeout: 5), "Escape did not put the palette away")
         // Audited alone (the main window closed, as a club's window is)
         try auditAlone(app, named: "accessibility-audit-n11-player-window")
         quitCleanly(app)
@@ -1921,7 +1980,7 @@ final class PennantUITests: XCTestCase {
     @MainActor
     func testCompareByMenuAndDrag() throws {
         // The Compare window against the screen's trailing edge, so its trailing side shows beside the main window
-        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugCompareWindowSize", "520x600"])
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugCompareWindowSize", "560x600"])
         waitForShell(app)
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30))
@@ -1978,10 +2037,12 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(playerWindow(again, "1000").waitForExistence(timeout: 30), "his window was not restored at relaunch")
         XCTAssertTrue(element(again, "player.header").waitForExistence(timeout: 60), "the restored window did not load his dossier")
         keep(again.windows.firstMatch.screenshot(), named: "n11-player-window-restored")
-        // Closed by its own close button (⌘W goes to whichever window is key), so the next launch opens without it
-        let restored = again.windows.containing(.any, identifier: "player.window.1000").firstMatch
-        restored.buttons[XCUIIdentifierCloseWindow].click()
-        XCTAssertTrue(playerWindow(again, "1000").waitForNonExistence(timeout: 5), "his window did not close")
+        // Quit with the restored window still open; setUp and tearDown remove the saved windows, so the next test opens
+        // without it. (Closing the restored window first and then quitting left the process unkillable on GitHub's
+        // macOS 26 runner, a virtual machine: the app's log shows the quit answered, applicationWillTerminate reached
+        // and the 5-second _exit net set, and the same pid alive 20 s later. A process _exit cannot end is held in the
+        // kernel, not by the app. Closing a window and quitting is still exercised by testPlayerNoteKeptOnLeaving, and
+        // the case is recorded in SWIFTUI_REBUILD "As built at N11".)
         quitCleanly(again)
     }
 

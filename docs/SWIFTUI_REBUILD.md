@@ -1575,7 +1575,10 @@ Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `
   its "why" lines as custom content.
 - **The ⌘K palette (section 3.6).** View ▸ Find Anything… (⌘K) opens `CommandPalette` over the window with the
   registry's views (their served names, the Go menu's ⌘1 to ⌘9 beside the first view of each department) and the
-  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes. Players
+  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes.
+  Since PR #58 (N11) ⌘K works from every window, as Open Quickly does in Xcode: with no main window key (a player's,
+  a club's or Compare's window in front, or none) the main window used last (`MainWindows`) comes forward with its
+  palette up, or a new main window opens with it; the app's log says which, with the key window's identifier. Players
   and clubs join when the server serves search (N7); the toolbar's search field stays a stub until then.
 - **The Morning Report today and at N6.** The app draws what is served: the masthead's kicker (the club and how current
   the report is), the served headline and the record; the desk in the lead column and the department tiles beside it;
@@ -1984,7 +1987,17 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   neither needs the main dispatch queue, which the nested run loop `.terminateLater` waits in cannot drain while it is
   inside a main-queue job (every main-actor `Task` is one). Asking to quit (`requestQuit()`, used by the SIGTERM
   handler and every future Quit) schedules `NSApp.terminate` on the main run loop for the same reason. A second request
-  while a reply is owed is cancelled. When the app is killed outright, the server sees stdin close and stops itself,
+  while a reply is owed is cancelled. The quit always finishes (PR #58): the last words (notes not kept yet) get 2 s and
+  are then given up, the reply goes out at 12 s whatever is still under way, and each step is written to the app's log
+  (`quit: asked`, `quit: the server is stopped`, …). AppKit ends the app inside `reply(toApplicationShouldTerminate:)`
+  itself, so nothing after the reply runs: an ask that comes after the reply quits at once (`.terminateNow`), and
+  before replying yes the coordinator starts a raw thread that calls `_exit(0)` 5 s later if the app is still there.
+  Open (PR #58, GitHub's macOS 26 runner, a virtual machine): after a *restored* player window was closed, a quit
+  answered yes reached `applicationWillTerminate`, set that net, and the same pid was still alive 20 s later (its
+  launch line and the running-process list in the UI test's output name it). A process `_exit` cannot end is held in
+  the kernel, not by the app; it was never seen on macOS 27, and closing an ordinary window and quitting passes on the
+  runner. The restoration test now quits with the restored window open; check it on a real macOS 26 Mac before
+  release (N14). When the app is killed outright, the server sees stdin close and stops itself,
   releasing the lock (checked on a real build).
 - stdout is read with a readability handler, a line at a time: `FileHandle.bytes.lines` held the ready line back until
   the pipe closed.
