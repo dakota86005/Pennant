@@ -839,7 +839,7 @@
         ],
         "rows": [],
         "empty": {
-          "display": "Not known: the export doesn't rate coaches for manager, pitching coach, hitting coach seats.",
+          "display": "Not known for the manager, pitching coach and hitting coach seats: the export has no rating there to measure against.",
           "tone": "unknown"
         }
       },

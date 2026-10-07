@@ -129,7 +129,7 @@ export function coachingStaffNow(org: string): CoachingStaffView {
   const key = frontOfficeInputsKey(orgId);
   const hit = staffKept.get(key);
   if (hit) return hit;
-  const view = coachingStaffView(contextFor(orgId), computeStaff(orgId));
+  const view = coachingStaffView(contextFor(orgId), computeStaff(orgId, { blankIsUnknown: true }));
   staffKept.set(key, view);
   while (staffKept.size > 4) staffKept.delete(staffKept.keys().next().value!);
   return view;

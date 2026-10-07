@@ -39,6 +39,20 @@ function ratingClaim(ctx: PhilosophyContext, label: string, value: number | null
 /** A rating the export states: a number on the 1–200 scale; a blank, a zero or a missing column is not known (D-018). */
 const rated = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
 
+/** An age as exported, or "Not known" where the export leaves it blank (never "null" or 0). */
+const ageOf = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+const ageCell = (v: unknown) => {
+  const age = ageOf(v);
+  return age === null ? cell('Not known', { tone: 'unknown' }) : cell(String(age));
+};
+
+/** "manager seat", "manager and hitting coach seats". */
+const seatsText = (seats: readonly string[]): string => {
+  const names = seats.map((s) => s.toLowerCase());
+  const list = names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `${list} ${names.length === 1 ? 'seat' : 'seats'}`;
+};
+
 function ratingsText(ratings: Array<{ label: string; value: number }>): string {
   if (ratings.length === 0) return 'No coaching ratings for this seat';
   if (ratings.every((r) => rated(r.value) === null)) return 'Not in the export';
@@ -63,8 +77,10 @@ function majorRow(ctx: PhilosophyContext, s: StaffMember, index: number): MlbRow
     ...row(`major-${s.coach_id}`, {
       role: cell(s.role),
       coach: cell(coach),
-      age: cell(String(s.age)),
-      experience: cell(`${s.experience} ${s.experience === 1 ? 'year' : 'years'}`),
+      age: ageCell(s.age),
+      experience: typeof s.experience === 'number' && Number.isFinite(s.experience) && s.experience >= 0
+        ? cell(`${s.experience} ${s.experience === 1 ? 'year' : 'years'}`)
+        : cell('Not known', { tone: 'unknown' }),
       contract: cell(contract, s.salary ? {} : { tone: 'unknown' }),
       ratings: cell(ratingsText(s.ratings), s.ratings.some((r) => rated(r.value) !== null)
         ? { hint: 'OOTP\'s 1–200 scale for coaches' }
@@ -72,8 +88,8 @@ function majorRow(ctx: PhilosophyContext, s: StaffMember, index: number): MlbRow
     }, {
       role: index,
       coach: s.name,
-      age: s.age,
-      experience: s.experience,
+      age: ageOf(s.age),
+      experience: typeof s.experience === 'number' && Number.isFinite(s.experience) && s.experience >= 0 ? s.experience : null,
       contract: s.salary ? s.salary : null,
       ratings: null,
     }),
@@ -91,7 +107,7 @@ function readyRow(ctx: PhilosophyContext, c: PromotionCandidate, clubIds: Map<st
   const teamId = clubIds.get(c.team);
   return {
     ...row(`ready-${c.coach_id}-${c.seat}`, {
-      coach: cell(`${c.name} · ${c.age}`),
+      coach: cell(ageOf(c.age) === null ? c.name : `${c.name} · ${c.age}`),
       now: cell(c.currentRole),
       club: cell([c.levelName, c.team, recordText(c.record)].filter(Boolean).join(' · '), { hint: 'The record is context, not part of the order' }),
       seat: cell(c.seat),
@@ -138,7 +154,7 @@ function farmRows(ctx: PhilosophyContext, clubs: FarmStaffClub[]): MlbRow[] {
         club: cell([club.levelName, club.team, recordText(club.record)].filter(Boolean).join(' · ')),
         role: cell(c.role),
         coach: cell(c.name),
-        age: cell(String(c.age)),
+        age: ageCell(c.age),
         teachHitting: shown(th),
         teachPitching: shown(tp),
         handleRookies: shown(hr),
@@ -147,7 +163,7 @@ function farmRows(ctx: PhilosophyContext, clubs: FarmStaffClub[]): MlbRow[] {
         club: ci,
         role: j,
         coach: c.name,
-        age: c.age,
+        age: ageOf(c.age),
         teachHitting: th,
         teachPitching: tp,
         handleRookies: hr,
@@ -182,16 +198,23 @@ export function coachingStaffView(ctx: PhilosophyContext, reading: StaffReading)
     columns: READY_COLUMNS,
     rows: reading.promotionCandidates.map((c) => readyRow(ctx, c, clubIds)),
     empty: reading.seatsUnread.length
-      ? cell(`Not known: the export doesn't rate coaches for ${reading.seatsUnread.join(', ').toLowerCase()} seats.`, { tone: 'unknown' })
+      ? cell(`Not known for the ${seatsText(reading.seatsUnread)}: the export has no rating there to measure against.`, { tone: 'unknown' })
       : cell('Nobody on the farm out-rates a major-league coach at a seat by 10 or more.'),
   };
+  const counted = reading.promotionCandidates.length
+    ? `${reading.promotionCandidates.length} ${reading.promotionCandidates.length === 1 ? 'coach' : 'coaches'} out-rate a major-league incumbent`
+    : null;
+  // A seat nobody could be measured against is said beside the others' candidates, never left to read as nobody
+  const unread = reading.seatsUnread.length && counted ? ` · not known for the ${seatsText(reading.seatsUnread)}` : '';
   const farm: MlbTable = { columns: FARM_COLUMNS, rows: farmRows(ctx, reading.farmStaff), empty: cell('No affiliate staff in the export.') };
   const sections: StaffSection[] = [
     { id: 'major', title: cell('Major League Staff'), summary: cell(`${reading.staff.length} ${reading.staff.length === 1 ? 'seat' : 'seats'} filled`), table: major, note: null },
     {
       id: 'ready',
       title: cell('Ready for a Job Up Here'),
-      summary: reading.promotionCandidates.length ? cell(`${reading.promotionCandidates.length} ${reading.promotionCandidates.length === 1 ? 'coach' : 'coaches'} out-rate a major-league incumbent`) : null,
+      summary: counted
+        ? cell(`${counted}${unread}`, unread ? { hint: 'No rating there to measure against: a blank or zero is not known' } : {})
+        : null,
       table: ready,
       note: claim({
         text: 'Records are context and left out of the order: a coach doesn\'t pick his roster.',

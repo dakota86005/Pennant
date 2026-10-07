@@ -320,7 +320,10 @@ export interface PromotionCandidate {
 export type StaffReading =
   | {
     status: 'read'; staff: StaffMember[]; farmStaff: FarmStaffClub[]; promotionCandidates: PromotionCandidate[];
-    /** The major-league seats the export carries no rating for, so nobody could be measured against them. */
+    /**
+     * The major-league seats nobody could be measured against: the export carries no rating for the seat, or (read with
+     * `blankIsUnknown`) the man in it has a blank or zero rating for it, which is not known, never 0 (D-018).
+     */
     seatsUnread: string[];
   }
   | { status: 'no_data'; error: string }
@@ -329,8 +332,12 @@ export type StaffReading =
 /** Enough of a gap to be worth raising rather than noise in the ratings. */
 export const PROMOTION_MARGIN = 10;
 
-/** The club's staff, the farm's staff and who down there is ready for a job up here (the route and the Mac app read this). */
-export function computeStaff(orgId: number): StaffReading {
+/**
+ * The club's staff, the farm's staff and who down there is ready for a job up here (the route and the Mac app read this).
+ * `blankIsUnknown` (the Mac app's): a seat whose incumbent's rating is blank or zero is unread, and a farm coach whose
+ * rating for the seat is blank or zero is not measured, never read as 0 (D-018). The React route reads as it always has.
+ */
+export function computeStaff(orgId: number, options: { blankIsUnknown?: boolean } = {}): StaffReading {
   if (!tableExists('team_roster_staff') || !tableExists('coaches')) {
     return { status: 'no_data', error: 'No staff data imported yet' };
   }
@@ -446,6 +453,8 @@ export function computeStaff(orgId: number): StaffReading {
 
   // A seat whose rating the export doesn't carry can't be compared: it is named, never read as nobody out-rating him
   const seatsUnread = MLB_SEATS.filter(([field]) => !hasColumns('coaches', field, 'occupation')).map(([, label]) => label);
+  // A rating the export leaves blank, or writes as zero on OOTP's 1-200 scale, is not known (D-018)
+  const known = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
   const promotionCandidates = MLB_SEATS.filter(([, label]) => !seatsUnread.includes(label)).flatMap(([field, label, occupation]) => {
     const incumbent = db
       .prepare(
@@ -454,11 +463,16 @@ export function computeStaff(orgId: number): StaffReading {
       )
       .get(orgId, occupation) as { name: string; value: number } | undefined;
     if (!incumbent) return [];
+    if (options.blankIsUnknown && !known(incumbent.value)) {
+      seatsUnread.push(label);
+      return [];
+    }
 
     return farmStaff
       .flatMap((club) =>
         (club.coaches as Array<Record<string, unknown>>).map((c) => {
           const full = coachById(c.coach_id as number);
+          if (options.blankIsUnknown && !known(full?.[field])) return null;
           const value = Number(full?.[field] ?? 0);
           return {
             seat: label,
@@ -476,7 +490,7 @@ export function computeStaff(orgId: number): StaffReading {
           };
         })
       )
-      .filter((c) => c.gap >= PROMOTION_MARGIN);
+      .filter((c): c is NonNullable<typeof c> => c !== null && c.gap >= PROMOTION_MARGIN);
   }).sort((a, b) => b.gap - a.gap);
 
   return { status: 'read', staff: staff as StaffMember[], farmStaff: farmStaff as FarmStaffClub[], promotionCandidates, seatsUnread };

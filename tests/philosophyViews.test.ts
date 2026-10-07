@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { db, tableColumns } from '../server/db.js';
 import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import {
   NOT_A_CHANGE, NOT_OFFERED, OFF_THE_SCALE, PhilosophyRefusal, UNKNOWN_SETTING, coachingStaffNow, philosophyNow, resetPhilosophyNow,
@@ -131,7 +132,7 @@ describe('Coaching Staff is the save\'s staff as exported (N12)', () => {
     const reading = computeStaff(save.org);
     if (reading.status !== 'read') throw new Error('no staff');
     if (reading.seatsUnread.length > 0) {
-      expect(view.sections[1].table.empty?.display).toMatch(/^Not known: the export doesn't rate coaches for /);
+      expect(view.sections[1].table.empty?.display).toMatch(/^Not known for the .+ seats?: the export has no rating there to measure against\.$/);
       expect(view.sections[1].table.empty?.tone).toBe('unknown');
     }
     for (const r of view.sections[2].table.rows) {
@@ -141,5 +142,58 @@ describe('Coaching Staff is the save\'s staff as exported (N12)', () => {
         else expect(Number(shown.display)).toBeGreaterThan(0);
       }
     }
+  });
+
+  // Last in the file: it gives the synthetic save's coaches seat ratings, some of them blank
+  it('measures nobody against a blank or zero rating: the seat is not known, and a farm coach with no rating is left out (review M4)', () => {
+    for (const field of ['manager_value', 'pitching_coach_value', 'hitting_coach_value']) {
+      if (!tableColumns('coaches').includes(field)) db.exec(`ALTER TABLE coaches ADD COLUMN ${field} INTEGER`);
+    }
+    // The major-league pitching and hitting coaches, and an affiliate's staff of three
+    const coach = db.prepare('INSERT INTO coaches (coach_id, first_name, last_name, age, occupation, team_id, experience) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    coach.run(990001, 'Pat', 'Hurler', 50, 4, save.org, 8);
+    coach.run(990002, 'Lou', 'Swinger', 52, 5, save.org, 9);
+    const affiliate = (db.prepare('SELECT team_id FROM teams WHERE parent_team_id = ? ORDER BY level LIMIT 1').get(save.org) as { team_id: number }).team_id;
+    coach.run(990011, 'Farm', 'Skipper', 40, 2, affiliate, 3);
+    coach.run(990012, 'Farm', 'Arms', 41, 4, affiliate, 3);
+    coach.run(990013, 'Farm', 'Bats', 42, 5, affiliate, 3);
+    db.prepare('INSERT INTO team_roster_staff (team_id, manager, pitching_coach, hitting_coach) VALUES (?, ?, ?, ?)').run(affiliate, 990011, 990012, 990013);
+    // Every coach out-rates every incumbent by plenty, so only a blank can keep anyone off the list
+    db.exec('UPDATE coaches SET manager_value = 150, pitching_coach_value = 150, hitting_coach_value = 150');
+    const seat = (occupation: number, field: string, value: number | null) =>
+      db.prepare(`UPDATE coaches SET ${field} = ? WHERE team_id = ? AND occupation = ?`).run(value, save.org, occupation);
+    seat(2, 'manager_value', null);
+    seat(4, 'pitching_coach_value', 60);
+    seat(5, 'hitting_coach_value', 0);
+    const before = computeStaff(save.org);
+    if (before.status !== 'read') throw new Error('no staff');
+    const blankCoach = before.farmStaff.flatMap((c) => c.coaches)[0];
+    db.prepare('UPDATE coaches SET pitching_coach_value = NULL WHERE coach_id = ?').run(blankCoach.coach_id);
+    const majorId = before.staff[0].coach_id;
+    db.prepare('UPDATE coaches SET age = NULL WHERE coach_id = ?').run(majorId);
+
+    const reading = computeStaff(save.org, { blankIsUnknown: true });
+    if (reading.status !== 'read') throw new Error('no staff');
+    expect(reading.seatsUnread).toEqual(['Manager', 'Hitting Coach']);
+    expect(reading.promotionCandidates.length).toBeGreaterThan(0);
+    expect(new Set(reading.promotionCandidates.map((c) => c.seat))).toEqual(new Set(['Pitching Coach']));
+    expect(reading.promotionCandidates.map((c) => c.coach_id)).not.toContain(blankCoach.coach_id);
+    expect(reading.promotionCandidates.every((c) => c.value > 0 && c.incumbentValue > 0)).toBe(true);
+    // The React route reads as it always has
+    const old = computeStaff(save.org);
+    if (old.status !== 'read') throw new Error('no staff');
+    expect(old.seatsUnread).toEqual([]);
+    expect(old.promotionCandidates.some((c) => c.seat === 'Manager')).toBe(true);
+
+    resetPhilosophyViews();
+    const view = coachingStaffNow(String(save.org));
+    const ready = view.sections.find((x) => x.id === 'ready')!;
+    expect(ready.summary?.display).toMatch(/ · not known for the manager and hitting coach seats$/);
+    expect(ready.table.rows.every((r) => r.cells.seat.display === 'Pitching Coach')).toBe(true);
+    // An age the export leaves blank is not known, never "null"
+    const major = view.sections.find((x) => x.id === 'major')!;
+    expect(major.table.rows.find((r) => r.id === `major-${majorId}`)?.cells.age).toMatchObject({ display: 'Not known', tone: 'unknown' });
+    expect(JSON.stringify(view)).not.toMatch(/"(?:display|text|hint)":"[^"]*\bnull\b/);
+    expect(bannedInPayload(view, 'getCoachingStaff')).toEqual([]);
   });
 });

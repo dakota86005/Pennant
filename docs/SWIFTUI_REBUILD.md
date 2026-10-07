@@ -1289,9 +1289,11 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
 **As built at N12, Track C (2026-10-06): Trades and Philosophy & Staff (server and Mac).** Branch
 `feature/swiftui-n12-trades`; D-073 (BEHAVIOR_CASES.md "Pennant for Mac", the `tradeDesk.test.ts`, `philosophyViews.test.ts`,
 `TradesFeatureTests` and `PhilosophyFeatureTests` rows).
-- **Server.** The routes the React pages read compute in callable functions, each old route answering exactly as before
-  (`computeTradeFits`, `computeTradeProposals`, `computeTradeTalk`, `computeStaff`, `savePhilosophyForOrg`; the proposals'
-  and the staff's readers made schema tolerant on the way). `GET /api/v2/views/:org/trades/tradeDesk` (`TradeDeskView`: the
+- **Server.** The routes the React pages read compute in callable functions, each old route answering as before
+  (`computeTradeFits`, `computeTradeProposals`, `computeTradeTalk`, `computeStaff`, `savePhilosophyForOrg`), with one
+  change: the proposals' and the staff's readers were made schema tolerant on the way, so on a smaller export that lacks a
+  column they read (a proposal's later `player_id_N`, a coach's seat rating) `/api/trade-proposals/:org` and
+  `/api/staff/:org` now answer 200 with what the export has, where they used to fail with a 500. `GET /api/v2/views/:org/trades/tradeDesk` (`TradeDeskView`: the
   inbox's offers with the analyser's reading, the staff's trade talk, the league's fits, whether the AI desk is on, the
   builder's words), `GET …/trades/analysis?sent=&received=` (`TradeAnalysisView`: each side's players with contract value,
   range, control, production, keeping him and our view, the side totals, the difference with its range chart's served

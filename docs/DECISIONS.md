@@ -2983,5 +2983,10 @@ built at N12 (Track C)".
   inputs, so every kept build that reads the philosophy is built again.
 - **Coaching Staff is the export's staff.** OOTP's 1–200 coach ratings as exported; a blank, zero or missing rating is
   "not known", and a seat rating the export doesn't carry makes "who is ready for a job up here" not known rather than
-  "nobody" (the old route failed on such an export; it now answers without that seat). A coach opens nothing of his own
+  "nobody" (the old route failed on such an export with a 500; it now answers 200 without that seat, and the old
+  proposals route likewise answers 200 on an export whose messages carry fewer player columns). On the Mac app's view
+  (`computeStaff(…, { blankIsUnknown: true })`; the React route reads as it did) an incumbent whose rating for his seat is
+  blank or zero makes that seat not known too, with no one listed against it, and a farm coach with no rating for a seat
+  is left off its list, never measured as 0 (D-018; review M4, 2026-10-06). An age or experience the export leaves blank
+  is "Not known". A coach opens nothing of his own
   until a staff window exists; an affiliate's row opens its club.
