@@ -7,8 +7,9 @@ import Foundation
 /// Payroll & Budget opened in a 900-point window, and XCTest could only say "main thread busy for 30.0s"). A thread of
 /// its own pings the main queue each half second; after 5 s without an answer it writes the main thread's stack twice:
 /// at once, from a signal the main thread itself takes (`backtrace_symbols_fd`), and from `/usr/bin/sample`, into
-/// `hang-*.log` beside the app's log (kept with each UI test's logs by `test.sh`). Once per process.
-final class MainThreadWatchdog: @unchecked Sendable {
+/// `hang-*.log` beside the app's log (kept with each UI test's logs by `test.sh`). Once per process. Nonisolated: its
+/// timer runs on a queue of its own (the app target's default isolation is the main actor, whose check would stop it).
+nonisolated final class MainThreadWatchdog: @unchecked Sendable {
     private let log: @Sendable (String) -> Void
     private let folder: URL
     private let queue = DispatchQueue(label: "pennant.watchdog", qos: .utility)
