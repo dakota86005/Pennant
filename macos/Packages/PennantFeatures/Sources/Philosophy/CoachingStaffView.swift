@@ -20,15 +20,12 @@ struct CoachingStaffView: View {
             let head = VStack(alignment: .leading, spacing: 12) {
                 PhilosophyHead(title: view.title, byline: view.byline, lede: view.lede, refreshing: store.updating("staff", for: model.storeKey))
                 if view.sections.count > 1 {
-                    Picker(selection: Binding(get: { index }, set: { section = $0; selection = nil })) {
-                        ForEach(Array(view.sections.enumerated()), id: \.offset) { i, s in Text(verbatim: s.title.display).tag(i) }
-                    } label: {
-                        Text("Section")
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    .accessibilityIdentifier("staff.sections")
+                    // The shared kit's section control (N12: Finance's and Medical's, one implementation)
+                    OfficeSectionPicker(
+                        titles: view.sections.map(\.title.display),
+                        selection: Binding(get: { index }, set: { section = $0; selection = nil }),
+                        id: "staff.sections"
+                    )
                 }
                 if view.sections.indices.contains(index), let summary = view.sections[index].summary { CellWords(summary).font(.callout) }
                 if let empty = view.empty { CellWords(empty, quiet: true) }

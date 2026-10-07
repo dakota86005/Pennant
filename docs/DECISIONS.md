@@ -3128,6 +3128,19 @@ built at N12 (Track C)".
   record, odds or a posture; its lines are stated (policy). The visible words keep Player Value's method words off the
   screen ("value for the money", "pay for ability"). The comparable clubs are shown closest first with how near in words,
   without the React page's "#1" rank.
+- **Each policy is the native pop-up, and it passes the audit** (for reconsidering `ChoicePopover` project-wide). The
+  editor's policies use SwiftUI's own `Picker` in the `.menu` style, and the accessibility audit finds nothing on it, on
+  macOS 27.2 locally: in each of the narrow test's runs it is in the audited hierarchy with no "Action is missing", and
+  nothing about it is set aside. Exactly what it is: `Picker(selection:content:label:)` whose **label is a view inside
+  the picker** carrying the served words (`Text(verbatim: policy.label.display)`), hidden on screen by `.labelsHidden()`
+  (the same words stand visibly beside it in the row); a selection bound to the served value, each choice a `Text` with
+  a `.tag`; `.pickerStyle(.menu)`, `.fixedSize()` and an identifier; no `Menu`, no `menuStyle`, and no
+  `.accessibilityLabel`/`.accessibilityValue` modifier. What failed for Track B (League Office, `standings.division`) was
+  first a `Menu` with a button style and its name and value given by those modifiers, and then, by its notes, a pop-up
+  `Picker` with its label hidden "and an accessible name"; the attempt is not in the branch history, so whether its name
+  came from the picker's own label view, as here, is not known. That difference (the name from the picker's label view,
+  not a modifier) is the one to try first, and the audit on CI's macOS 26 runner is the test. Coaching Staff's section
+  control is now the shared kit's `OfficeSectionPicker` (the same segmented picker it had).
 - **The editor orders, never permits** (D-003, D-019, D-045). Its lede says the settings order the choices the staff
   already finds sound and never make a move allowed or rule one out; "Promotion aggression" reads "among the moves Player
   Development finds sound, how much the club prefers the quicker one".
