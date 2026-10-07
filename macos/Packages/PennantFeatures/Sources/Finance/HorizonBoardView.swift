@@ -189,6 +189,7 @@ struct HorizonMoney: View {
                 Text(verbatim: note.display).foregroundStyle(.readableSecondary)
             } else {
                 let palette = theme.palette(colorScheme: colorScheme, contrast: contrast)
+                let scale = MoneyScale(view.payroll.flatMap { [$0.committed, $0.budget].compactMap { $0 } })
                 Chart {
                     ForEach(view.payroll, id: \.season) { money in
                         BarMark(x: .value("Season", String(money.season)), y: .value("Committed", money.committed), width: .ratio(0.45))
@@ -199,7 +200,7 @@ struct HorizonMoney: View {
                         if let budget = money.budget {
                             RectangleMark(x: .value("Season", String(money.season)), y: .value("Budget", budget), width: .ratio(0.9), height: .fixed(2))
                                 .foregroundStyle(Color.primary.opacity(0.7))
-                                .annotation(position: .top, alignment: .leading) {
+                                .annotation(position: .top, alignment: .leading, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
                                     if index == 0, let label = view.budget?.label {
                                         Text(verbatim: label.display).font(.caption).foregroundStyle(.readableSecondary)
                                     }
@@ -207,16 +208,10 @@ struct HorizonMoney: View {
                         }
                     }
                 }
-                .chartYAxis {
-                    AxisMarks { value in
-                        AxisGridLine()
-                        AxisValueLabel {
-                            if let dollars = value.as(Double.self) {
-                                Text(dollars, format: .currency(code: "USD").notation(.compactName).precision(.fractionLength(0)))
-                            }
-                        }
-                    }
-                }
+                // Both axes fixed, as Payroll's are (`MoneyScale`, PR #60)
+                .chartXScale(domain: view.payroll.map { String($0.season) })
+                .chartYScale(domain: scale.domain)
+                .chartYAxis { scale.axisMarks }
                 .frame(height: 160)
                 .accessibilityElement(children: .ignore)
                 .accessibilityAddTraits(.isImage)

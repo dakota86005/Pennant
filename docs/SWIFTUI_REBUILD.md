@@ -1330,6 +1330,15 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   line of its own: wrapped inside its date ("… Through May" over "6, 2040") it failed the contrast audit in every colour
   tried (14.9:1 by its pixels in the label colour) and wherever it sat, while on one line it passed. The test brings the
   sidebar to rest before each click and audit (a long reveal left it scrolling, the club card half under the title bar).
+- *Found on the runner (PR #60, 2026-10-07):* on GitHub's macOS 26 runner (1×, scroll bars always shown) the app froze
+  as Payroll opened in the narrow test, and XCTest said only "main thread busy for 30.0s". A Debug build launched by the
+  UI tests now writes its main thread's stack when the thread stops answering for 5 s (`MainThreadWatchdog`: a signal
+  the thread takes itself and `sample`, as `hang-*.log` beside the app's log, kept by `test.sh`). The stack showed one
+  layout pass in which Swift Charts evaluated Payroll's chart, its content and its axis labels, without end. Payroll's
+  and the Horizon Board's money charts now draw on a fixed scale (`MoneyScale`: zero to a round top above every figure,
+  gridlines at round steps), the seasons as a fixed domain and the budget label fitted to the chart without moving the
+  plot, so the plot's size has nothing left to change. `FinanceChartLayoutTests` lays both out at every whole width from
+  480 to 220 points with the scroll bars shown, on the runner too.
 - *After the review (NEEDS FIXES, 2026-10-06):* the Horizon Board leaves a player out of every season after his control
   ends, and a mixed cell says "Not known for N more" (H1; on the owner's export it had drawn 2 false "Not known" cells
   and hidden the unread in 10 mixed ones). The views key on the export's derived freshness, not the live log's file
