@@ -1254,7 +1254,7 @@ final class PennantUITests: XCTestCase {
                 _ = app.wait(for: .runningForeground, timeout: 5)
             }
         }
-        // A row about to be clicked has a hit point (nothing over it, the window in front): a click on an element with
+        // A sidebar row about to be clicked has a hit point (nothing over it, the window in front): a click on an element with
         // none fails the test outright ("Unable to find hit point"), so it is waited for, Pennant brought back between
         // the two waits (an expectation is waited on once, so each wait has its own). The sidebar itself isn't waited on:
         // a container can report no hit point of its own while its rows have one
@@ -1303,8 +1303,9 @@ final class PennantUITests: XCTestCase {
                 if view.table, !shown.identifier.hasSuffix(".empty") {
                     let row = firstRow(of: shown)
                     XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                    // Pennant in front before the click; a table's row reports no hit point of its own, so it is clicked
+                    // on its leading point as before
                     up("\(view.view)'s first row, round \(round)")
-                    pressable(row, "\(view.view)'s first row, round \(round)")
                     leading(row)
                     XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s chosen row has no detail")
                     XCTAssertGreaterThanOrEqual(shown.frame.height, 100, "round \(round): \(view.view)'s table is \(shown.frame.height) pt tall")
