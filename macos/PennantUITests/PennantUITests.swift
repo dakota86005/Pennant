@@ -1524,6 +1524,9 @@ final class PennantUITests: XCTestCase {
         waitForShell(app)
         app.typeKey("1", modifierFlags: .command)
         XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30))
+        // The report drawn whole first, as testDesignPaletteBasisAndInspector waits for it (PR #58 on the runner: ⌘K
+        // typed as the desk appeared opened no palette, the window still finishing its first draw)
+        XCTAssertTrue(element(app, "masthead").waitForExistence(timeout: 10))
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
         XCTAssertTrue(paletteOpened(app, query), "⌘K did not open the palette")
@@ -1923,6 +1926,8 @@ final class PennantUITests: XCTestCase {
         waitForShell(app)
         app.typeKey("1", modifierFlags: .command)
         XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30))
+        // The report drawn whole first, as testDesignPaletteBasisAndInspector waits for it (PR #58 on the runner)
+        XCTAssertTrue(element(app, "masthead").waitForExistence(timeout: 10))
         // From the palette: the server's player result opens his window
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
