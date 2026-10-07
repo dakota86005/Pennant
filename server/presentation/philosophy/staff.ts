@@ -175,6 +175,9 @@ function farmRows(ctx: PhilosophyContext, clubs: FarmStaffClub[]): MlbRow[] {
   }));
 }
 
+/** What the detail pane says before a coach is chosen. */
+const SELECT_COACH = cell('Select a coach to see his ratings.');
+
 export function coachingStaffView(ctx: PhilosophyContext, reading: StaffReading): CoachingStaffView {
   const head = headOf(ctx, 'Coaching Staff');
   const lede = claim({
@@ -188,7 +191,7 @@ export function coachingStaffView(ctx: PhilosophyContext, reading: StaffReading)
   });
   if (reading.status !== 'read') {
     return {
-      ...head, lede, sections: [],
+      ...head, lede, sections: [], select: SELECT_COACH,
       empty: cell(reading.status === 'no_data' ? 'The export has no staff to read.' : 'The export has no staff for this club.', { tone: 'unknown' }),
     };
   }
@@ -225,5 +228,5 @@ export function coachingStaffView(ctx: PhilosophyContext, reading: StaffReading)
     },
     { id: 'farm', title: cell('Farm System Staff'), summary: cell(`${reading.farmStaff.length} ${reading.farmStaff.length === 1 ? 'affiliate' : 'affiliates'}`), table: farm, note: null },
   ];
-  return { ...head, lede, sections, empty: null };
+  return { ...head, lede, sections, select: SELECT_COACH, empty: null };
 }

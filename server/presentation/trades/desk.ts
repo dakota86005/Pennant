@@ -269,6 +269,11 @@ export function tradeDeskView(ctx: TradesContext, input: TradeDeskInput): TradeD
     }),
     sides: { sent: cell(sideTitle(ctx.club, 'send')), received: cell(sideTitle(ctx.club, 'receive')) },
     emptyDeal: cell('Add players to each side to see what the deal is worth: drag them here, search, or load an offer or a target.'),
+    builder: {
+      find: { sent: cell('Find a player to send'), received: cell('Find a player to receive') },
+      remove: cell('Take him off the deal'),
+      weighing: cell('Weighing the deal'),
+    },
     offers: input.proposals.map((p) => offerOf(ctx, p, input.stamp)),
     offersNote: claim({
       text: 'Proposals in your OOTP inbox. Check the sides against the mail.',

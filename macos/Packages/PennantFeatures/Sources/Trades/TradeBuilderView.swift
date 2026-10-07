@@ -108,7 +108,7 @@ private struct RemoveButton: View {
             Image(systemName: "xmark.circle.fill").foregroundStyle(.readableSecondary)
         }
         .buttonStyle(.plain)
-        .help(Text("Take Him off the Deal"))
+        .help(Text(verbatim: model.trades.desk?.builder.remove.display ?? ""))
         .accessibilityLabel(Text("Remove from Deal"))
         .accessibilityIdentifier("trades.remove.\(id)")
     }
@@ -171,7 +171,9 @@ struct AddPlayerField: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        TextField(side == .sent ? "Find a player to send" : "Find a player to receive", text: $text)
+        let find = model.trades.desk?.builder.find
+        let prompt = (side == .sent ? find?.sent : find?.received)?.display ?? ""
+        TextField(text: $text, prompt: Text(verbatim: prompt)) { Text(verbatim: prompt) }
             .textFieldStyle(.roundedBorder)
             .focused($focused)
             .textInputSuggestions {
@@ -307,15 +309,15 @@ struct DifferenceChart: View {
         VStack(alignment: .leading, spacing: 2) {
             Chart {
                 BarMark(xStart: .value("Low", chart.low), xEnd: .value("High", chart.high), y: .value("Deal", "deal"), height: .fixed(16))
-                    .foregroundStyle(Color.accentColor.opacity(0.22))
+                    .foregroundStyle(Color.readableRangeMark.opacity(0.25))
                     .clipShape(.rect(cornerRadius: 3))
                 if chart.likelyHigh - chart.likelyLow > (chart.scaleHigh - chart.scaleLow) * 0.005 {
                     BarMark(xStart: .value("Likely low", chart.likelyLow), xEnd: .value("Likely high", chart.likelyHigh), y: .value("Deal", "deal"), height: .fixed(16))
-                        .foregroundStyle(Color.accentColor.opacity(0.55))
+                        .foregroundStyle(Color.readableRangeMark)
                 } else {
                     PointMark(x: .value("Most likely", chart.likelyLow), y: .value("Deal", "deal"))
                         .symbolSize(110)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.readableRangeMark)
                 }
                 RuleMark(x: .value("Even", 0))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))

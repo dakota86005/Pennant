@@ -1144,12 +1144,6 @@
     "Compare Window": {
       "extractionState": "manual"
     },
-    "Find a player to receive": {
-      "extractionState": "manual"
-    },
-    "Find a player to send": {
-      "extractionState": "manual"
-    },
     "Follow-Up Question": {
       "extractionState": "manual"
     },
@@ -1168,13 +1162,7 @@
     "Remove from Deal": {
       "extractionState": "manual"
     },
-    "Select a coach to see his ratings.": {
-      "extractionState": "manual"
-    },
     "Send": {
-      "extractionState": "manual"
-    },
-    "Take Him off the Deal": {
       "extractionState": "manual"
     },
     "They send": {
@@ -1190,9 +1178,6 @@
       "extractionState": "manual"
     },
     "Weighing": {
-      "extractionState": "manual"
-    },
-    "Weighing the deal": {
       "extractionState": "manual"
     },
     "What Makes Up the Difference": {

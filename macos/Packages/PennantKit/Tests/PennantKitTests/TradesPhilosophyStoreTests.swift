@@ -125,4 +125,67 @@ struct TradesPhilosophyStoreTests {
         #expect(store.changeProblem == .served("A preference is a whole number from 0 to 100."))
         #expect(store.philosophy != nil)
     }
+
+    @Test("two quick changes are written in order: the editor shown is the last change's answer, never an older one (L4)")
+    func philosophyChangesInOrder() async throws {
+        let put = "PUT /api/v2/views/1/philosophy/organizationalPhilosophy"
+        let transport = RoutedTransport(views)
+        let store = PhilosophyStore()
+        let c = client(transport)
+        // The first change is slow to answer; the second, made while it is in flight, answers at once
+        transport.delay(put, by: .milliseconds(400))
+        let first = Components.Schemas.PhilosophyUpdate(dimensions: [.init(id: "competitiveWindow", value: .init(value1: 70))])
+        let second = Components.Schemas.PhilosophyUpdate(dimensions: [.init(id: "competitiveWindow", value: .init(value1: 50))])
+        async let firstAnswer = store.change(first, client: c, key: key())
+        for _ in 0..<200 where !transport.paths.contains(where: { $0.hasSuffix("/organizationalPhilosophy") }) {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(store.writing)
+        transport.delay(put, by: nil)
+        transport.answer(put, with: try RoutedTransport.json("resetOrganizationalPhilosophy-reset"))
+        async let secondAnswer = store.change(second, client: c, key: key())
+        let answers = await (firstAnswer, secondAnswer)
+        #expect(answers.0?.said.display == "Competitive window set to 70: Maximize current wins.")
+        #expect(answers.1?.said.display == "Every setting is back to neutral.")
+        // The second was sent only after the first was answered, and its answer is the one shown
+        #expect(store.lastSaid?.display == "Every setting is back to neutral.")
+        #expect(!store.writing)
+    }
+
+    @Test("the desk says again whether AI is on when the keys may have changed, and only then (L3)")
+    func deskReadAgainWhenKeysChange() async throws {
+        let transport = RoutedTransport(views)
+        let store = TradesStore()
+        let c = client(transport)
+        await store.loadDesk(client: c, key: key(), keysRevision: 1)
+        await store.loadDesk(client: c, key: key(), keysRevision: 1)
+        #expect(transport.paths.count == 1)
+        await store.loadDesk(client: c, key: key(), keysRevision: 2)
+        #expect(transport.paths.count == 2)
+        #expect(store.desk != nil && !store.deskUpdating(for: key()))
+    }
+
+    @Test("keeps at most the server's 64 deals weighed, letting the oldest go (L8)")
+    func analysesCapped() async throws {
+        let transport = RoutedTransport(views)
+        let store = TradesStore()
+        let c = client(transport)
+        for id in 1...(TradesStore.mostAnalysesKept + 6) {
+            store.load(TradesStore.Deal(sent: [id], received: [1000]))
+            await store.loadAnalysis(client: c, key: key())
+        }
+        #expect(store.analyses.count == TradesStore.mostAnalysesKept)
+        #expect(store.analyses[TradesStore.Deal(sent: [1], received: [1000])] == nil)
+        #expect(store.analysis != nil)
+    }
+
+    @Test("a provider that refuses the key is the server's sentence, not a failure of the desk")
+    func aiDeskKeyRefused() async throws {
+        let transport = RoutedTransport(views)
+        transport.answer("POST /api/v2/views/1/trades/ask", with: ("application/json", Data(#"{"error":"Anthropic rejected the API key."}"#.utf8)), status: 401)
+        let store = TradesStore()
+        store.load(TradesStore.Deal(sent: [12], received: [40]))
+        #expect(await !store.ask(nil, client: client(transport), key: key()))
+        #expect(store.askProblem == .served("Anthropic rejected the API key."))
+    }
 }

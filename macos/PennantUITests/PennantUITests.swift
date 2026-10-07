@@ -1637,6 +1637,10 @@ final class PennantUITests: XCTestCase {
                 _ = slider.waitForExistence(timeout: 0.5)
             }
             XCTAssertLessThan(slider.frame.maxY, window.frame.maxY - 30, "round \(round): the competitive window's slider is not in view")
+            // What the preference weighs is on the page, under its label and clear of the slider (review L6)
+            let line = element(app, "philosophy.dimension.competitiveWindow.line")
+            XCTAssertTrue(line.exists, "round \(round): the competitive window's line is not shown")
+            XCTAssertLessThanOrEqual(line.frame.maxY + 8, slider.frame.minY, "round \(round): the competitive window's line crowds its slider")
             // Moved up the scale as an assistive app moves it (the slider's own value), sent once it settles; the app
             // brought back first if another process took the front (logged)
             up("the slider, round \(round)")

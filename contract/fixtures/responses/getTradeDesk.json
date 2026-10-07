@@ -48,6 +48,22 @@
   "emptyDeal": {
     "display": "Add players to each side to see what the deal is worth: drag them here, search, or load an offer or a target."
   },
+  "builder": {
+    "find": {
+      "sent": {
+        "display": "Find a player to send"
+      },
+      "received": {
+        "display": "Find a player to receive"
+      }
+    },
+    "remove": {
+      "display": "Take him off the deal"
+    },
+    "weighing": {
+      "display": "Weighing the deal"
+    }
+  },
   "offers": [
     {
       "id": "offer-9005",

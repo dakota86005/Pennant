@@ -54,6 +54,9 @@ public final class AppModel {
     public private(set) var lastRequestError: String?
     /// The client for the running server; nil while it is not ready.
     public private(set) var client: Client?
+    /// Moves whenever the server's AI keys may have changed: a server (re)started reads the Keychain anew, and
+    /// `updateKeys()` hands it new ones. Whatever says whether AI is on (the Trade Desk) reads again when it moves.
+    public private(set) var keysRevision = 0
     /// The desk and follow steps on the windows' undo managers (`Attention.swift`), and the save and club they were made
     /// for: taken off when either moves (M7).
     @ObservationIgnored var undoSteps: [UndoRegistration] = []
@@ -626,6 +629,8 @@ public final class AppModel {
     private var loggedKey = false
 
     private func apply(_ state: ServerState) {
+        // A server that (re)started (a new connection) read the Keychain's keys afresh
+        if let connection = state.connection, connection != serverState.connection { keysRevision += 1 }
         serverState = state
         if state.connection != nil, !loggedReady {
             loggedReady = true
@@ -861,5 +866,13 @@ public final class AppModel {
     private func note(_ error: any Error, reading what: String) {
         lastRequestError = "\(what): \(RequestProblem.logLine(error))"
         controller.log.write("could not read the \(what): \(RequestProblem.logLine(error))", source: "app")
+    }
+}
+
+extension AppModel {
+    /// Hands the running server the Keychain's keys again (Settings, N13), and says the AI's state may have changed.
+    public func updateKeys() async {
+        await serverController.updateKeys()
+        keysRevision += 1
     }
 }

@@ -8,8 +8,8 @@ import SwiftUI
 /// Organizational Philosophy (N12 Track C; D-073): the editor as grouped sections, as System Settings lays out its panes
 /// (a header over each group, its rows in a card, its footer beneath), with the system's own controls (AppKit's slider for
 /// each preference, a pop-up for each policy) and every word the server's: the identity, the comparable clubs, each label
-/// and where a setting reads. What a preference weighs is its label's help tag and its slider's VoiceOver help (the house
-/// style puts an explanation in the hover). The groups are the design's cards on the content colour rather than `Form`'s
+/// and where a setting reads. What a preference weighs is its one line under the label, 12 points clear of the slider (its
+/// label's help tag and the slider's VoiceOver help too). The groups are the design's cards on the content colour rather than `Form`'s
 /// grouped rows, which are drawn vibrant on a system background (the brief's rule: never text on one). A change is sent
 /// when the GM lets go of a slider, or a moment after its value stops moving (the arrow keys, VoiceOver), or picks a
 /// policy; the server checks it, writes it and says what it did in the status strip under the editor, and ⌘Z undoes it
@@ -250,11 +250,18 @@ private struct DimensionRow: View {
                     .accessibilityHidden(true)
                 CellWords(dimension.position, quiet: Int(value.rounded()) != dimension.value).font(.callout)
             }
+            // Its line, always shown ("a title and one line saying what the number means"), wrapping as the group footers
+            // do, and kept clear of the slider: a wrapped line within a few points of AppKit's slider failed the contrast
+            // audit (at 14:1, whatever its colour or wording), while the same line 12 points clear of it passes, as do the
+            // footers and a line under the slider's ends (review L6)
+            CellWords(dimension.description).font(.callout)
+                .padding(.bottom, 12)
+                .accessibilityIdentifier("philosophy.dimension.\(dimension.id).line")
             // The system's slider (AppKit's own, continuous, rounded to a whole number when sent), named for VoiceOver
             PreferenceSlider(
                 value: $value,
                 label: dimension.label.display,
-                hint: "\(dimension.description.display) \(dimension.position.display)",
+                hint: dimension.spoken.display,
                 identifier: "philosophy.dimension.\(dimension.id)"
             ) { editing in
                 dragging = editing

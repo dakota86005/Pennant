@@ -49,8 +49,13 @@ public final class TradesStore {
     public private(set) var desk: Components.Schemas.TradeDeskView?
     /// The deal on the builder.
     public private(set) var deal = Deal()
-    /// Each deal weighed, by its players (the builder's current one, and the ones before it this session).
+    /// Each deal weighed, by its players (the builder's current one, and the ones before it this session), the most
+    /// recently weighed kept up to the server's own 64 (`MAX_ANALYSES`, `tradeDeskService.ts`).
     public private(set) var analyses: [Deal: Components.Schemas.TradeAnalysisView] = [:]
+    /// The most deals kept weighed, as the server keeps them.
+    public static let mostAnalysesKept = 64
+    /// The deals weighed, oldest first: the order they are let go in.
+    private var analysisOrder: [Deal] = []
     /// The conversation about the deal on the builder.
     public private(set) var turns: [Turn] = []
     /// The AI desk is answering.
@@ -63,6 +68,9 @@ public final class TradesStore {
 
     private var loadedDeskKey: AppModel.StoreKey?
     private var askedDeskKey: AppModel.StoreKey?
+    /// The AI keys' revision the desk's "is the AI desk on" was read at (`AppModel.keysRevision`).
+    private var loadedKeysRevision = 0
+    private var askedKeysRevision = 0
     private var analysisKeys: [Deal: AppModel.StoreKey] = [:]
     private var askedDeal: Deal?
     private var followedKey: AppModel.StoreKey?
@@ -95,6 +103,7 @@ public final class TradesStore {
         desk = nil
         deal = Deal()
         analyses = [:]
+        analysisOrder = []
         analysisKeys = [:]
         turns = []
         askProblem = nil
@@ -139,13 +148,15 @@ public final class TradesStore {
 
     // MARK: Reading
 
-    /// The Trade Desk for the key, once per key; the last good one stays while it is read again.
-    public func loadDesk(client: Client?, key: AppModel.StoreKey?) async {
+    /// The Trade Desk for the key, once per key and AI keys' revision (a key added or removed turns the AI desk on or
+    /// off, and the server reads it on every request); the last good one stays while it is read again.
+    public func loadDesk(client: Client?, key: AppModel.StoreKey?, keysRevision: Int = 0) async {
         guard let client, let key else { return }
         follow(key)
-        if loadedDeskKey == key { return }
-        if askedDeskKey == key, loading.contains("desk") { return }
+        if loadedDeskKey == key, loadedKeysRevision == keysRevision { return }
+        if askedDeskKey == key, askedKeysRevision == keysRevision, loading.contains("desk") { return }
         askedDeskKey = key
+        askedKeysRevision = keysRevision
         loading.insert("desk")
         defer { if askedDeskKey == key { loading.remove("desk") } }
         let org = FrontOfficeStore.org(key)
@@ -153,9 +164,10 @@ public final class TradesStore {
             switch try await client.getTradeDesk(path: .init(org: org)) {
             case .ok(let answer):
                 let view = try answer.body.json
-                guard askedDeskKey == key else { return }
+                guard askedDeskKey == key, askedKeysRevision == keysRevision else { return }
                 desk = view
                 loadedDeskKey = key
+                loadedKeysRevision = keysRevision
                 problems["desk"] = nil
             case .notFound(let refused):
                 guard askedDeskKey == key else { return }
@@ -190,7 +202,7 @@ public final class TradesStore {
             switch try await client.getTradeAnalysis(path: .init(org: org), query: .init(sent: sent, received: received)) {
             case .ok(let answer):
                 let view = try answer.body.json
-                analyses[asked] = view
+                keep(view, for: asked)
                 analysisKeys[asked] = key
                 if askedDeal == asked { problems["analysis"] = nil }
             case .badRequest(let refused):
@@ -260,6 +272,18 @@ public final class TradesStore {
         return turnCount
     }
 
+    /// Keeps a deal's analysis as the most recent, letting the oldest go past the server's 64.
+    private func keep(_ view: Components.Schemas.TradeAnalysisView, for deal: Deal) {
+        analyses[deal] = view
+        analysisOrder.removeAll { $0 == deal }
+        analysisOrder.append(deal)
+        while analysisOrder.count > Self.mostAnalysesKept {
+            let oldest = analysisOrder.removeFirst()
+            analyses[oldest] = nil
+            analysisKeys[oldest] = nil
+        }
+    }
+
     #if DEBUG
     /// A store holding served payloads, for `#Preview`s and snapshots (current for `key` when one is given).
     public static func preview(
@@ -274,7 +298,7 @@ public final class TradesStore {
         if let analysis {
             let deal = Deal(analysis.deal)
             store.deal = deal
-            store.analyses[deal] = analysis
+            store.keep(analysis, for: deal)
             if let key { store.analysisKeys[deal] = key }
         }
         store.turns = answers.map { store.turnFor($0) }
@@ -292,7 +316,7 @@ public final class TradesStore {
 extension AppModel {
     /// The Trade Desk for the current key (the view calls it in `.task(id: storeKey)`).
     public func loadTradeDesk() async {
-        await trades.loadDesk(client: client, key: storeKey)
+        await trades.loadDesk(client: client, key: storeKey, keysRevision: keysRevision)
     }
 
     /// Weighs the deal on the builder for the current key.

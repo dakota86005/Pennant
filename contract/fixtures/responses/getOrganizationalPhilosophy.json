@@ -194,6 +194,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "How strongly the organization weighs winning now against value in later seasons. Now: Balanced."
+          },
           "low": {
             "display": "Build for the future"
           },
@@ -215,6 +218,9 @@
           "value": 50,
           "position": {
             "display": "Balanced"
+          },
+          "spoken": {
+            "display": "Tolerance for uncertain projections, volatile players, injury risk and outcomes that swing widely. Now: Balanced."
           },
           "low": {
             "display": "Prefer floor and certainty"
@@ -249,6 +255,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "How strongly guaranteed money in later seasons counts as a cost of its own. Now: Balanced."
+          },
           "low": {
             "display": "Comfortable with commitments"
           },
@@ -270,6 +279,9 @@
           "value": 50,
           "position": {
             "display": "Balanced"
+          },
+          "spoken": {
+            "display": "How heavily what a player costs, against what he produces, weighs in a choice. Now: Balanced."
           },
           "low": {
             "display": "Pay for ability"
@@ -304,6 +316,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "How much years of inexpensive or guaranteed club control add to a player's worth to the club. Now: Balanced."
+          },
           "low": {
             "display": "Production matters most"
           },
@@ -325,6 +340,9 @@
           "value": 50,
           "position": {
             "display": "Balanced"
+          },
+          "spoken": {
+            "display": "How strongly expected decline with age weighs on contracts and on a player's worth to the club. Now: Balanced."
           },
           "low": {
             "display": "Trust veterans"
@@ -348,6 +366,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "How much scarcity at catcher, shortstop, center field and other difficult roles adds. Now: Balanced."
+          },
           "low": {
             "display": "Mostly position-neutral"
           },
@@ -369,6 +390,9 @@
           "value": 50,
           "position": {
             "display": "Balanced"
+          },
+          "spoken": {
+            "display": "How much upside and projection count against established ability. Now: Balanced."
           },
           "low": {
             "display": "Prefer certainty"
@@ -403,6 +427,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "How reluctant the organization is to trade meaningful prospect capital. Now: Balanced."
+          },
           "low": {
             "display": "Prospects are trade currency"
           },
@@ -424,6 +451,9 @@
           "value": 50,
           "position": {
             "display": "Balanced"
+          },
+          "spoken": {
+            "display": "Among the moves Player Development finds sound for a prospect, how much the club prefers the quicker one. Now: Balanced."
           },
           "low": {
             "display": "Master each level"
@@ -458,6 +488,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "How strongly defense weighs in building the roster, against offense. Now: Balanced."
+          },
           "low": {
             "display": "Bat-first"
           },
@@ -479,6 +512,9 @@
           "value": 50,
           "position": {
             "display": "Balanced"
+          },
+          "spoken": {
+            "display": "How much the organization values spare starting and relief depth. Now: Balanced."
           },
           "low": {
             "display": "Concentrate pitching"
@@ -502,6 +538,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "How strongly bench, bullpen, optionable depth and cover for injuries are valued. Now: Balanced."
+          },
           "low": {
             "display": "The top of the roster matters most"
           },
@@ -524,6 +563,9 @@
           "position": {
             "display": "Balanced"
           },
+          "spoken": {
+            "display": "Whether resources go to a few elite players or spread across the roster. Now: Balanced."
+          },
           "low": {
             "display": "Balanced roster"
           },
@@ -545,6 +587,9 @@
           "value": 50,
           "position": {
             "display": "Balanced"
+          },
+          "spoken": {
+            "display": "How much playing several positions, and the roster flexibility it brings, adds to a player. Now: Balanced."
           },
           "low": {
             "display": "Prefer specialists"

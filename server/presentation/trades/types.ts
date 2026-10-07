@@ -111,6 +111,8 @@ export interface TradeDeskView extends TradesViewHead {
   sides: { sent: Cell; received: Cell };
   /** What the builder says with nobody on it. */
   emptyDeal: Cell;
+  /** The builder's other words: each side's search field, taking a player off, and a deal being weighed. */
+  builder: { find: { sent: Cell; received: Cell }; remove: Cell; weighing: Cell };
   offers: TradeOffer[];
   /** How the offers are read (the sides are worked out from who each player plays for now). */
   offersNote: Claim;

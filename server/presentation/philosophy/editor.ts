@@ -121,6 +121,7 @@ export function philosophyView(ctx: PhilosophyContext, profile: PhilosophyProfil
           description: cell(w.description),
           value,
           position: cell(positionWords(id, value)),
+          spoken: cell(`${w.description}${/[.!?]$/.test(w.description) ? '' : '.'} Now: ${positionWords(id, value)}.`),
           low: cell(w.low),
           high: cell(w.high),
           balanced: cell('Balanced'),

@@ -1314,8 +1314,9 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   pane, each group's rows in the design's card (SwiftUI's grouped `Form` draws its rows vibrant on a system background,
   which the contrast audit failed): AppKit's own slider for each preference (sent when a drag ends, its own mouse tracking
   telling a drag from the keyboard or VoiceOver, or a moment after any other change settles; SwiftUI's slider with its
-  label hidden left its thumb with no description), what each preference weighs in its label's help tag and the slider's
-  VoiceOver help, a pop-up for each policy, the reset behind a confirmation; ⌘Z undoes through the served request (its redo
+  label hidden left its thumb with no description), what each preference weighs in its one line under its label (wrapping,
+  12 points clear of the slider) and in its label's help tag and the slider's served VoiceOver help, a pop-up for each
+  policy, the reset behind a confirmation; ⌘Z undoes through the served request (its redo
   registered while undoing), and what a change did is said in a status strip under the editor, named for VoiceOver and
   announced. Coaching Staff is a `TablePane` with the served sections as a
   segmented control and the chosen coach's ratings beneath (a gauge against OOTP's 1–200 where the rating is known).
@@ -1332,9 +1333,19 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   each, the display to itself). Found and fixed on the way: a borderless menu with no action (the row's move and remove are
   two buttons), SwiftUI's slider thumb with no description (AppKit's slider), `Form`'s vibrant rows on a system background,
   the status strip read as nothing, a summary line in the secondary colour read as too faint. A preference's description
-  that wrapped mid-phrase failed the contrast audit at 14:1 whatever its colour, wording or position (Track A found the
-  same of a byline wrapped inside a date): in a column this narrow every description wraps, and served in parts it would
-  read as fragments, so it is the label's help tag and the slider's VoiceOver help, as the house style puts an explanation.
+  that wrapped failed the contrast audit at 14:1 whatever its colour or wording; it had been taken off the page for it, and
+  the review (L6) put it back. The cause is not the wrapping: the group footers wrap at this width in the same font and
+  pass, and so does the same wrapped description placed under the slider's ends, or above the slider 12 points clear of it
+  (two runs, 2026-10-06). What differed was the slider: the failing line sat 4 points above AppKit's slider. So the line is
+  on the page again, wrapped, 12 points clear of the slider, and the narrow test checks it is shown and clear. Track A's
+  "wrapped mid-phrase fails" (a byline inside a date) may have the same kind of cause, a neighbour, rather than the wrap.
+- **After the review** (2026-10-06): the Mac app's AI desk is the React page's (one `deskAnswer` in `ai.ts`) and never
+  handed the club's value of a win; a range across zero is said first ("Can't tell apart from an even deal", Compare's
+  words); Coaching Staff measures nobody against a blank or zero rating; the builder's prompts, "take him off the deal",
+  "weighing the deal", "select a coach" and each slider's VoiceOver help are served; the desk reads whether AI is on again
+  when the server's keys may have changed (`AppModel.keysRevision`); the philosophy's changes are written one at a time,
+  in order; at most 64 deals are kept weighed, as on the server; the difference chart draws in a fixed, checked colour
+  (`readableRangeMark`), never the system accent.
 - *Left for later:* a staff window (a coach opens nothing of his own); the philosophy's staff-driven and hybrid modes (the
   editor serves "Set by you"); keys in the Keychain (N13).
 

@@ -3815,6 +3815,10 @@
               "$ref": "#/components/schemas/StaffSection"
             }
           },
+          "select": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the detail pane says before a coach is chosen."
+          },
           "empty": {
             "$ref": "#/components/schemas/Cell",
             "description": "Why there is no staff to show (none imported, or none for this club); null when there is."
@@ -3827,6 +3831,7 @@
           "orgId",
           "reportStamp",
           "sections",
+          "select",
           "title"
         ],
         "description": "The club's coaching staff as the save has it."
@@ -12090,6 +12095,10 @@
             "$ref": "#/components/schemas/Cell",
             "description": "Where the value reads on the scale (\"Leans — Maximize current wins\", \"Balanced\")."
           },
+          "spoken": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the slider tells VoiceOver: what the preference means and where it reads now, one sentence each."
+          },
           "low": {
             "$ref": "#/components/schemas/Cell"
           },
@@ -12106,6 +12115,7 @@
           "description",
           "value",
           "position",
+          "spoken",
           "low",
           "high",
           "balanced"
@@ -16925,6 +16935,38 @@
             "$ref": "#/components/schemas/Cell",
             "description": "What the builder says with nobody on it."
           },
+          "builder": {
+            "type": "object",
+            "properties": {
+              "find": {
+                "type": "object",
+                "properties": {
+                  "sent": {
+                    "$ref": "#/components/schemas/Cell"
+                  },
+                  "received": {
+                    "$ref": "#/components/schemas/Cell"
+                  }
+                },
+                "required": [
+                  "sent",
+                  "received"
+                ]
+              },
+              "remove": {
+                "$ref": "#/components/schemas/Cell"
+              },
+              "weighing": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            },
+            "required": [
+              "find",
+              "remove",
+              "weighing"
+            ],
+            "description": "The builder's other words: each side's search field, taking a player off, and a deal being weighed."
+          },
           "offers": {
             "type": "array",
             "items": {
@@ -16957,6 +16999,7 @@
         },
         "required": [
           "ai",
+          "builder",
           "byline",
           "emptyDeal",
           "fits",

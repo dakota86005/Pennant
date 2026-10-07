@@ -29,6 +29,8 @@ export interface PhilosophyDimensionView {
   value: Integer;
   /** Where the value reads on the scale ("Leans — Maximize current wins", "Balanced"). */
   position: Cell;
+  /** What the slider tells VoiceOver: what the preference means and where it reads now, one sentence each. */
+  spoken: Cell;
   low: Cell;
   high: Cell;
   balanced: Cell;
@@ -132,6 +134,8 @@ export interface StaffSection {
 export interface CoachingStaffView extends PhilosophyViewHead {
   lede: Claim;
   sections: StaffSection[];
+  /** What the detail pane says before a coach is chosen. */
+  select: Cell;
   /** Why there is no staff to show (none imported, or none for this club); null when there is. */
   empty: Cell | null;
 }

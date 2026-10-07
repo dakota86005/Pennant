@@ -24,6 +24,10 @@ public final class PhilosophyStore {
     private var loadedKeys: [String: AppModel.StoreKey] = [:]
     private var askedKeys: [String: AppModel.StoreKey] = [:]
     private var followedKey: AppModel.StoreKey?
+    /// The last write asked for: each change (an undo's too) waits for the one before it, so the server applies them in
+    /// the order the GM made them and the editor shown is always the answer to the last.
+    private var lastWrite: Task<Void, Never>?
+    private var writesInFlight = 0
     private let log: @MainActor (String) -> Void
 
     public init(log: @escaping @MainActor (String) -> Void = { _ in }) {
@@ -123,11 +127,42 @@ public final class PhilosophyStore {
 
     // MARK: Changing
 
-    /// Sends a change (or an undo's request) as the GM set it; answers with what the server did, or nil (the problem kept).
+    /// Sends a change (or an undo's request) as the GM set it, after any change still being written; answers with what the
+    /// server did, or nil (the problem kept).
     public func change(_ update: Components.Schemas.PhilosophyUpdate, client: Client?, key: AppModel.StoreKey?) async -> Components.Schemas.PhilosophyChange? {
         guard let client, let key else { return nil }
+        return await inTurn { store in await store.write(update, client: client, key: key) }
+    }
+
+    /// Puts every setting back to neutral, after any change still being written; answers with what the server did (its
+    /// undo puts each back), or nil.
+    public func reset(client: Client?, key: AppModel.StoreKey?) async -> Components.Schemas.PhilosophyChange? {
+        guard let client, let key else { return nil }
+        return await inTurn { store in await store.writeReset(client: client, key: key) }
+    }
+
+    /// Runs one write once every write asked before it has finished (two quick changes, or ⌘Z while one is in flight,
+    /// are written and answered in order: an older answer never replaces a newer one).
+    private func inTurn(
+        _ write: @escaping @MainActor (PhilosophyStore) async -> Components.Schemas.PhilosophyChange?
+    ) async -> Components.Schemas.PhilosophyChange? {
+        let previous = lastWrite
+        writesInFlight += 1
         writing = true
-        defer { writing = false }
+        let turn = Task { @MainActor [weak self] () -> Components.Schemas.PhilosophyChange? in
+            await previous?.value
+            guard let self else { return nil }
+            defer {
+                self.writesInFlight -= 1
+                self.writing = self.writesInFlight > 0
+            }
+            return await write(self)
+        }
+        lastWrite = Task { @MainActor in _ = await turn.value }
+        return await turn.value
+    }
+
+    private func write(_ update: Components.Schemas.PhilosophyUpdate, client: Client, key: AppModel.StoreKey) async -> Components.Schemas.PhilosophyChange? {
         do {
             switch try await client.setOrganizationalPhilosophy(path: .init(org: FrontOfficeStore.org(key)), body: .json(update)) {
             case .ok(let answer):
@@ -145,11 +180,7 @@ public final class PhilosophyStore {
         return nil
     }
 
-    /// Puts every setting back to neutral; answers with what the server did (its undo puts each back), or nil.
-    public func reset(client: Client?, key: AppModel.StoreKey?) async -> Components.Schemas.PhilosophyChange? {
-        guard let client, let key else { return nil }
-        writing = true
-        defer { writing = false }
+    private func writeReset(client: Client, key: AppModel.StoreKey) async -> Components.Schemas.PhilosophyChange? {
         do {
             switch try await client.resetOrganizationalPhilosophy(path: .init(org: FrontOfficeStore.org(key))) {
             case .ok(let answer):
@@ -166,6 +197,8 @@ public final class PhilosophyStore {
     }
 
     private func took(_ change: Components.Schemas.PhilosophyChange, _ key: AppModel.StoreKey) -> Components.Schemas.PhilosophyChange {
+        // Written for a save or club no longer followed: its editor is never drawn as this one's
+        if let followed = followedKey, followed.saveId != key.saveId || followed.club != key.club { return change }
         philosophy = change.view
         lastSaid = change.said
         changeProblem = nil

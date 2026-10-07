@@ -44,7 +44,7 @@ struct CoachingStaffView: View {
                         if let row = shown.table.rows.first(where: { $0.id == selection }) {
                             StaffRowDetail(row: row)
                         } else if !shown.table.rows.isEmpty {
-                            Text("Select a coach to see his ratings.")
+                            Text(verbatim: view.select.display)
                                 .font(.callout).foregroundStyle(.readableSecondary)
                         }
                         if let note = shown.note { ClaimRow(note, font: .callout, quiet: true) }

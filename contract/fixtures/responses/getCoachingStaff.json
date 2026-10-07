@@ -938,5 +938,8 @@
       "note": null
     }
   ],
+  "select": {
+    "display": "Select a coach to see his ratings."
+  },
   "empty": null
 }

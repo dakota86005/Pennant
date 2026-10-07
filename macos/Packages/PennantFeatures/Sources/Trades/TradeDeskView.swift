@@ -15,6 +15,12 @@ private struct DealTask: Hashable {
     let deal: TradesStore.Deal
 }
 
+/// The desk is read again when the key moves, or when the AI keys may have changed (whether the AI desk is on).
+private struct DeskTask: Hashable {
+    let key: AppModel.StoreKey?
+    let keysRevision: Int
+}
+
 struct TradeDeskView: View {
     @Environment(AppModel.self) private var model
 
@@ -41,7 +47,7 @@ struct TradeDeskView: View {
                 .background(Color.readablePage)
             }
         }
-        .task(id: model.storeKey) { await model.loadTradeDesk() }
+        .task(id: DeskTask(key: model.storeKey, keysRevision: model.keysRevision)) { await model.loadTradeDesk() }
         .task(id: DealTask(key: model.storeKey, deal: store.deal)) { await model.weighDeal() }
         .toolbar {
             ToolbarItem {
@@ -138,7 +144,7 @@ private struct BuilderSection: View {
             } else if store.deal.isComplete {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Weighing the deal").foregroundStyle(.readableSecondary)
+                    Text(verbatim: desk.builder.weighing.display).foregroundStyle(.readableSecondary)
                 }
             }
             AIDeskView(ai: desk.ai)
