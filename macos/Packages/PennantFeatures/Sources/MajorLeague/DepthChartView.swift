@@ -59,8 +59,9 @@ struct DepthChartView: View {
                 HStack(spacing: 12) {
                     mode
                     ChoicePopover(
-                        current: shown.title.display,
-                        choices: view.byPosition.map { ($0.title.display, $0.summary?.display, $0.id == shown.id) },
+                        Text("Position"),
+                        current: Text(verbatim: shown.title.display),
+                        choices: view.byPosition.map { .init(verbatim: $0.title.display, hint: $0.summary?.display, selected: $0.id == shown.id) },
                         id: "depthChart.position"
                     ) { position = view.byPosition[$0].id }
                 }
@@ -81,8 +82,9 @@ struct DepthChartView: View {
                     if !view.byPosition.isEmpty { mode }
                     if view.clubs.count > 1, let club {
                         ChoicePopover(
-                            current: club.title.display,
-                            choices: view.clubs.map { ($0.title.display, $0.level.display, $0.teamId == club.teamId) },
+                            Text("Club"),
+                            current: Text(verbatim: club.title.display),
+                            choices: view.clubs.map { .init(verbatim: $0.title.display, hint: $0.level.display, selected: $0.teamId == club.teamId) },
                             id: "depthChart.club"
                         ) { team = view.clubs[$0].teamId }
                     }

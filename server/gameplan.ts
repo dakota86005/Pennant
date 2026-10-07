@@ -288,9 +288,38 @@ function planOf(teamId: number, gameId: number) {
  * whether he made the playoffs, whether he was fired — and it grows by one
  * line every year you play.
  */
-gameplanRoutes.get('/tenure/:teamId', (req, res) => {
-  const teamId = Number(req.params.teamId);
-  if (!tableExists('human_manager_history_record')) return res.json({ seasons: [] });
+/** One season of the GM's own record, whichever club he ran. */
+export interface TenureSeason {
+  year: number;
+  club: string;
+  g: number;
+  w: number;
+  l: number;
+  pct: number;
+  finish: number;
+  gb: number | null;
+  madePlayoffs: boolean;
+  wonPlayoffs: boolean;
+  fired: boolean;
+  bestHitter: string | null;
+  bestPitcher: string | null;
+  bestRookie: string | null;
+}
+
+/** The GM's seasons and their totals; just `{ seasons: [] }` on an export without the manager's history. */
+export interface Tenure {
+  seasons: TenureSeason[];
+  totals?: { seasons: number; w: number; l: number; playoffs: number; titles: number; pct: number | null };
+  teamId?: number;
+}
+
+/**
+ * The GM's own record (`/api/tenure/:teamId`, extracted for the Mac app's League Office, N12): every season of the human
+ * manager's history, whichever club (the id is only handed back), with the season's best players' names read in one
+ * batch rather than one read per name.
+ */
+export function computeTenure(teamId: number): Computed<Tenure> {
+  if (!tableExists('human_manager_history_record')) return answer({ seasons: [] });
 
   const records = db
     .prepare(
@@ -309,13 +338,24 @@ gameplanRoutes.get('/tenure/:teamId', (req, res) => {
     : [];
   const byYear = new Map(extra.map((e) => [`${e.year}:${e.team_id}`, e]));
 
-  const nameOf = (id: number | undefined): string | null => {
-    if (!id) return null;
-    const p = db
-      .prepare(`SELECT first_name || ' ' || last_name AS n FROM players WHERE player_id = ?`)
-      .get(id) as { n: string } | undefined;
-    return p?.n ?? null;
-  };
+  // Every name the seasons ask for, read at once (in chunks the database's parameter limit allows); a player read twice
+  // keeps his first row, as a lookup of one would
+  const wanted = new Set<number>();
+  for (const r of records) {
+    const e = byYear.get(`${r.year}:${r.team_id}`);
+    for (const id of [e?.best_hitter_id, e?.best_pitcher_id, e?.best_rookie_id]) if (id) wanted.add(id);
+  }
+  const names = new Map<number, string | null>();
+  const ids = [...wanted];
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    for (const p of db
+      .prepare(`SELECT player_id, first_name || ' ' || last_name AS n FROM players WHERE player_id IN (${chunk.map(() => '?').join(',')})`)
+      .all(...chunk) as Array<{ player_id: number; n: string | null }>) {
+      if (!names.has(p.player_id)) names.set(p.player_id, p.n);
+    }
+  }
+  const nameOf = (id: number | undefined): string | null => (id ? names.get(id) ?? null : null);
 
   const labels = new Map(
     (db.prepare(`SELECT team_id, ${teamLabel} AS label FROM teams t`).all() as Array<{ team_id: number; label: string }>)
@@ -351,10 +391,16 @@ gameplanRoutes.get('/tenure/:teamId', (req, res) => {
     { seasons: 0, w: 0, l: 0, playoffs: 0, titles: 0 }
   );
 
-  res.json({
+  return answer({
     seasons,
     totals: { ...totals, pct: totals.w + totals.l > 0 ? totals.w / (totals.w + totals.l) : null },
     // The current club, so a page opened on someone else's team says so
     teamId,
   });
+}
+
+gameplanRoutes.get('/tenure/:teamId', (req, res) => {
+  const computed = computeTenure(Number(req.params.teamId));
+  if (!computed.ok) return res.status(computed.status).json({ error: computed.error });
+  res.json(computed.body);
 });

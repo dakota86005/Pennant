@@ -16,8 +16,13 @@ public final class MainWindowModel {
     public var sidebarVisibility: NavigationSplitViewVisibility
     /// The departments open in the sidebar.
     public var expanded: Set<DeptID>
-    /// The toolbar's search field, and the server's answer for what was typed (N7).
-    public var searchText = ""
+    /// The toolbar's search field, and the server's answer for what was typed (N7). A view may scope the field to itself
+    /// (`WindowSearch`, N12 Track B: Player Search).
+    public let search = WindowSearch()
+    public var searchText: String {
+        get { search.text }
+        set { search.text = newValue }
+    }
     public var searchAnswer: (query: String, answer: Components.Schemas.SearchAnswer)?
     /// Why the search for a query failed (the server's sentence or the kind of failure), and the query.
     public var searchProblem: (query: String, problem: RequestProblem)?

@@ -2,8 +2,8 @@ import FeatureCore
 import PennantKit
 import SwiftUI
 
-/// League Office (SWIFTUI_REBUILD.md section 3.5). The wire and the club reports are served (N7); the other views are
-/// structural placeholders until their milestones build them.
+/// League Office (SWIFTUI_REBUILD.md section 3.5). The wire and the club reports are served (N7); Us vs Them, Standings,
+/// Leaders, Org Comparison and Franchise History at N12 (Track B, D-072).
 public enum LeagueDepartment: DepartmentModule {
     public static let id: DeptID = "league"
     public static let title: LocalizedStringResource = "League Office"
@@ -16,10 +16,20 @@ public enum LeagueDepartment: DepartmentModule {
         DepartmentViewDescriptor(id: "clubReports", title: "Club Reports", symbol: "building.2", keywords: ["other clubs", "opponents"]) {
             ClubReportsView()
         },
-        .placeholder(id: "usVsThem", title: "Us vs Them", symbol: "arrow.left.and.right.square", keywords: ["compare", "opponent"]),
-        .placeholder(id: "standings", title: "Standings", symbol: "trophy", keywords: ["division", "odds", "posture"]),
-        .placeholder(id: "leaders", title: "Leaders", symbol: "medal", keywords: ["leaderboards"]),
-        .placeholder(id: "orgComparison", title: "Org Comparison", symbol: "chart.bar", keywords: ["organizations"]),
-        .placeholder(id: "franchiseHistory", title: "Franchise History", symbol: "clock.arrow.circlepath", keywords: ["history", "seasons"]),
+        DepartmentViewDescriptor(id: "usVsThem", title: "Us vs Them", symbol: "arrow.left.and.right.square", keywords: ["compare", "opponent"]) {
+            UsVsThemView()
+        },
+        DepartmentViewDescriptor(id: "standings", title: "Standings", symbol: "trophy", keywords: ["division", "odds", "posture"]) {
+            StandingsView()
+        },
+        DepartmentViewDescriptor(id: "leaders", title: "Leaders", symbol: "medal", keywords: ["leaderboards"]) {
+            LeadersView()
+        },
+        DepartmentViewDescriptor(id: "orgComparison", title: "Org Comparison", symbol: "chart.bar", keywords: ["organizations"]) {
+            OrgComparisonView()
+        },
+        DepartmentViewDescriptor(id: "franchiseHistory", title: "Franchise History", symbol: "clock.arrow.circlepath", keywords: ["history", "seasons"]) {
+            FranchiseHistoryView()
+        },
     ]
 }

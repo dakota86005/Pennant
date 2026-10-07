@@ -146,3 +146,14 @@ export type {
   MlbScheduleView, MlbGamePlanView, MlbDepthEntry, MlbDepthPosition, MlbDepthClub, MlbDepthChartView, MlbFortyManView, MlbRosterQuery,
   MlbRosterChoice, MlbRostersView, MlbTrendPoint, MlbTrendSeries, MlbTrendChart, MlbSeasonTrendsView,
 } from '../presentation/clubhouse/types.js';
+// League Office's and Scouting's views (N12 Track B): `GET /api/v2/views/:org/league/<view>`, `/scouting/<view>`
+export type { OfficeClub, OfficeColumn, OfficeRow, OfficeTable, OfficeSection, OfficeChoice, OfficeChoiceGroup } from '../presentation/league/office.js';
+export type {
+  LeagueStandingsGroup, LeagueStaffRead,
+  LeagueStandingsView, LeagueLeaderGroup, LeagueLeadersView, LeagueOrgComparisonView, LeagueSeasonPoint, LeagueSeasonChart, LeagueChartLegend, LeagueTenure,
+  LeagueFranchiseView, LeagueOpponentQuery, LeagueUsVsThemView,
+} from '../presentation/league/types.js';
+export type {
+  ScoutingBoardQuery, ScoutingProspectView, ScoutingMore, ScoutingDraftBoardView, ScoutingSearchToken, ScoutingTokenKind, ScoutingSearchQuery,
+  ScoutingPlayerSearchView,
+} from '../presentation/scouting/types.js';

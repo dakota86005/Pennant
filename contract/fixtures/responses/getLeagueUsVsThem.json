@@ -1,0 +1,998 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Us vs Them"
+  },
+  "lede": {
+    "text": "Your club beside the Club 4 N: the season, at the plate and on the mound",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Two clubs side by side, as facts: the standings' figures, the season's batting and pitching totals, each with its place among the league's clubs, and how the two have done against each other this season. There is no forecast and no single score: each line is the two figures and their places."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "Us vs Them",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "query": {
+    "team": 4
+  },
+  "us": {
+    "teamId": 1,
+    "name": "Club 1 N",
+    "abbr": "C1",
+    "ours": true,
+    "open": {
+      "kind": "club",
+      "teamId": 1
+    }
+  },
+  "them": {
+    "teamId": 4,
+    "name": "Club 4 N",
+    "abbr": "C4",
+    "ours": false,
+    "open": {
+      "kind": "club",
+      "teamId": 4
+    }
+  },
+  "opponents": {
+    "id": "team",
+    "title": {
+      "display": "Set beside"
+    },
+    "choices": [
+      {
+        "text": {
+          "display": "Club 3 N",
+          "hint": "In the East Division"
+        },
+        "selected": false,
+        "value": "3"
+      },
+      {
+        "text": {
+          "display": "Club 2 N",
+          "hint": "In the East Division"
+        },
+        "selected": false,
+        "value": "2"
+      },
+      {
+        "text": {
+          "display": "Club 4 N",
+          "hint": "In the East Division"
+        },
+        "selected": true,
+        "value": "4"
+      }
+    ]
+  },
+  "headToHead": {
+    "text": "Against the Club 4 N this season: 5–5, runs 55–56",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Won",
+          "value": "5"
+        },
+        {
+          "label": "Lost",
+          "value": "5"
+        },
+        {
+          "label": "Runs",
+          "value": "55 scored, 56 allowed (-1)"
+        },
+        {
+          "label": "Games",
+          "value": "Regular-season games between the two clubs this season, from the schedule."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "Us vs Them",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "value": {
+      "n": 5,
+      "unit": "wins",
+      "display": "5–5 · runs 55–56"
+    }
+  },
+  "meetings": {
+    "title": {
+      "display": "Meetings with the Club 4 N"
+    },
+    "player": null,
+    "chips": [],
+    "claims": [],
+    "lines": [
+      {
+        "text": {
+          "display": "Apr 1 · away · 1–0"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 5 · at home · 0–1"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 8 · away · 1–0"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 12 · at home · 0–1"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 15 · away · 1–0"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 19 · at home · 0–1"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 22 · away · 1–0"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 26 · at home · 0–1"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Apr 29 · away · 1–0"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 3 · at home · 0–1"
+        },
+        "quiet": false,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 6 · away · 1 game to play"
+        },
+        "quiet": false,
+        "chips": [
+          {
+            "display": "Next"
+          }
+        ],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 9 · at home · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 13 · away · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 16 · at home · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 20 · away · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 23 · at home · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 27 · away · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "May 30 · at home · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Jun 3 · away · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Jun 6 · at home · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      },
+      {
+        "text": {
+          "display": "Next: May 6 · away · 1 game to play"
+        },
+        "quiet": true,
+        "chips": [],
+        "players": []
+      }
+    ],
+    "collapsed": false
+  },
+  "sections": [
+    {
+      "id": "usVsThem-season",
+      "title": {
+        "display": "The season"
+      },
+      "summary": {
+        "display": "Each figure with its place among the league's 4 clubs"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "measure",
+            "title": {
+              "display": "Line"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "us",
+            "title": {
+              "display": "Club 1 N",
+              "hint": "Your club"
+            },
+            "numeric": true,
+            "sortable": false
+          },
+          {
+            "id": "them",
+            "title": {
+              "display": "Club 4 N"
+            },
+            "numeric": true,
+            "sortable": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "season-record",
+            "cells": {
+              "measure": {
+                "display": "Record",
+                "hint": "Wins and losses this season"
+              },
+              "us": {
+                "display": "15–15"
+              },
+              "them": {
+                "display": "11–19"
+              }
+            },
+            "sort": {
+              "measure": "Record",
+              "us": 0.5,
+              "them": 0.36666666666666664
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "season-pct",
+            "cells": {
+              "measure": {
+                "display": "Win %",
+                "hint": "Wins divided by games played"
+              },
+              "us": {
+                "display": ".500 · T-2nd of 4",
+                "hint": "Level with 1 other club"
+              },
+              "them": {
+                "display": ".367 · 4th of 4"
+              }
+            },
+            "sort": {
+              "measure": "Win %",
+              "us": 0.5,
+              "them": 0.367
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "season-division",
+            "cells": {
+              "measure": {
+                "display": "In the division",
+                "hint": "Place in its own division, and games back"
+              },
+              "us": {
+                "display": "T-2nd of 4 · 4 back",
+                "hint": "In the East Division"
+              },
+              "them": {
+                "display": "4th of 4 · 8 back",
+                "hint": "In the East Division"
+              }
+            },
+            "sort": {
+              "measure": "In the division",
+              "us": 4,
+              "them": 8
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "season-rsPerGame",
+            "cells": {
+              "measure": {
+                "display": "Runs scored a game",
+                "hint": "Runs scored divided by games played"
+              },
+              "us": {
+                "display": "5.37 · 1st of 4"
+              },
+              "them": {
+                "display": "4.70 · 4th of 4"
+              }
+            },
+            "sort": {
+              "measure": "Runs scored a game",
+              "us": 5.367,
+              "them": 4.7
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "season-raPerGame",
+            "cells": {
+              "measure": {
+                "display": "Runs allowed a game",
+                "hint": "Runs allowed divided by games played"
+              },
+              "us": {
+                "display": "5.90 · 4th of 4"
+              },
+              "them": {
+                "display": "5.10 · 3rd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Runs allowed a game",
+              "us": 5.9,
+              "them": 5.1
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "season-diff",
+            "cells": {
+              "measure": {
+                "display": "Run differential",
+                "hint": "Runs scored minus runs allowed"
+              },
+              "us": {
+                "display": "-16 · 4th of 4"
+              },
+              "them": {
+                "display": "-12 · 3rd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Run differential",
+              "us": -16,
+              "them": -12
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "season-streak",
+            "cells": {
+              "measure": {
+                "display": "Streak",
+                "hint": "W3 is three straight wins, L2 two straight losses"
+              },
+              "us": {
+                "display": "L1"
+              },
+              "them": {
+                "display": "L1"
+              }
+            },
+            "sort": {
+              "measure": "Streak",
+              "us": -1,
+              "them": -1
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "No figures for these clubs in the export."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "usVsThem-batting",
+      "title": {
+        "display": "At the plate"
+      },
+      "summary": {
+        "display": "Each figure with its place among the league's 4 clubs"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "measure",
+            "title": {
+              "display": "Line"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "us",
+            "title": {
+              "display": "Club 1 N",
+              "hint": "Your club"
+            },
+            "numeric": true,
+            "sortable": false
+          },
+          {
+            "id": "them",
+            "title": {
+              "display": "Club 4 N"
+            },
+            "numeric": true,
+            "sortable": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "batting-avg",
+            "cells": {
+              "measure": {
+                "display": "Batting average",
+                "hint": "Hits per at-bat"
+              },
+              "us": {
+                "display": ".262 · T-3rd of 4",
+                "hint": "Level with 1 other club"
+              },
+              "them": {
+                "display": ".266 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Batting average",
+              "us": 0.262,
+              "them": 0.266
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "batting-obp",
+            "cells": {
+              "measure": {
+                "display": "On-base percentage",
+                "hint": "How often a batter reaches base"
+              },
+              "us": {
+                "display": ".315 · T-3rd of 4",
+                "hint": "Level with 1 other club"
+              },
+              "them": {
+                "display": ".329 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "On-base percentage",
+              "us": 0.315,
+              "them": 0.329
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "batting-slg",
+            "cells": {
+              "measure": {
+                "display": "Slugging",
+                "hint": "Total bases per at-bat"
+              },
+              "us": {
+                "display": ".390 · 4th of 4"
+              },
+              "them": {
+                "display": ".413 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Slugging",
+              "us": 0.39,
+              "them": 0.413
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "batting-ops",
+            "cells": {
+              "measure": {
+                "display": "OPS",
+                "hint": "On-base plus slugging"
+              },
+              "us": {
+                "display": ".705 · 4th of 4"
+              },
+              "them": {
+                "display": ".742 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "OPS",
+              "us": 0.705,
+              "them": 0.742
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "batting-hr",
+            "cells": {
+              "measure": {
+                "display": "Home runs",
+                "hint": "Home runs hit this season"
+              },
+              "us": {
+                "display": "30 · 4th of 4"
+              },
+              "them": {
+                "display": "37 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Home runs",
+              "us": 30,
+              "them": 37
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "batting-bb",
+            "cells": {
+              "measure": {
+                "display": "Walks",
+                "hint": "Walks drawn this season"
+              },
+              "us": {
+                "display": "82 · 4th of 4"
+              },
+              "them": {
+                "display": "101 · 1st of 4"
+              }
+            },
+            "sort": {
+              "measure": "Walks",
+              "us": 82,
+              "them": 101
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "batting-k",
+            "cells": {
+              "measure": {
+                "display": "Strikeouts",
+                "hint": "Times struck out this season"
+              },
+              "us": {
+                "display": "270 · 4th of 4"
+              },
+              "them": {
+                "display": "258 · 3rd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Strikeouts",
+              "us": 270,
+              "them": 258
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "batting-sb",
+            "cells": {
+              "measure": {
+                "display": "Stolen bases",
+                "hint": "Bases stolen this season"
+              },
+              "us": {
+                "display": "12 · 4th of 4"
+              },
+              "them": {
+                "display": "16 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Stolen bases",
+              "us": 12,
+              "them": 16
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "No figures for these clubs in the export."
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "usVsThem-pitching",
+      "title": {
+        "display": "On the mound"
+      },
+      "summary": {
+        "display": "Each figure with its place among the league's 4 clubs"
+      },
+      "table": {
+        "columns": [
+          {
+            "id": "measure",
+            "title": {
+              "display": "Line"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "us",
+            "title": {
+              "display": "Club 1 N",
+              "hint": "Your club"
+            },
+            "numeric": true,
+            "sortable": false
+          },
+          {
+            "id": "them",
+            "title": {
+              "display": "Club 4 N"
+            },
+            "numeric": true,
+            "sortable": false
+          }
+        ],
+        "rows": [
+          {
+            "id": "pitching-era",
+            "cells": {
+              "measure": {
+                "display": "ERA",
+                "hint": "Earned runs allowed per nine innings"
+              },
+              "us": {
+                "display": "5.87 · 4th of 4"
+              },
+              "them": {
+                "display": "4.97 · 3rd of 4"
+              }
+            },
+            "sort": {
+              "measure": "ERA",
+              "us": 5.867,
+              "them": 4.967
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "pitching-rotationEra",
+            "cells": {
+              "measure": {
+                "display": "Starters' ERA",
+                "hint": "The rotation's earned runs per nine innings"
+              },
+              "us": {
+                "display": "5.70 · 4th of 4"
+              },
+              "them": {
+                "display": "5.03 · 3rd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Starters' ERA",
+              "us": 5.703,
+              "them": 5.028
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "pitching-bullpenEra",
+            "cells": {
+              "measure": {
+                "display": "Bullpen ERA",
+                "hint": "The relievers' earned runs per nine innings"
+              },
+              "us": {
+                "display": "6.19 · 4th of 4"
+              },
+              "them": {
+                "display": "4.85 · 3rd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Bullpen ERA",
+              "us": 6.185,
+              "them": 4.846
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "pitching-whip",
+            "cells": {
+              "measure": {
+                "display": "WHIP",
+                "hint": "Walks and hits allowed per inning"
+              },
+              "us": {
+                "display": "1.55 · 3rd of 4"
+              },
+              "them": {
+                "display": "1.46 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "WHIP",
+              "us": 1.552,
+              "them": 1.463
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "pitching-kp",
+            "cells": {
+              "measure": {
+                "display": "Strikeouts",
+                "hint": "Batters struck out this season"
+              },
+              "us": {
+                "display": "268 · 2nd of 4"
+              },
+              "them": {
+                "display": "269 · 1st of 4"
+              }
+            },
+            "sort": {
+              "measure": "Strikeouts",
+              "us": 268,
+              "them": 269
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "pitching-bbp",
+            "cells": {
+              "measure": {
+                "display": "Walks allowed",
+                "hint": "Batters walked this season"
+              },
+              "us": {
+                "display": "98 · 4th of 4"
+              },
+              "them": {
+                "display": "85 · 2nd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Walks allowed",
+              "us": 98,
+              "them": 85
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          },
+          {
+            "id": "pitching-hra",
+            "cells": {
+              "measure": {
+                "display": "Home runs allowed",
+                "hint": "Home runs given up this season"
+              },
+              "us": {
+                "display": "39 · 4th of 4"
+              },
+              "them": {
+                "display": "35 · 3rd of 4"
+              }
+            },
+            "sort": {
+              "measure": "Home runs allowed",
+              "us": 39,
+              "them": 35
+            },
+            "player": null,
+            "detail": [],
+            "actions": []
+          }
+        ],
+        "empty": {
+          "display": "No figures for these clubs in the export."
+        }
+      },
+      "note": null
+    }
+  ],
+  "note": {
+    "text": "How Us vs Them is read",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Places",
+          "value": "Each figure's place among the league's major league clubs that have it, best first: lower is better for runs allowed, earned run average, walks and hits allowed, home runs allowed and strikeouts at the plate. Clubs level at the figure as shown share the place (marked T-); a club without the figure isn't counted."
+        },
+        {
+          "label": "The season",
+          "value": "The record, the division, runs and the streak are the standings' own figures; runs a game divide them by games played."
+        },
+        {
+          "label": "At the plate and on the mound",
+          "value": "The clubs' season totals at the major league. Rates are worked from the counts where the export gives them (on-base from hits, walks, hit by pitch and sacrifice flies; slugging from total bases), and read as exported otherwise. Counts are season totals, so a club that has played more games has had more chances."
+        },
+        {
+          "label": "Against each other",
+          "value": "Regular-season games between the two clubs this season, from the schedule."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "Us vs Them",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "empty": null,
+  "opened": {
+    "display": "Opened on your next opponent"
+  }
+}

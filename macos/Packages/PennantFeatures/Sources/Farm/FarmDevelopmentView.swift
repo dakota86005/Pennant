@@ -121,9 +121,9 @@ struct DevelopmentBoard: View {
                     systemImage: "line.3.horizontal.decrease.circle",
                     choices: view.tabs.map { (id: $0.id, text: Text(verbatim: $0.label)) },
                     current: Text(verbatim: tab?.label ?? ""),
-                    selection: Binding(get: { tab?.id ?? view.initialTab }, set: { tabStored = $0; order = [] })
+                    selection: Binding(get: { tab?.id ?? view.initialTab }, set: { tabStored = $0; order = [] }),
+                    id: "farm.filter.development"
                 )
-                .accessibilityIdentifier("farm.filter.development")
                 LevelPicker(levels: view.levels, selection: Binding(get: { levelStored.isEmpty ? nil : levelStored }, set: { levelStored = $0 ?? "" }))
             }
         }

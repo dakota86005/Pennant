@@ -203,7 +203,7 @@ let workerBroken = false;
 
 type Job = WorkerJob;
 /** Another department's jobs (N10: the farm's), which its own service posts, checks and keeps (`runDepartmentJob`). */
-type DepartmentJob = Extract<Job, { kind: 'farmViews' | 'farmDecision' | 'clubhouseViews' | 'clubhouseAsk' | 'playerDossiers' }>;
+type DepartmentJob = Extract<Job, { kind: 'farmViews' | 'farmDecision' | 'clubhouseViews' | 'clubhouseAsk' | 'playerDossiers' | 'leagueViews' | 'leagueAsk' }>;
 /** The Front Office's own jobs, which this service checks and keeps. */
 type OwnJob = Exclude<Job, DepartmentJob>;
 
@@ -284,6 +284,15 @@ export async function runDepartmentJob<T>(job: DepartmentJob, inProcess: () => T
 /** Everything a club's answers depend on, as one string (N10: the farm's views key on the Front Office's inputs). */
 export function frontOfficeInputsKey(orgId: number): string {
   return inputsKey(orgId);
+}
+
+/**
+ * What a club's answers that never read OOTP's live log depend on, as one string (N12 Track B review, M3): the club, the
+ * import, the calibration's revision, the settings and the config, without the live log's file stats. League Office's
+ * and Scouting's views key on it, so a write to the log during play rebuilds none of them.
+ */
+export function frontOfficeImportKey(orgId: number): string {
+  return [orgId, importedAt.value ?? 'none', revision, statKey(path.join(DATA_DIR, 'settings.json')), statKey(path.join(DATA_DIR, 'config.json'))].join('|');
 }
 
 /** A key's stamp, as every payload built for it carries (`reportStamp`). */

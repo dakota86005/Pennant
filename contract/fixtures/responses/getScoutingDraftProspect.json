@@ -1,0 +1,28 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "playerId": 90027,
+  "row": "prospect-90027",
+  "detail": [
+    {
+      "title": {
+        "display": "Staff's read: High ceiling, long wait"
+      },
+      "player": null,
+      "chips": [],
+      "claims": [],
+      "lines": [
+        {
+          "text": {
+            "display": "61 ceiling, but 17 points of it is still projection"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": []
+        }
+      ],
+      "collapsed": false
+    }
+  ]
+}

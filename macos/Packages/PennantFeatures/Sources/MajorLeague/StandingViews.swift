@@ -127,44 +127,26 @@ struct Glances: View {
 struct WhatIfPicker: View {
     let whatIf: Components.Schemas.MlbOverviewView.WhatIfPayload
     @Environment(\.routeOpener) private var opener
-    @State private var choosing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             MagazineSection(title: Text(verbatim: whatIf.title.display))
-            // A button that opens the served players in a popover, each a button opening his scenario: the pull-down
-            // `Menu` and the pop-up `Picker` were both found by the accessibility audit with no action to press
-            Button {
-                choosing = true
-            } label: {
-                Label { Text(verbatim: whatIf.prompt.display) } icon: { Image(systemName: "chevron.down") }
-                    .labelStyle(.titleAndIcon)
-            }
-            .popover(isPresented: $choosing, arrowEdge: .bottom) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(whatIf.players, id: \.player.playerId) { choice in
-                            Button {
-                                choosing = false
-                                if let target = route(choice.open) { opener?.open(target) }
-                            } label: {
-                                Text(verbatim: choice.role.map { "\(choice.player.name) · \($0.display)" } ?? choice.player.name)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(.rect)
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .accessibilityIdentifier("whatIf.player.\(choice.player.playerId)")
-                        }
-                    }
-                    .padding(.vertical, 6)
-                }
-                .frame(minWidth: 260, maxHeight: 360)
-                .background(Color.readablePage)
+            // The shared choice pop-up (PennantDesign): the served players, each choosing his scenario; none is current
+            ChoicePopover(
+                Text(verbatim: whatIf.title.display),
+                current: Text(verbatim: whatIf.prompt.display),
+                choices: whatIf.players.map { choice in
+                    .init(
+                        verbatim: choice.role.map { "\(choice.player.name) · \($0.display)" } ?? choice.player.name,
+                        identifier: "whatIf.player.\(choice.player.playerId)"
+                    )
+                },
+                id: "whatIf"
+            ) { index in
+                if let target = route(whatIf.players[index].open) { opener?.open(target) }
             }
             .fixedSize()
             .disabled(whatIf.players.isEmpty)
-            .accessibilityIdentifier("whatIf")
             Text(verbatim: whatIf.note.display).font(.callout).foregroundStyle(.readableSecondary)
         }
     }

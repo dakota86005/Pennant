@@ -88,6 +88,50 @@ public extension NSColor {
     }
 }
 
+// MARK: Fixed, checked chart marks (N12 Track B review, M7)
+
+/// A season chart's marks (Franchise History's wins by season): each a fixed colour, never the system accent (a green
+/// accent read as titles) or a system background, checked at 3:1 or better as a graphic on the page and the window's
+/// background, 4.5:1 with Increase Contrast (`ThemeTests`). Colour is never the only signal: a title carries a diamond, a
+/// playoff season a dot, and a season whose ending isn't known is drawn hollow.
+public extension NSColor {
+    /// A title season: a deep gold in light, a light gold in dark.
+    nonisolated static let readableChartTitle = NSColor(name: "PennantReadableChartTitle") { appearance in
+        switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
+        case .accessibilityHighContrastAqua?: NSColor(srgbRed: 0.40, green: 0.28, blue: 0.0, alpha: 1)
+        case .accessibilityHighContrastDarkAqua?: NSColor(srgbRed: 1.0, green: 0.86, blue: 0.48, alpha: 1)
+        case .darkAqua?: NSColor(srgbRed: 0.95, green: 0.78, blue: 0.30, alpha: 1)
+        default: NSColor(srgbRed: 0.55, green: 0.40, blue: 0.0, alpha: 1)
+        }
+    }
+    /// A playoff season: a deep blue in light, a light blue in dark.
+    nonisolated static let readableChartPlayoffs = NSColor(name: "PennantReadableChartPlayoffs") { appearance in
+        switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
+        case .accessibilityHighContrastAqua?: NSColor(srgbRed: 0.04, green: 0.24, blue: 0.58, alpha: 1)
+        case .accessibilityHighContrastDarkAqua?: NSColor(srgbRed: 0.62, green: 0.80, blue: 1.0, alpha: 1)
+        case .darkAqua?: NSColor(srgbRed: 0.45, green: 0.68, blue: 1.0, alpha: 1)
+        default: NSColor(srgbRed: 0.10, green: 0.35, blue: 0.75, alpha: 1)
+        }
+    }
+    /// A season that missed the playoffs: a mid grey (darker with Increase Contrast).
+    nonisolated static let readableChartOther = NSColor(name: "PennantReadableChartOther") { appearance in
+        switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
+        case .accessibilityHighContrastAqua?: NSColor(srgbRed: 0.36, green: 0.36, blue: 0.36, alpha: 1)
+        case .accessibilityHighContrastDarkAqua?: NSColor(srgbRed: 0.70, green: 0.70, blue: 0.70, alpha: 1)
+        case .darkAqua?: NSColor(srgbRed: 0.64, green: 0.64, blue: 0.64, alpha: 1)
+        default: NSColor(srgbRed: 0.45, green: 0.45, blue: 0.45, alpha: 1)
+        }
+    }
+}
+
+public extension ShapeStyle where Self == Color {
+    /// A season chart's marks (`NSColor.readableChartTitle`, `.readableChartPlayoffs`, `.readableChartOther`); a season
+    /// whose ending isn't known is outlined in the readable secondary grey, never filled.
+    static var readableChartTitle: Color { Color(nsColor: .readableChartTitle) }
+    static var readableChartPlayoffs: Color { Color(nsColor: .readableChartPlayoffs) }
+    static var readableChartOther: Color { Color(nsColor: .readableChartOther) }
+}
+
 public extension ShapeStyle where Self == Color {
     /// A page Pennant's content sits on (`NSColor.readablePage`).
     static var readablePage: Color { Color(nsColor: .readablePage) }
