@@ -2976,8 +2976,9 @@ built at N12 (Track C)".
 - **The editor orders, never permits** (D-003, D-019, D-045). Its lede says the settings order the choices the staff
   already finds sound and never make a move allowed or rule one out; "Promotion aggression" reads "among the moves Player
   Development finds sound, how much the club prefers the quicker one".
-- **A change is checked whole and undone through the server.** An unknown setting, a preference off 0–100 or not a whole
-  number, or a policy choice not offered is a 400 in words and writes nothing (the React route clamps silently; the v2 one
+- **A change is checked whole and undone through the server.** An unknown setting (a key beside `dimensions` and
+  `policies`, or a policy id that is only a property every object has, such as `constructor`), a preference off 0–100 or
+  not a whole number, or a policy choice not offered is a 400 in words and writes nothing (the React route clamps silently; the v2 one
   refuses). Each change answers with the editor, what it did ("Competitive window set to 70: Maximize current wins.") and
   the request that undoes it; ⌘Z sends that request, its redo the original. Writing the settings moves the Front Office's
   inputs, so every kept build that reads the philosophy is built again.

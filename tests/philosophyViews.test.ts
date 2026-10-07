@@ -97,6 +97,13 @@ describe('the philosophy editor orders, never permits (N12)', () => {
       [{ dimensions: [{ id: 'competitiveWindow', value: 55.5 }] }, OFF_THE_SCALE],
       [{ dimensions: [{ id: 'competitiveWindow', value: 60 }, { id: 'clubhouseVibes', value: 60 }] }, UNKNOWN_SETTING],
       [{ policies: [{ id: 'salaryDumps', value: 'always' }] }, NOT_OFFERED],
+      // A policy id that is a property of every object names no policy (review L1: it was a 500 with a raw message)
+      [{ policies: [{ id: 'constructor', value: 'always' }] }, UNKNOWN_SETTING],
+      [{ policies: [{ id: '__proto__', value: 'always' }] }, UNKNOWN_SETTING],
+      [{ policies: [{ id: 'hasOwnProperty', value: 'always' }] }, UNKNOWN_SETTING],
+      // Checked whole (review L2): a key beside the preferences and policies is refused, even with a sound change beside it
+      [{ dimensions: [{ id: 'competitiveWindow', value: 60 }], manual: { competitiveWindow: 90 } }, UNKNOWN_SETTING],
+      [{ policies: [], aggressive: true }, UNKNOWN_SETTING],
       [{}, NOT_A_CHANGE],
       ['competitiveWindow=70', NOT_A_CHANGE],
     ] as const) {

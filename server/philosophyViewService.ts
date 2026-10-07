@@ -72,6 +72,8 @@ export function philosophyNow(org: string): PhilosophyView {
 export function checkedUpdate(body: unknown): { dimensions: Array<{ id: string; value: number }>; policies: Array<{ id: string; value: string }> } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new PhilosophyRefusal(NOT_A_CHANGE, 400);
   const b = body as Record<string, unknown>;
+  // Checked whole: a key that is neither the preferences nor the policies is a setting this build doesn't know
+  if (Object.keys(b).some((k) => k !== 'dimensions' && k !== 'policies')) throw new PhilosophyRefusal(UNKNOWN_SETTING, 400);
   const list = (v: unknown): Array<Record<string, unknown>> => {
     if (v === undefined) return [];
     if (!Array.isArray(v) || v.some((x) => !x || typeof x !== 'object')) throw new PhilosophyRefusal(NOT_A_CHANGE, 400);
@@ -83,8 +85,11 @@ export function checkedUpdate(body: unknown): { dimensions: Array<{ id: string; 
     return { id: d.id, value: d.value };
   });
   const policies = list(b.policies).map((p) => {
-    if (typeof p.id !== 'string' || !OPTIONS[p.id]) throw new PhilosophyRefusal(UNKNOWN_SETTING, 400);
-    if (typeof p.value !== 'string' || !OPTIONS[p.id].some((o) => o.value === p.value)) throw new PhilosophyRefusal(NOT_OFFERED, 400);
+    // Its own keys only: an id such as "constructor" or "__proto__" names no policy (never a property of every object)
+    if (typeof p.id !== 'string' || !Object.hasOwn(OPTIONS, p.id)) throw new PhilosophyRefusal(UNKNOWN_SETTING, 400);
+    const offered = OPTIONS[p.id];
+    if (!Array.isArray(offered)) throw new PhilosophyRefusal(UNKNOWN_SETTING, 400);
+    if (typeof p.value !== 'string' || !offered.some((o) => o.value === p.value)) throw new PhilosophyRefusal(NOT_OFFERED, 400);
     return { id: p.id, value: p.value };
   });
   if (dimensions.length + policies.length === 0) throw new PhilosophyRefusal(NOT_A_CHANGE, 400);
