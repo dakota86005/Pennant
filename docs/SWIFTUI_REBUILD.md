@@ -1899,6 +1899,17 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   runner. The restoration test now quits with the restored window open; check it on a real macOS 26 Mac before
   release (N14). When the app is killed outright, the server sees stdin close and stops itself,
   releasing the lock (checked on a real build).
+- **A UI test never leaves the pointer on a window's title-bar buttons (PR #58).** On GitHub's 1024 × 768 runner every
+  main window opens at x 0 and a player's window (920 points wide) centred at x 52, so a click on the player window's
+  close button leaves the pointer exactly on the next launch's zoom button. macOS 26 then opens its window-tiling menu
+  over that window (AppKit's ThemeWidgetControlViewService, a popup at layer 101), and the menu takes every key: the
+  app, in front with its window key, receives no ⌘1, ⌘K or ⌘Q until a click closes the menu. testPlayerNoteKeptOnLeaving
+  closed his window that way and quit at once, and the next tests failed at their first key (testPlayerWindows and
+  testSearchToClubWindow here; testPlayerSearchFullPageAudit and the restoration test's ⌘Q on #59). It closes with ⌘W
+  now. After clicking a title-bar button a test closes with the keyboard instead, or moves the pointer off before the
+  next launch (`audit` hovers it to the title bar's middle). If keys stop arriving again, the Debug key log
+  (`-PennantTestLogKeys`, `KeyEquivalentLog.swift`: each key with ⌘ or ⌃, activation and key-window changes) and
+  each setUp's list of the windows on the screen, at every layer, say so.
 - stdout is read with a readability handler, a line at a time: `FileHandle.bytes.lines` held the ready line back until
   the pipe closed.
 - `server.log` rotates at 5 MB and keeps three older files; the token and keys are never written (the handshake is on
