@@ -294,6 +294,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        quit.shouldTerminate { ok in NSApp.reply(toApplicationShouldTerminate: ok) }
+        #if DEBUG
+        // Where the keyboard's text input stood as the quit was asked (PR #58), for the UI tests' key log
+        if UserDefaults.standard.bool(forKey: "PennantTestLogKeys") {
+            let key = NSApp.keyWindow.map { String(($0.identifier?.rawValue ?? "unnamed").prefix(60)) } ?? "none"
+            let responder = NSApp.keyWindow?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"
+            let editing = NSApp.windows.filter { $0.firstResponder is NSText }.count
+            appLog("keys: quit asked; key window \(key), first responder \(responder); windows editing text \(editing); input context \(NSTextInputContext.current.map { _ in "active" } ?? "none")")
+        }
+        #endif
+        return quit.shouldTerminate { ok in NSApp.reply(toApplicationShouldTerminate: ok) }
     }
 }

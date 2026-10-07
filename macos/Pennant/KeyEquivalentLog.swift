@@ -20,13 +20,15 @@ enum KeyEquivalentLog {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { log("keys: 5 s after launch \(otherInstances())") }
         // Whether the app is active and which window is key, as each changes (the keys go to the key window)
         let center = NotificationCenter.default
-        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification, NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification] {
+        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification, NSWindow.didBecomeKeyNotification,
+                     NSWindow.didResignKeyNotification, NSWindow.willCloseNotification] {
             center.addObserver(forName: name, object: nil, queue: .main) { note in
                 let what = name.rawValue.replacingOccurrences(of: "Notification", with: "")
                 nonisolated(unsafe) let object = note.object
                 MainActor.assumeIsolated {
                     let window = (object as? NSWindow).map { String(($0.identifier?.rawValue ?? "unnamed").prefix(60)) } ?? "the app"
-                    log("keys: \(what): \(window); active \(NSApp.isActive)")
+                    let responder = (object as? NSWindow)?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"
+                    log("keys: \(what): \(window); first responder \(responder); active \(NSApp.isActive)")
                 }
             }
         }
