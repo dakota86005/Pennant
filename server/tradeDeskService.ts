@@ -1,9 +1,11 @@
 /**
  * The Trade Desk, kept (N12 Track C; SWIFTUI_REBUILD.md sections 4.2 and 9; D-073).
  *
- * - **The desk** (the offers, the trade talk, the league's fits) is built once per state of the club's inputs, the Front
- *   Office's own key (`frontOfficeInputsKey`: the club, the import, the settings and configuration files, the live log,
- *   the calibration revision), in the Front Office's worker. Our club's is **warmed** after each kept build of its Front
+ * - **The desk** (the offers, the trade talk, the league's fits) is built once per state of the club's inputs without
+ *   OOTP's live log (`tradeDeskKey`: `frontOfficeImportKey`, the club, the import, the settings and configuration files,
+ *   the calibration revision, and the export's freshness as derived, its state and days behind; review M2), in the Front
+ *   Office's worker. A write to the live log during play that leaves the freshness as it was rebuilds nothing; one that
+ *   moves it does, since control and what rests on it read on it. Our club's is **warmed** after each kept build of its Front
  *   Office, so the first open after an import is a cached read; another club's is built on its first open, then kept.
  *   Whether the AI desk is on is read on every request (a key can change without the inputs moving).
  * - **A deal weighed** is read on the server's thread when asked (a handful of players) and kept on the same key with its
@@ -13,7 +15,8 @@
  *   need no model).
  */
 import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
-import { FrontOfficeRefusal, NO_DATA, frontOfficeInputsKey, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
+import { freshnessCue, getDataStatus } from './dataStatus.js';
+import { FrontOfficeRefusal, NO_DATA, frontOfficeImportKey, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored, assertAuthored, cell } from './presentation/claim.js';
 import { tradeAnalysisView, tradeAnswerAbout, tradeDeskAi, type TradeAiState } from './presentation/trades/desk.js';
@@ -22,6 +25,16 @@ import { answerLines } from './presentation/trades/words.js';
 import { analyzeTrade, viewerFor } from './trade.js';
 import { buildTradeDesk, clubWord, tradesContextFor, type TradeDeskRequest } from './tradeDeskBuild.js';
 import { currentOrganization } from './viewingOrganization.js';
+
+/**
+ * What the desk and a deal weighed depend on, as one string: the Front Office's inputs without the live log
+ * (`frontOfficeImportKey`, the settings and so the philosophy's lens among them), and the export's freshness as derived
+ * from the save and the log (its state and days behind; never the log's raw file stats), as Finance keys its views.
+ */
+export function tradeDeskKey(orgId: number): string {
+  const cue = freshnessCue(getDataStatus({ importedAt: importedAt.value }));
+  return `${frontOfficeImportKey(orgId)}|${cue.state}/${cue.lagDays}`;
+}
 
 /** A request the Trade Desk refuses, in words (a 400). */
 export class TradesRefusal extends Error {
@@ -65,7 +78,7 @@ async function deskFor(orgId: number): Promise<KeptDesk> {
     await upgrade;
     return deskFor(orgId);
   }
-  const key = frontOfficeInputsKey(orgId);
+  const key = tradeDeskKey(orgId);
   const hit = desks.get(key);
   if (hit) {
     stats.hits += 1;
@@ -82,7 +95,7 @@ async function deskFor(orgId: number): Promise<KeptDesk> {
       adoptAuthored(view);
       const entry: KeptDesk = { key, view };
       // Kept only when nothing moved under it: no swap to another import, the same inputs
-      if (databaseGeneration() === startedGeneration && frontOfficeInputsKey(orgId) === key) {
+      if (databaseGeneration() === startedGeneration && tradeDeskKey(orgId) === key) {
         desks.delete(key);
         desks.set(key, entry);
         while (desks.size > MAX_DESKS) desks.delete(desks.keys().next().value!);
@@ -140,7 +153,7 @@ export async function tradeAnalysisNow(org: string, query: Record<string, unknow
   const orgId = resolveOrg(org);
   if (!tableExists('players')) throw new FrontOfficeRefusal(NO_DATA, 404);
   const deal = dealFrom(query);
-  const inputs = frontOfficeInputsKey(orgId);
+  const inputs = tradeDeskKey(orgId);
   const key = `${inputs}#${deal.sent.join(',')}>${deal.received.join(',')}`;
   const hit = analyses.get(key);
   if (hit) {
@@ -155,7 +168,7 @@ export async function tradeAnalysisNow(org: string, query: Record<string, unknow
   const analysis = analyzeTrade(deal.sent, deal.received, viewerFor(orgId), undefined, { winValues: false });
   const view = tradeAnalysisView(ctx, analysis, deal);
   stats.analyses += 1;
-  if (databaseGeneration() === generation && frontOfficeInputsKey(orgId) === inputs) {
+  if (databaseGeneration() === generation && tradeDeskKey(orgId) === inputs) {
     analyses.set(key, view);
     while (analyses.size > MAX_ANALYSES) analyses.delete(analyses.keys().next().value!);
   }
@@ -204,7 +217,7 @@ export async function tradeAskNow(
       !!t && (t.role === 'user' || t.role === 'assistant') && typeof t.content === 'string');
   const message = typeof question.message === 'string' && question.message.trim() ? question.message : undefined;
   const answer = await ask({ orgId, orgLabel: clubWord(orgId), sent, received, thread, message });
-  const ctx = tradesContextFor({ orgId, importStamp: importedAt.value, reportStamp: frontOfficeStampOf(frontOfficeInputsKey(orgId)) });
+  const ctx = tradesContextFor({ orgId, importStamp: importedAt.value, reportStamp: frontOfficeStampOf(tradeDeskKey(orgId)) });
   const named = answer.voice.name !== 'the front office';
   const reply: TradeAnswer = {
     voice: cell(named ? `${answer.voice.name} · ${answer.voice.role}` : 'The front office'),

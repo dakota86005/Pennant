@@ -1,11 +1,18 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { loadConfig, saveConfig } from '../server/config.js';
+import { freshnessCue, getDataStatus } from '../server/dataStatus.js';
+import { coachingStaffNow, philosophyViewsKey, resetPhilosophyViews } from '../server/philosophyViewService.js';
+import { philosophyForOrg, savePhilosophyForOrg } from '../server/settings.js';
 import { db } from '../server/db.js';
-import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { frontOfficeInputsKey, relocateLiveLog, resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { analyzeTrade, computeTradeFits, computeTradeProposals, computeTradeTalk, viewerFor } from '../server/trade.js';
 import { buildTradeDesk, tradesContextFor } from '../server/tradeDeskBuild.js';
 import { differenceWords, tradeAnalysisView } from '../server/presentation/trades/desk.js';
 import {
-  BAD_PLAYERS, TOO_MANY, dealFrom, resetTradeDesk, tradeAnalysisNow, tradeDeskNow as deskNow, tradeDeskStats,
+  BAD_PLAYERS, TOO_MANY, dealFrom, resetTradeDesk, tradeDeskKey, tradeAnalysisNow, tradeDeskNow as deskNow, tradeDeskStats,
 } from '../server/tradeDeskService.js';
 import { TRADE_AI_OFF, tradeAiState } from '../server/ai.js';
 const tradeDeskNow = (org: string) => deskNow(org, tradeAiState);
@@ -180,3 +187,62 @@ describe('the desk is kept, and the AI desk is optional (N12; D-001)', () => {
     expect(view.difference?.headline.text).toMatch(/^(Most likely |Can't tell apart from an even deal: )/);
   });
 });
+
+describe('the desk is kept through play (N12; review M2)', () => {
+  it('keeps the desk, a deal weighed and the staff through a write to OOTP\'s live log that leaves the freshness as it was', async () => {
+    // A pretend save with a live log beside it, chosen by hand: the Front Office keys on the log's files, the desk on the
+    // freshness derived from them (as Finance does)
+    const lg = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-live-log-')) + '/Pretend.lg';
+    fs.mkdirSync(path.join(lg, 'temp'), { recursive: true });
+    fs.mkdirSync(path.join(lg, 'import_export', 'csv'), { recursive: true });
+    const wal = path.join(lg, 'temp', 'text_data.sqlite3-wal');
+    fs.writeFileSync(path.join(lg, 'temp', 'text_data.sqlite3'), 'not a log');
+    fs.writeFileSync(wal, 'x');
+    const before = loadConfig();
+    try {
+      saveConfig({ ...before, lgPath: lg });
+      relocateLiveLog();
+      resetTradeDesk();
+      resetPhilosophyViews();
+      const q = { sent: String(save.regular), received: String(theirs()[0]) };
+      await tradeDeskNow(String(save.org));
+      await tradeAnalysisNow(String(save.org), q);
+      const staff = coachingStaffNow(String(save.org));
+      const counts = tradeDeskStats();
+      const deskKey = tradeDeskKey(save.org);
+      const staffKey = philosophyViewsKey(save.org);
+      const rawKey = frontOfficeInputsKey(save.org);
+      fs.appendFileSync(wal, 'another write');
+      fs.utimesSync(wal, new Date(), new Date(Date.now() + 5_000));
+      expect(frontOfficeInputsKey(save.org)).not.toBe(rawKey);
+      expect(tradeDeskKey(save.org)).toBe(deskKey);
+      expect(philosophyViewsKey(save.org)).toBe(staffKey);
+      // The freshness stays in the key: an export gone behind leaves control, and what rests on it, not established
+      const cue = freshnessCue(getDataStatus());
+      expect(deskKey.endsWith(`|${cue.state}/${cue.lagDays}`)).toBe(true);
+      await tradeDeskNow(String(save.org));
+      await tradeAnalysisNow(String(save.org), q);
+      expect(tradeDeskStats()).toMatchObject({ builds: counts.builds, analyses: counts.analyses });
+      expect(tradeDeskStats().analysisHits).toBe(counts.analysisHits + 1);
+      expect(coachingStaffNow(String(save.org))).toBe(staff);
+    } finally {
+      saveConfig(before);
+      relocateLiveLog();
+      fs.rmSync(path.dirname(lg), { recursive: true, force: true });
+      resetTradeDesk();
+      resetPhilosophyViews();
+    }
+  });
+
+  it('weighs a deal again when the settings change: the philosophy\'s lens is in its key', async () => {
+    const before = philosophyForOrg(save.org);
+    const key = tradeDeskKey(save.org);
+    try {
+      savePhilosophyForOrg(save.org, { ...before, manual: { ...before.manual, riskTolerance: before.manual.riskTolerance === 30 ? 31 : 30 } });
+      expect(tradeDeskKey(save.org)).not.toBe(key);
+    } finally {
+      savePhilosophyForOrg(save.org, before);
+    }
+  });
+});
+

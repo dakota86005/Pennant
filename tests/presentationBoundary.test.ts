@@ -340,7 +340,7 @@ describe('the presentation boundary', () => {
   it('tradeDeskBuild.ts and tradeDeskService.ts read only the analyser', () => {
     for (const [file, allowed] of [
       ['tradeDeskBuild.ts', new Set(['db', 'dataStatus', 'trade'])],
-      ['tradeDeskService.ts', new Set(['db', 'frontOfficeService', 'playerStateRoutes', 'trade', 'tradeDeskBuild', 'viewingOrganization'])],
+      ['tradeDeskService.ts', new Set(['dataStatus', 'db', 'frontOfficeService', 'playerStateRoutes', 'trade', 'tradeDeskBuild', 'viewingOrganization'])],
     ] as const) {
       const outside = valueImports(file).filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
         .filter((m) => !allowed.has(m));

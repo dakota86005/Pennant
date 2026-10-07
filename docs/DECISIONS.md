@@ -3095,9 +3095,13 @@ built at N12 (Track C)".
 
 - **The desk is built after every import; a deal is weighed when it changes.** The desk (the inbox's offers with the
   analyser's reading, the staff's trade talk, the league's fits) is one payload, built for our club in the Front Office's
-  worker after each kept build and kept on its inputs key; another club's on its first open. Whether the AI desk is on is
-  read on every request, never kept. A deal (at most ten players a side, a player on one side only) is weighed on the
-  server's thread when asked, kept on the inputs key with its players (64 at most). The club's value of a win, which the
+  worker after each kept build and kept on its inputs key; another club's on its first open. The key is the Front
+  Office's inputs without OOTP's live log (`frontOfficeImportKey`, settings included) plus the export's freshness as
+  derived, its state and days behind (`tradeDeskKey`, as Finance keys its views; review M2, 2026-10-07): a write to the
+  log during play that leaves the freshness as it was rebuilds nothing, while one that moves it does, since control reads
+  on it. The editor's stamp and Coaching Staff key the same way. Whether the AI desk is on is read on every request,
+  never kept. A deal (at most ten players a side, a player on one side only) is weighed on the server's thread when
+  asked, kept on the same key with its players (64 at most). The club's value of a win, which the
   React analysis reads beside the deal, is not read for the desk at all (D-060: it belongs with the standings).
 - **A deal is a range around zero, never a verdict.** Each player is "most likely" with "could be", the difference is what
   comes in less what goes out with its parts, drawn on a scale symmetric about zero with zero always on it (the server

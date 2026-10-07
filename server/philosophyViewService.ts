@@ -12,9 +12,9 @@
  *   Office's inputs.
  */
 import { db, tableExists } from './db.js';
-import { FrontOfficeRefusal, NO_DATA, frontOfficeInputsKey, frontOfficeStampOf, resolveOrg } from './frontOfficeService.js';
+import { FrontOfficeRefusal, NO_DATA, frontOfficeImportKey, frontOfficeStampOf, resolveOrg } from './frontOfficeService.js';
 import { PHILOSOPHY_DIMENSIONS, PHILOSOPHY_POLICY_OPTIONS, DEFAULT_PHILOSOPHY_PROFILE, normalizePhilosophyProfile, type PhilosophyProfile } from './philosophy.js';
-import { getDataStatus } from './dataStatus.js';
+import { freshnessCue, getDataStatus } from './dataStatus.js';
 import { importedAt } from './playerStateRoutes.js';
 import { servedDepartments } from './presentation/catalog.js';
 import { cell } from './presentation/claim.js';
@@ -55,7 +55,7 @@ function contextFor(orgId: number): PhilosophyContext {
   return {
     orgId,
     importStamp: importedAt.value,
-    reportStamp: frontOfficeStampOf(frontOfficeInputsKey(orgId)),
+    reportStamp: frontOfficeStampOf(philosophyViewsKey(orgId)),
     gameDate: status.csv.simulatedThrough ?? status.csv.currentDate,
     preparedBy: dept?.preparedBy ?? cell('Prepared by the front office'),
     club: clubWord(orgId),
@@ -127,11 +127,20 @@ export function resetPhilosophyNow(org: string): PhilosophyChange {
 
 const staffKept = new Map<string, CoachingStaffView>();
 
-/** The club's coaching staff, kept on the Front Office's inputs. */
+/**
+ * What the editor's stamp and Coaching Staff depend on: the Front Office's inputs without OOTP's live log
+ * (`frontOfficeImportKey`), and the export's freshness as derived, as Finance and the Trade Desk key theirs (review M2).
+ */
+export function philosophyViewsKey(orgId: number): string {
+  const cue = freshnessCue(getDataStatus({ importedAt: importedAt.value }));
+  return `${frontOfficeImportKey(orgId)}|${cue.state}/${cue.lagDays}`;
+}
+
+/** The club's coaching staff, kept on the Front Office's inputs without the live log. */
 export function coachingStaffNow(org: string): CoachingStaffView {
   const orgId = resolveOrg(org);
   if (!tableExists('players')) throw new FrontOfficeRefusal(NO_DATA, 404);
-  const key = frontOfficeInputsKey(orgId);
+  const key = philosophyViewsKey(orgId);
   const hit = staffKept.get(key);
   if (hit) return hit;
   const view = coachingStaffView(contextFor(orgId), computeStaff(orgId, { blankIsUnknown: true }));
