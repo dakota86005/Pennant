@@ -174,7 +174,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   rm -rf "$HOME/Library/Saved Application State/com.dakotawise.pennant.dev.savedState"
   # What each accessibility audit set aside, and why, and any finding, and a quit that needed help or did not finish:
   # printed by the tests, repeated here for the CI log
-  grep -E "^\[(audit|quit)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
+  grep -E "^\[(audit|quit|palette)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
   # Each test's app log (the server's lines and the app's own: the launch, the quit's steps), kept with the run's logs
   # (the CI artifact): the synthetic league's only
   for log in "$UI_SCRATCH"/*/logs/server*.log; do

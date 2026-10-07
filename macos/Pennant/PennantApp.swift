@@ -94,6 +94,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var terminationSignal: (any DispatchSourceSignal)?
 
     override init() {
+        #if DEBUG
+        // A UI test's first launch starts from fresh defaults (`-PennantTestFreshDefaults YES`): the window frames and
+        // choices an earlier test left in the app's defaults never carry into the next (PR #58 on the runner: after the
+        // player-window tests, ⌘K's palette no longer appeared in the tests that followed)
+        if UserDefaults.standard.bool(forKey: "PennantTestFreshDefaults"), let id = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: id)
+        }
+        #endif
         let model = AppModel(configuration: AppConfiguration.server())
         let controller = model.serverController
         self.model = model
