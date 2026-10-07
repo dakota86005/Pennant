@@ -132,8 +132,9 @@ public struct CommandAvailability: Equatable, Sendable {
     public var back: Bool
     public var forward: Bool
     public var inspector: Bool
-    /// View ▸ Find Anything… (⌘K): the server is ready, whichever window is key (PR #58). With no main window key the
-    /// main window used last comes forward with its palette, or a new one opens with it.
+    /// View ▸ Find Anything… (⌘K): always, whichever window is key (PR #58); before the server is ready the palette
+    /// offers the app's own views. With no main window key the main window used last comes forward with its palette,
+    /// or a new one opens with it.
     public var findAnything: Bool
 
     /// - Parameters:
@@ -145,11 +146,14 @@ public struct CommandAvailability: Equatable, Sendable {
         refreshData = serverReady && configured && !importing
         importExport = serverReady && !importing
         dataStatus = true
-        goToDepartment = window != nil && serverReady
-        back = serverReady && (window?.canGoBack ?? false)
-        forward = serverReady && (window?.canGoForward ?? false)
-        inspector = window != nil && serverReady
-        findAnything = serverReady
+        // Moving around the window never waits for the server: each view says "Starting…" itself until it is ready.
+        // (PR #58 and #59 on GitHub's runner: gated on the server, these menu items were still disabled when ⌘K and
+        // ⌘4 were typed, the menu not yet redrawn after the server came up, so the keys did nothing.)
+        goToDepartment = window != nil
+        back = window?.canGoBack ?? false
+        forward = window?.canGoForward ?? false
+        inspector = window != nil
+        findAnything = true
     }
 
     /// For the app's model and the key window.

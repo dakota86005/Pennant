@@ -23,7 +23,7 @@ struct CommandAvailabilityTests {
         #expect(CommandAvailability(serverReady: false, configured: false, importing: false, window: nil).dataStatus)
     }
 
-    @Test("Go, Back, Forward and the inspector act on a key main window whose server is ready")
+    @Test("Go, Back, Forward and the inspector act on a key main window, the server ready or not")
     func window() {
         let none = CommandAvailability(serverReady: true, configured: true, importing: false, window: nil)
         #expect(!none.goToDepartment && !none.back && !none.forward && !none.inspector)
@@ -31,15 +31,18 @@ struct CommandAvailabilityTests {
         #expect(fresh.goToDepartment && fresh.inspector && !fresh.back && !fresh.forward)
         let moved = CommandAvailability(serverReady: true, configured: true, importing: false, window: (true, true))
         #expect(moved.back && moved.forward)
+        // Moving around the window never waits for the server (each view says "Starting…" itself): a menu item gated
+        // on it stayed disabled after the server came up, until the menu was redrawn (PR #58)
         let down = CommandAvailability(serverReady: false, configured: true, importing: false, window: (true, true))
-        #expect(!down.goToDepartment && !down.back && !down.forward && !down.inspector)
+        #expect(down.goToDepartment && down.back && down.forward && down.inspector && down.findAnything)
+        #expect(!down.refreshData && !down.importExport)
     }
 
-    @Test("Find Anything works from any window once the server is ready (a player's window key, or none)")
+    @Test("Find Anything works from any window, the server ready or not (a player's window key, or none)")
     func findAnythingFromAnyWindow() {
         #expect(CommandAvailability(serverReady: true, configured: true, importing: false, window: nil).findAnything)
         #expect(CommandAvailability(serverReady: true, configured: true, importing: false, window: (false, false)).findAnything)
-        #expect(!CommandAvailability(serverReady: false, configured: true, importing: false, window: nil).findAnything)
+        #expect(CommandAvailability(serverReady: false, configured: true, importing: false, window: nil).findAnything)
     }
 
     @MainActor
@@ -75,7 +78,9 @@ struct CommandAvailabilityTests {
         #expect(availability.refreshData && availability.back && !availability.forward)
         let unconfigured = CommandAvailability.of(PreviewFixtures.ready(configured: false), window: window)
         #expect(!unconfigured.refreshData && unconfigured.importExport)
-        #expect(!CommandAvailability.of(PreviewFixtures.state(.starting), window: window).goToDepartment)
+        // Starting: the window can still be moved around (each view says "Starting…"), but nothing reaches the server
+        let starting = CommandAvailability.of(PreviewFixtures.state(.starting), window: window)
+        #expect(starting.goToDepartment && starting.findAnything && !starting.refreshData && !starting.importExport)
     }
 
     @MainActor
