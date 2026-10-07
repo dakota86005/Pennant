@@ -20,7 +20,7 @@ import type {
 } from './types.js';
 import {
   PLAYER_VALUE, THE_INBOX, TIP_BAR, TIP_DIFFERENCE, TIP_EXPECTED, TIP_FITS, TIP_KEEPING_ROW, TIP_OFFER, TIP_OUR_VIEW_DEAL, TIP_SALARY,
-  TIP_TOGETHER, TRADES, amountFor, fitWins, likelyText, matchesText, metaLine, scaleOf, sideTitle, signed, spanText, type Fmt,
+  TIP_TOGETHER, TRADES, amountFor, evenDealText, fitWins, holdsEven, likelyText, matchesText, metaLine, scaleOf, sideTitle, signed, spanText, type Fmt,
 } from './words.js';
 
 /** What every Trade Desk payload is built for: the club, the build, the department's byline and the export's date. */
@@ -109,9 +109,10 @@ export function freshnessClaim(ctx: TradesContext, cue: FreshnessCue & { limitat
 // ── the desk ─────────────────────────────────────────────────────────────────
 
 /** A difference in one line: most likely and what it could be, or why there is none (`differenceLine`). */
-function differenceWords(d: TradeAnalysis['value']['difference'], unit: TradeUnit | null): string {
+export function differenceWords(d: TradeAnalysis['value']['difference'], unit: TradeUnit | null): string {
   if (d.status !== 'known' || !d.figure) return 'Not a number yet: no one on one side could be valued.';
   const s = signed(amountFor(unit));
+  if (holdsEven(d.figure)) return evenDealText(d.figure, s);
   return `Coming in less going out: most likely ${likelyText(d.figure, s)} · could be ${spanText(d.figure, s)}`;
 }
 
@@ -444,7 +445,9 @@ function chartOf(f: TradeFigure, unit: TradeUnit | null, fmt: Fmt): TradeRangeCh
     zero: cell('even', { hint: 'Zero is an even deal' }),
     left: cell('← More going out'),
     right: cell('More coming in →'),
-    summary: cell(`Coming in less going out: most likely ${likelyText(f, sf)}, could be ${spanText(f, sf)}. Zero is an even deal.`),
+    summary: cell(holdsEven(f)
+      ? `Coming in less going out: ${evenDealText(f, sf, false)}. Zero is an even deal.`
+      : `Coming in less going out: most likely ${likelyText(f, sf)}, could be ${spanText(f, sf)}. Zero is an even deal.`),
     marks: [cell(`Lowest ${sf(f.low)}`), cell(`Most likely ${likelyText(f, sf)}`), cell(`Highest ${sf(f.high)}`)],
   };
 }
@@ -467,7 +470,9 @@ function differenceOf(ctx: TradesContext, a: TradeAnalysis, stamp: CalibrationSt
   const restsOn = v.basis;
   const headline = known
     ? claim({
-      text: `Most likely ${likelyText(d.figure!, sf)}${d.figure!.central === null ? ' depending on how an open season goes' : ''} · could be ${spanText(d.figure!, sf)}`,
+      text: holdsEven(d.figure!)
+        ? evenDealText(d.figure!, sf)
+        : `Most likely ${likelyText(d.figure!, sf)}${d.figure!.central === null ? ' depending on how an open season goes' : ''} · could be ${spanText(d.figure!, sf)}`,
       tone: 'neutral',
       ...figureValue(d.figure!, v.unit, sf),
       links: [],
@@ -534,7 +539,9 @@ function ourViewClaim(ctx: TradesContext, a: TradeAnalysis): Claim | null {
   const sf = signed(amountFor(a.value.unit));
   if (ov.leaning && ov.difference.figure) {
     return claim({
-      text: `Our view (${club}): most likely ${likelyText(ov.difference.figure, sf)} · could be ${spanText(ov.difference.figure, sf)}`,
+      text: holdsEven(ov.difference.figure)
+        ? `Our view (${club}): ${evenDealText(ov.difference.figure, sf, false)}`
+        : `Our view (${club}): most likely ${likelyText(ov.difference.figure, sf)} · could be ${spanText(ov.difference.figure, sf)}`,
       tone: 'neutral',
       links: [],
       basis: basis({

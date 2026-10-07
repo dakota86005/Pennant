@@ -42,10 +42,13 @@ interface Wording {
   drawn?: string;
 }
 
+/** Compare's words for ranges that meet (D-070), which the Trade Desk also says of a deal whose range holds zero. */
+export const CANT_TELL_APART = "Can't tell apart";
+
 /** A total of value: the bar drawn is the range compared, a range of reasonable outcomes. */
 const TOTAL_WORDS: Wording = {
   apart: (above, below) => `${above}'s range sits wholly above ${below}'s`,
-  none: (pairs) => (pairs === 1 ? "Can't tell apart: the ranges overlap" : "Can't tell apart: every range overlaps"),
+  none: (pairs) => (pairs === 1 ? `${CANT_TELL_APART}: the ranges overlap` : `${CANT_TELL_APART}: every range overlaps`),
   rest: 'the rest overlap',
 };
 

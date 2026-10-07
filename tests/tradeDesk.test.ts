@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
 import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { analyzeTrade, computeTradeFits, computeTradeProposals, computeTradeTalk, viewerFor } from '../server/trade.js';
-import { buildTradeDesk } from '../server/tradeDeskBuild.js';
+import { buildTradeDesk, tradesContextFor } from '../server/tradeDeskBuild.js';
+import { differenceWords, tradeAnalysisView } from '../server/presentation/trades/desk.js';
 import {
   BAD_PLAYERS, TOO_MANY, dealFrom, resetTradeDesk, tradeAnalysisNow, tradeDeskNow as deskNow, tradeDeskStats,
 } from '../server/tradeDeskService.js';
@@ -93,6 +94,31 @@ describe('the Trade Desk says what the analyser answered (N12)', () => {
   });
 });
 
+describe('a range that holds zero (N12; review M3)', () => {
+  it('says first that it can\'t be told apart from an even deal, in Compare\'s words, wherever a difference is read', () => {
+    const a = analyzeTrade([save.regular], [theirs()[0]], { orgId: save.org, philosophy: null }, undefined, { winValues: false });
+    const across = { low: -5.9, central: -1.3, high: 2.2, centralRange: null };
+    const difference = { ...a.value.difference, status: 'known' as const, figure: across, components: [], excluded: [] };
+    const held: typeof a = {
+      ...a,
+      value: { ...a.value, unit: 'wins', difference, ourView: { leaning: true, sent: a.value.sent, received: a.value.received, difference } },
+    };
+    const view = tradeAnalysisView(tradesContextFor({ orgId: save.org, importStamp: null, reportStamp: 'r1' }), held, { sent: [save.regular], received: [theirs()[0]] });
+    const even = "Can't tell apart from an even deal: could be −5.9 wins to +2.2 wins (most likely −1.3 wins)";
+    // The builder's headline, the chart's spoken summary, our view and an offer's reading all say it first
+    expect(view.difference?.headline.text).toBe(even);
+    expect(view.difference?.chart?.summary.display).toBe(`Coming in less going out: c${even.slice(1)}. Zero is an even deal.`);
+    expect(view.ourView?.text).toMatch(new RegExp(`^Our view \\(.+\\): can't tell apart from an even deal: could be −5\\.9 wins to \\+2\\.2 wins`));
+    expect(differenceWords(difference, 'wins')).toBe(even);
+    // A range wholly on one side of zero leads with its most likely reading, as before
+    const above = { ...difference, figure: { low: 0.4, central: 1.1, high: 2.2, centralRange: null } };
+    expect(differenceWords(above, 'wins')).toBe('Coming in less going out: most likely +1.1 wins · could be +0.4 wins to +2.2 wins');
+    // An open season's most likely stretch is kept in the parenthesis
+    expect(differenceWords({ ...difference, figure: { low: -1, central: null, high: 3, centralRange: { low: 0, high: 2 } } }, 'wins'))
+      .toBe("Can't tell apart from an even deal: could be −1.0 wins to +3.0 wins (most likely 0.0 wins to +2.0 wins depending on how an open season goes)");
+  });
+});
+
 describe('a deal weighed (N12)', () => {
   it('says what is missing while a side is empty, and weighs nothing', async () => {
     const empty = await tradeAnalysisNow(String(save.org), {});
@@ -151,6 +177,6 @@ describe('the desk is kept, and the AI desk is optional (N12; D-001)', () => {
     await expect(ask).rejects.toThrow(`-> 409 ${JSON.stringify({ error: TRADE_AI_OFF })}`);
     // Every figure is there without it
     const view = await tradeAnalysisNow(String(save.org), { sent: String(save.regular), received: String(theirs()[0]) });
-    expect(view.difference?.headline.text).toMatch(/^Most likely /);
+    expect(view.difference?.headline.text).toMatch(/^(Most likely |Can't tell apart from an even deal: )/);
   });
 });

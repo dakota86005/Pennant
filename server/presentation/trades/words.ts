@@ -5,6 +5,7 @@
  * a player or a deal: every number is Player Value's as the analyser serves it. The method words stay in the bases.
  */
 import type { TradeFigure, TradeUnit } from '../../playerValue.js';
+import { CANT_TELL_APART } from '../player/compare.js';
 import { money, signedTenths } from '../player/words.js';
 
 export const TRADES = 'trades' as const;
@@ -23,6 +24,19 @@ export const signed = (fmt: Fmt): Fmt => (v) => (v > 0 ? `+${fmt(v)}` : fmt(v));
 /** The most likely reading: a figure, or a stretch where it depends on an open season. */
 export const likelyText = (f: TradeFigure, fmt: Fmt): string =>
   (f.central !== null ? fmt(f.central) : f.centralRange ? `${fmt(f.centralRange.low)} to ${fmt(f.centralRange.high)}` : `${fmt(f.low)} to ${fmt(f.high)}`);
+
+/** Whether a difference's range holds zero: then it can't be told apart from an even deal, whatever its most likely. */
+export const holdsEven = (f: { low: number; high: number }): boolean => f.low <= 0 && f.high >= 0;
+
+/**
+ * A difference whose range holds zero, said first in Compare's words (D-070; review M3): "Can't tell apart from an even
+ * deal: could be −5.9 to +2.2 wins (most likely −1.3 wins)". `lead` is lower-cased after a label ("Our view (Club): …").
+ */
+export function evenDealText(f: TradeFigure, fmt: Fmt, lead = true): string {
+  const said = `${CANT_TELL_APART} from an even deal: could be ${spanText(f, fmt)} (most likely ${likelyText(f, fmt)}` +
+    `${f.central === null ? ' depending on how an open season goes' : ''})`;
+  return lead ? said : said.charAt(0).toLowerCase() + said.slice(1);
+}
 
 /** "$A to $B", or one figure where the ends meet. */
 export const spanText = (f: { low: number; high: number }, fmt: Fmt): string => (f.low === f.high ? fmt(f.low) : `${fmt(f.low)} to ${fmt(f.high)}`);

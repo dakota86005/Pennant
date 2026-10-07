@@ -2951,7 +2951,10 @@ built at N12 (Track C)".
 - **A deal is a range around zero, never a verdict.** Each player is "most likely" with "could be", the difference is what
   comes in less what goes out with its parts, drawn on a scale symmetric about zero with zero always on it (the server
   serves the scale: `scaleOf`, the port of `src/tradeDifferenceGeometry.ts`); a player whose value isn't known is named and
-  left out, never zero. The Mac draws the served figures in Swift Charts and adds none.
+  left out, never zero. A difference whose range holds zero says so first, in Compare's words (D-070): "Can't tell apart
+  from an even deal: could be −5.9 to +2.2 wins (most likely −1.3)", on the builder, an offer's reading and our view alike
+  (review M3, 2026-10-06: a most likely below zero had read as a lean). The Mac draws the served figures in Swift Charts
+  and adds none.
 - **The builder takes players from anywhere.** Each side is a drop target for a `PlayerRef` (a table's row, a name, the
   palette, Following, another window); a player dropped on the other side moves across; each side also finds a player by
   name through the server's search (`/api/v2/search`, its players only) as native text suggestions. "Review" puts an
