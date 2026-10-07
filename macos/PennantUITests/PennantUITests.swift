@@ -1697,7 +1697,8 @@ final class PennantUITests: XCTestCase {
 
     /// A player opens in his own window from anywhere (N11): the palette's served result, a table's row (a double-click),
     /// a name in a decision opened from the desk, and Following; opening him again brings his window forward rather than
-    /// a second one. Every section draws; the window is audited alone.
+    /// a second one. ⌘K in his window brings the main window forward with its palette (PR #58). Every section draws; the
+    /// window is audited alone.
     @MainActor
     func testPlayerWindows() throws {
         let app = launch(arguments: ["-PennantDebugWindowSize", "1280x820"])
@@ -1770,6 +1771,13 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(playerWindow(app, namedId).waitForExistence(timeout: 10), "a player named in the decision did not open his window")
         XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
         keep(app.windows.firstMatch.screenshot(), named: "n11-player-window-from-decision")
+        // ⌘K in his window (PR #58): the main window comes forward with its palette up; Escape puts it away
+        app.typeKey("k", modifierFlags: .command)
+        let palette = element(app, "palette.query")
+        XCTAssertTrue(palette.waitForExistence(timeout: 5), "⌘K in his window did not open the palette")
+        XCTAssertTrue(app.windows.firstMatch.identifier.hasPrefix("main"), "⌘K in his window left \(app.windows.firstMatch.identifier) in front")
+        palette.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element(app, "palette").waitForNonExistence(timeout: 5), "Escape did not put the palette away")
         // Audited alone (the main window closed, as a club's window is)
         try auditAlone(app, named: "accessibility-audit-n11-player-window")
         quitCleanly(app)

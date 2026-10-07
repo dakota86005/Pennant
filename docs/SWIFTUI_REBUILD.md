@@ -1475,7 +1475,10 @@ Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `
   its "why" lines as custom content.
 - **The ⌘K palette (section 3.6).** View ▸ Find Anything… (⌘K) opens `CommandPalette` over the window with the
   registry's views (their served names, the Go menu's ⌘1 to ⌘9 beside the first view of each department) and the
-  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes. Players
+  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes.
+  Since PR #58 (N11) ⌘K works from every window, as Open Quickly does in Xcode: with no main window key (a player's,
+  a club's or Compare's window in front, or none) the main window used last (`MainWindows`) comes forward with its
+  palette up, or a new main window opens with it; the app's log says which, with the key window's identifier. Players
   and clubs join when the server serves search (N7); the toolbar's search field stays a stub until then.
 - **The Morning Report today and at N6.** The app draws what is served: the masthead's kicker (the club and how current
   the report is), the served headline and the record; the desk in the lead column and the department tiles beside it;

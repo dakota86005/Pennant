@@ -123,6 +123,12 @@ public final class MainWindowModel {
         if paletteShown { paletteQuery = "" }
     }
 
+    /// Find Anything (⌘K) chosen while another window is key: the palette up (never toggled away), its query cleared.
+    public func showPalette() {
+        if !paletteShown { paletteQuery = "" }
+        paletteShown = true
+    }
+
     public func isExpanded(_ id: DeptID) -> Binding<Bool> {
         Binding(
             get: { self.expanded.contains(id) },

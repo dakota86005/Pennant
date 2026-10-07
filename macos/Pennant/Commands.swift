@@ -5,7 +5,7 @@ import Shell
 import SwiftUI
 
 /// The menu bar's commands (SWIFTUI_REBUILD.md section 3.6). Go and View act on the key main window
-/// (`FocusedValues.mainWindow`); Club acts on the app. What can act comes from `CommandAvailability`.
+/// (`FocusedValues.mainWindow`), except Find Anything, which works from every window; Club acts on the app. What can act comes from `CommandAvailability`.
 struct PennantCommands: Commands {
     let model: AppModel
     let routing: AppRouting
@@ -22,6 +22,30 @@ struct PennantCommands: Commands {
 
     private var can: CommandAvailability { .of(model, window: window) }
 
+    /// Find Anything (⌘K) from any Pennant window (PR #58), as Open Quickly works from any of Xcode's: the key main
+    /// window's palette; else, from a player's, a club's or Compare's window or with no window key, the main window used
+    /// last comes forward with its palette up; with every main window closed, a new one opens with it. Which way it went
+    /// is said in the app's log.
+    private func findAnything() {
+        if let window {
+            window.togglePalette()
+            return
+        }
+        let log = model.serverController.log
+        let key = NSApp.keyWindow?.identifier?.rawValue ?? "none"
+        if let last = MainWindows.shared.last() {
+            log.write("find anything: no main window was key (key window: \(key)); the main window used last came forward with its palette", source: "app")
+            if last.window.isMiniaturized { last.window.deminiaturize(nil) }
+            last.window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+            last.model.showPalette()
+        } else {
+            log.write("find anything: no main window was open (key window: \(key)); a new one opens with its palette", source: "app")
+            routing.requestPalette()
+            openWindow(id: SceneID.main)
+        }
+    }
+
     var body: some Commands {
         SidebarCommands()
 
@@ -32,7 +56,7 @@ struct PennantCommands: Commands {
             .keyboardShortcut("i", modifiers: [.command, .option])
             .disabled(!can.inspector)
             Button("Find Anything…") {
-                window?.togglePalette()
+                findAnything()
             }
             .keyboardShortcut("k", modifiers: .command)
             .disabled(!can.findAnything)
