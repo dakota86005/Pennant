@@ -14,6 +14,9 @@ import { computeProspects } from './org.js';
 import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
 import { tradeContext } from './trade.js';
+import {
+  TradesRefusal, answerTradeAiWith, tradeAskNow, type TradeDeskQuestion, type TradeDeskReply,
+} from './tradeDeskService.js';
 import { tradingBlock } from './tradingblock.js';
 import { tradeVoice, type Persona } from './staff.js';
 import { freshnessCue } from './dataStatus.js';
@@ -215,7 +218,9 @@ aiRoutes.post('/briefing/:orgId', (req, res) => {
  * and every reply after it, so the follow-ups do not drift into a different
  * man with different standards halfway down the thread.
  */
-export function tradeSystem(voice: Persona, orgLabel: string | undefined, leagueId?: number): string {
+export function tradeSystem(
+  voice: Persona, orgLabel: string | undefined, leagueId?: number, options: { winValues?: boolean } = {},
+): string {
   const who =
     voice.name === 'the front office'
       ? `You are the front office of ${orgLabel ?? 'this club'}`
@@ -249,8 +254,13 @@ export function tradeSystem(voice: Persona, orgLabel: string | undefined, league
     `produce a value number of your own: no dollar figure, rating or score for a player or the deal that is not in the data. ` +
     `"ourView", where present, is the same reading through this club's philosophy, with each lean named.\n` +
     `- "expectedWins" is each man's projected wins above replacement for the rest of this season (or the whole of it) and ` +
-    `next season, with the likely range. "clubValueOfAWin" is context from the standings (how much one more win moves a club's ` +
-    `playoff odds), never part of any value figure.\n` +
+    `next season, with the likely range.` +
+    // The Mac app's desk is not handed the club's value of a win, nor told of it (D-060: odds belong to the standings)
+    (options.winValues === false
+      ? ''
+      : ` "clubValueOfAWin" is context from the standings (how much one more win moves a club's playoff odds), never part ` +
+        `of any value figure.`) +
+    `\n` +
     `- "onTheBlock" names the men in this deal whose own club has listed them for trade. A club ` +
     `that has listed a player wants to move him and the price starts lower; a club that has not ` +
     `is being asked for a favour and will charge for it. Say which of these you are dealing with.\n` +
@@ -356,7 +366,9 @@ interface TradeBody {
 }
 
 /** Both routes want the same validation and the same context assembly. */
-function tradeSetup(body: TradeBody): { orgId: number; voice: Persona; context: unknown; leagueId?: number } {
+function tradeSetup(
+  body: TradeBody, options: { winValues?: boolean } = {},
+): { orgId: number; voice: Persona; context: unknown; leagueId?: number } {
   const { sideA, sideB } = body;
   if (!Array.isArray(sideA) || !Array.isArray(sideB) || sideA.length === 0 || sideB.length === 0) {
     throw Object.assign(new Error('Both sides need at least one player'), { status: 400 });
@@ -368,9 +380,51 @@ function tradeSetup(body: TradeBody): { orgId: number; voice: Persona; context: 
   return {
     orgId,
     voice: tradeVoice(orgId),
-    context: tradeContext(orgId, sideA, sideB),
+    context: tradeContext(orgId, sideA, sideB, options),
     leagueId: league,
   };
+}
+
+/** What the desk is told once it has given its read and is asked about it. */
+const TRADE_REPLY_BRIEF =
+  '\n\nYou have already given your read of this deal and are now being asked about it. ' +
+  'Answer the question actually put to you, in a few sentences — no headings, and do not ' +
+  'restate the read unless it has changed. If it has changed, say so plainly.\n\n' +
+  'The question may move past the deal — who else could fill the hole, who is close in the ' +
+  'system, what the roster looks like without these men. Use your tools and go and read it ' +
+  'rather than saying you have not got the data: the roster, the farm and every player in ' +
+  'the league are yours to look up.';
+
+/**
+ * The trade desk's answer: its read of the deal, or, with a `message`, its reply to the GM's question about it. The one
+ * place the desk is asked, for `/trade/ai-eval`, `/trade/ai-reply` and the Mac app's Trade Desk (N12, D-073): the same
+ * system prompt, context and model. `winValues: false` (the Mac app's) leaves the club's value of a win out of the context
+ * and the prompt (D-060). It explains Pennant's figures and decides nothing (D-001). Errors are thrown as they come, for
+ * each caller to answer in its own way.
+ */
+async function deskAnswer(
+  body: TradeBody, options: { winValues?: boolean } = {},
+): Promise<{ text: string; voice: Persona; notice: FallbackNotice | null }> {
+  const { voice, context, leagueId } = tradeSetup(body, options);
+  const system = tradeSystem(voice, body.orgLabel, leagueId, options);
+  let notice: FallbackNotice | null = null;
+  const onFallback = (n: FallbackNotice) => { notice = n; };
+  const message = body.message?.trim();
+  const text = message
+    ? await askTheDesk(
+      system + TRADE_REPLY_BRIEF,
+      [
+        { role: 'user', content: `The deal on the table:\n${JSON.stringify(context, null, 1)}` },
+        ...(body.thread ?? [])
+          .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content?.trim())
+          // Enough to keep the argument coherent without resending an hour of it
+          .slice(-12),
+        { role: 'user', content: message },
+      ],
+      onFallback,
+    )
+    : await askTheDesk(system + TRADE_ANSWER_FORMAT, [{ role: 'user', content: JSON.stringify(context, null, 1) }], onFallback);
+  return { text, voice, notice };
 }
 
 /**
@@ -384,60 +438,31 @@ export function tradeAiState(orgId: number): { available: boolean; voice: { name
   return { available, voice: { name, role }, offReason: available ? null : noKeyMessage(provider) };
 }
 
-/** The AI desk's refusal or failure, with the status the Mac app's route answers. */
-export class TradeAskProblem extends Error {
-  constructor(message: string, readonly status: 400 | 409 | 502) {
-    super(message);
-    this.name = 'TradeAskProblem';
-  }
-}
+// The Mac app's Trade Desk reads whether the AI desk is on from here, every request (a key can change at any time)
+answerTradeAiWith(tradeAiState);
+
+export const TRADE_AI_OFF = 'AI is off. Add a key in Settings to ask the front office about a deal.';
+export const TRADE_SIDES_EMPTY = 'Put a player on each side first.';
+export const TRADE_DESK_FAILED = 'The AI desk couldn\'t answer this time.';
 
 /**
- * The trade desk's read of a deal, or its answer to a question about it (the Mac app's Trade Desk, N12): the same
- * system prompt, context and model as `/trade/ai-eval` and `/trade/ai-reply`. It explains Pennant's figures and decides
- * nothing (D-001). No key is a 409 in words; a provider's failure a 502 with its message.
+ * The Mac app's AI desk (N12 Track C, D-073): `deskAnswer` without the club's value of a win (D-060). AI off is a 409 in
+ * words; a provider that refuses the key is a 401 (`aiErrorStatus`, as the React routes answer it); any other failure a
+ * 502. Logged as the React routes log it, by its worded message only, never a raw error that could carry a key or prompt.
  */
-export async function askTradeDesk(body: {
-  orgId: number; orgLabel?: string; sideA: number[]; sideB: number[];
-  thread?: Array<{ role: 'user' | 'assistant'; content: string }>; message?: string;
-}): Promise<{ text: string; voice: { name: string; role: string }; notice: FallbackNotice | null }> {
-  if (!tradeAiState(body.orgId).available) throw new TradeAskProblem('AI is off. Add a key in Settings to ask the front office about a deal.', 409);
-  let setup: ReturnType<typeof tradeSetup>;
+async function askForTheMac(q: TradeDeskQuestion): Promise<TradeDeskReply> {
+  if (!tradeAiState(q.orgId).available) throw new TradesRefusal(TRADE_AI_OFF, 409);
+  if (q.sent.length === 0 || q.received.length === 0) throw new TradesRefusal(TRADE_SIDES_EMPTY, 400);
   try {
-    setup = tradeSetup(body);
+    const { text, voice, notice } = await deskAnswer(
+      { orgId: q.orgId, orgLabel: q.orgLabel, sideA: q.sent, sideB: q.received, thread: q.thread, message: q.message },
+      { winValues: false },
+    );
+    return { text, voice: { name: voice.name, role: voice.role }, notice: notice ? { message: notice.message } : null };
   } catch (err) {
-    throw new TradeAskProblem((err as Error).message === 'Both sides need at least one player' ? 'Put a player on each side first.' : (err as Error).message, 400);
-  }
-  const { voice, context, leagueId } = setup;
-  let notice: FallbackNotice | null = null;
-  const message = body.message?.trim();
-  try {
-    const text = message
-      ? await askTheDesk(
-        tradeSystem(voice, body.orgLabel, leagueId) +
-          '\n\nYou have already given your read of this deal and are now being asked about it. ' +
-          'Answer the question actually put to you, in a few sentences — no headings, and do not ' +
-          'restate the read unless it has changed. If it has changed, say so plainly.\n\n' +
-          'The question may move past the deal — who else could fill the hole, who is close in the ' +
-          'system, what the roster looks like without these men. Use your tools and go and read it ' +
-          'rather than saying you have not got the data: the roster, the farm and every player in ' +
-          'the league are yours to look up.',
-        [
-          { role: 'user', content: `The deal on the table:\n${JSON.stringify(context, null, 1)}` },
-          ...(body.thread ?? []).filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content?.trim()).slice(-12),
-          { role: 'user', content: message },
-        ],
-        (n) => { notice = n; },
-      )
-      : await askTheDesk(
-        tradeSystem(voice, body.orgLabel, leagueId) + TRADE_ANSWER_FORMAT,
-        [{ role: 'user', content: JSON.stringify(context, null, 1) }],
-        (n) => { notice = n; },
-      );
-    return { text, voice: { name: voice.name, role: voice.role }, notice };
-  } catch (err) {
-    console.error('[trade-desk] the AI desk failed:', err);
-    throw new TradeAskProblem((err as Error).message || 'The AI desk couldn\'t answer this time.', 502);
+    const { status, message } = aiErrorStatus(err as Error);
+    if (status === 500) console.error('[trade-desk] failed:', message);
+    throw new TradesRefusal(status === 401 ? message : message || TRADE_DESK_FAILED, status === 401 ? 401 : 502);
   }
 }
 
@@ -451,13 +476,8 @@ aiRoutes.post('/trade/ai-eval', async (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   const body = req.body as TradeBody;
   try {
-    const { voice, context, leagueId } = tradeSetup(body);
-    let notice: FallbackNotice | null = null;
-    const verdict = await askTheDesk(
-      tradeSystem(voice, body.orgLabel, leagueId) + TRADE_ANSWER_FORMAT,
-      [{ role: 'user', content: JSON.stringify(context, null, 1) }],
-      (n) => { notice = n; }
-    );
+    // The opening read: a message in the body is not a question here
+    const { text: verdict, voice, notice } = await deskAnswer({ ...body, message: undefined });
     res.json({ verdict, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
     const { status, message } = aiErrorStatus(err as Error);
@@ -479,32 +499,24 @@ aiRoutes.post('/trade/ai-reply', async (req, res) => {
   const body = req.body as TradeBody;
   if (!body.message?.trim()) return res.status(400).json({ error: 'Nothing to send' });
   try {
-    const { voice, context, leagueId } = tradeSetup(body);
-    let notice: FallbackNotice | null = null;
-    const history = (body.thread ?? [])
-      .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content?.trim())
-      // Enough to keep the argument coherent without resending an hour of it
-      .slice(-12);
-    const reply = await askTheDesk(
-      tradeSystem(voice, body.orgLabel, leagueId) +
-        '\n\nYou have already given your read of this deal and are now being asked about it. ' +
-        'Answer the question actually put to you, in a few sentences — no headings, and do not ' +
-        'restate the read unless it has changed. If it has changed, say so plainly.\n\n' +
-        'The question may move past the deal — who else could fill the hole, who is close in the ' +
-        'system, what the roster looks like without these men. Use your tools and go and read it ' +
-        'rather than saying you have not got the data: the roster, the farm and every player in ' +
-        'the league are yours to look up.',
-      [
-        { role: 'user', content: `The deal on the table:\n${JSON.stringify(context, null, 1)}` },
-        ...history,
-        { role: 'user', content: body.message.trim() },
-      ],
-      (n) => { notice = n; }
-    );
+    const { text: reply, voice, notice } = await deskAnswer(body);
     res.json({ reply, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
     const { status, message } = aiErrorStatus(err as Error);
     if (status === 500) console.error('[trade-reply] failed:', err);
     res.status(status).json({ error: message });
+  }
+});
+
+/**
+ * The Mac app's AI desk (`askTradeDesk`, N12 Track C, D-073), on the AI router so no other module reaches an AI module
+ * (D-001): the deal is read and the answer worded by the Trade Desk's service; the answer is this module's.
+ */
+aiRoutes.post('/v2/views/:org/trades/ask', async (req, res, next) => {
+  try {
+    res.json(await tradeAskNow(String(req.params.org), req.body, askForTheMac));
+  } catch (err) {
+    if (err instanceof TradesRefusal) res.status(err.status).json({ error: err.message });
+    else next(err);
   }
 });

@@ -211,9 +211,7 @@ describe('the evidence boundary', () => {
     // The AI modules themselves, the model catalogue and the settings that hold their keys, and the API that wires them
     // up. Everything else computes facts, findings and words without a model; a type-only import is erased and allowed.
     const AI = new Set(['providers', 'ai', 'chat', 'storylines']);
-    // N12 Track C: the Trade Desk's AI desk (`tradeDeskAsk.ts`) only routes a question to `ai.ts` and says whether it can
-    // answer; the desk's figures are worked out without it (`tradeDeskService.ts`)
-    const allowed = new Set(['ai.ts', 'chat.ts', 'storylines.ts', 'providers.ts', 'models.ts', 'settings.ts', 'api.ts', 'tradeDeskAsk.ts']);
+    const allowed = new Set(['ai.ts', 'chat.ts', 'storylines.ts', 'providers.ts', 'models.ts', 'settings.ts', 'api.ts']);
     const offenders: string[] = [];
     for (const file of serverSources().filter((f) => !allowed.has(f))) {
       for (const m of code(file).matchAll(/(?:^|\n)\s*(?:import|export)\s+(type\s+)?([^;]*?)\s+from\s+'([^']+)'/g)) {

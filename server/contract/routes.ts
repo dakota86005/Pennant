@@ -528,11 +528,11 @@ export const operations: Operation[] = [
     operationId: 'askTradeDesk',
     method: 'post',
     path: '/api/v2/views/:org/trades/ask',
-    summary: 'The AI desk\'s read of the deal on the builder, or its answer to a question about it: its own words about Pennant\'s figures, which decide nothing. A 409 in words with AI off.',
+    summary: 'The AI desk\'s read of the deal on the builder, or its answer to a question about it: its own words about Pennant\'s figures, which decide nothing. A 409 in words with AI off; a 401 where the provider refuses the key.',
     params: [ORG_PARAM],
     request: 'TradeAsk',
     response: 'TradeAnswer',
-    errors: { 400: 'ApiError', 404: 'ApiError', 409: 'ApiError', 502: 'ApiError' },
+    errors: { 400: 'ApiError', 401: 'ApiError', 404: 'ApiError', 409: 'ApiError', 502: 'ApiError' },
     reused: false,
   },
   // Philosophy & Staff (N12 Track C, D-073): the editor with the server's identity, its changes and their undo, the staff

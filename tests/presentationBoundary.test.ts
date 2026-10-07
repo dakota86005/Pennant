@@ -310,7 +310,7 @@ describe('the presentation boundary', () => {
   /**
    * The Trade Desk's reader (N12 Track C, D-073) reads the analyser (`trade.ts`) and the export's freshness, and nothing
    * else: no rating, no developmental stakes, no odds or posture (the club's value of a win is the standings', D-060), no
-   * AI (D-001: the AI desk is `tradeDeskAsk.ts`'s).
+   * AI (D-001: the AI desk's model is asked by `ai.ts`, which hands the service its answer to word).
    */
   it('tradeDeskBuild.ts and tradeDeskService.ts read only the analyser', () => {
     for (const [file, allowed] of [
@@ -350,14 +350,14 @@ describe('the presentation boundary', () => {
       // N12 Track C: Philosophy & Staff's views, served over the club's inputs like the others
       'philosophyViewService.ts',
       'playerViewService.ts',
-      // N12 Track C: the Trade Desk, kept on the Front Office's inputs and our club's built in its worker; its AI desk names the club's build
-      'tradeDeskAsk.ts', 'tradeDeskService.ts',
+      // N12 Track C: the Trade Desk, kept on the Front Office's inputs and our club's built in its worker
+      'tradeDeskService.ts',
       'v2Routes.ts',
     ]);
-    expect(importers('tradeDeskService').sort()).toEqual(['tradeDeskAsk.ts', 'v2Routes.ts']);
-    expect(importers('tradeDeskAsk').sort()).toEqual(['v2Routes.ts']);
+    // N12 Track C: the AI router puts the Mac app's question to the model and hands the answer to the service to word
+    expect(importers('tradeDeskService').sort()).toEqual(['ai.ts', 'v2Routes.ts']);
     expect(importers('philosophyViewService').sort()).toEqual(['v2Routes.ts']);
-    expect(importers('tradeDeskBuild').sort()).toEqual(['frontOfficeBuild.ts', 'frontOfficeWorker.ts', 'tradeDeskAsk.ts', 'tradeDeskService.ts']);
+    expect(importers('tradeDeskBuild').sort()).toEqual(['frontOfficeBuild.ts', 'frontOfficeWorker.ts', 'tradeDeskService.ts']);
     expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/tradeDeskBuild\.js'/);
     expect(importers('farmViewService').sort()).toEqual(['v2Routes.ts']);
     expect(importers('clubhouseViewService').sort()).toEqual(['v2Routes.ts']);
@@ -389,8 +389,8 @@ describe('the presentation boundary', () => {
       'clubhouseViewService.ts',
       // N11: the player window's views, read in the build and kept by their service
       'playerDossierBuild.ts', 'playerViewService.ts',
-      // N12 Track C: the Trade Desk, read in its build, kept by its service, and its AI desk's answer worded
-      'tradeDeskBuild.ts', 'tradeDeskService.ts', 'tradeDeskAsk.ts',
+      // N12 Track C: the Trade Desk, read in its build, kept by its service, and its AI desk's answer worded there
+      'tradeDeskBuild.ts', 'tradeDeskService.ts',
       // N12 Track C: Philosophy & Staff's views, worded and served by their service
       'philosophyViewService.ts']);
     const importers = filesUnder('')

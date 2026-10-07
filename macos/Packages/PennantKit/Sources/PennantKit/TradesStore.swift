@@ -239,6 +239,7 @@ public final class TradesStore {
                 return true
             case .badRequest(let refused): problem = .served(try refused.body.json.error)
             case .notFound(let refused): problem = .served(try refused.body.json.error)
+            case .unauthorized(let refused): problem = .served(try refused.body.json.error)
             case .conflict(let refused): problem = .served(try refused.body.json.error)
             case .badGateway(let refused): problem = .served(try refused.body.json.error)
             case .undocumented(let code, let payload):

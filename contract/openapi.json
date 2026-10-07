@@ -2658,7 +2658,7 @@
     "/api/v2/views/{org}/trades/ask": {
       "post": {
         "operationId": "askTradeDesk",
-        "summary": "The AI desk's read of the deal on the builder, or its answer to a question about it: its own words about Pennant's figures, which decide nothing. A 409 in words with AI off.",
+        "summary": "The AI desk's read of the deal on the builder, or its answer to a question about it: its own words about Pennant's figures, which decide nothing. A 409 in words with AI off; a 401 where the provider refuses the key.",
         "tags": [
           "v2"
         ],
@@ -2696,6 +2696,16 @@
           },
           "400": {
             "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "HTTP 401",
             "content": {
               "application/json": {
                 "schema": {

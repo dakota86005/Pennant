@@ -2934,11 +2934,10 @@ D-072). Applies D-065 to Trades and Philosophy & Staff and refines D-001 (the AI
 authority chain in the editor's words), D-052 (a deal is a range), D-056 (the words) and D-060 for the presentation layer
 only: no value, rights, development or philosophy judgment changes. **Implementation:** `server/presentation/trades/` and
 `server/presentation/philosophy/` (the words, the identity included), `server/tradeDeskBuild.ts` (the reader, run in the
-Front Office's worker), `server/tradeDeskService.ts` (the cache, a deal weighed), `server/tradeDeskAsk.ts` (the AI desk,
-the only Trade Desk module that reaches `ai.ts`), `server/philosophyViewService.ts`; the extractions `computeTradeFits`,
-`computeTradeProposals`, `computeTradeTalk` (`server/trade.ts`), `computeStaff` (`server/rosterops.ts`),
-`savePhilosophyForOrg` (`server/settings.ts`) and `tradeAiState`, `askTradeDesk` (`server/ai.ts`), each old route
-answering as before; `GET /api/v2/views/:org/trades/tradeDesk`, `GET …/trades/analysis?sent=&received=`, `POST
+Front Office's worker), `server/tradeDeskService.ts` (the cache, a deal weighed, the AI desk's answer worded), `server/philosophyViewService.ts`;
+the extractions `computeTradeFits`, `computeTradeProposals`, `computeTradeTalk` (`server/trade.ts`), `computeStaff`
+(`server/rosterops.ts`), `savePhilosophyForOrg` (`server/settings.ts`) and `tradeAiState`, `deskAnswer` (`server/ai.ts`,
+which also registers `POST …/trades/ask` on its router), each old route answering as before; `GET /api/v2/views/:org/trades/tradeDesk`, `GET …/trades/analysis?sent=&received=`, `POST
 …/trades/ask`, `GET|PUT|DELETE …/philosophy/organizationalPhilosophy`, `GET …/philosophy/coachingStaff`; the Mac app's
 `TradesStore`, `PhilosophyStore` and PennantFeatures' Trades and Philosophy targets. SWIFTUI_REBUILD.md section 3.5, "As
 built at N12 (Track C)".
@@ -2957,11 +2956,15 @@ built at N12 (Track C)".
   palette, Following, another window); a player dropped on the other side moves across; each side also finds a player by
   name through the server's search (`/api/v2/search`, its players only) as native text suggestions. "Review" puts an
   offer's two sides, or a target alone on the side received, on the builder.
-- **The AI desk is optional and in a module of its own** (D-001). With no key the desk says "AI is off. Everything on the
-  desk works without it." with the reason in its basis, and asking anyway is a 409 in words. With a key the answer is the
-  same trade desk the React page asks, its words marked as the AI's explanation of Pennant's figures ("decides nothing"),
-  its conversation the deal's (cleared when the deal changes). `tradeDeskAsk.ts` is on the evidence boundary's list of
-  modules that may reach an AI module; the desk's own service and reader may not.
+- **The AI desk is optional and is `ai.ts`'s** (D-001). With no key the desk says "AI is off. Everything on the desk works
+  without it." with the reason in its basis, and asking anyway is a 409 in words. With a key the answer comes from the one
+  function that answers the React page's `/trade/ai-eval` and `/trade/ai-reply` (`deskAnswer`; their answers unchanged,
+  byte for byte), its words marked as the AI's explanation of Pennant's figures ("decides nothing"), its conversation the
+  deal's (cleared when the deal changes). The Mac app's ask is never handed the club's value of a win, in the context or
+  the prompt (D-060; review M1, 2026-10-06: it had been). A provider that refuses the key is a 401 as on the React
+  routes, any other failure a 502, logged by its worded message only. The POST is registered on the AI router, which
+  hands the Trade Desk's service the answer to word (`tradeAskNow`), so the evidence boundary's list of modules that may
+  reach an AI module is unchanged (review M5: it had grown by one); the desk's own service and reader reach none.
 - **The philosophy's identity is the server's.** The React page's client-side identity (the headline, tags, summary and
   nuance, the position words, the comparable clubs) is worded on the server from the settings alone, never the club's
   record, odds or a posture; its lines are stated (policy). The visible words keep Player Value's method words off the

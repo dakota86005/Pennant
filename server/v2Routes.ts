@@ -49,10 +49,9 @@ import type {
   MlbSeasonTrendsView,
 } from './presentation/clubhouse/types.js';
 import { TradesRefusal, tradeAnalysisNow, tradeDeskNow } from './tradeDeskService.js';
-import { tradeAiNow, tradeAskNow } from './tradeDeskAsk.js';
 import { PhilosophyRefusal, coachingStaffNow, philosophyNow, resetPhilosophyNow, setPhilosophyNow } from './philosophyViewService.js';
 import type { CoachingStaffView, PhilosophyChange, PhilosophyView } from './presentation/philosophy/types.js';
-import type { TradeAnalysisView, TradeAnswer, TradeDeskView } from './presentation/trades/types.js';
+import type { TradeAnalysisView, TradeDeskView } from './presentation/trades/types.js';
 
 export const v2Routes = Router();
 
@@ -231,12 +230,12 @@ v2Routes.get('/views/:org/majorLeague/seasonTrends', frontOffice<MlbSeasonTrends
 /**
  * Trades (N12 Track C, D-073): the Trade Desk (the offers in the inbox, the staff's trade talk, the league's fits, whether
  * the AI desk is on), built after every import for our club and kept; a deal weighed on Player Value (`?sent=&received=`,
- * player ids), kept on the club's inputs; and the optional AI desk, which explains the figures and decides nothing.
+ * player ids), kept on the club's inputs. The optional AI desk (`POST …/trades/ask`), which explains the figures and decides
+ * nothing, is on the AI router (`ai.ts`), so no module here reaches an AI module (D-001).
  */
-v2Routes.get('/views/:org/trades/tradeDesk', frontOffice<TradeDeskView>((req) => tradeDeskNow(String(req.params.org), tradeAiNow)));
+v2Routes.get('/views/:org/trades/tradeDesk', frontOffice<TradeDeskView>((req) => tradeDeskNow(String(req.params.org))));
 v2Routes.get('/views/:org/trades/analysis', frontOffice<TradeAnalysisView>((req) =>
   tradeAnalysisNow(String(req.params.org), req.query as Record<string, unknown>)));
-v2Routes.post('/views/:org/trades/ask', frontOffice<TradeAnswer>((req) => tradeAskNow(String(req.params.org), req.body)));
 
 /**
  * Philosophy & Staff (N12 Track C, D-073): the Organizational Philosophy editor (its identity worded on the server), a

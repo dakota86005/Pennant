@@ -740,13 +740,13 @@ function differenceForDesk(d: TradeDifference) {
  * displace, plus where the club is weakest; the deal itself is Player Value's reading, both sides and the difference as a
  * band with its parts (the same figures the page shows), which the desk explains and never replaces (D-001).
  */
-export function tradeContext(orgId: number, giveIds: number[], getIds: number[]) {
+export function tradeContext(orgId: number, giveIds: number[], getIds: number[], options: { winValues?: boolean } = {}) {
   const statYear = hasColumns('players_career_batting_stats', 'year')
     ? ((db.prepare(`SELECT MAX(year) AS y FROM players_career_batting_stats`).get() as { y: number | null }).y ?? null)
     : null;
 
   const viewer = viewerFor(orgId || undefined);
-  const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy });
+  const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy }, undefined, options);
   const cue = analysis.freshness;
   const readingOf = (id: number) => ({
     row: [...analysis.sent, ...analysis.received].find((r) => r.playerId === id)!,
@@ -834,7 +834,10 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[])
       basis: analysis.value.basis,
     },
     salaryThisSeason: analysis.salary,
-    clubValueOfAWin: analysis.winValues.map((w) => ({ club: w.club, status: w.status, text: w.text, reason: w.reason })),
+    // The Mac app's desk is never handed the club's value of a win (D-060: odds belong to the standings), not even as a key
+    ...(options.winValues === false
+      ? {}
+      : { clubValueOfAWin: analysis.winValues.map((w) => ({ club: w.club, status: w.status, text: w.text, reason: w.reason })) }),
     whoTheyWouldDisplace: incumbents,
     /** Named here are the men their own clubs have listed for trade. */
     onTheBlock,

@@ -8,21 +8,24 @@
  *   Whether the AI desk is on is read on every request (a key can change without the inputs moving).
  * - **A deal weighed** is read on the server's thread when asked (a handful of players) and kept on the same key with its
  *   players, the most recent 64 kept.
- * - **The AI desk** is `tradeDeskAsk.ts`'s, apart from this module (D-001: the desk's figures need no model).
+ * - **The AI desk** is `ai.ts`'s: its route asks the model and hands this module the answer to word (`tradeAskNow`), and
+ *   it says whether the desk can answer (`answerTradeAiWith`). This module reaches no AI module (D-001: the desk's figures
+ *   need no model).
  */
 import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
 import { FrontOfficeRefusal, NO_DATA, frontOfficeInputsKey, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
 import { importedAt } from './playerStateRoutes.js';
-import { adoptAuthored } from './presentation/claim.js';
-import { tradeAnalysisView, tradeDeskAi, type TradeAiState } from './presentation/trades/desk.js';
-import type { TradeAnalysisView, TradeDeal, TradeDeskView } from './presentation/trades/types.js';
+import { adoptAuthored, assertAuthored, cell } from './presentation/claim.js';
+import { tradeAnalysisView, tradeAnswerAbout, tradeDeskAi, type TradeAiState } from './presentation/trades/desk.js';
+import type { TradeAnalysisView, TradeAnswer, TradeAsk, TradeDeal, TradeDeskView } from './presentation/trades/types.js';
+import { answerLines } from './presentation/trades/words.js';
 import { analyzeTrade, viewerFor } from './trade.js';
-import { buildTradeDesk, tradesContextFor, type TradeDeskRequest } from './tradeDeskBuild.js';
+import { buildTradeDesk, clubWord, tradesContextFor, type TradeDeskRequest } from './tradeDeskBuild.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 /** A request the Trade Desk refuses, in words (a 400). */
 export class TradesRefusal extends Error {
-  constructor(message: string, readonly status: 400 | 404 | 409 | 502) {
+  constructor(message: string, readonly status: 400 | 401 | 404 | 409 | 502) {
     super(message);
     this.name = 'TradesRefusal';
   }
@@ -93,11 +96,20 @@ async function deskFor(orgId: number): Promise<KeptDesk> {
   return job;
 }
 
+/** Whether the AI desk is on before `ai.ts` says (never in a test that leaves it out): off, with no reason given. */
+const AI_UNSAID: TradeAiState = { available: false, voice: { name: 'the front office', role: 'front office' }, offReason: null };
+let aiDesk: (orgId: number) => TradeAiState = () => AI_UNSAID;
+
+/** Where the Trade Desk reads whether the AI desk is on: `ai.ts` says, once, when it is loaded (D-001). */
+export function answerTradeAiWith(state: (orgId: number) => TradeAiState): void {
+  aiDesk = state;
+}
+
 /**
- * The Trade Desk for a club (a team id, or `automatic`), with whether the AI desk is on read now (`aiState`, handed in by
- * the route from `tradeDeskAsk.ts`: this module computes and words without a model, D-001).
+ * The Trade Desk for a club (a team id, or `automatic`), with whether the AI desk is on read now (`aiState`; by default as
+ * `ai.ts` answers it: this module computes and words without a model, D-001).
  */
-export async function tradeDeskNow(org: string, aiState: (orgId: number) => TradeAiState): Promise<TradeDeskView> {
+export async function tradeDeskNow(org: string, aiState: (orgId: number) => TradeAiState = aiDesk): Promise<TradeDeskView> {
   const orgId = resolveOrg(org);
   const { view } = await deskFor(orgId);
   const ctx = tradesContextFor({ orgId, importStamp: view.importStamp, reportStamp: view.reportStamp });
@@ -148,6 +160,62 @@ export async function tradeAnalysisNow(org: string, query: Record<string, unknow
     while (analyses.size > MAX_ANALYSES) analyses.delete(analyses.keys().next().value!);
   }
   return view;
+}
+
+/** What the AI desk is asked: the deal on the builder, the conversation so far and the GM's question, if any. */
+export interface TradeDeskQuestion {
+  orgId: number;
+  orgLabel: string;
+  sent: number[];
+  received: number[];
+  thread: Array<{ role: 'user' | 'assistant'; content: string }>;
+  message?: string;
+}
+
+/** What the AI desk answers: its own words, who said them, and a fallback notice where another model answered. */
+export interface TradeDeskReply {
+  text: string;
+  voice: { name: string; role: string };
+  notice: { message: string } | null;
+}
+
+/**
+ * The AI desk's read of the deal, or its answer to the GM's question, worded for the Mac app (N12 Track C, D-073). The
+ * deal is read here; the question is put by `ask` (`ai.ts`'s, which refuses in words with AI off or a side empty), and
+ * its answer is marked as the AI's own words, which decide nothing (D-001).
+ */
+export async function tradeAskNow(
+  org: string, body: unknown, ask: (question: TradeDeskQuestion) => Promise<TradeDeskReply>,
+): Promise<TradeAnswer> {
+  let orgId: number;
+  try {
+    orgId = resolveOrg(org);
+  } catch (err) {
+    if (err instanceof FrontOfficeRefusal) throw new TradesRefusal(err.message, err.status);
+    throw err;
+  }
+  const question = (body ?? {}) as Partial<TradeAsk>;
+  const ids = (v: unknown) => (Array.isArray(v) ? v : []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  const sent = ids(question.sent);
+  const received = ids(question.received).filter((id) => !sent.includes(id));
+  if (sent.length > MOST_A_SIDE || received.length > MOST_A_SIDE) throw new TradesRefusal(TOO_MANY, 400);
+  const thread = (Array.isArray(question.thread) ? question.thread : [])
+    .filter((t): t is { role: 'user' | 'assistant'; content: string } =>
+      !!t && (t.role === 'user' || t.role === 'assistant') && typeof t.content === 'string');
+  const message = typeof question.message === 'string' && question.message.trim() ? question.message : undefined;
+  const answer = await ask({ orgId, orgLabel: clubWord(orgId), sent, received, thread, message });
+  const ctx = tradesContextFor({ orgId, importStamp: importedAt.value, reportStamp: frontOfficeStampOf(frontOfficeInputsKey(orgId)) });
+  const named = answer.voice.name !== 'the front office';
+  const reply: TradeAnswer = {
+    voice: cell(named ? `${answer.voice.name} · ${answer.voice.role}` : 'The front office'),
+    lines: answerLines(answer.text),
+    content: answer.text,
+    notice: answer.notice ? cell(answer.notice.message) : null,
+    about: tradeAnswerAbout(ctx, answer.voice),
+  };
+  // Sent by the AI router rather than the `/v2` routes, so checked here as they check theirs
+  assertAuthored(reply);
+  return reply;
 }
 
 /** Builds our club's Trade Desk ahead (never throws): after a kept build of its Front Office. */

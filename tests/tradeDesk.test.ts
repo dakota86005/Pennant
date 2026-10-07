@@ -4,14 +4,14 @@ import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { analyzeTrade, computeTradeFits, computeTradeProposals, computeTradeTalk, viewerFor } from '../server/trade.js';
 import { buildTradeDesk } from '../server/tradeDeskBuild.js';
 import {
-  BAD_PLAYERS, TOO_MANY, TradesRefusal, dealFrom, resetTradeDesk, tradeAnalysisNow, tradeDeskNow as deskNow, tradeDeskStats,
+  BAD_PLAYERS, TOO_MANY, dealFrom, resetTradeDesk, tradeAnalysisNow, tradeDeskNow as deskNow, tradeDeskStats,
 } from '../server/tradeDeskService.js';
-import { tradeAiNow, tradeAskNow } from '../server/tradeDeskAsk.js';
-const tradeDeskNow = (org: string) => deskNow(org, tradeAiNow);
+import { TRADE_AI_OFF, tradeAiState } from '../server/ai.js';
+const tradeDeskNow = (org: string) => deskNow(org, tradeAiState);
 import { scaleOf } from '../server/presentation/trades/words.js';
 import { gradeOwners } from './ratingFillMarks';
 import { bannedInPayload } from './bannedJargon';
-import request from './request';
+import request, { post } from './request';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
 /*
@@ -147,8 +147,8 @@ describe('the desk is kept, and the AI desk is optional (N12; D-001)', () => {
     expect(desk.ai.available).toBe(false);
     expect(desk.ai.off?.text).toBe('AI is off. Everything on the desk works without it.');
     expect(desk.ai.off?.basis.because.map((b) => b.label)).toEqual(['Why', 'What still works']);
-    await expect(tradeAskNow(String(save.org), { sent: [save.regular], received: [theirs()[0]], thread: [] })).rejects.toBeInstanceOf(TradesRefusal);
-    await expect(tradeAskNow(String(save.org), { sent: [save.regular], received: [theirs()[0]], thread: [] })).rejects.toMatchObject({ status: 409 });
+    const ask = post(`/api/v2/views/${save.org}/trades/ask`, { sent: [save.regular], received: [theirs()[0]], thread: [] });
+    await expect(ask).rejects.toThrow(`-> 409 ${JSON.stringify({ error: TRADE_AI_OFF })}`);
     // Every figure is there without it
     const view = await tradeAnalysisNow(String(save.org), { sent: String(save.regular), received: String(theirs()[0]) });
     expect(view.difference?.headline.text).toMatch(/^Most likely /);

@@ -105,8 +105,8 @@ material implementation state changes.
   lines up two to four; the GM's note is kept on his follow, as typed.
 - Trades and Philosophy & Staff on the Mac (N12 Track C, D-073): the Trade Desk
   (`/api/v2/views/:org/trades/…`: the desk built after each import for our club, a
-  deal weighed on Player Value when it changes, the optional AI desk in
-  `tradeDeskAsk.ts`), the philosophy editor with its identity worded on the server
+  deal weighed on Player Value when it changes, the optional AI desk on the AI
+  router in `ai.ts`), the philosophy editor with its identity worded on the server
   and a change checked whole and undone through the server, and Coaching Staff.
 - After an import, the snapshots run in a worker and both refits at the same
   time (a post-import hook list later milestones register into); the
