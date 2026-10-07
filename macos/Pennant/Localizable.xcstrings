@@ -1,6 +1,12 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "$": {
+      "extractionState": "manual"
+    },
+    "%@ (%lld)": {
+      "extractionState": "manual"
+    },
     "%lld of %lld": {
       "extractionState": "manual"
     },
@@ -146,6 +152,18 @@
     "Commands": {
       "extractionState": "manual"
     },
+    "Committed": {
+      "extractionState": "manual"
+    },
+    "Committed Salary": {
+      "extractionState": "manual"
+    },
+    "Could Come on Top": {
+      "extractionState": "manual"
+    },
+    "Committed salary by season": {
+      "extractionState": "manual"
+    },
     "Conclusion": {
       "extractionState": "manual"
     },
@@ -201,6 +219,9 @@
     "Draft Board": {
       "extractionState": "manual"
     },
+    "Every Contract": {
+      "extractionState": "manual"
+    },
     "Every item to decide, from every department": {
       "extractionState": "manual"
     },
@@ -223,6 +244,9 @@
       "extractionState": "manual"
     },
     "Find Automatically": {
+      "extractionState": "manual"
+    },
+    "Find a Player": {
       "extractionState": "manual"
     },
     "Find anything": {
@@ -341,6 +365,9 @@
       "extractionState": "manual"
     },
     "Inspector": {
+      "extractionState": "manual"
+    },
+    "Key Figures": {
       "extractionState": "manual"
     },
     "L": {
@@ -598,6 +625,9 @@
     "Season Trends": {
       "extractionState": "manual"
     },
+    "Seasons": {
+      "extractionState": "manual"
+    },
     "Section": {
       "extractionState": "manual"
     },
@@ -838,6 +868,9 @@
     "Where Pennant looked": {
       "extractionState": "manual"
     },
+    "Which players": {
+      "extractionState": "manual"
+    },
     "Who could take the job": {
       "extractionState": "manual"
     },
@@ -872,6 +905,9 @@
       "extractionState": "manual"
     },
     "Your club": {
+      "extractionState": "manual"
+    },
+    "million": {
       "extractionState": "manual"
     },
     "↩": {
@@ -1094,6 +1130,9 @@
       "extractionState": "manual"
     },
     "Remove Staff Note": {
+      "extractionState": "manual"
+    },
+    "Set Budget": {
       "extractionState": "manual"
     },
     "Overview": {

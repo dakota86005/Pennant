@@ -1,0 +1,257 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Injury Report"
+  },
+  "byline": {
+    "display": "Prepared by Ana Frey, team doctor · Through May 6, 2040",
+    "hint": "From the club's staff in the save"
+  },
+  "bylineParts": [
+    {
+      "display": "Prepared by Ana Frey, team doctor",
+      "hint": "From the club's staff in the save"
+    },
+    {
+      "display": "Through May 6, 2040",
+      "hint": "The last game day in the imported export"
+    }
+  ],
+  "lede": {
+    "text": "Every injured player in the organization, majors to rookie ball",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Player",
+          "value": "Every name opens his own window: ratings, contract, career and injuries."
+        },
+        {
+          "label": "Age",
+          "value": "The player's age as of this point in the season. OOTP ages players on their real birthday, so an age-27 season may end at 28."
+        },
+        {
+          "label": "Pos",
+          "value": "Primary fielding position, the one OOTP lists him at."
+        },
+        {
+          "label": "Club",
+          "value": "His level and club: for a minor leaguer, the affiliate, not the parent club."
+        },
+        {
+          "label": "Status",
+          "value": "The injured list he is on, or day-to-day. A day-to-day player on the active roster can play through it: that is the manager's call."
+        },
+        {
+          "label": "Back in",
+          "value": "Estimated days until he is back. OOTP revises this as the injury progresses."
+        },
+        {
+          "label": "IL days this season",
+          "value": "Days spent on the injured list this season."
+        }
+      ],
+      "source": {
+        "department": "medical",
+        "specialist": "The injury report",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "freshness": {
+    "text": "As of May 6, 2040 · Not checked against your save",
+    "tone": "unknown",
+    "basis": {
+      "because": [
+        {
+          "label": "How current",
+          "value": "Pennant's copy of the league is from May 6, 2040. It couldn't find your OOTP save to compare dates with, so it can't tell whether the export is current: service time, control and the figures built on them are read as the export states them."
+        }
+      ],
+      "source": {
+        "department": "medical",
+        "specialist": "The injury report",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Exporting the database from OOTP again and importing it."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "figures": [
+    {
+      "text": "Injured",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Injured in the organization",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "medical",
+          "specialist": "The injury report",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    },
+    {
+      "text": "With the major league club",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Injured major leaguers",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "medical",
+          "specialist": "The injury report",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    },
+    {
+      "text": "Day-to-day",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Playing through it or day-to-day",
+            "value": "0"
+          }
+        ],
+        "source": {
+          "department": "medical",
+          "specialist": "The injury report",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 0,
+        "unit": "count",
+        "display": "0"
+      }
+    }
+  ],
+  "table": {
+    "columns": [
+      {
+        "id": "player",
+        "title": {
+          "display": "Player"
+        },
+        "numeric": false,
+        "sortable": true
+      },
+      {
+        "id": "age",
+        "title": {
+          "display": "Age"
+        },
+        "numeric": true,
+        "sortable": true
+      },
+      {
+        "id": "position",
+        "title": {
+          "display": "Pos"
+        },
+        "numeric": false,
+        "sortable": true
+      },
+      {
+        "id": "club",
+        "title": {
+          "display": "Club"
+        },
+        "numeric": false,
+        "sortable": true
+      },
+      {
+        "id": "status",
+        "title": {
+          "display": "Status"
+        },
+        "numeric": false,
+        "sortable": true
+      },
+      {
+        "id": "back",
+        "title": {
+          "display": "Back in"
+        },
+        "numeric": true,
+        "sortable": true
+      },
+      {
+        "id": "ilDays",
+        "title": {
+          "display": "IL days this season"
+        },
+        "numeric": true,
+        "sortable": true
+      }
+    ],
+    "rows": [],
+    "empty": {
+      "display": "Everyone is healthy across the organization."
+    },
+    "noneKept": {
+      "display": "No players match these filters."
+    },
+    "choose": {
+      "display": "Select a row to see more."
+    }
+  },
+  "filters": [],
+  "unknowns": []
+}

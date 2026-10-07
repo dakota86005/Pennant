@@ -103,6 +103,16 @@ material implementation state changes.
   `/api/player/:id` answers with); our club's players are read ahead in the Front
   Office's worker after each import, others on their first open; `/api/v2/compare`
   lines up two to four; the GM's note is kept on his follow, as typed.
+- Finance and Medical on the Mac (N12 Track A, D-071): Payroll & Budget, Contracts,
+  Free Agents, the Horizon Board and the Injury Report are served under
+  `/api/v2/views/:org/{finance,medical}/…`, read through the React pages' routes
+  (`computePayroll`, `computeContracts`, `computeFreeAgents`, Club Finances,
+  `orgInjuries`) and, for the Horizon Board, Player Value's control timelines and the
+  farm's next men; built in the Front Office's worker after each import. The budget
+  the GM expects next season is set through `PUT …/payrollBudget/nextSeasonBudget`
+  (the React page's setting). The Mac app draws them as native tables, Swift Charts
+  (committed money against the budget rule, the projected range beside it) and the
+  board's grid.
 - League Office and Scouting (N12 Track B, D-072): `GET /api/v2/views/:org/league/{standings, leaders,
   orgComparison, franchiseHistory, usVsThem}` and `/scouting/{draftBoard, draftBoard/prospects/:player,
   playerSearch}`, built in the Front Office's worker after each import from the React pages' extracted routes and
@@ -155,7 +165,7 @@ material implementation state changes.
   and Club Reports, any club's report in its own window, the sidebar's Following (drag to follow, the rivals suggested),
   search in the ⌘K palette and the toolbar, the served notification and Dock badge (switchable in Settings), and the club
   owed held across a relaunch; the server added the desk's `deferChoices` and `openCount` and a player's club on his
-  search and Following target. Not built: the horizon board (N12).
+  search and Following target. The horizon board is built at N12 (Track A, D-071), with Finance's other views.
 - Pennant for Mac, the app skeleton (SwiftUI rebuild N3, D-055): `macos/Pennant.xcodeproj` and its packages. The app
   carries the server and starts it as its sidecar (after a one-time backup of the data folder), and has the window shell:
   the sidebar from the department registry with the served club card, the toolbar, the inspector, the Go, View and Club

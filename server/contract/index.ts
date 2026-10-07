@@ -113,6 +113,18 @@ export type {
   FarmEvaluationRow, FarmProspectCard, FarmProspectsView, FarmDevelopmentTab, FarmDevelopmentRow, FarmSnapshotRow, FarmMovementRow,
   FarmDevelopmentDetail, FarmDevelopmentView,
 } from '../presentation/farm/types.js';
+// The Office kit every front-office table outside Major League Ops shares (N12, D-071 and D-072), and Finance's and
+// Medical's views (N12, D-071): `/api/v2/views/:org/{finance,medical}/…`
+export type {
+  OfficeClub, OfficeColumn, OfficeFact, OfficeGrid, OfficeRow, OfficeTable, OfficeSection, OfficeChoice, OfficeChoiceGroup,
+  OfficeFilter, OfficeFilterGroup, OfficeViewHead,
+} from '../presentation/officeTable.js';
+export type {
+  FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentList, FinanceFreeAgentsView, FinanceProjected, FinancePayrollSeason, FinanceBudgetLine,
+  FinanceBudgetEntry, FinancePayrollSection, FinancePayrollView, FinanceBudgetUpdate, FinanceBudgetChange, FinanceHorizonEntry,
+  FinanceHorizonCell, FinanceHorizonProspect, FinanceHorizonRow, FinanceHorizonMoney, FinanceHorizonView,
+} from '../presentation/finance/types.js';
+export type { MedicalInjuryReportView } from '../presentation/medical/injuryReport.js';
 // Around the League and Following (N7): the wire, club reports, following, search
 export type {
   WireKind, WireSource, WireClub, WirePlayer, WireEntry, WireOrder, WireTop, Wire, WireKindChoice, ClubInjury, ClubReport, FollowedItem,
@@ -147,7 +159,6 @@ export type {
   MlbRosterChoice, MlbRostersView, MlbTrendPoint, MlbTrendSeries, MlbTrendChart, MlbSeasonTrendsView,
 } from '../presentation/clubhouse/types.js';
 // League Office's and Scouting's views (N12 Track B): `GET /api/v2/views/:org/league/<view>`, `/scouting/<view>`
-export type { OfficeClub, OfficeColumn, OfficeRow, OfficeTable, OfficeSection, OfficeChoice, OfficeChoiceGroup } from '../presentation/league/office.js';
 export type {
   LeagueStandingsGroup, LeagueStaffRead,
   LeagueStandingsView, LeagueLeaderGroup, LeagueLeadersView, LeagueOrgComparisonView, LeagueSeasonPoint, LeagueSeasonChart, LeagueChartLegend, LeagueTenure,

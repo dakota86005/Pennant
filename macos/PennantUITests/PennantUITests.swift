@@ -1322,6 +1322,148 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Waits (at most five seconds) until an element's frame is the same at two looks in a row: a list scrolled by the test
+    /// has come to rest.
+    @MainActor
+    private func settle(_ target: XCUIElement) {
+        var last = CGRect.null
+        let still = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let now = target.exists ? target.frame : .null
+            defer { last = now }
+            return now == last
+        }, object: nil)
+        _ = XCTWaiter.wait(for: [still], timeout: 5)
+    }
+
+    /// Finance's and Medical's views (N12, D-071) at 900 × 700 with the inspector open: each view drawn from one click in
+    /// the sidebar, a row chosen in each table and its detail drawn, Payroll's every contract and back, Free Agents' lists
+    /// and filter, three rounds, each view audited on its first visit (no new set-aside). Running is what matters (a
+    /// constraint loop or a crash stops it).
+    @MainActor
+    func testFinanceNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in
+            XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
+            // Not in front: another app, or another Pennant (another worktree's test run shares the bundle id, so the
+            // frontmost app's id alone can't tell them apart; this app's own state can)
+            let front = NSWorkspace.shared.frontmostApplication
+            let other = front.map { !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains($0.bundleIdentifier ?? "") } ?? false
+            if app.state != .runningForeground || other {
+                let note = "[narrow] \(front?.localizedName ?? front?.bundleIdentifier ?? "another process") was frontmost at \(step) (Pennant's state \(app.state.rawValue)); Pennant brought back"
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
+                app.activate()
+                _ = app.wait(for: .runningForeground, timeout: 5)
+            }
+        }
+        // A sidebar row about to be clicked has a hit point (nothing over it, the window in front): a click on an element with
+        // none fails the test outright ("Unable to find hit point"), so it is waited for, Pennant brought back between
+        // the two waits (an expectation is waited on once, so each wait has its own). The sidebar itself isn't waited on:
+        // a container can report no hit point of its own while its rows have one
+        let pressable = { (target: XCUIElement, step: String) in
+            let ready = { XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in target.exists && target.isHittable }, object: nil) }
+            guard XCTWaiter.wait(for: [ready()], timeout: 10) != .completed else { return }
+            up("\(step), waiting for a hit point")
+            XCTAssertEqual(XCTWaiter.wait(for: [ready()], timeout: 10), .completed, "\(step): no hit point after 20 s")
+        }
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        let any = { (prefix: String) in app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch }
+        // Each view: its department, what shows it drew (an identifier's prefix), and whether it is a table to choose a row in
+        let views: [(department: String, view: String, shows: String, table: Bool)] = [
+            ("finance", "payrollBudget", "payroll.chart", false), ("finance", "contracts", "table.contracts", true),
+            ("finance", "freeAgents", "table.freeAgents.", true), ("finance", "horizonBoard", "horizon.page", false),
+            ("medical", "injuryReport", "table.injuryReport", true),
+        ]
+        for round in 1...3 {
+            for view in views {
+                // Each department opened by its shortcut first (⌘6 Finance, ⌘7 Medical), so its views are in the sidebar
+                if view.view == "payrollBudget" || view.view == "injuryReport" {
+                    up("before \(view.department), round \(round)")
+                    app.typeKey(view.department == "finance" ? "6" : "7", modifierFlags: .command)
+                    XCTAssertTrue(element(app, "detail.\(view.department).report").waitForExistence(timeout: 30), "round \(round): \(view.department) did not open")
+                }
+                let item = element(app, "sidebar.\(view.department).\(view.view)")
+                let sidebar = element(app, "sidebar")
+                up("before \(view.view), round \(round)")
+                if !sidebar.isHittable { up("the sidebar before \(view.view), round \(round)") }
+                if !item.isHittable { reveal(item, in: sidebar) }
+                XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
+                within(item, in: sidebar)
+                // The sidebar at rest before the click: a long reveal left it still moving, and XCTest found no hit point
+                // for the list it was scrolling
+                settle(item)
+                up("before \(view.view), round \(round)")
+                pressable(item, "\(view.view)'s row, round \(round)")
+                // On the row's own point: wholly inside the list already, so no scroll-to-visible of XCTest's (it judged a
+                // row near the list's foot hidden and found no hit point for the list it then scrolled)
+                XCTAssertTrue(item.frame.minY >= sidebar.frame.minY && item.frame.maxY <= sidebar.frame.maxY, "round \(round): \(view.view)'s row is not in the sidebar's frame")
+                item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+                let shown = any(view.shows)
+                if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12-narrow-900-missing-\(view.view)") }
+                XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
+                // A table with rows: choose the first and see its detail (an empty table says so instead)
+                if view.table, !shown.identifier.hasSuffix(".empty") {
+                    let row = firstRow(of: shown)
+                    XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
+                    // Pennant in front before the click; a table's row reports no hit point of its own, so it is clicked
+                    // on its leading point as before
+                    up("\(view.view)'s first row, round \(round)")
+                    leading(row)
+                    XCTAssertTrue(element(app, "row.detail").waitForExistence(timeout: 10), "round \(round): \(view.view)'s chosen row has no detail")
+                    XCTAssertGreaterThanOrEqual(shown.frame.height, 100, "round \(round): \(view.view)'s table is \(shown.frame.height) pt tall")
+                }
+                switch view.view {
+                case "payrollBudget":
+                    // Every contract, a row chosen, then the seasons again
+                    let mode = element(app, "payroll.mode").radioButtons
+                    XCTAssertTrue(mode.element(boundBy: 1).waitForExistence(timeout: 10), "round \(round): Payroll offers no second mode")
+                    mode.element(boundBy: 1).click()
+                    let table = element(app, "table.payroll.contracts")
+                    XCTAssertTrue(table.waitForExistence(timeout: 10), "round \(round): every contract did not draw")
+                    leading(firstRow(of: table))
+                    if round == 1 { keep(window.screenshot(), named: "n12-narrow-900-payroll-contracts") }
+                    mode.element(boundBy: 0).click()
+                    XCTAssertTrue(element(app, "payroll.chart").waitForExistence(timeout: 10), "round \(round): the seasons did not come back")
+                case "freeAgents":
+                    // Another list, drawn
+                    // Another list, drawn: from the segmented control, or on a narrow column from the button's popover
+                    let lists = element(app, "freeAgents.list")
+                    let choose = { (index: Int) in
+                        if lists.radioButtons.count > 1 {
+                            lists.radioButtons.element(boundBy: index).click()
+                        } else {
+                            lists.click()
+                            let choice = self.element(app, "freeAgents.list.\(index)")
+                            XCTAssertTrue(choice.waitForExistence(timeout: 10), "round \(round): the lists' popover did not open")
+                            choice.click()
+                        }
+                        XCTAssertTrue(any("table.freeAgents.").waitForExistence(timeout: 10) || any("table.freeAgents.").exists,
+                                      "round \(round): list \(index) did not draw")
+                    }
+                    choose(1)
+                    choose(0)
+                default:
+                    break
+                }
+                if round == 1 { keep(window.screenshot(), named: "n12-narrow-900-\(view.view)") }
+                up("\(view.view), round \(round)")
+                if round == 1 {
+                    // The sidebar at its top and settled first: revealing a lower row left the club card half under the
+                    // title bar's edge, where the audit measured it mid-scroll (2.1:1 by its washed pixels)
+                    sidebarAtTop(app)
+                    settle(element(app, "club.card"))
+                    try audit(app, named: "accessibility-audit-n12-narrow-\(view.view)")
+                }
+            }
+        }
+        quitCleanly(app)
+    }
+
     /// League Office's and Scouting's views at 900 × 700 with the inspector open (N12 Track B; BEHAVIOR_CASES.md "Pennant
     /// for Mac", `testLeagueOfficeNarrowWindow`): Standings, Leaders, Org Comparison, Franchise History, Us vs Them, the
     /// Draft Board and Player Search, round after round, a row chosen in each table, another division, category and

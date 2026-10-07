@@ -1765,6 +1765,287 @@
         }
       }
     },
+    "/api/v2/views/{org}/finance/contracts": {
+      "get": {
+        "operationId": "getFinanceContracts",
+        "summary": "Contracts: what each deal costs, how long the club controls him and what he's worth, with the club's figures and the groups after this season.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceContractsView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/finance/freeAgents": {
+      "get": {
+        "operationId": "getFinanceFreeAgents",
+        "summary": "Free Agents: who is available now, who reaches the market after this season and who might, each with his production and a season of it at the market.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceFreeAgentsView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/finance/freeAgents/players/{player}": {
+      "get": {
+        "operationId": "getFinanceFreeAgent",
+        "summary": "One listed free agent's detail, served when the GM chooses his row: his facts, and the claims beneath the table (a season at the market, why he might reach it), each with its basis.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "player",
+            "in": "path",
+            "required": true,
+            "description": "The player's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceFreeAgentDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/finance/horizonBoard": {
+      "get": {
+        "operationId": "getFinanceHorizon",
+        "summary": "The Horizon Board: who the club controls at each position over the next three seasons and how, the farm's next men never placed in a season, and committed salary against the budget.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceHorizonView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/finance/payrollBudget": {
+      "get": {
+        "operationId": "getFinancePayroll",
+        "summary": "Payroll & Budget: committed salary by season against the club's budget, what controlled seasons could cost beside it (never in it), who comes off the books, and every contract.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancePayrollView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/finance/payrollBudget/nextSeasonBudget": {
+      "put": {
+        "operationId": "setFinanceBudget",
+        "summary": "Sets the budget the GM expects next season (in dollars; zero clears it, so today's budget holds flat). A Pennant setting: nothing is written to OOTP.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinanceBudgetUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceBudgetChange"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/views/{org}/league/franchiseHistory": {
       "get": {
         "operationId": "getLeagueFranchiseHistory",
@@ -2603,6 +2884,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MlbSeasonTrendsView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/views/{org}/medical/injuryReport": {
+      "get": {
+        "operationId": "getMedicalInjuryReport",
+        "summary": "The Injury Report: every injured player in the organization, majors to rookie ball, with when he is due back.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalInjuryReportView"
                 }
               }
             }
@@ -8444,6 +8767,772 @@
           "sort"
         ]
       },
+      "FinanceBudgetChange": {
+        "type": "object",
+        "properties": {
+          "nextSeasonBudget": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The amount kept, in dollars; null when cleared (today's budget then holds flat)."
+          },
+          "done": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What it did, in a sentence (\"Next season's budget set to $210M; was $200M\")."
+          },
+          "undo": {
+            "$ref": "#/components/schemas/FinanceBudgetUpdate",
+            "description": "The request that puts back what was there before (⌘Z): the amount before, or zero when there was none."
+          }
+        },
+        "required": [
+          "nextSeasonBudget",
+          "done",
+          "undo"
+        ],
+        "description": "What setting the budget the GM expects next season answers: the amount kept, what it did, and how to put it back."
+      },
+      "FinanceBudgetEntry": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The amount entered, in dollars; null when none (today's budget then holds flat)."
+          },
+          "placeholder": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Today's budget in millions, the field's placeholder; null when the export has none."
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "help": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "amount",
+          "placeholder",
+          "label",
+          "help"
+        ],
+        "description": "The budget the GM expects next season, as the view offers to set it (in millions, as the React page took it)."
+      },
+      "FinanceBudgetLine": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "amount",
+          "label"
+        ],
+        "description": "A budget line: its amount and its words."
+      },
+      "FinanceBudgetUpdate": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "amount"
+        ],
+        "description": "What the GM sends to set the budget he expects next season: an amount in dollars, zero to clear it."
+      },
+      "FinanceContractsView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"The front office · Through May 5, 2040\"."
+          },
+          "bylineParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "The byline's parts (who prepared it, how current), so a narrow column sets each on a line of its own rather than breaking the byline inside a date."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the league data is, when it is not current (the React pages' freshness cue); null when it is."
+          },
+          "heading": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Contracts after 2040\"."
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            },
+            "description": "Budget, payroll and room now and next season, cash for trades; empty when Club Finances couldn't be read."
+          },
+          "price": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"A win costs about $7.25M on this league's market\"; null when no price is in force."
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeFilterGroup"
+            },
+            "description": "The groups (free agents after this season, options, arbitration, ...) and all players or pitchers."
+          },
+          "table": {
+            "$ref": "#/components/schemas/OfficeTable"
+          }
+        },
+        "required": [
+          "byline",
+          "bylineParts",
+          "cards",
+          "filters",
+          "heading",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "table",
+          "title"
+        ],
+        "description": "Contracts: the club's finance figures, the price of a win, the groups, and every contract as a table."
+      },
+      "FinanceFreeAgentDetail": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeFact"
+            }
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          }
+        },
+        "required": [
+          "playerId",
+          "facts",
+          "claims"
+        ],
+        "description": "One free agent's detail, served when the GM chooses his row (the lists carry none of it, so they stay small): his facts and the claims beneath the table, each with its basis."
+      },
+      "FinanceFreeAgentList": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`available`, `upcoming` or `mightReach`."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "explain": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Who it lists and how the table reads, in its basis."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "A line above the table (why the might-reach players are there); null when none."
+          },
+          "order": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The served order in words, while the GM hasn't sorted a column; null with no rows."
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeFilterGroup"
+            }
+          },
+          "table": {
+            "$ref": "#/components/schemas/OfficeTable"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "count",
+          "explain",
+          "filters",
+          "table"
+        ],
+        "description": "One of Free Agents' three lists: who it lists, its filters and its table."
+      },
+      "FinanceFreeAgentsView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"The front office · Through May 5, 2040\"."
+          },
+          "bylineParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "The byline's parts (who prepared it, how current), so a narrow column sets each on a line of its own rather than breaking the byline inside a date."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the league data is, when it is not current (the React pages' freshness cue); null when it is."
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "price": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "needs": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Your thinnest positions: …\", with how it is read in its basis; null when nothing is thin or unknown."
+          },
+          "lists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceFreeAgentList"
+            }
+          },
+          "opensOn": {
+            "type": "string",
+            "description": "The list the view opens on (as the React page chose it)."
+          }
+        },
+        "required": [
+          "byline",
+          "bylineParts",
+          "cards",
+          "importStamp",
+          "lede",
+          "lists",
+          "opensOn",
+          "orgId",
+          "reportStamp",
+          "title"
+        ],
+        "description": "Free Agents: the club's figures, the price of a win, its thinnest positions, and the three lists."
+      },
+      "FinanceHorizonCell": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceHorizonEntry"
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "unread": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "Players listed there whose control that season couldn't be read."
+          },
+          "unreadNote": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Not known for N more\" beside the entries, when some are unread; null when none are, or the cell has no entries (then `empty` says it)."
+          }
+        },
+        "required": [
+          "season",
+          "entries",
+          "unread"
+        ],
+        "description": "One position in one season: who the club controls there and how; its sentence when nobody."
+      },
+      "FinanceHorizonEntry": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "why": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "player",
+          "status",
+          "why"
+        ],
+        "description": "A player in a Horizon Board cell: who, and how the club controls him that season (the full reason in `why`)."
+      },
+      "FinanceHorizonMoney": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "committed": {
+            "type": "number"
+          },
+          "budget": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "season",
+          "committed",
+          "budget",
+          "claim"
+        ],
+        "description": "Committed money in one season, against the budget it is read against."
+      },
+      "FinanceHorizonProspect": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/MlbPlayer"
+          },
+          "level": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Player Development's readiness against its bar, in words."
+          },
+          "ratingsFill": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "OSA's view filling in for our scouts on the grades his readiness rests on (D-067); absent otherwise."
+          }
+        },
+        "required": [
+          "player",
+          "level",
+          "readiness"
+        ],
+        "description": "The farm's next man at a position: never placed in a season."
+      },
+      "FinanceHorizonRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceHorizonCell"
+            }
+          },
+          "pipeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceHorizonProspect"
+            }
+          },
+          "pipelineEmpty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Nobody at this position in the farm\"; null when the row has no pipeline (pitchers) or has men in it."
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "cells",
+          "pipeline"
+        ],
+        "description": "One row of the board: a position, its seasons, and its pipeline."
+      },
+      "FinanceHorizonView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"The front office · Through May 5, 2040\"."
+          },
+          "bylineParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "The byline's parts (who prepared it, how current), so a narrow column sets each on a line of its own rather than breaking the byline inside a date."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the league data is, when it is not current (the React pages' freshness cue); null when it is."
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Integer"
+            }
+          },
+          "seasonTitles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceHorizonRow"
+            }
+          },
+          "pipelineTitle": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "payroll": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinanceHorizonMoney"
+            }
+          },
+          "budget": {
+            "$ref": "#/components/schemas/FinanceBudgetLine"
+          },
+          "payrollNote": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Why the payroll strip is missing, when it is."
+          },
+          "chartSummary": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "unknowns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          }
+        },
+        "required": [
+          "byline",
+          "bylineParts",
+          "chartSummary",
+          "importStamp",
+          "lede",
+          "orgId",
+          "payroll",
+          "pipelineTitle",
+          "reportStamp",
+          "rows",
+          "seasonTitles",
+          "seasons",
+          "title",
+          "unknowns"
+        ],
+        "description": "The Horizon Board."
+      },
+      "FinancePayrollSeason": {
+        "type": "object",
+        "properties": {
+          "season": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "committed": {
+            "type": "number",
+            "description": "Guaranteed salary, in dollars."
+          },
+          "projected": {
+            "$ref": "#/components/schemas/FinanceProjected"
+          },
+          "budget": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The budget this season is read against (today's, or the one the GM expects for later seasons); null when unknown."
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"2041: $85.2M committed\", with everything about the season in its basis."
+          },
+          "committedCell": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "playersCell": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"26 players · +$9.0M in 1 club option, not counted\"."
+          },
+          "projectedCell": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Most likely +$12.5M · could be $9.1M to $16.8M (8 players)\"; null when nothing is projected."
+          },
+          "roomCell": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"$14.2M free\", or \"Room not known\"."
+          }
+        },
+        "required": [
+          "season",
+          "committed",
+          "budget",
+          "claim",
+          "committedCell",
+          "playersCell",
+          "roomCell"
+        ],
+        "description": "One season of committed money (Payroll's), with what it is read against and what could come on top."
+      },
+      "FinancePayrollSection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "explain": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "table": {
+            "$ref": "#/components/schemas/OfficeTable"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "explain",
+          "table"
+        ],
+        "description": "A titled table of Payroll's (leaving, staying, not known yet), with what it means."
+      },
+      "FinancePayrollView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"The front office · Through May 5, 2040\"."
+          },
+          "bylineParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "The byline's parts (who prepared it, how current), so a narrow column sets each on a line of its own rather than breaking the byline inside a date."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the league data is, when it is not current (the React pages' freshness cue); null when it is."
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "price": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "priceHistory": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What a season the club controls costs (a renewal, an arbitration year); null when the league couldn't be read."
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinancePayrollSeason"
+            }
+          },
+          "budget": {
+            "$ref": "#/components/schemas/FinanceBudgetLine",
+            "description": "Today's budget, the chart's rule."
+          },
+          "expectedBudget": {
+            "$ref": "#/components/schemas/FinanceBudgetLine",
+            "description": "The budget the GM expects next season, a second rule for the later seasons; null when none is entered."
+          },
+          "chartSummary": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The chart in one sentence, for VoiceOver's chart description."
+          },
+          "nextSeasonBudget": {
+            "$ref": "#/components/schemas/FinanceBudgetEntry"
+          },
+          "edges": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Every player at the same end of his range, season by season; null when nothing is projected."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FinancePayrollSection"
+            }
+          },
+          "deadMoney": {
+            "$ref": "#/components/schemas/Claim"
+          },
+          "contracts": {
+            "$ref": "#/components/schemas/OfficeTable",
+            "description": "Every contract, season by season."
+          }
+        },
+        "required": [
+          "budget",
+          "byline",
+          "bylineParts",
+          "cards",
+          "chartSummary",
+          "contracts",
+          "deadMoney",
+          "importStamp",
+          "lede",
+          "nextSeasonBudget",
+          "orgId",
+          "reportStamp",
+          "seasons",
+          "sections",
+          "title"
+        ],
+        "description": "Payroll & Budget."
+      },
+      "FinanceProjected": {
+        "type": "object",
+        "properties": {
+          "low": {
+            "type": "number"
+          },
+          "high": {
+            "type": "number"
+          },
+          "likelyLow": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The sum of the most likely costs; a range where a season could go more than one way; null when none."
+          },
+          "likelyHigh": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "low",
+          "high",
+          "likelyLow",
+          "likelyHigh"
+        ],
+        "description": "What the controlled seasons no contract covers could cost, beside a season's committed money (never in it)."
+      },
       "FoItem": {
         "type": "object",
         "properties": {
@@ -10346,6 +11435,82 @@
             "type": "string"
           }
         ]
+      },
+      "MedicalInjuryReportView": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"The front office · Through May 5, 2040\"."
+          },
+          "bylineParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "The byline's parts (who prepared it, how current), so a narrow column sets each on a line of its own rather than breaking the byline inside a date."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the league data is, when it is not current (the React pages' freshness cue); null when it is."
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "table": {
+            "$ref": "#/components/schemas/OfficeTable"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeFilterGroup"
+            },
+            "description": "Narrowing the table by level (the major league club, the farm)."
+          },
+          "unknowns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "What the report can't see, as short sentences; empty when nothing is missing."
+          }
+        },
+        "required": [
+          "byline",
+          "bylineParts",
+          "figures",
+          "filters",
+          "importStamp",
+          "lede",
+          "orgId",
+          "reportStamp",
+          "table",
+          "title",
+          "unknowns"
+        ],
+        "description": "The Injury Report: the figures, every injured player as a table, and what the export doesn't say."
       },
       "MissingPart": {
         "type": "object",
@@ -12452,7 +13617,7 @@
           "title",
           "choices"
         ],
-        "description": "A group of the GM's choices for a view (the opponent, the batters or the pitchers): the query parameter it sets."
+        "description": "A group of the GM's choices for a view that the server answers (the opponent, the batters or the pitchers): the query parameter it sets. Apart from `OfficeFilterGroup`, which narrows a served table in the app by its rows' `filterKeys`."
       },
       "OfficeClub": {
         "type": "object",
@@ -12514,7 +13679,99 @@
           "sortable",
           "title"
         ],
-        "description": "A table's column: N8's column (its id, title with its hint, whether it holds numbers, hidden until shown), whether it sorts (a column of mixed units, Us vs Them's figures, doesn't), and whether it sorts by its cells' words: then its rows carry no sort key for it (they would only repeat the words), and the app sorts by the words, an unknown cell last."
+        "description": "A table's column: N8's column (its id, title with its hint, whether it holds numbers, hidden until shown), whether it sorts (a column of mixed units, Us vs Them's figures, or a contract's notes, doesn't), and whether it sorts by its cells' words: then its rows carry no sort key for it (they would only repeat the words), and the app sorts by the words, an unknown cell last."
+      },
+      "OfficeFact": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "value": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "description": "One labelled fact beneath a chosen row (\"Signed through\", \"2031\")."
+      },
+      "OfficeFilter": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "explain": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the choice means, when it needs more than its title (its explanation in the basis); null when it doesn't."
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "description": "A choice that narrows a table to some of its rows (Contracts' groups, Free Agents' positions): its words."
+      },
+      "OfficeFilterGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeFilter"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "choices"
+        ],
+        "description": "One way of narrowing a table (Contracts' groups, all players or pitchers, an age band): its title and its choices. The first choice keeps every row; another keeps the rows whose `filterKeys` name it for this group. A table shows the rows every group's chosen choice keeps. The rows are never listed in the choice: a long table's would double the payload."
+      },
+      "OfficeGrid": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Cell"
+              }
+            }
+          },
+          "empty": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The sentence when it has no rows."
+          }
+        },
+        "required": [
+          "title",
+          "columns",
+          "rows"
+        ],
+        "description": "A short table drawn as a grid (its columns' titles and its rows' cells), never sorted."
       },
       "OfficeRow": {
         "type": "object",
@@ -12578,6 +13835,29 @@
           },
           "ours": {
             "type": "boolean"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfficeFact"
+            }
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Claim"
+            }
+          },
+          "grid": {
+            "$ref": "#/components/schemas/OfficeGrid",
+            "description": "A short table beneath the chosen row (a contract's seasons under control)."
+          },
+          "filterKeys": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The choice it falls under in each of its table's filter groups, by group id (`{ side: 'pitchers', age: 'prime' }`); a group it falls under no choice of (his age not known) is left out, so only that group's first choice keeps him."
           }
         },
         "required": [
@@ -12587,7 +13867,7 @@
           "id",
           "sort"
         ],
-        "description": "A row of a League Office or Scouting table: N8's row (its cells and sort keys, the player it is about with his OSA mark, its detail and what it offers to open), the club it is about when it is about one (a standings line), and whether it is ours (drawn marked, never the only signal: the club's or player's cell says so too)."
+        "description": "A row: N8's row (its cells and sort keys, the player it is about with his OSA mark, its detail blocks and what it offers to open), the club it is about when it is about one (a standings line) and whether it is ours (drawn marked, never the only signal: its words say so too); Finance's facts, claims and short table drawn beneath it when chosen (each left out when it has none, and a long list's served on its own when the row is chosen); and the choice of each filter group it falls under."
       },
       "OfficeSection": {
         "type": "object",
@@ -12637,6 +13917,14 @@
           "serverSorts": {
             "type": "boolean",
             "description": "The server sorts this table, over more rows than it serves (Player Search's whole league): a column's sort is asked for (`sort`, `dir`), its rows carry no sort keys, and the app shows them as served. Absent: the app sorts by the keys."
+          },
+          "noneKept": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "A table drawn with a chosen row's detail beneath it: what it says when the filters keep none of its rows."
+          },
+          "choose": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "And what it says beneath it while no row is chosen."
           }
         },
         "required": [
@@ -12644,6 +13932,55 @@
           "rows"
         ],
         "description": "A table, ready to show: its columns, its rows in the served order, and its sentence when it has none."
+      },
+      "OfficeViewHead": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "byline": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"The front office · Through May 5, 2040\"."
+          },
+          "bylineParts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "The byline's parts (who prepared it, how current), so a narrow column sets each on a line of its own rather than breaking the byline inside a date."
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the view is and how to read it: one line, the full explanation in its basis."
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "How current the league data is, when it is not current (the React pages' freshness cue); null when it is."
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "title",
+          "byline",
+          "bylineParts",
+          "lede"
+        ],
+        "description": "What every Finance and Medical view carries: its build, its title, its byline and the one line saying what it is."
       },
       "Ok": {
         "type": "object",

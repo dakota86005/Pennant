@@ -1286,6 +1286,72 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
 - *Left for later:* the per-view sidebar counts; a player opens his club until N11's player windows land (the views use
   the served `open`, so N11's window takes over).
 
+**As built at N12, Track A (2026-10-06): Finance and Medical (server and Mac).** Branch `feature/swiftui-n12-finance`;
+D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `OfficeFeatureTests` rows).
+- **Served** (`server/presentation/finance/`, `server/presentation/medical/`, the shared `presentation/officeTable.ts`):
+  `GET /api/v2/views/:org/finance/payrollBudget` (the club's figures, the price of a win with "How it's measured" in its
+  basis, what a controlled season costs, committed salary by season with what the controlled seasons could cost beside
+  it and the room, the budget rule, the budget the GM expects next season, who leaves, who stays, who is not known yet,
+  dead money, and every contract season by season), `/contracts` (the figures, the price, the groups and all players or
+  pitchers as filters, every contract with its seasons under control and what his figures rest on), `/freeAgents` (the
+  thinnest positions and the three lists, each with its filters: players, position, age, our thin spots), `/horizonBoard`
+  (each position against the next three seasons, the pipeline apart, committed salary against the budget) and
+  `GET /api/v2/views/:org/medical/injuryReport` (the figures, every injured player, the level as a filter);
+  `PUT …/finance/payrollBudget/nextSeasonBudget` sets the React page's setting and answers what it did and its undo;
+  `GET …/finance/freeAgents/players/:player` is a chosen free agent's detail. Read by `officeViewsBuild.ts` through the
+  routes' modules, kept by `officeViewService.ts` on the Front Office's key without the live log plus the derived
+  freshness (one `officeViews` worker job after each kept build; another club's on first open, four builds at most).
+- **Drawn** (the Finance and Medical targets, FeatureCore's `OfficeKit.swift`, `OfficeStore` in PennantKit): Contracts,
+  Free Agents, Payroll's every contract and the Injury Report are native `Table`s in a `TablePane` (served columns, sort
+  keys, unknown last, several rows chosen, Compare, the player window on Return or a double-click, Follow, Copy Name, a
+  player's row dragged as the player, the OSA mark beside a filled player's name), the chosen row's facts, claims and
+  seasons beneath; the served filters are choices in the head (`ChoicePopover`), a name the window's search field scoped to
+  the view (`WindowSearch`, since the merge with Track B). Payroll's seasons are a page: the figures, the price and cost lines, Swift Charts with
+  committed money as bars, the projected range a hatched bar beside each (never stacked) and each season's served budget
+  a rule across its own column (today's for this season, the one the GM expects across the following seasons only),
+  with an `AXChartDescriptor` (committed and what could come on top as two series, the axis in dollars); each season's
+  words beneath; the budget field (millions to the dollar, saved on Return or leaving it, ⌘Z undoing it). The Horizon Board is a grid (a row per position, a column per
+  season, the pipeline last), a card per position on a narrow column, each status's reason a click away, and committed
+  salary against the budget in a chart of its own. Free Agents' lists are a segmented control in the head (a button and a popover where
+  there is no room).
+- **Measured** (in process over HTTP on an M4 under tsx; read-only scratch copies). The synthetic save: the build 0.16 s
+  (Payroll 65 ms, Free Agents 46 ms, Contracts 23 ms, the board 17 ms). The owner's export: the build 2.2 s on the
+  server's thread (Payroll 1.28 s, Free Agents 0.36 s, the board 0.24 s, Contracts 0.08 s, injuries 8 ms), 1.8 s through
+  the worker; warm GETs p50 / p95: Payroll 1.9 / 4.9 ms (199 kB), Contracts 1.6 / 1.9 (182 kB), Free Agents 5.9 / 6.6
+  (780 kB: 334 players across the three lists), the board 0.7 / 1.0 (62 kB), injuries 0.4 / 0.8 (30 kB); another club's
+  first open 1.7 s, then 1.9 / 4.2 ms. USBL: the build 1.1 s (0.94 s through the worker), warm p95 at most 4.5 ms;
+  another club's first open 0.94 s.
+- *Found in the narrow test (900 × 700, inspector open):* a second toolbar `.searchable` beside the window's own search
+  made AppKit's layout loop and the app stop (an exception in `_layoutSubtreeWithOldSize`) on opening Contracts: the
+  name search is a field in the view's head (`OfficeFindField`). Payroll's Seasons / Every Contract choice was crowded out
+  of the toolbar there (XCTest found no hit point for it) and is a segmented control in the head; Free Agents' lists fall
+  back from a segmented control to a button and a popover of choices (a pop-up `Picker` had no action to press, the
+  audit's "Action is missing"). The byline is served in parts too (`bylineParts`) and set on one line, or each part on a
+  line of its own: wrapped inside its date ("… Through May" over "6, 2040") it failed the contrast audit in every colour
+  tried (14.9:1 by its pixels in the label colour) and wherever it sat, while on one line it passed. The test brings the
+  sidebar to rest before each click and audit (a long reveal left it scrolling, the club card half under the title bar).
+- *Found on the runner (PR #60, 2026-10-07):* on GitHub's macOS 26 runner (1×, scroll bars always shown) the app froze
+  as Payroll opened in the narrow test, and XCTest said only "main thread busy for 30.0s". A Debug build launched by the
+  UI tests now writes its main thread's stack when the thread stops answering for 5 s (`MainThreadWatchdog`: a signal
+  the thread takes itself and `sample`, as `hang-*.log` beside the app's log, kept by `test.sh`). The stack showed one
+  layout pass in which Swift Charts evaluated Payroll's chart, its content and its axis labels, without end. Payroll's
+  and the Horizon Board's money charts now draw on a fixed scale (`MoneyScale`: zero to a round top above every figure,
+  gridlines at round steps), the seasons as a fixed domain and the budget label fitted to the chart without moving the
+  plot, so the plot's size has nothing left to change. `FinanceChartLayoutTests` lays both out at every whole width from
+  480 to 220 points with the scroll bars shown, on the runner too.
+- *After the review (NEEDS FIXES, 2026-10-06):* the Horizon Board leaves a player out of every season after his control
+  ends, and a mixed cell says "Not known for N more" (H1; on the owner's export it had drawn 2 false "Not known" cells
+  and hidden the unread in 10 mixed ones). The views key on the export's derived freshness, not the live log's file
+  stats (M1). The budget write serves what it did and its undo (⌘Z, "Set Budget"), the field shows millions to the
+  dollar, and the server refuses past $10 billion (M2). Free Agents serves rows without detail and filters by key: 888 kB
+  to 284 kB on the owner's export; a chosen player's facts and claims are read on the click from the kept build (M4).
+  Each season's served budget is drawn across its own column, so the expected budget spans the following seasons only,
+  and the audio graphs' axes say dollars (L4, L5). The pane tables' "No players match these filters." and "Select a row
+  to see more." are served (L6). The byline's one-line rule is a workaround of unknown cause: the audit fails some
+  wrapped multi-line frames in any colour, and why is not established (L8).
+- *Left for later:* the React Payroll page's club value of a win (playoff odds) is not served (D-060); Payroll's
+  sparkline is replaced by the chart; Free Agents' lists are not cut to the top 150 (284 kB in full).
+
 **As built at N12 (Track B, 2026-10-06): League Office and Scouting (server and Mac).** Branch
 `feature/swiftui-n12-league`; D-072 (BEHAVIOR_CASES.md "Pennant for Mac", the `leagueStandingsViews.test.ts`,
 `leagueHistoryViews.test.ts`, `leagueLeadersViews.test.ts`, `scoutingViews.test.ts` and `LeagueOfficeFeatureTests` rows).
@@ -1380,8 +1446,8 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   (`OfficeCell`, `OfficePlayerName`, `OfficeLine`, `OfficeBlock`, `OfficeHead`, `OfficeFigures`, `OfficeState`,
   `OfficePage`, `OfficeSectionPicker`, `OfficeTable` with `OfficeTableRow`, `OfficeSort` and `OfficeColumnRuns`,
   `OfficeRowDetail`, `OfficeTablePane`); the window's scoped search moved to `WindowSearch.swift`. Track A's
-  `OfficeViews.swift` declares `OfficeHead`, `OfficeFigures`, `OfficeState`, `OfficeTablePane` and `OfficeRowDetail`
-  with other shapes; its merge makes one `OfficeViews.swift`. Nothing else outside League Office and Scouting uses them.
+  `OfficeViews.swift` declared `OfficeHead`, `OfficeFigures`, `OfficeState`, `OfficeTablePane` and `OfficeRowDetail`
+  with other shapes; the merge made one `OfficeKit.swift` (D-071's amendment) and deleted `OfficeViews.swift`.
 - *Left for later:* the per-view sidebar counts; the React `/api/draft` route's own partial-tool averages and zero
   stand-ins (deleted at the cutover); `OfficeKit` and Major League Ops' and the farm's table components are three copies
   of one design, to fold together once N12's tracks have merged.
@@ -2301,7 +2367,7 @@ sizes, not dates.
 | **N9** | Clubhouse tools | Lineup, pitching availability, depth chart, schedule and game plans, trends (Charts), 40-man and options, rosters | 3 |
 | **N10** | Farm & Development | Server: farm copy, Prospects words and Development movers moved. App: Overview, Organization, Affiliates, Assignments, Decision, Prospects, Development tracking | 5 |
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
-| **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon; Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
+| **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
 | **N13** | AI surfaces, native | Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
 | **N14** | macOS integration and release | App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |

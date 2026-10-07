@@ -1,0 +1,77 @@
+{
+  "playerId": 1026,
+  "facts": [
+    {
+      "label": {
+        "display": "His club now"
+      },
+      "value": {
+        "display": "Club 2 N"
+      }
+    },
+    {
+      "label": {
+        "display": "Why he might reach it"
+      },
+      "value": {
+        "display": "Club option"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "text": "2041 at the market: Not known",
+      "tone": "unknown",
+      "basis": {
+        "because": [
+          {
+            "label": "Why not",
+            "value": "No price of a win: No market basis could be computed: Not computed: 1 contract with the salary this basis needs, fewer than the policy minimum of 20 (a basis on so few differs from another by who is in it, not by what it measures). The export has no WAR for the league in 2038."
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "No price of a win: No market basis could be computed: Not computed: 1 contract with the salary this basis needs, fewer than the policy minimum of 20 (a basis on so few differs from another by who is in it, not by what it measures). The export has no WAR for the league in 2038."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "unknown",
+        "called": "Not known"
+      },
+      "links": []
+    },
+    {
+      "text": "Why he might reach the market: Club option",
+      "tone": "unknown",
+      "basis": {
+        "because": [
+          {
+            "label": "Why",
+            "value": "A club option season: exercised, $4,552,000; declined, the buyout and then free agent."
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Player Rights, through Player Value",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "A club option season: exercised, $4,552,000; declined, the buyout and then free agent."
+        ],
+        "wouldChange": [
+          "The option decided, or his service settled at the next import."
+        ],
+        "lean": null,
+        "certainty": "unknown",
+        "called": "Not known"
+      },
+      "links": []
+    }
+  ]
+}

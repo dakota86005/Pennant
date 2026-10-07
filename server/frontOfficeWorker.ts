@@ -9,6 +9,7 @@ import { buildClubReport, buildDecision, buildFrontOffice, buildTrail, type Work
 import { buildFarmDecision, buildFarmViews } from './farmViewsBuild.js';
 import { buildPlayerDossiers } from './playerDossierBuild.js';
 import { buildClubhouseAsk, buildClubhouseViews } from './clubhouseViewsBuild.js';
+import { buildOfficeViews } from './officeViewsBuild.js';
 import { buildLeagueAsk, buildLeagueViews } from './leagueViewsBuild.js';
 
 async function run(job: WorkerJob): Promise<unknown> {
@@ -17,6 +18,7 @@ async function run(job: WorkerJob): Promise<unknown> {
   if (job.kind === 'playerDossiers') return buildPlayerDossiers(job.request);
   if (job.kind === 'clubhouseViews') return buildClubhouseViews(job.request);
   if (job.kind === 'clubhouseAsk') return buildClubhouseAsk(job.request);
+  if (job.kind === 'officeViews') return buildOfficeViews(job.request);
   if (job.kind === 'leagueViews') return buildLeagueViews(job.request);
   if (job.kind === 'leagueAsk') return buildLeagueAsk(job.request);
   if (job.kind === 'build') return buildFrontOffice(job.request);

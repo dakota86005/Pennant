@@ -4,13 +4,14 @@ import PennantDesign
 import PennantKit
 import SwiftUI
 
-// The Office kit's Mac half (N12 Track B, D-072): the pieces League Office's and Scouting's views are drawn from, kept in
-// this one file so the front office's other tracks can share them (N12 Track A's `OfficeViews.swift` is the same kit for
-// Finance and Medical; the merge makes them one, SWIFTUI_REBUILD.md "As built at N12 (Track B)"): a served table that can
-// name a club as well as a player (`OfficeTable`), its pane with the chosen row's detail, a block of lines, a view's head
-// and its loading state. They follow Major League Ops' (N8, N9) one for one: each draws what the server served and
-// nothing more, and the only ordering is the unknown-last comparator over the served sort keys or words (D-056), or the
-// server's own order where it sorts.
+// The Office kit's Mac half (N12, D-071 and D-072; D-071's amendment): the pieces every front-office view outside Major
+// League Ops is drawn from, Finance's, Medical's, League Office's and Scouting's alike: a served table that can name a
+// club as well as a player (`OfficeTable`), its pane with the chosen row's detail (N8's blocks, or Finance's facts,
+// claims and short table), the served filters by each row's keys, a block of lines, a view's head and figures, and its
+// loading state. They follow Major League Ops' (N8, N9) one for one: each draws what the server served and nothing more,
+// and the only ordering is the unknown-last comparator over the served sort keys or words (D-056), or the server's own
+// order where it sorts; the only narrowing is the served filters' keys on each row and the window search's words
+// against the served names.
 
 // MARK: Words
 
@@ -142,16 +143,29 @@ public struct OfficeBlock: View {
     }
 }
 
-/// A view's head: its served title, the lede (one line, its explanation a click away), drawn as updating while a newer
-/// payload is read.
+/// A view's head: its served title, byline (who prepared it and how current, optional) and lede (one line, its
+/// explanation a click away), how current the data is when it is not, drawn as updating while a newer payload is read.
 public struct OfficeHead: View {
     let title: Components.Schemas.Cell
+    let byline: Components.Schemas.Cell?
+    let parts: [Components.Schemas.Cell]
     let lede: Components.Schemas.Claim
+    let freshness: Components.Schemas.Claim?
     let refreshing: Bool
 
-    public init(title: Components.Schemas.Cell, lede: Components.Schemas.Claim, refreshing: Bool = false) {
+    public init(
+        title: Components.Schemas.Cell,
+        byline: Components.Schemas.Cell? = nil,
+        parts: [Components.Schemas.Cell] = [],
+        lede: Components.Schemas.Claim,
+        freshness: Components.Schemas.Claim? = nil,
+        refreshing: Bool = false
+    ) {
         self.title = title
+        self.byline = byline
+        self.parts = parts.isEmpty ? byline.map { [$0] } ?? [] : parts
         self.lede = lede
+        self.freshness = freshness
         self.refreshing = refreshing
     }
 
@@ -163,40 +177,75 @@ public struct OfficeHead: View {
                     .accessibilityAddTraits(.isHeader)
                 if refreshing { ProgressView { Text("Refreshing") }.controlSize(.small) }
             }
+            if let byline {
+                // The byline on one line where it fits, else its served parts each on a line of its own: never broken
+                // inside a date. A workaround of unknown cause, not a fix: the accessibility audit fails some wrapped
+                // multi-line text frames whatever their colour (a wrapped "… Through May" over "6, 2040" failed at 14.9:1
+                // by its pixels in the label colour, wherever it sat), and the same words on one line pass. Why the audit
+                // measures a wrapped frame that way is not established
+                ViewThatFits(in: .horizontal) {
+                    Text(verbatim: byline.display).lineLimit(1).fixedSize()
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
+                            Text(verbatim: part.display).lineLimit(1).truncationMode(.tail).help(detail: part.hint ?? part.display)
+                        }
+                    }
+                }
+                .font(.callout)
+                .foregroundStyle(.readableSecondary)
+                .help(detail: byline.hint)
+            }
             ClaimText(lede, edge: .bottom) {
                 Text(verbatim: lede.text).font(.title3).foregroundStyle(.primary).multilineTextAlignment(.leading)
+            }
+            if let freshness {
+                ClaimText(freshness, edge: .bottom) {
+                    Label { Text(verbatim: freshness.text) } icon: { ToneMark(served: freshness.tone) }
+                        .font(.callout)
+                }
+                .accessibilityIdentifier("office.freshness")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-/// Served figures as a row of box figures where there is room, a list of their lines where there is not.
+/// Served figures: in a row of box figures where there is room, a list of their lines where there is not.
 public struct OfficeFigures: View {
     let figures: [Components.Schemas.Claim]
 
-    public init(_ figures: [Components.Schemas.Claim]) { self.figures = figures }
+    public init(_ figures: [Components.Schemas.Claim]) {
+        self.figures = figures
+    }
 
     public var body: some View {
         if !figures.isEmpty {
             ViewThatFits(in: .horizontal) {
                 ReportFigures(figures: figures)
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(figures.enumerated()), id: \.offset) { _, figure in
-                        ClaimText(figure) {
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text(verbatim: figure.text).foregroundStyle(.readableSecondary)
-                                Text(verbatim: figure.value?.display ?? "").font(.headline).monospacedDigit()
+                // Three to a row where the box score has no room (the narrow column), each with its basis a click away
+                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 18, verticalSpacing: 10) {
+                    ForEach(Array(stride(from: 0, to: figures.count, by: 3)), id: \.self) { start in
+                        GridRow {
+                            ForEach(Array(figures[start..<min(start + 3, figures.count)].enumerated()), id: \.offset) { _, figure in
+                                ClaimText(figure) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(verbatim: figure.value?.display ?? "").font(.headline).monospacedDigit()
+                                        Text(verbatim: figure.text).font(.callout).foregroundStyle(.readableSecondary)
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text("Key Figures"))
+            .accessibilityIdentifier("office.figures")
         }
     }
 }
 
-/// What a view says while it waits or when the server refused it: the server's sentence, never "Loading" for ever; a
+/// What a view says while it waits or when the server refused it: the server's sentence, never "Loading" for ever. A
 /// failed read shows its problem even when an earlier payload is held.
 public struct OfficeState<Payload, Content: View>: View {
     let payload: Payload?
@@ -211,11 +260,11 @@ public struct OfficeState<Payload, Content: View>: View {
 
     public var body: some View {
         if let problem {
-            ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity)
+            ProblemLine(problem).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.readablePage)
         } else if let payload {
             content(payload)
         } else {
-            ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            ProgressView { Text("Loading") }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.readablePage)
         }
     }
 }
@@ -259,6 +308,69 @@ public struct OfficeSectionPicker: View {
         .labelsHidden()
         .fixedSize()
         .accessibilityIdentifier(id)
+    }
+}
+
+// MARK: The filters
+
+extension Components.Schemas.OfficeFilterGroup {
+    /// Whether a choice keeps a row: the first choice keeps every row, another the rows whose served key for this group
+    /// names it (a row with no key for the group, his age not known, is kept only by the first). Nil keeps every row.
+    public func keeps(_ choice: String?) -> ((Components.Schemas.OfficeRow) -> Bool)? {
+        guard let choice, choices.contains(where: { $0.id == choice }), choice != choices.first?.id else { return nil }
+        let group = id
+        return { $0.filterKeys?.additionalProperties[group] == choice }
+    }
+}
+
+/// The rows the chosen filters keep, and the GM's search words matched against the served names; nil keeps every row.
+public func officeRowsKept(
+    _ table: Components.Schemas.OfficeTable, filters: [Components.Schemas.OfficeFilterGroup], chosen: [String: String], search: String
+) -> Set<String>? {
+    let tests = filters.compactMap { $0.keeps(chosen[$0.id]) }
+    let words = search.trimmingCharacters(in: .whitespaces)
+    guard !tests.isEmpty || !words.isEmpty else { return nil }
+    return Set(table.rows.filter { row in
+        tests.allSatisfy { $0(row) } && (words.isEmpty || (row.player?.name ?? row.club?.name ?? "").localizedCaseInsensitiveContains(words))
+    }.map(\.id))
+}
+
+/// The served filters (Contracts' groups, Free Agents' positions and ages), each one choice among a few: the one way
+/// Pennant offers that (`ChoicePopover`), side by side where there is room, else one under another.
+public struct OfficeFilterChoices: View {
+    let groups: [Components.Schemas.OfficeFilterGroup]
+    @Binding var chosen: [String: String]
+    let id: String
+
+    public init(groups: [Components.Schemas.OfficeFilterGroup], chosen: Binding<[String: String]>, id: String) {
+        self.groups = groups
+        _chosen = chosen
+        self.id = id
+    }
+
+    public var body: some View {
+        if !groups.isEmpty {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { choices }
+                VStack(alignment: .leading, spacing: 6) { choices }
+            }
+        }
+    }
+
+    private var choices: some View {
+        ForEach(groups, id: \.id) { group in
+            let current = chosen[group.id] ?? group.choices.first?.id
+            let shown = group.choices.first { $0.id == current } ?? group.choices.first
+            ChoicePopover(
+                Text(verbatim: group.title.display),
+                current: Text(verbatim: shown?.title.display ?? group.title.display),
+                help: Text(verbatim: group.title.display),
+                choices: group.choices.map { .init(verbatim: $0.title.display, hint: $0.title.hint, selected: $0.id == current) },
+                id: "\(id).\(group.id)"
+            ) { index in
+                chosen[group.id] = group.choices[index].id
+            }
+        }
     }
 }
 
@@ -407,12 +519,19 @@ public struct OfficeTable: View {
     }
 
     public var body: some View {
-        if table.rows.isEmpty {
+        if table.rows.isEmpty || rows.isEmpty {
             Group {
-                if let empty = table.empty { Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint) }
+                if table.rows.isEmpty, let empty = table.empty {
+                    Text(verbatim: empty.display).foregroundStyle(.readableSecondary).help(detail: empty.hint)
+                } else if !table.rows.isEmpty, let none = table.noneKept {
+                    // The filters keep none of its rows: the served sentence saying so
+                    Text(verbatim: none.display).foregroundStyle(.readableSecondary).help(detail: none.hint)
+                }
             }
             .padding(.horizontal, 28).padding(.vertical, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color.readablePage)
+            .accessibilityIdentifier("table.\(id).empty")
         } else {
             nativeTable
                 .accessibilityLabel(Text(verbatim: name))
@@ -558,7 +677,7 @@ struct OursMark: View {
 }
 
 /// One row's served detail: the player or club and the row's claim, the detail's blocks side by side when there is
-/// room, and what the row offers to open.
+/// room, the row's facts, claims and short table (Finance and Medical), and what the row offers to open.
 public struct OfficeRowDetail: View {
     let row: Components.Schemas.OfficeRow
     @Environment(\.openWindow) private var openWindow
@@ -589,6 +708,10 @@ public struct OfficeRowDetail: View {
                         }
                     }
                 }
+                // Finance's and Medical's detail: the row's facts, its claims (each with its basis a click away) and its short table
+                if let facts = row.facts, !facts.isEmpty { OfficeFacts(facts) }
+                ForEach(Array((row.claims ?? []).enumerated()), id: \.offset) { _, claim in ClaimLine(claim, font: .callout) }
+                if let grid = row.grid { OfficeGridView(grid) }
                 if let named = row.players, row.player == nil, !named.isEmpty {
                     HStack(spacing: 10) {
                         ForEach(named, id: \.playerId) { OfficePlayerName($0, font: .callout.weight(.medium)) }
@@ -640,6 +763,11 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
     let notes: Notes
     @State private var selection: Set<OfficeTableRow.ID> = []
 
+    /// The chosen row, when the filters still show it.
+    private var chosenRow: Components.Schemas.OfficeRow? {
+        table.rows.first { selection.contains($0.id) && (only?.contains($0.id) ?? true) }
+    }
+
     public init(
         _ table: Components.Schemas.OfficeTable,
         id: String,
@@ -671,14 +799,84 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
             OfficeTable(table, id: id, name: name, only: only, selection: $selection, serverSort: serverSort)
         } detail: {
             VStack(alignment: .leading, spacing: 16) {
-                if let row = table.rows.first(where: { selection.contains($0.id) }) {
+                if let row = chosenRow {
                     OfficeRowDetail(detailOf(row))
                 } else if !table.rows.isEmpty {
-                    Text("Select a row to see more.").font(.callout).foregroundStyle(.readableSecondary)
+                    if let choose = table.choose {
+                        Text(verbatim: choose.display).font(.callout).foregroundStyle(.readableSecondary)
+                    } else {
+                        Text("Select a row to see more.").font(.callout).foregroundStyle(.readableSecondary)
+                    }
                 }
                 notes
             }
         }
-        .onChange(of: selection) { _, chosen in chose(table.rows.first { chosen.contains($0.id) }?.id) }
+        .onChange(of: chosenRow?.id) { _, now in chose(now) }
+    }
+}
+
+// MARK: Finance's and Medical's detail
+
+/// Label and value facts: a grid where there is room, stacked where there is not.
+public struct OfficeFacts: View {
+    let facts: [Components.Schemas.OfficeFact]
+
+    public init(_ facts: [Components.Schemas.OfficeFact]) {
+        self.facts = facts
+    }
+
+    public var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 5) {
+                ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
+                    GridRow {
+                        Text(verbatim: fact.label.display).foregroundStyle(.readableSecondary)
+                        CellText(fact.value).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Array(facts.enumerated()), id: \.offset) { _, fact in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(verbatim: fact.label.display).font(.caption).foregroundStyle(.readableSecondary)
+                        CellText(fact.value).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .font(.callout)
+    }
+}
+
+/// A short served table drawn as a grid (a contract's seasons under control): its title, its columns and its rows.
+public struct OfficeGridView: View {
+    let grid: Components.Schemas.OfficeGrid
+
+    public init(_ grid: Components.Schemas.OfficeGrid) {
+        self.grid = grid
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verbatim: grid.title.display).font(.headline)
+            if grid.rows.isEmpty, let empty = grid.empty {
+                Text(verbatim: empty.display).foregroundStyle(.readableSecondary)
+            } else {
+                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 4) {
+                    GridRow {
+                        ForEach(Array(grid.columns.enumerated()), id: \.offset) { _, title in
+                            Text(verbatim: title.display).font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary)
+                        }
+                    }
+                    ForEach(Array(grid.rows.enumerated()), id: \.offset) { _, cells in
+                        GridRow {
+                            ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in CellText(cell).monospacedDigit() }
+                        }
+                    }
+                }
+                .font(.callout)
+            }
+        }
+        .accessibilityElement(children: .contain)
     }
 }

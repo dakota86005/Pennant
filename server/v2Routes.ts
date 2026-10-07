@@ -26,6 +26,13 @@ import type { ClubReport, FollowChange, Following, SearchAnswer, Wire } from './
 import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
 import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
+import {
+  financeContractsNow, financeFreeAgentNow, financeFreeAgentsNow, financeHorizonNow, financePayrollNow, medicalInjuryReportNow, setFinanceBudget,
+} from './officeViewService.js';
+import type {
+  FinanceBudgetChange, FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
+} from './presentation/finance/types.js';
+import type { MedicalInjuryReportView } from './presentation/medical/injuryReport.js';
 import { answerHistoryOffer, carryOvers, currentHistoryKey, HistoryChoiceRefusal, historyCandidates, historyDates, historyNote, historyOffers } from './historyIdentity.js';
 import { ratingHistoryView, type RatingHistoryChoice, type RatingHistoryView } from './presentation/ratingHistoryWords.js';
 import {
@@ -230,6 +237,23 @@ v2Routes.get('/views/:org/majorLeague/rosters', frontOffice<MlbRostersView>((req
   clubhouseRostersNow(String(req.params.org), req.query.team)));
 v2Routes.get('/views/:org/majorLeague/seasonTrends', frontOffice<MlbSeasonTrendsView>((req) =>
   clubhouseTrendsNow(String(req.params.org))));
+
+/**
+ * Finance's and Medical's views (N12, D-071): each a payload of its own, built in the worker after every import and
+ * served from the cache; another club's are built on their first open and kept until the next import.
+ */
+v2Routes.get('/views/:org/finance/payrollBudget', frontOffice<FinancePayrollView>((req) => financePayrollNow(String(req.params.org))));
+v2Routes.put('/views/:org/finance/payrollBudget/nextSeasonBudget', frontOffice<FinanceBudgetChange>(async (req) => {
+  const answer = setFinanceBudget(String(req.params.org), req.body);
+  if ('refused' in answer) throw new DeskRefusal(answer.refused, 400);
+  return answer;
+}));
+v2Routes.get('/views/:org/finance/contracts', frontOffice<FinanceContractsView>((req) => financeContractsNow(String(req.params.org))));
+v2Routes.get('/views/:org/finance/freeAgents', frontOffice<FinanceFreeAgentsView>((req) => financeFreeAgentsNow(String(req.params.org))));
+v2Routes.get('/views/:org/finance/freeAgents/players/:player', frontOffice<FinanceFreeAgentDetail>((req) =>
+  financeFreeAgentNow(String(req.params.org), String(req.params.player))));
+v2Routes.get('/views/:org/finance/horizonBoard', frontOffice<FinanceHorizonView>((req) => financeHorizonNow(String(req.params.org))));
+v2Routes.get('/views/:org/medical/injuryReport', frontOffice<MedicalInjuryReportView>((req) => medicalInjuryReportNow(String(req.params.org))));
 
 /**
  * League Office's and Scouting's views (N12 Track B, D-072): each a payload of its own, built in the worker after every

@@ -2927,6 +2927,82 @@ routes they serve); `GET /api/v2/player/:id`, `GET|PUT|DELETE /api/v2/player/:id
   at most 150 of other clubs' players per build, the least recently opened let go first; after a kept build the server's
   thread builds one dossier on idle so the first open of anyone else's doesn't pay for initialization.
 
+## D-071 — Finance and Medical on the Mac: D-065 for Payroll, Contracts, Free Agents, the Horizon Board and the Injury Report
+
+**Status:** Proposed (N12 Track A builder, 2026-10-06; the supervisor renumbers on a collision; Tracks B and C hold D-072
+and D-073), the builder's calls pending the owner's review (listed below). Applies D-065 to Finance's and Medical's
+views and refines D-001, D-018, D-052, D-056, D-057 and D-060 for the presentation layer only: no value, rights, budget,
+development or medical judgment changes. **Implementation:** `server/presentation/officeTable.ts` (the tables, filters and
+head both departments share), `server/presentation/finance/` and `server/presentation/medical/` (the words),
+`server/officeViewsBuild.ts` (the reader), `server/officeViewService.ts` (the cache and the budget), `GET
+/api/v2/views/:org/finance/{payrollBudget, contracts, freeAgents, horizonBoard}`, `GET
+/api/v2/views/:org/medical/injuryReport`, `PUT /api/v2/views/:org/finance/payrollBudget/nextSeasonBudget`;
+`setNextSeasonBudget` (`server/settings.ts`, extracted from the route it serves); `OfficeStore` (PennantKit), FeatureCore's
+`OfficeKit.swift` and the Finance and Medical targets' views. SWIFTUI_REBUILD.md section 3.5, "As built at N12 (Track A)".
+
+- **Read through the routes the React pages read.** Payroll & Budget is `computePayroll` with Club Finances
+  (`clubFinances`, `leagueFinances`, `priceHistory`); Contracts is `computeContracts`; Free Agents is `computeFreeAgents`
+  (ability only through `scoutedEvidence.ts`, with OSA's mark, D-067); the Injury Report is `orgInjuriesWithHealth`
+  (`orgInjuries` with the health rule's own `playable`; `/api/injuries`, the dashboard and the AI's context read
+  `orgInjuries`, byte for byte as before). The price of a win's history is read through Club Finances' route helper
+  (`marketPriceHistory`), so the snapshot module keeps its one reader outside the import. Each old route answers exactly
+  as before; nothing is re-derived for the Mac.
+- **The Horizon Board is new and owns no answer.** Each major leaguer's control season by season is Player Value's control
+  timeline (Player Rights' answers, D-023), laid out against the next three seasons by listed position (pitchers by their
+  assignment; one with none given in a row of its own, never guessed). A season his control has ended leaves him out of
+  the cell, and so does every season after it (the timeline stops at the first free-agent season); a season the timeline
+  can't settle says "Not settled" with what it lies between; a player whose control couldn't be read (an unknown or
+  unsigned standing, or a timeline that stops early without free agency) is counted as not known, never as nobody, and a
+  cell with entries says "Not known for N more" beside them. The farm's next man at each position is the roster map's
+  (`farmNextByPosition`, worded by `farmMan`) and sits in a pipeline lane with Player Development's readiness against its
+  bar: never in a season, so no arrival year is invented (D-057). Committed salary by season runs beneath it against the
+  club's budget as exported.
+- **Every word is served.** The React pages' client-side words (`costBand.ts`, `valueWords.ts`, Payroll's cost and option
+  hovers, the price of a win's "How it's measured", the cost ladder, the column tips, the groups' and lists' meanings)
+  are served, the method words in bases and breakdowns, never on the face (AGENTS.md "Writing for the GM"). A help tag
+  holds at most about 75 characters, so a column's long tip is in the view's lede basis and a row's long reasons in a
+  claim beneath it.
+- **Projected money is never committed money.** The chart draws committed salary as bars and what the controlled seasons
+  could cost as a hatched range beside each, never stacked on it, and never in the total or the room (D-052).
+- **The budget rule is the club's own figure.** Today's budget as exported is the chart's rule; seasons after this one
+  read against the budget the GM expects next season when he has entered one (the same `settings.json` entry the React
+  page writes; a Pennant setting, never written to OOTP), else today's held flat. An unknown budget is "Budget not known"
+  with no rule and the room "not known", never $0.
+- **No odds or posture here (D-060).** The React Payroll page's club value of a win is in playoff odds; it is not served
+  on Finance's views. Odds and posture live on Standings only.
+- **Built after each import, in the worker; another club's on its first open.** One `officeViews` job builds all five for
+  the club after each kept Front Office build, keyed on the Front Office's inputs without OOTP's live log, plus the
+  export's freshness as derived from it (its state and days behind: Payroll and Contracts blank service time when the
+  export is behind), so a write to the log that leaves the freshness as it was keeps them; the budget setting moves the
+  key. Another club's are built on first open and kept, four builds at most.
+- **A long list carries only what its table shows (N12 review, M4).** Free Agents' rows carry their cells, sort keys and
+  filter keys; a player's facts and claims are his detail, kept with the build and served when his row is chosen
+  (`GET …/finance/freeAgents/players/:player`). A filter choice names no rows: each row names the choice it falls under
+  in each group (`filterKeys`). On the owner's export the payload went from 888 kB to 284 kB.
+- **The budget change says what it did, and ⌘Z undoes it.** The write answers a served sentence ("Next season's budget
+  set to $X; was $Y") and the request that puts back what was there; amounts are kept to the dollar and refused past
+  $10 billion. Each part is read on its own: a part that throws
+  is logged and says it couldn't be read this time; a refusal the route words (no contracts imported, an unknown club)
+  is answered in its own sentence.
+
+**The builder's calls (pending the owner's review):**
+1. Finance and Medical share one served table shape (`OfficeTable`) and one Swift table (FeatureCore), rather than each
+   department its own, so both draw the same native table, filters and detail.
+2. The Horizon Board's rows are the listed positions and the pitchers by assignment; who is on it is the major league
+   roster (level 1 of the organization). A 40-man player optioned down is in the pipeline lane only if he is the farm's
+   next man at his position.
+3. The pipeline shows readiness against the bar as the roster map does, not Player Development's readiness range: the
+   farm's next-man reading carries the one readiness, and a range is not served there yet.
+4. The Payroll table's sparkline ("Shape") is not drawn: the chart above it draws each season's money.
+5. React's lowercase "$750k" on the finance cards reads "$750K", as every other figure does.
+
+**Amendment (the N12 merge of Tracks A and B, 2026-10-07):** one Office kit serves and draws every front-office table
+outside Major League Ops: `server/presentation/officeTable.ts` (B's `OfficeColumn`, `OfficeTable` and query choices,
+`OfficeRow` as N8's row with a club, ours, Finance's facts, claims and short table and the keyed filters;
+`presentation/league/office.ts` re-exports it) and FeatureCore's `OfficeKit.swift` (B's table, sort, pane and detail,
+Track A's head, figures, state and keyed filters, B's `ChoicePopover` for every choice and the window's one search
+field, `WindowSearch`, scoped to the view for finding a name); `OfficeViews.swift` and `OfficePlayer` are gone.
+
 ## D-072 — League Office and Scouting on the Mac: D-065 for the routes the React pages read; the odds only in Standings
 
 **Status:** Proposed (N12 Track B builder, 2026-10-06; the supervisor renumbers on a collision; Track A holds D-071 and
