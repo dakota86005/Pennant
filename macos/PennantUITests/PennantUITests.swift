@@ -31,6 +31,9 @@ final class PennantUITests: XCTestCase {
         // instance still running, and no saved windows, before anything is launched
         endEarlierInstances()
         removeSavedState()
+        // What is on the screen before this test launches anything, front to back (PR #58: after the player-note test,
+        // a launched Pennant in front received no key at all until a click)
+        print("[focus] \(methodName): on screen before launch: \(Self.windowsOnScreen())")
         scratch = URL(fileURLWithPath: root).appending(path: methodName, directoryHint: .isDirectory)
         dataFolder = scratch.appending(path: "data", directoryHint: .isDirectory)
         guard FileManager.default.fileExists(atPath: dataFolder.appending(path: "league.db").path(percentEncoded: false)) else {
@@ -44,6 +47,24 @@ final class PennantUITests: XCTestCase {
     /// that may not reach it leaves it, and `test.sh` removes it after the run as well.
     override func tearDownWithError() throws {
         removeSavedState()
+    }
+
+    /// The windows on the screen, front to back, each by its owner, layer and frame (no window names, no pixels): the
+    /// menu bar's and the Dock's left out, up to ten.
+    static func windowsOnScreen() -> String {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            return "unreadable"
+        }
+        let shown = list.compactMap { info -> String? in
+            let owner = info[kCGWindowOwnerName as String] as? String ?? "?"
+            let layer = info[kCGWindowLayer as String] as? Int ?? 0
+            guard layer < 20, owner != "Dock", owner != "Window Server" else { return nil }
+            let pid = info[kCGWindowOwnerPID as String] as? Int ?? 0
+            let bounds = (info[kCGWindowBounds as String] as? [String: Any]).flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) } ?? .zero
+            let alpha = info[kCGWindowAlpha as String] as? Double ?? 1
+            return "\(owner) pid \(pid) layer \(layer) \(Int(bounds.minX)),\(Int(bounds.minY)) \(Int(bounds.width))×\(Int(bounds.height))\(alpha < 1 ? " alpha \(alpha)" : "")"
+        }
+        return shown.isEmpty ? "none" : shown.prefix(10).joined(separator: "; ")
     }
 
     /// The app's saved windows (its saved-state folder, under the real home), removed.
@@ -460,6 +481,7 @@ final class PennantUITests: XCTestCase {
         let keys = names.filter { held.contains($0.0) }.map(\.1)
         let front = NSWorkspace.shared.frontmostApplication.map { "\($0.bundleIdentifier ?? "?") pid \($0.processIdentifier)" } ?? "none"
         print("[palette] \(methodName): modifier keys held now: \(keys.isEmpty ? "none" : keys.joined(separator: " ")); frontmost app: \(front); see the app's log for the keys it received")
+        print("[palette] \(methodName): on screen, front to back: \(Self.windowsOnScreen())")
         return false
     }
 
