@@ -281,52 +281,26 @@ func openServed(_ target: Components.Schemas.Target?, with opener: (any RouteOpe
     opener?.open(r)
 }
 
-/// A toolbar filter: a button naming the current choice that opens the choices in a popover, the chosen one checked, as
-/// N8's what-if does (the pull-down `Menu` and the pop-up `Picker` were both found by the accessibility audit with no
-/// action to press).
+/// A toolbar filter: the shared choice pop-up (`ChoicePopover`, PennantDesign) over typed choices, its title the
+/// popover's heading and its help tag, a symbol leading its current choice.
 struct FilterMenu<ID: Hashable>: View {
     let title: LocalizedStringResource
     let systemImage: String
     let choices: [(id: ID, text: Text)]
     let current: Text
     @Binding var selection: ID
-    @State private var choosing = false
+    var id: String
 
     var body: some View {
-        Button {
-            choosing = true
-        } label: {
-            Label { current } icon: { Image(systemName: systemImage) }
-                .labelStyle(.titleAndIcon)
-        }
-        .help(Text(title))
-        .accessibilityValue(current)
-        .popover(isPresented: $choosing, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.callout.weight(.semibold)).foregroundStyle(.readableSecondary)
-                    .padding(.horizontal, 10).padding(.bottom, 4)
-                    .accessibilityAddTraits(.isHeader)
-                ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
-                    Button {
-                        choosing = false
-                        selection = choice.id
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark").opacity(choice.id == selection ? 1 : 0).accessibilityHidden(true)
-                            choice.text
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .accessibilityAddTraits(choice.id == selection ? .isSelected : [])
-                }
-            }
-            .padding(.vertical, 8)
-            .frame(minWidth: 220, alignment: .leading)
-            .background(Color.readablePage)
-        }
+        ChoicePopover(
+            Text(title),
+            current: current,
+            help: Text(title),
+            systemImage: systemImage,
+            heading: true,
+            choices: choices.map { .init($0.text, selected: $0.id == selection) },
+            id: id
+        ) { selection = choices[$0].id }
     }
 }
 
@@ -341,9 +315,9 @@ struct LevelPicker: View {
             systemImage: "square.stack.3d.up",
             choices: [(id: String?.none, text: Text("All Levels"))] + levels.map { (id: String?.some($0.id), text: Text(verbatim: $0.name)) },
             current: selection.flatMap { id in levels.first { $0.id == id } }.map { Text(verbatim: $0.name) } ?? Text("All Levels"),
-            selection: $selection
+            selection: $selection,
+            id: "farm.filter.level"
         )
-        .accessibilityIdentifier("farm.filter.level")
     }
 }
 

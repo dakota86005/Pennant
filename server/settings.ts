@@ -581,15 +581,19 @@ settingsRoutes.delete('/settings/philosophy/:orgId', (req, res) => {
  * The budget you expect next season for one club. Zero or null clears it and
  * returns that club to assuming this year's budget holds flat.
  */
-settingsRoutes.put('/next-season-budget/:orgId', (req, res) => {
-  const orgId = String(Number(req.params.orgId));
-  const raw = (req.body as { amount?: unknown }).amount;
+export function setNextSeasonBudget(orgId: number, raw: unknown): number | null {
+  const key = String(Number(orgId));
   const amount = typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : null;
   const current = loadSettings();
   const next = { ...current.nextSeasonBudget };
-  if (amount === null) delete next[orgId];
-  else next[orgId] = amount;
+  if (amount === null) delete next[key];
+  else next[key] = amount;
   writeSettings({ ...current, nextSeasonBudget: next });
+  return amount;
+}
+
+settingsRoutes.put('/next-season-budget/:orgId', (req, res) => {
+  const amount = setNextSeasonBudget(Number(req.params.orgId), (req.body as { amount?: unknown }).amount);
   res.json({ ok: true, nextSeasonBudget: amount });
 });
 

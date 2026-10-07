@@ -108,7 +108,9 @@ jobs:
     name: Mac app (XCUITests on the runner)
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'feature/swiftui')
     runs-on: macos-26
-    timeout-minutes: 90
+    # The suite grew past 90 minutes with N12's narrow-window tests (PR #59: 79 minutes of tests plus setup; the job
+    # was cut off at 90 twice). Splitting it across parallel jobs is the follow-up.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

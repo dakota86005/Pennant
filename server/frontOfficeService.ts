@@ -160,18 +160,10 @@ export function forgetLiveLog(): void {
   located = null;
 }
 
-/** Everything the answer for this club depends on, as one string. */
+/** Everything the answer for this club depends on, as one string: the import's key and the live log's file stats. */
 function inputsKey(orgId: number): string {
-  const config = statKey(path.join(DATA_DIR, 'config.json'));
   const live = liveLogFiles();
-  return [
-    orgId,
-    importedAt.value ?? 'none',
-    revision,
-    statKey(path.join(DATA_DIR, 'settings.json')),
-    config,
-    live ? `${statKey(live.db)}/${statKey(live.wal)}` : 'no-log',
-  ].join('|');
+  return `${frontOfficeImportKey(orgId)}|${live ? `${statKey(live.db)}/${statKey(live.wal)}` : 'no-log'}`;
 }
 
 /** A build's stamp: a short hash of its key (FNV-1a), the same for the same inputs. */
@@ -203,7 +195,7 @@ let workerBroken = false;
 
 type Job = WorkerJob;
 /** Another department's jobs (N10: the farm's), which its own service posts, checks and keeps (`runDepartmentJob`). */
-type DepartmentJob = Extract<Job, { kind: 'farmViews' | 'farmDecision' | 'clubhouseViews' | 'clubhouseAsk' | 'playerDossiers' | 'tradeDesk' }>;
+type DepartmentJob = Extract<Job, { kind: 'farmViews' | 'farmDecision' | 'clubhouseViews' | 'clubhouseAsk' | 'playerDossiers' | 'officeViews' | 'leagueViews' | 'leagueAsk' | 'tradeDesk' }>;
 /** The Front Office's own jobs, which this service checks and keeps. */
 type OwnJob = Exclude<Job, DepartmentJob>;
 
@@ -284,6 +276,16 @@ export async function runDepartmentJob<T>(job: DepartmentJob, inProcess: () => T
 /** Everything a club's answers depend on, as one string (N10: the farm's views key on the Front Office's inputs). */
 export function frontOfficeInputsKey(orgId: number): string {
   return inputsKey(orgId);
+}
+
+/**
+ * What a club's answers that never read OOTP's live log depend on, as one string (N12 Track B review, M3): the club, the
+ * import, the calibration's revision, the settings and the config, without the live log's file stats. League Office's
+ * and Scouting's views key on it, so a write to the log during play rebuilds none of them; Finance's and Medical's on it
+ * and the export's freshness derived from the log (N12 Track A review, M1).
+ */
+export function frontOfficeImportKey(orgId: number): string {
+  return [orgId, importedAt.value ?? 'none', revision, statKey(path.join(DATA_DIR, 'settings.json')), statKey(path.join(DATA_DIR, 'config.json'))].join('|');
 }
 
 /** A key's stamp, as every payload built for it carries (`reportStamp`). */

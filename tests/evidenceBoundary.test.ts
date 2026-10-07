@@ -43,6 +43,12 @@ const INDIRECT = /\bvaluesByPlayer\b|\bmlbPercentiler\b/;
 /** Player Development and Minor League Operations. */
 const GUARDED = [
   'org.ts',
+  // N12 Track B: League Office's and Scouting's readers (the draft board's grades come only through scoutedEvidence)
+  'leagueStandingsViews.ts',
+  'leagueHistoryViews.ts',
+  'leagueLeadersViews.ts',
+  'scoutingViews.ts',
+  'leagueViewsBuild.ts',
   'prospectDecision.ts',
   'prospectAssignments.ts',
   'destinationFit.ts',

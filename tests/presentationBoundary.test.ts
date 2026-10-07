@@ -188,10 +188,13 @@ describe('the presentation boundary', () => {
     // still open (no specialist: it says whether the automatic club may be served as chosen)
     // `farmViewsBuild` is Farm & Development's views' reader (N10), run by the same worker; its own imports are held in
     // farmViews.test.ts; `clubhouseViewsBuild` is Major League Ops' clubhouse tools' reader (N9), held below;
-    // `playerDossierBuild` is the player window's reader (N11), run by the same worker; its own imports are held below
+    // `playerDossierBuild` is the player window's reader (N11), run by the same worker; its own imports are held below;
+    // `leagueViewsBuild` is League Office's and Scouting's views' reader (N12 Track B), run by the same worker
     const PUBLIC = new Set([
-      'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'clubhouseViewsBuild',
+      'leagueViewsBuild', 'clubOwed', 'clubReport', 'contracts', 'config', 'dashboard', 'dataStatus', 'db', 'farmOperations', 'farmViewsBuild', 'clubhouseViewsBuild',
       'playerDossierBuild', 'frontOfficeBuild', 'leagueRules',
+      // N12: Finance's and Medical's views' reader, run by the same worker; its own imports are held below
+      'officeViewsBuild',
       // N12 Track C: the Trade Desk's reader, run by the same worker; its own imports are held below
       'tradeDeskBuild',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
@@ -286,6 +289,28 @@ describe('the presentation boundary', () => {
    * extracted modules, and nothing else: no rating of its own beyond OSA's per-player mark (D-067), no philosophy, no
    * developmental stakes, no odds or posture, no AI. Its one setting is how the GM shows a rating.
    */
+  /**
+   * Finance's and Medical's views (N12, D-071) read the React pages' routes' modules (Payroll, Contracts, Free Agents,
+   * the injury report), Club Finances and the price of a win through Player Value's entry point and its snapshot reader,
+   * the farm's next men through Major League Ops' door to the farm (`mlbEvidence`, as the roster map does), Player State,
+   * and OSA's per-player mark; never the developmental stakes, the odds or the posture (D-050, D-060), or an AI.
+   */
+  it('officeViewsBuild.ts reads only the routes\' modules and the specialists\' public doors', () => {
+    const allowed = new Set([
+      'clubFinanceRoutes', 'contracts', 'dashboard', 'dataStatus', 'freeagents', 'mlbEvidence', 'payroll', 'playerState', 'playerValue', 'scoutedEvidence',
+    ]);
+    const outside = valueImports('officeViewsBuild.ts').filter((s) => s.startsWith('./') && !s.startsWith('./presentation/')).map(moduleName)
+      .filter((m) => !allowed.has(m));
+    expect(outside).toEqual([]);
+    const source = code('officeViewsBuild.ts');
+    expect([...source.matchAll(/import \{([^}]*)\} from '\.\/scoutedEvidence\.js'/g)].map((m) => m[1].trim())).toEqual(['ratingFillOf']);
+    // The market's history only through Club Finances' route helper, never the snapshot module (N12 review, M3)
+    expect([...source.matchAll(/import \{([^}]*)\} from '\.\/clubFinanceRoutes\.js'/g)].map((m) => m[1].trim())).toEqual(['marketPriceHistory']);
+    for (const pattern of [/developmentalContext|evaluateDevelopmentProtection/, /posture|playoffs|oddsModel|deadlineRead|playoffPicture|clubWinValue/, /\bai\b|aiProvider|chat\.js/]) {
+      expect(source).not.toMatch(pattern);
+    }
+  });
+
   it('clubhouseViewsBuild.ts reads only the routes\' extracted modules', () => {
     const allowed = new Set([
       'dashboard', 'dataStatus', 'gameplan', 'lineup', 'org', 'pitching', 'roster', 'rosterops', 'schedule', 'scoutedEvidence', 'settings', 'trends', 'valuation',
@@ -346,7 +371,8 @@ describe('the presentation boundary', () => {
     // N9: Major League Ops' clubhouse tools, kept and built the same way; N11: the player window's dossiers are kept on
     // the Front Office's inputs and our club's built in its worker
     expect(importers('frontOfficeService').sort()).toEqual([
-      'api.ts', 'aroundTheLeague.ts', 'clubhouseViewService.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts',
+      'api.ts', 'aroundTheLeague.ts', 'clubhouseViewService.ts', 'farmViewService.ts', 'frontOfficeAttention.ts', 'index.ts', 'leagueViewService.ts',
+      'officeViewService.ts',
       // N12 Track C: Philosophy & Staff's views, served over the club's inputs like the others
       'philosophyViewService.ts',
       'playerViewService.ts',
@@ -354,6 +380,15 @@ describe('the presentation boundary', () => {
       'tradeDeskService.ts',
       'v2Routes.ts',
     ]);
+    // N12: Finance's and Medical's views, kept and built the same way
+    expect(importers('officeViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('officeViewsBuild').sort()).toEqual(['frontOfficeBuild.ts', 'frontOfficeWorker.ts', 'officeViewService.ts']);
+    expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/officeViewsBuild\.js'/);
+    // N12 Track B: League Office's and Scouting's views, kept and built the same way
+    expect(importers('leagueViewService').sort()).toEqual(['v2Routes.ts']);
+    expect(importers('leagueViewsBuild').sort()).toEqual(['frontOfficeBuild.ts', 'frontOfficeWorker.ts', 'leagueViewService.ts']);
+    expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/leagueViewsBuild\.js'/);
+    expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/leagueViewsBuild\.js'/);
     // N12 Track C: the AI router puts the Mac app's question to the model and hands the answer to the service to word
     expect(importers('tradeDeskService').sort()).toEqual(['ai.ts', 'v2Routes.ts']);
     expect(importers('philosophyViewService').sort()).toEqual(['v2Routes.ts']);
@@ -389,6 +424,10 @@ describe('the presentation boundary', () => {
       'clubhouseViewService.ts',
       // N11: the player window's views, read in the build and kept by their service
       'playerDossierBuild.ts', 'playerViewService.ts',
+      // N12: Finance's and Medical's views, read in the build and kept by their service
+      'officeViewsBuild.ts', 'officeViewService.ts',
+      // N12 Track B: League Office's and Scouting's views, read in their readers and the build, kept by their service
+      'leagueViewsBuild.ts', 'leagueViewService.ts', 'leagueStandingsViews.ts', 'leagueHistoryViews.ts', 'leagueLeadersViews.ts', 'scoutingViews.ts',
       // N12 Track C: the Trade Desk, read in its build, kept by its service, and its AI desk's answer worded there
       'tradeDeskBuild.ts', 'tradeDeskService.ts',
       // N12 Track C: Philosophy & Staff's views, worded and served by their service

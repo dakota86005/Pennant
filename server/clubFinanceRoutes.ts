@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { tableExists } from './db.js';
 import { clubFinances, clubWinValue, leagueFinances, marketLeagueOfClub } from './playerValue.js';
-import { marketSnapshotHistory, priceHistory, priceHistoryReport } from './playerValueSnapshot.js';
+import { marketSnapshotHistory, priceHistory, priceHistoryReport, type PriceHistoryEntry } from './playerValueSnapshot.js';
 
 /**
  * The one domain route for Club Finances and the market (D-008, PLAYER_VALUE.md Part 2.4): the
@@ -11,6 +11,14 @@ import { marketSnapshotHistory, priceHistory, priceHistoryReport } from './playe
  * read the same answer.
  */
 export const clubFinanceRoutes = Router();
+
+/**
+ * The price of a win across the save's imports in a market (phase 4b), as this route serves it: Finance's Payroll view
+ * in the Mac app (N12) reads it here, so the market's history keeps one reader outside the import.
+ */
+export function marketPriceHistory(marketId: number): PriceHistoryEntry[] {
+  return priceHistory(marketId);
+}
 
 clubFinanceRoutes.get('/club-finances/:orgId', (req, res) => {
   const orgId = Number(req.params.orgId);
@@ -25,7 +33,7 @@ clubFinanceRoutes.get('/club-finances/:orgId', (req, res) => {
     league: { ...league, observed: { ...league.observed, pairs: league.observed.pairs.map(({ changes: _changes, ...pair }) => pair) } },
     history: marketSnapshotHistory(marketId),
     // Phase 4b: the price of a win across imports (opening, measured, which was in force)
-    priceHistory: priceHistory(marketId),
+    priceHistory: marketPriceHistory(marketId),
     // Phase 5b: this club's value of a win now (Part 4.5), in playoff odds, beside the league's price of a win; never in any value
     winValue: clubWinValue(orgId),
   });

@@ -1,0 +1,503 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Franchise History"
+  },
+  "lede": {
+    "text": "Every season the club has played, as the export's record books hold it",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "The club's record in every completed season the export carries, back to its first: wins by season on the chart (oldest first), and each season's record, finish, how it ended, its best players and its finances in the table (latest first). Above it, your own seasons as manager when the export keeps them."
+        }
+      ],
+      "source": {
+        "department": "league",
+        "specialist": "The franchise's record books",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "club": {
+    "teamId": 1,
+    "name": "Club 1 N",
+    "abbr": null,
+    "ours": true,
+    "open": {
+      "kind": "club",
+      "teamId": 1
+    }
+  },
+  "figures": [
+    {
+      "text": "Seasons, 2039",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Seasons",
+            "value": "1 completed season in the export, 2039."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The franchise's record books",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 1,
+        "unit": "count",
+        "display": "1"
+      }
+    },
+    {
+      "text": "All-time record",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Wins",
+            "value": "30"
+          },
+          {
+            "label": "Losses",
+            "value": "30"
+          },
+          {
+            "label": "Winning percentage",
+            "value": ".500"
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The franchise's record books",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 0.5,
+        "unit": "rate",
+        "display": "30–30 · .500"
+      }
+    },
+    {
+      "text": "Titles",
+      "tone": "unknown",
+      "basis": {
+        "because": [
+          {
+            "label": "Titles",
+            "value": "Not in the export."
+          },
+          {
+            "label": "Playoff trips",
+            "value": "Not in the export."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The franchise's record books",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "How each season ended: the export carries no season history beyond the record."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": null,
+        "unit": "count",
+        "display": "Not known"
+      }
+    },
+    {
+      "text": "Best season",
+      "tone": "good",
+      "basis": {
+        "because": [
+          {
+            "label": "Read as",
+            "value": "The season with the best winning percentage; a tie goes to the latest."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The franchise's record books",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 0.5,
+        "unit": "rate",
+        "display": "2039: 30–30"
+      }
+    },
+    {
+      "text": "Worst season",
+      "tone": "bad",
+      "basis": {
+        "because": [
+          {
+            "label": "Read as",
+            "value": "The season with the worst winning percentage; a tie goes to the latest."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The franchise's record books",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 0.5,
+        "unit": "rate",
+        "display": "2039: 30–30"
+      }
+    }
+  ],
+  "chart": {
+    "title": {
+      "display": "Wins by season"
+    },
+    "caption": {
+      "text": "Point at a bar for its season",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Each bar",
+            "value": "One season's wins, oldest on the left."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The franchise's record books",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "How each season ended: the export carries no season history beyond the record, so no bar is marked."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": []
+    },
+    "axis": {
+      "display": "Wins"
+    },
+    "points": [
+      {
+        "year": 2039,
+        "wins": 30,
+        "losses": 30,
+        "result": "unknown",
+        "display": "2039: 30-30, how it ended not known"
+      }
+    ],
+    "summary": "Wins in each of 1 season, 2039, oldest first; best record 30-30 in 2039; worst 30-30 in 2039.",
+    "legend": [
+      {
+        "result": "title",
+        "text": {
+          "display": "Won it all",
+          "hint": "A season the club won the playoffs"
+        }
+      },
+      {
+        "result": "playoffs",
+        "text": {
+          "display": "Made the playoffs",
+          "hint": "Reached the playoffs without winning them"
+        }
+      },
+      {
+        "result": "none",
+        "text": {
+          "display": "Missed the playoffs"
+        }
+      },
+      {
+        "result": "unknown",
+        "text": {
+          "display": "Not known",
+          "hint": "The export doesn't say how the season ended"
+        }
+      }
+    ]
+  },
+  "seasons": {
+    "id": "seasons",
+    "title": {
+      "display": "Season by season"
+    },
+    "summary": {
+      "display": "1 season, the latest first"
+    },
+    "table": {
+      "columns": [
+        {
+          "id": "year",
+          "title": {
+            "display": "Year"
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "team",
+          "title": {
+            "display": "Team",
+            "hint": "The club's name that season"
+          },
+          "numeric": false,
+          "sortable": true
+        },
+        {
+          "id": "w",
+          "title": {
+            "display": "W",
+            "hint": "Wins."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "l",
+          "title": {
+            "display": "L",
+            "hint": "Losses."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "pct",
+          "title": {
+            "display": "Win %",
+            "hint": "Winning percentage: wins divided by games played."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "finish",
+          "title": {
+            "display": "Finish",
+            "hint": "Where the club finished in the standings"
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "gb",
+          "title": {
+            "display": "GB",
+            "hint": "Games behind the division leader."
+          },
+          "numeric": true,
+          "sortable": true
+        },
+        {
+          "id": "result",
+          "title": {
+            "display": "Result",
+            "hint": "How the season ended, as the export records it"
+          },
+          "numeric": false,
+          "sortable": true
+        },
+        {
+          "id": "best",
+          "title": {
+            "display": "Best players",
+            "hint": "The season's best hitter and pitcher, as the export names them"
+          },
+          "numeric": false,
+          "sortable": true,
+          "hidden": true
+        },
+        {
+          "id": "payroll",
+          "title": {
+            "display": "Payroll",
+            "hint": "What the club spent on players that season"
+          },
+          "numeric": true,
+          "sortable": true,
+          "hidden": true
+        },
+        {
+          "id": "attendance",
+          "title": {
+            "display": "Attendance",
+            "hint": "The season's home attendance"
+          },
+          "numeric": true,
+          "sortable": true,
+          "hidden": true
+        }
+      ],
+      "rows": [
+        {
+          "id": "season-2039",
+          "cells": {
+            "year": {
+              "display": "2039"
+            },
+            "team": {
+              "display": "Not known",
+              "tone": "unknown",
+              "hint": "The export doesn't name the club that season"
+            },
+            "w": {
+              "display": "30"
+            },
+            "l": {
+              "display": "30"
+            },
+            "pct": {
+              "display": ".500"
+            },
+            "finish": {
+              "display": "1st"
+            },
+            "gb": {
+              "display": "—",
+              "hint": "Finished first: no games behind"
+            },
+            "result": {
+              "display": "Not known",
+              "tone": "unknown",
+              "hint": "The export doesn't say how its seasons ended"
+            },
+            "best": {
+              "display": "Not named",
+              "tone": "unknown",
+              "hint": "The export names no best player that season"
+            },
+            "payroll": {
+              "display": "Not known",
+              "tone": "unknown",
+              "hint": "The export carries no payroll for that season"
+            },
+            "attendance": {
+              "display": "Not known",
+              "tone": "unknown",
+              "hint": "The export carries no attendance for that season"
+            }
+          },
+          "sort": {
+            "year": 2039,
+            "team": null,
+            "w": 30,
+            "l": 30,
+            "pct": 0.5,
+            "finish": 1,
+            "gb": 0,
+            "result": null,
+            "best": null,
+            "payroll": null,
+            "attendance": null
+          },
+          "player": null,
+          "detail": [],
+          "actions": []
+        }
+      ],
+      "empty": {
+        "display": "This export carries no completed seasons for the club."
+      }
+    },
+    "note": {
+      "text": "What the columns mean",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Seasons",
+            "value": "Every completed season the export carries for the club, back to its first: a season with no game played is left out."
+          },
+          {
+            "label": "Result",
+            "value": "The export doesn't carry how seasons ended, so no season is marked as a title or a playoff season."
+          },
+          {
+            "label": "Hidden columns",
+            "value": "A column no season fills in this export (finish, best players, payroll) starts hidden; attendance always does. Show any of them from the table's columns."
+          },
+          {
+            "label": "Not known",
+            "value": "A season the export leaves blank (or at zero) for finish, payroll or attendance says not known, never a zero."
+          }
+        ],
+        "source": {
+          "department": "league",
+          "specialist": "The franchise's record books",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [
+          "How each season ended and who were its best players: the export carries no season history beyond the record.",
+          "Each season's payroll and attendance: the export carries no past finances."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": []
+    }
+  },
+  "tenure": null,
+  "empty": null
+}

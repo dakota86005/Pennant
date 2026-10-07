@@ -1,0 +1,41 @@
+{
+  "playerId": 1027,
+  "facts": [
+    {
+      "label": {
+        "display": "Salary"
+      },
+      "value": {
+        "display": "No club holds him: he has no contract."
+      }
+    }
+  ],
+  "claims": [
+    {
+      "text": "2041 at the market: Not known",
+      "tone": "unknown",
+      "basis": {
+        "because": [
+          {
+            "label": "Why not",
+            "value": "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Player Value",
+          "asOf": null,
+          "gameDate": "2040-7-1"
+        },
+        "unknown": [
+          "No price of a win: No contract is a market price: no player on the league's rosters is free-agency eligible (a reserve clause, or nobody has the service). Value is in wins, and dollars are unknown."
+        ],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "unknown",
+        "called": "Not known"
+      },
+      "links": []
+    }
+  ]
+}

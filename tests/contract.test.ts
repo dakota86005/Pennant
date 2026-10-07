@@ -13,11 +13,14 @@ import { basisProblems } from '../server/presentation/claim.js';
 import { departmentReport, frontOfficeBuilt, frontOfficeRevision } from '../server/frontOfficeService.js';
 import { clubhouseScheduleNow } from '../server/clubhouseViewService.js';
 import { farmAssignmentsNow, resetFarmViews } from '../server/farmViewService.js';
+import { financeFreeAgentsNow, resetOfficeViews } from '../server/officeViewService.js';
+import { clearProductionCaches } from '../server/playerValue.js';
 import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
 import { startJob } from '../server/jobs.js';
 import { themePacksFolder } from '../server/themePackStore.js';
+import { db } from '../server/db.js';
 import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/history.js';
 import { currentHistoryKey, forgetHistoryKey } from '../server/historyIdentity.js';
 import { forgetMemoryCaches, recordReportSnapshot, recordStandingsSnapshot, setDeskRecord } from '../server/frontOfficeMemory.js';
@@ -26,7 +29,9 @@ import {
   BANNED_JARGON, BANNED_VERDICTS, FOLDER_PATHS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
   type JargonException,
 } from './bannedJargon';
+import { addDraftClass, removeDraftClass } from './draftClassFixture';
 import { buildSave, type BuiltSave } from './syntheticSave';
+import { resetLeagueViews } from '../server/leagueViewService.js';
 import { detectSaves } from '../server/paths.js';
 import { discoveryClock, resetSaveDiscovery, scanSaves } from '../server/saveDiscovery.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
@@ -337,7 +342,12 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     fs.rmSync(themePacksFolder(), { recursive: true, force: true });
   });
 
-  const reads = operations.filter((op) => op.method === 'get' && !op.stream);
+  /**
+   * Read only on what the synthetic save hasn't, each captured on one made below: a prospect on a published draft class
+   * (N12 Track B review, M8), a listed free agent's detail (N12 Track A review, M4).
+   */
+  const CAPTURED_ON_THEIR_OWN = new Set(['getScoutingDraftProspect', 'getFinanceFreeAgent']);
+  const reads = operations.filter((op) => op.method === 'get' && !op.stream && !CAPTURED_ON_THEIR_OWN.has(op.operationId));
   /** The scoped jargon exceptions the live payloads lean on; one none of them uses is stale. */
   const exceptionsInUse = new Set<JargonException>();
   /** An item's evidence key on the synthetic save (a Major League Ops need), found once the save is built. */
@@ -428,6 +438,40 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     if (op.operationId !== 'getSearchLocations') fixture(`responses/${op.operationId}.json`, json(body));
   }, SLOW);
 
+  it('serves a listed free agent\'s detail in the contract\'s shape, plain (N12; captured for the previews)', async () => {
+    // A veteran elsewhere on the last year of his deal given a club option on next season, as the export writes one:
+    // declined he is a free agent, so he might reach the market. Put back after
+    const veteran = db.prepare(`SELECT c.player_id AS id, c.years, c.salary1, c.last_year_team_option AS option, rs.mlb_service_days AS days
+      FROM players_contract c JOIN players p ON p.player_id = c.player_id JOIN players_roster_status rs ON rs.player_id = c.player_id
+      JOIN teams t ON t.team_id = p.team_id WHERE t.level = 1 AND p.organization_id != ? AND c.years = 1 AND c.is_major = 1
+      ORDER BY c.player_id LIMIT 1`).get(save.org) as { id: number; years: number; salary1: number; option: number; days: number };
+    const refresh = () => {
+      clearProductionCaches();
+      resetOfficeViews();
+    };
+    try {
+      db.prepare('UPDATE players_contract SET years = 2, salary1 = salary0, last_year_team_option = 1 WHERE player_id = ?').run(veteran.id);
+      db.prepare('UPDATE players_roster_status SET mlb_service_days = 1500 WHERE player_id = ?').run(veteran.id);
+      refresh();
+      const list = (await financeFreeAgentsNow(String(save.org))).lists.find((l) => l.id === 'mightReach')!;
+      expect(list.table.rows.map((r) => r.player?.playerId)).toContain(veteran.id);
+      const res = await fetch(`${base}/api/v2/views/${save.org}/finance/freeAgents/players/${veteran.id}`);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      const validate = validator('FinanceFreeAgentDetail');
+      expect(validate(body) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(body, 'getFinanceFreeAgent')).toEqual([]);
+      expect(servedBasisProblems(body)).toEqual([]);
+      expect(body.claims.length).toBeGreaterThan(0);
+      fixture('responses/getFinanceFreeAgent.json', json(body));
+      expect((await fetch(`${base}/api/v2/views/${save.org}/finance/freeAgents/players/${save.regular}`)).status).toBe(404);
+    } finally {
+      db.prepare('UPDATE players_contract SET years = ?, salary1 = ?, last_year_team_option = ? WHERE player_id = ?').run(veteran.years, veteran.salary1, veteran.option, veteran.id);
+      db.prepare('UPDATE players_roster_status SET mlb_service_days = ? WHERE player_id = ?').run(veteran.days, veteran.id);
+      refresh();
+    }
+  }, SLOW);
+
   it('takes the farm player\'s snapshots out again, so the history questions below start from a save with none (N10)', () => {
     historyDb.prepare('DELETE FROM save_rating_snapshots WHERE save_key = ? AND player_id = ?').run(currentHistoryKey(), farmPlayer);
     resetFarmViews();
@@ -462,6 +506,33 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       break;
     }
     expect(captured).toBe(true);
+  }, SLOW);
+
+  it('serves a published draft class and a prospect\'s reasons in the contract\'s shape, plain (captured for the previews, review M8)', async () => {
+    addDraftClass(save);
+    resetLeagueViews();
+    try {
+      const board = await (await fetch(`${base}/api/v2/views/${save.org}/scouting/draftBoard`)).json() as { published: boolean; board: { rows: Array<{ player: { playerId: number } | null }> } };
+      expect(board.published).toBe(true);
+      expect(board.board.rows.length).toBeGreaterThan(10);
+      const validate = validator('ScoutingDraftBoardView');
+      expect(validate(board) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(board, 'getScoutingDraftBoard')).toEqual([]);
+      expect(servedBasisProblems(board)).toEqual([]);
+      fixture('responses/getScoutingDraftBoard-published.json', json(board));
+      const chosen = board.board.rows[0].player!.playerId;
+      const res = await fetch(`${base}/api/v2/views/${save.org}/scouting/draftBoard/prospects/${chosen}`);
+      expect(res.status).toBe(200);
+      const prospect = await res.json();
+      const validateProspect = validator('ScoutingProspectView');
+      expect(validateProspect(prospect) ? [] : validateProspect.errors).toEqual([]);
+      expect(bannedInPayload(prospect, 'getScoutingDraftProspect')).toEqual([]);
+      fixture('responses/getScoutingDraftProspect.json', json(prospect));
+      expect((await fetch(`${base}/api/v2/views/${save.org}/scouting/draftBoard/prospects/1`)).status).toBe(404);
+    } finally {
+      removeDraftClass();
+      resetLeagueViews();
+    }
   }, SLOW);
 
   it('uses every scoped jargon exception in force, so a stale one is found', () => {
@@ -559,8 +630,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   it('answers the desk\'s and Following\'s changes in the contract\'s shape, and puts each back (captured for the previews)', async () => {
     const changes = operations.filter((op) => op.method === 'put' || op.method === 'delete').map((op) => op.operationId).sort();
     expect(changes).toEqual([
-      'follow', 'removeStaffNote', 'resetOrganizationalPhilosophy', 'setDeskStatus', 'setOrganizationalPhilosophy', 'setPlayerNote', 'undoFirstPlayerNote',
-      'unfollow',
+      'follow', 'removeStaffNote', 'resetOrganizationalPhilosophy', 'setDeskStatus', 'setFinanceBudget', 'setOrganizationalPhilosophy',
+      'setPlayerNote', 'undoFirstPlayerNote', 'unfollow',
     ]);
     const call = async (method: 'PUT' | 'DELETE', url: string, body?: unknown) => {
       const res = await fetch(`${base}${url}`, {
@@ -604,6 +675,10 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     check('unfollow', 'club', await call('DELETE', `/api/v2/following?kind=club&id=${club}`), 200);
     check('unfollow', 'not-followed', await call('DELETE', `/api/v2/following?kind=club&id=${club}`), 404);
     check('unfollow', 'no-kind', await call('DELETE', `/api/v2/following?id=${club}`), 400);
+    // N12: the budget the GM expects next season (a Pennant setting), set, refused and cleared again
+    check('setFinanceBudget', 'set', await call('PUT', `/api/v2/views/${save.org}/finance/payrollBudget/nextSeasonBudget`, { amount: 150_000_000 }), 200);
+    check('setFinanceBudget', 'not-an-amount', await call('PUT', `/api/v2/views/${save.org}/finance/payrollBudget/nextSeasonBudget`, { amount: 'lots' }), 400);
+    check('setFinanceBudget', 'cleared', await call('PUT', `/api/v2/views/${save.org}/finance/payrollBudget/nextSeasonBudget`, { amount: 0 }), 200);
     // Put back: nothing followed, nothing marked
     expect((await call('DELETE', `/api/v2/following?kind=player&id=${save.regular}`)).status).toBe(200);
     // N11: the GM's note on a player he doesn't follow, kept exactly as typed, and its undo (which stops following him)

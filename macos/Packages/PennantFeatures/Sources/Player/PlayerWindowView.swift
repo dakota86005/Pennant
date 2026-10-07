@@ -257,6 +257,15 @@ struct DebugWindowSizer: NSViewRepresentable {
                 frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
             }
             window.setFrame(frame, display: true)
+            // The content's own minimum can make the window wider (or taller) than asked: kept wholly on the screen all
+            // the same (PR #58: a 520-point Compare asked against the trailing edge grew to its 560-point minimum and
+            // ran past a 1024-point screen, where its picture could not be read)
+            if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
+                let actual = window.frame
+                let x = min(max(actual.minX, visible.minX), visible.maxX - actual.width)
+                let y = min(max(actual.minY, visible.minY), visible.maxY - actual.height)
+                if x != actual.minX || y != actual.minY { window.setFrameOrigin(CGPoint(x: x, y: y)) }
+            }
         }
         return view
     }

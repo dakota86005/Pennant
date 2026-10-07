@@ -1286,6 +1286,163 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
 - *Left for later:* the per-view sidebar counts; a player opens his club until N11's player windows land (the views use
   the served `open`, so N11's window takes over).
 
+**As built at N12, Track A (2026-10-06): Finance and Medical (server and Mac).** Branch `feature/swiftui-n12-finance`;
+D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `OfficeFeatureTests` rows).
+- **Served** (`server/presentation/finance/`, `server/presentation/medical/`, the shared `presentation/officeTable.ts`):
+  `GET /api/v2/views/:org/finance/payrollBudget` (the club's figures, the price of a win with "How it's measured" in its
+  basis, what a controlled season costs, committed salary by season with what the controlled seasons could cost beside
+  it and the room, the budget rule, the budget the GM expects next season, who leaves, who stays, who is not known yet,
+  dead money, and every contract season by season), `/contracts` (the figures, the price, the groups and all players or
+  pitchers as filters, every contract with its seasons under control and what his figures rest on), `/freeAgents` (the
+  thinnest positions and the three lists, each with its filters: players, position, age, our thin spots), `/horizonBoard`
+  (each position against the next three seasons, the pipeline apart, committed salary against the budget) and
+  `GET /api/v2/views/:org/medical/injuryReport` (the figures, every injured player, the level as a filter);
+  `PUT …/finance/payrollBudget/nextSeasonBudget` sets the React page's setting and answers what it did and its undo;
+  `GET …/finance/freeAgents/players/:player` is a chosen free agent's detail. Read by `officeViewsBuild.ts` through the
+  routes' modules, kept by `officeViewService.ts` on the Front Office's key without the live log plus the derived
+  freshness (one `officeViews` worker job after each kept build; another club's on first open, four builds at most).
+- **Drawn** (the Finance and Medical targets, FeatureCore's `OfficeKit.swift`, `OfficeStore` in PennantKit): Contracts,
+  Free Agents, Payroll's every contract and the Injury Report are native `Table`s in a `TablePane` (served columns, sort
+  keys, unknown last, several rows chosen, Compare, the player window on Return or a double-click, Follow, Copy Name, a
+  player's row dragged as the player, the OSA mark beside a filled player's name), the chosen row's facts, claims and
+  seasons beneath; the served filters are choices in the head (`ChoicePopover`), a name the window's search field scoped to
+  the view (`WindowSearch`, since the merge with Track B). Payroll's seasons are a page: the figures, the price and cost lines, Swift Charts with
+  committed money as bars, the projected range a hatched bar beside each (never stacked) and each season's served budget
+  a rule across its own column (today's for this season, the one the GM expects across the following seasons only),
+  with an `AXChartDescriptor` (committed and what could come on top as two series, the axis in dollars); each season's
+  words beneath; the budget field (millions to the dollar, saved on Return or leaving it, ⌘Z undoing it). The Horizon Board is a grid (a row per position, a column per
+  season, the pipeline last), a card per position on a narrow column, each status's reason a click away, and committed
+  salary against the budget in a chart of its own. Free Agents' lists are a segmented control in the head (a button and a popover where
+  there is no room).
+- **Measured** (in process over HTTP on an M4 under tsx; read-only scratch copies). The synthetic save: the build 0.16 s
+  (Payroll 65 ms, Free Agents 46 ms, Contracts 23 ms, the board 17 ms). The owner's export: the build 2.2 s on the
+  server's thread (Payroll 1.28 s, Free Agents 0.36 s, the board 0.24 s, Contracts 0.08 s, injuries 8 ms), 1.8 s through
+  the worker; warm GETs p50 / p95: Payroll 1.9 / 4.9 ms (199 kB), Contracts 1.6 / 1.9 (182 kB), Free Agents 5.9 / 6.6
+  (780 kB: 334 players across the three lists), the board 0.7 / 1.0 (62 kB), injuries 0.4 / 0.8 (30 kB); another club's
+  first open 1.7 s, then 1.9 / 4.2 ms. USBL: the build 1.1 s (0.94 s through the worker), warm p95 at most 4.5 ms;
+  another club's first open 0.94 s.
+- *Found in the narrow test (900 × 700, inspector open):* a second toolbar `.searchable` beside the window's own search
+  made AppKit's layout loop and the app stop (an exception in `_layoutSubtreeWithOldSize`) on opening Contracts: the
+  name search is a field in the view's head (`OfficeFindField`). Payroll's Seasons / Every Contract choice was crowded out
+  of the toolbar there (XCTest found no hit point for it) and is a segmented control in the head; Free Agents' lists fall
+  back from a segmented control to a button and a popover of choices (a pop-up `Picker` had no action to press, the
+  audit's "Action is missing"). The byline is served in parts too (`bylineParts`) and set on one line, or each part on a
+  line of its own: wrapped inside its date ("… Through May" over "6, 2040") it failed the contrast audit in every colour
+  tried (14.9:1 by its pixels in the label colour) and wherever it sat, while on one line it passed. The test brings the
+  sidebar to rest before each click and audit (a long reveal left it scrolling, the club card half under the title bar).
+- *After the review (NEEDS FIXES, 2026-10-06):* the Horizon Board leaves a player out of every season after his control
+  ends, and a mixed cell says "Not known for N more" (H1; on the owner's export it had drawn 2 false "Not known" cells
+  and hidden the unread in 10 mixed ones). The views key on the export's derived freshness, not the live log's file
+  stats (M1). The budget write serves what it did and its undo (⌘Z, "Set Budget"), the field shows millions to the
+  dollar, and the server refuses past $10 billion (M2). Free Agents serves rows without detail and filters by key: 888 kB
+  to 284 kB on the owner's export; a chosen player's facts and claims are read on the click from the kept build (M4).
+  Each season's served budget is drawn across its own column, so the expected budget spans the following seasons only,
+  and the audio graphs' axes say dollars (L4, L5). The pane tables' "No players match these filters." and "Select a row
+  to see more." are served (L6). The byline's one-line rule is a workaround of unknown cause: the audit fails some
+  wrapped multi-line frames in any colour, and why is not established (L8).
+- *Left for later:* the React Payroll page's club value of a win (playoff odds) is not served (D-060); Payroll's
+  sparkline is replaced by the chart; Free Agents' lists are not cut to the top 150 (284 kB in full).
+
+**As built at N12 (Track B, 2026-10-06): League Office and Scouting (server and Mac).** Branch
+`feature/swiftui-n12-league`; D-072 (BEHAVIOR_CASES.md "Pennant for Mac", the `leagueStandingsViews.test.ts`,
+`leagueHistoryViews.test.ts`, `leagueLeadersViews.test.ts`, `scoutingViews.test.ts` and `LeagueOfficeFeatureTests` rows).
+- **Server.** The routes the React pages read compute in callable modules, each old route sending exactly what its
+  module computes (`computeFranchise`, `computeTenure` with its names read in one batch, `computeLeaderboards`, the
+  draft's class and calendar, `computePlayers`; N4's `computeStandings` and `computeOrgComparison` reused).
+  `GET /api/v2/views/:org/league/standings` (each division a table, our place in the race as figures, and beneath the
+  table the staff's rough read: the odds and the posture, D-060, provisional, with their basis; none before a game is
+  played), `/leaders` (batting and pitching, each category's top ten, the qualifier with its rule), `/orgComparison`
+  (our four figures as ranges with the league's middle, every club a row opening its window), `/franchiseHistory`
+  (the record's figures and a chart's points with its legend, every season as a table, the GM's own seasons),
+  `/usVsThem?team=` (our club beside another as facts with both clubs' league places, their meetings, the next series)
+  and `/scouting/draftBoard` (the class once OOTP publishes it, else one sentence and the calendar; our scouts' grades
+  through `loadScoutedAbilities` with the OSA mark; the staff's stated order, short lists and served filters) and
+  `/scouting/playerSearch?q&tokens` (the palette's name matcher, the served tokens, 300 rows at most with the count).
+  The adapters are `server/presentation/league/` and `server/presentation/scouting/`; `leagueViewsBuild.ts` reads,
+  `leagueViewService.ts` keeps one club's build on the Front Office's key, built in its worker after each kept Front
+  Office build; Us vs Them against another club is read in the worker on its first ask, a search in process. The
+  palette's player matches end with "All N in Player Search", opening the view on the words typed.
+- **Mac.** `LeagueOfficeStore` and `ScoutingStore` (PennantKit, `AppModel.leagueOffice` and `.scouting`). Every table
+  is FeatureCore's `OfficeTable` in a `TablePane` (N8's served table, public, naming a club as well as a player: a
+  club's row opens its window, a player's his; the chosen rows' players are what Compare, ⌥⌘C, takes). Standings opens
+  on every club in one table (the served "All divisions"), each division on offer from a pop-up; Leaders a segmented batting or pitching and a category
+  pop-up; Franchise History's Record is Swift Charts (a bar per season as a category of its own, a title marked with a
+  diamond as well as its colour, the served legend, round years labelled, the season's words on pointing, one image to
+  VoiceOver with its `AXChartDescriptor`), its seasons and the GM's own seasons tables; Us vs Them an opponent pop-up
+  and the three tables; the Draft Board its served filters as pop-ups asking the server for their prospects, the calendar
+  a short grid; Player Search scopes the window's one toolbar search field to itself while it is shown, as Finder's
+  search scopes to the folder shown (`WindowSearch`, FeatureCore: the served tokens suggested as the GM types, one of
+  each kind; the league-wide suggestions stand aside; leaving the view returns the field to the league), batters or
+  pitchers segmented, asked again a quarter second after the typing stops. A second `.searchable` of its own looped
+  AppKit's layout at 900 points (the app stopped), so the window keeps one field. The choice pop-ups are PennantDesign's one
+  `ChoicePopover` (below); a cell in the secondary style draws in the row's own colour on a chosen row.
+- **Measured** (in process over HTTP, M4, under tsx). The owner's export (a read-only scratch copy; checksums matched
+  the save's before and after the copy): the build 2.9 s on the server's thread (Org Comparison 2.2 s, Draft Board
+  0.17 s, the rest under 0.15 s each; 2.2 s through the worker), warm GETs p50 / p95: Standings 0.8 / 2.0 ms (38 kB),
+  Leaders 0.7 / 1.9, Org Comparison 2.9 / 3.8 (331 kB), Franchise History 0.5 / 0.9, Us vs Them 0.4 / 0.7, Draft
+  Board (2,076 prospects) and Player Search as it opens 5.8 / 6.6 (566 kB); asked: Us vs Them against another club
+  first 368 ms (a worker) then 0.5 ms, a name search first 12 to 68 ms then about 1 ms, a token search first 23 to 38
+  ms then 3 to 8 ms. USBL (a scratch copy, history from 1930): the build 1.1 s; a club with 86 seasons, Franchise
+  History warm p50 2.0 ms, p95 4.0 ms (81 kB), its whole first build for that club 1.1 s. The synthetic save: Standings
+  1 ms, Us vs Them 5 ms, Franchise History with 86 seasons 5 ms, Org Comparison 88 ms, Leaders 1 to 2 ms, Draft Board
+  12 to 14 ms, Player Search 3 to 5 ms.
+- **The audits.** `testLeagueOfficeNarrowWindow` opens the seven views at 900 × 700 with the inspector open (a folded
+  department through the Go menu, each view's row clicked at its leading side), three rounds, a row chosen in each table and its detail drawn, another opponent asked, the franchise's record and seasons,
+  a search typed, every table at least 120 points tall, and audits each view on its first visit.
+- **The palette test made deterministic.** `testDesignPaletteBasisAndInspector`'s intermittent finding (a report line
+  just above the inspector's top edge, under the toolbar, read at 1.0:1) was the report not at its top when audited:
+  it was scrolled back at its middle, which the inspector covers on a narrow window, so the scroll went to the
+  inspector and the report stayed where the claim's click left it, and an audit taken mid-scroll measured a line
+  passing under the toolbar. It now scrolls at the report's leading side and waits until the masthead is still; the
+  set-aside for text under the inspector is unchanged.
+- **After the independent review (NEEDS FIXES, 2026-10-06).** The staff's rough read stands aside once the regular
+  season is decided (no game left for the club: one sentence says so, the race's facts stay) and on a schedule the
+  export doesn't carry (`OddsModel.scheduleRead`, never an assumed 162), describes the club rather than ordering ("reads
+  the club as a buyer" … "reads the club as a seller", banned as orders in `tests/bannedJargon.ts`), and names the rival
+  as the closest chaser when we hold the place. The views key on the import, the revision, the settings and the config
+  (`frontOfficeImportKey`), never the live log, and a kept payload is served stamped with the Front Office's current
+  stamp; Org Comparison is its own worker job. Standings opens on "All divisions", one table with a served Division
+  column in the served order, each division still on offer. Us vs Them's head-to-head is in its words, its clubs'
+  columns are served `sortable: false` (the table keeps a sortable and an unsortable column in runs of their own, in the
+  served order), "Win %", the served opponents' title, and a club or save change drops the chosen opponent. The season
+  chart's marks are fixed, checked colours (`readableChartTitle`, `readableChartPlayoffs`, `readableChartOther`,
+  `ThemeTests`) each with its own mark (a diamond, a dot), a fourth served result `unknown` drawn hollow, a legend of
+  the served words with their swatches, and the pointed season's words on the page colour. Player Search sends the
+  clicked column as `sort`/`dir`, the server sorting every match (`OfficeTable.serverSorts`, rows with no keys), and
+  "Show the next 300" through `offset`, the pages appended. The Draft Board serves its filters by key, its top 300 in
+  the board's order (a filter or "Show all" asks for every prospect), a prospect's reasons on selection
+  (`/draftBoard/prospects/:player`, the one item read on a click), and its columns of words with `byWords` and no keys;
+  a grade now not known gives a ceiling-only read that says so (`adviseScouted`; the React route keeps `advise`); an
+  empty class says it is empty; the synthetic league (and the contract's `getScoutingDraftBoard-published` fixture) has
+  a published class. Org Comparison words only its two refusals (anything else logged behind one sentence) and stamps
+  its farm figure with the ratings model. Standings' and Org Comparison's club rows drag as `ClubRef`. The readers'
+  imports are pinned (`tests/leagueOfficeBoundary.test.ts`: the odds only in Standings' reader, the ratings only in
+  Scouting's). Measured on the owner's export (scratch copy): the Draft Board 1,626 kB and p95 14.1 ms before, 157 kB
+  and 2.3 ms after (a position 551 kB, every prospect 1,081 kB, a prospect's reasons 0.5 kB in 0.3 ms); Player Search
+  541 → 401 kB, a whole-league sort by OPS first 241 ms then p95 11 ms, the next page first 38 ms then 5.8 ms.
+- **One choice pop-up, project-wide** (the review's fourth copy). The native control was tried first: a `Picker` in the
+  `.menu` style with its label hidden and an accessible name still failed the audit on macOS 27 ("Action is missing",
+  `standings.division`, the League Office narrow test of 2026-10-06), so it was not tried on 26. PennantDesign's
+  `ChoicePopover` is now the one implementation: a named button with its current choice as its value and a trailing
+  chevron, opening a popover whose list the arrow keys and the pointer highlight (a fixed, checked fill under its own
+  words, never the accent), Return choosing and Escape closing, the chosen one checked, each choice `id.index` or its
+  own identifier. N8's what-if, the farm's `FilterMenu` (a typed adapter over it), the clubhouse's clubs and positions
+  and League Office's and Scouting's choices all use it.
+- **The Office kit is shared** (for N12 Track A's merge, which makes one kit of both). Server: the Office shapes and
+  helpers live in their own file, `server/presentation/league/office.ts` (`OfficeClub`, `OfficeColumn` with `sortable`
+  and `byWords`, `OfficeRow`, `OfficeTable` with `serverSorts`, `OfficeSection`, `OfficeChoice`, `OfficeChoiceGroup`,
+  and `column`, `clubRow`, `officeClub`, `openClub`, `clubCell`, `keysServed`), re-exported from `league/types.ts` and
+  `league/common.ts`; Track A's `server/presentation/officeTable.ts` declares `OfficeRow`, `OfficeTable` and
+  `OfficeColumn` too, and the union goes there. Mac: FeatureCore's `OfficeKit.swift` holds only the Office pieces
+  (`OfficeCell`, `OfficePlayerName`, `OfficeLine`, `OfficeBlock`, `OfficeHead`, `OfficeFigures`, `OfficeState`,
+  `OfficePage`, `OfficeSectionPicker`, `OfficeTable` with `OfficeTableRow`, `OfficeSort` and `OfficeColumnRuns`,
+  `OfficeRowDetail`, `OfficeTablePane`); the window's scoped search moved to `WindowSearch.swift`. Track A's
+  `OfficeViews.swift` declared `OfficeHead`, `OfficeFigures`, `OfficeState`, `OfficeTablePane` and `OfficeRowDetail`
+  with other shapes; the merge made one `OfficeKit.swift` (D-071's amendment) and deleted `OfficeViews.swift`.
+- *Left for later:* the per-view sidebar counts; the React `/api/draft` route's own partial-tool averages and zero
+  stand-ins (deleted at the cutover); `OfficeKit` and Major League Ops' and the farm's table components are three copies
+  of one design, to fold together once N12's tracks have merged.
+
 **As built at N12, Track C (2026-10-06): Trades and Philosophy & Staff (server and Mac).** Branch
 `feature/swiftui-n12-trades`; D-073 (BEHAVIOR_CASES.md "Pennant for Mac", the `tradeDesk.test.ts`, `philosophyViews.test.ts`,
 `TradesFeatureTests` and `PhilosophyFeatureTests` rows).
@@ -1538,7 +1695,10 @@ Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `
   its "why" lines as custom content.
 - **The ⌘K palette (section 3.6).** View ▸ Find Anything… (⌘K) opens `CommandPalette` over the window with the
   registry's views (their served names, the Go menu's ⌘1 to ⌘9 beside the first view of each department) and the
-  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes. Players
+  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes.
+  Since PR #58 (N11) ⌘K works from every window, as Open Quickly does in Xcode: with no main window key (a player's,
+  a club's or Compare's window in front, or none) the main window used last (`MainWindows`) comes forward with its
+  palette up, or a new main window opens with it; the app's log says which, with the key window's identifier. Players
   and clubs join when the server serves search (N7); the toolbar's search field stays a stub until then.
 - **The Morning Report today and at N6.** The app draws what is served: the masthead's kicker (the club and how current
   the report is), the served headline and the record; the desk in the lead column and the department tiles beside it;
@@ -1947,8 +2107,29 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   neither needs the main dispatch queue, which the nested run loop `.terminateLater` waits in cannot drain while it is
   inside a main-queue job (every main-actor `Task` is one). Asking to quit (`requestQuit()`, used by the SIGTERM
   handler and every future Quit) schedules `NSApp.terminate` on the main run loop for the same reason. A second request
-  while a reply is owed is cancelled. When the app is killed outright, the server sees stdin close and stops itself,
+  while a reply is owed is cancelled. The quit always finishes (PR #58): the last words (notes not kept yet) get 2 s and
+  are then given up, the reply goes out at 12 s whatever is still under way, and each step is written to the app's log
+  (`quit: asked`, `quit: the server is stopped`, …). AppKit ends the app inside `reply(toApplicationShouldTerminate:)`
+  itself, so nothing after the reply runs: an ask that comes after the reply quits at once (`.terminateNow`), and
+  before replying yes the coordinator starts a raw thread that calls `_exit(0)` 5 s later if the app is still there.
+  Open (PR #58, GitHub's macOS 26 runner, a virtual machine): after a *restored* player window was closed, a quit
+  answered yes reached `applicationWillTerminate`, set that net, and the same pid was still alive 20 s later (its
+  launch line and the running-process list in the UI test's output name it). A process `_exit` cannot end is held in
+  the kernel, not by the app; it was never seen on macOS 27, and closing an ordinary window and quitting passes on the
+  runner. The restoration test now quits with the restored window open; check it on a real macOS 26 Mac before
+  release (N14). When the app is killed outright, the server sees stdin close and stops itself,
   releasing the lock (checked on a real build).
+- **A UI test never leaves the pointer on a window's title-bar buttons (PR #58).** On GitHub's 1024 × 768 runner every
+  main window opens at x 0 and a player's window (920 points wide) centred at x 52, so a click on the player window's
+  close button leaves the pointer exactly on the next launch's zoom button. macOS 26 then opens its window-tiling menu
+  over that window (AppKit's ThemeWidgetControlViewService, a popup at layer 101), and the menu takes every key: the
+  app, in front with its window key, receives no ⌘1, ⌘K or ⌘Q until a click closes the menu. testPlayerNoteKeptOnLeaving
+  closed his window that way and quit at once, and the next tests failed at their first key (testPlayerWindows and
+  testSearchToClubWindow here; testPlayerSearchFullPageAudit and the restoration test's ⌘Q on #59). It closes with ⌘W
+  now. After clicking a title-bar button a test closes with the keyboard instead, or moves the pointer off before the
+  next launch (`audit` hovers it to the title bar's middle). If keys stop arriving again, the Debug key log
+  (`-PennantTestLogKeys`, `KeyEquivalentLog.swift`: each key with ⌘ or ⌃, activation and key-window changes) and
+  each setUp's list of the windows on the screen, at every layer, say so.
 - stdout is read with a readability handler, a line at a time: `FileHandle.bytes.lines` held the ready line back until
   the pipe closed.
 - `server.log` rotates at 5 MB and keeps three older files; the token and keys are never written (the handshake is on
@@ -2240,7 +2421,7 @@ sizes, not dates.
 | **N9** | Clubhouse tools | Lineup, pitching availability, depth chart, schedule and game plans, trends (Charts), 40-man and options, rosters | 3 |
 | **N10** | Farm & Development | Server: farm copy, Prospects words and Development movers moved. App: Overview, Organization, Affiliates, Assignments, Decision, Prospects, Development tracking | 5 |
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
-| **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon; Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
+| **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
 | **N13** | AI surfaces, native | Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
 | **N14** | macOS integration and release | App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
@@ -2541,6 +2722,11 @@ owner's calls listed in D-069.
 
 **N11 (2026-10-04)** on `feature/swiftui-n11-player`: the player window and Compare, server and Mac (section 3.1, "As built at
 N11"; D-070), with the OSA mark drawn wherever a grade is shown and PennantKit's live-pipe test made deterministic.
+
+**N12, Track B (2026-10-06)** on `feature/swiftui-n12-league`: League Office (Standings with the odds and posture only
+there, Leaders, Org Comparison, Franchise History, Us vs Them) and Scouting (Draft Board, Player Search), server and
+Mac (section 3.5, "As built at N12 (Track B)"; D-072), and the palette test's intermittent audit finding made
+deterministic.
 
 **N12, Track C (2026-10-06)** on `feature/swiftui-n12-trades`: Trades and Philosophy & Staff, server and Mac (section 3.5,
 "As built at N12, Track C"; D-073). Left open: a staff window, and the philosophy's staff-driven modes.

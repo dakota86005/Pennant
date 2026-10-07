@@ -112,9 +112,9 @@ struct ProspectsBoard: View {
                     systemImage: "line.3.horizontal.decrease.circle",
                     choices: view.filters.map { (id: $0.id, text: Text(verbatim: $0.label)) },
                     current: Text(verbatim: view.filters.first { $0.id == filter }?.label ?? ""),
-                    selection: $filter
+                    selection: $filter,
+                    id: "farm.filter.prospects"
                 )
-                .accessibilityIdentifier("farm.filter.prospects")
                 LevelPicker(levels: view.levels, selection: Binding(get: { levelStored.isEmpty ? nil : levelStored }, set: { levelStored = $0 ?? "" }))
             }
         }

@@ -74,6 +74,12 @@ public final class AppModel {
     public private(set) var majorLeague: MajorLeagueStore
     /// Major League Ops' clubhouse tools (`ClubhouseStore`, N9), loaded on `storeKey`.
     public private(set) var clubhouse: ClubhouseStore
+    /// Finance's and Medical's views (`OfficeStore`, N12), loaded on `storeKey`.
+    public private(set) var office: OfficeStore
+    /// League Office's views (`LeagueOfficeStore`, N12 Track B), loaded on `storeKey`.
+    public private(set) var leagueOffice: LeagueOfficeStore
+    /// Scouting's views (`ScoutingStore`, N12 Track B), loaded on `storeKey`.
+    public private(set) var scouting: ScoutingStore
     /// The player windows and Compare (N11): each player's dossier, the GM's notes, comparisons.
     public private(set) var players: PlayerStore
     /// Trades (`TradesStore`, N12 Track C): the Trade Desk, the deal on the builder and the optional AI desk.
@@ -144,6 +150,9 @@ public final class AppModel {
         farm = FarmStore { line in log.write(line, source: "app") }
         majorLeague = MajorLeagueStore { line in log.write(line, source: "app") }
         clubhouse = ClubhouseStore { line in log.write(line, source: "app") }
+        office = OfficeStore { line in log.write(line, source: "app") }
+        leagueOffice = LeagueOfficeStore { line in log.write(line, source: "app") }
+        scouting = ScoutingStore { line in log.write(line, source: "app") }
         players = PlayerStore { line in log.write(line, source: "app") }
         trades = TradesStore { line in log.write(line, source: "app") }
         philosophy = PhilosophyStore { line in log.write(line, source: "app") }
@@ -170,6 +179,9 @@ public final class AppModel {
         majorLeague: MajorLeagueStore? = nil,
         clubhouse: ClubhouseStore? = nil,
         players: PlayerStore? = nil,
+        office: OfficeStore? = nil,
+        leagueOffice: LeagueOfficeStore? = nil,
+        scouting: ScoutingStore? = nil,
         trades: TradesStore? = nil,
         philosophy: PhilosophyStore? = nil
     ) -> AppModel {
@@ -198,6 +210,18 @@ public final class AppModel {
             clubhouse.previewAdopt(model.storeKey)
         }
         if let players { model.players = players }
+        if let office {
+            model.office = office
+            office.previewAdopt(model.storeKey)
+        }
+        if let leagueOffice {
+            model.leagueOffice = leagueOffice
+            leagueOffice.previewAdopt(model.storeKey)
+        }
+        if let scouting {
+            model.scouting = scouting
+            scouting.previewAdopt(model.storeKey)
+        }
         if let trades { model.trades = trades }
         if let philosophy { model.philosophy = philosophy }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
@@ -770,6 +794,9 @@ public final class AppModel {
         if let served = next.reportStamp, served != reportStamp { reportStamp = served }
         majorLeague.follow(storeKey)
         clubhouse.follow(storeKey)
+        office.follow(storeKey)
+        leagueOffice.follow(storeKey)
+        scouting.follow(storeKey)
         trades.follow(storeKey)
         philosophy.follow(storeKey)
         let stamp = next.lastImport?.finishedAt ?? ""
@@ -834,6 +861,9 @@ public final class AppModel {
         // Another save or club: Major League Ops drops what it holds at once (never another club's view)
         majorLeague.follow(storeKey)
         clubhouse.follow(storeKey)
+        office.follow(storeKey)
+        leagueOffice.follow(storeKey)
+        scouting.follow(storeKey)
         trades.follow(storeKey)
         philosophy.follow(storeKey)
         if storeKey != nil, !loggedKey {

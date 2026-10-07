@@ -1,0 +1,796 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Free Agents"
+  },
+  "byline": {
+    "display": "Prepared by the front office · Through May 6, 2040"
+  },
+  "bylineParts": [
+    {
+      "display": "Prepared by the front office"
+    },
+    {
+      "display": "Through May 6, 2040",
+      "hint": "The last game day in the imported export"
+    }
+  ],
+  "lede": {
+    "text": "What each player is expected to produce, and what that costs on this league's market",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Figures are the most likely value with the range they could be; the range is in each figure's help tag."
+        },
+        {
+          "label": "Order",
+          "value": "Ordered by expected wins next season, most likely, most first; players whose production is not known come last."
+        }
+      ],
+      "source": {
+        "department": "finance",
+        "specialist": "Player Value",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "freshness": {
+    "text": "As of May 6, 2040 · Not checked against your save",
+    "tone": "unknown",
+    "basis": {
+      "because": [
+        {
+          "label": "How current",
+          "value": "Pennant's copy of the league is from May 6, 2040. It couldn't find your OOTP save to compare dates with, so it can't tell whether the export is current: service time, control and the figures built on them are read as the export states them."
+        }
+      ],
+      "source": {
+        "department": "finance",
+        "specialist": "Player Value",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Exporting the database from OOTP again and importing it."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "cards": [
+    {
+      "text": "Budget",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Budget",
+            "value": "$150.0M"
+          },
+          {
+            "label": "Source",
+            "value": "team_financials.budget"
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Club Finances",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 150000000,
+        "unit": "dollars",
+        "display": "$150.0M"
+      }
+    },
+    {
+      "text": "Payroll now",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Payroll now",
+            "value": "$90.0M"
+          },
+          {
+            "label": "Source",
+            "value": "team_financials.player_payroll"
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Club Finances",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 90000000,
+        "unit": "dollars",
+        "display": "$90.0M"
+      }
+    },
+    {
+      "text": "Room now",
+      "tone": "good",
+      "basis": {
+        "because": [
+          {
+            "label": "How it is read",
+            "value": "The budget less the payroll now, both as the export states them."
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Club Finances",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 60000000,
+        "unit": "dollars",
+        "display": "$60.0M"
+      }
+    },
+    {
+      "text": "Payroll next season",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Payroll next season",
+            "value": "$60.0M"
+          },
+          {
+            "label": "Source",
+            "value": "team_financials.player_payroll_next_season — OOTP's own estimate of next season's payroll."
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Club Finances",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "OOTP's estimate",
+      "value": {
+        "n": 60000000,
+        "unit": "dollars",
+        "display": "$60.0M"
+      }
+    },
+    {
+      "text": "Room next season",
+      "tone": "good",
+      "basis": {
+        "because": [
+          {
+            "label": "How it is read",
+            "value": "The budget less OOTP's estimate of next season's payroll, both as the export states them."
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Club Finances",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 90000000,
+        "unit": "dollars",
+        "display": "$90.0M"
+      }
+    },
+    {
+      "text": "Cash for trades",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Cash for trades",
+            "value": "$5.0M"
+          },
+          {
+            "label": "Source",
+            "value": "team_financials.cash_trades_available — The cash a club can move in trades; `cash` is exported as zero for every club and is never read (R-7)."
+          }
+        ],
+        "source": {
+          "department": "finance",
+          "specialist": "Club Finances",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "value": {
+        "n": 5000000,
+        "unit": "dollars",
+        "display": "$5.0M"
+      }
+    }
+  ],
+  "price": null,
+  "needs": {
+    "text": "Your thinnest positions: C (best: P 1012, 0.1 wins) · 1B (best: P 1006, 0.2 wins) · 2B (best: P 1001, 0.2 wins) · not known at RF",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "What it is",
+          "value": "Your positions whose best player is expected to add the fewest wins for the rest of this season, from Pennant's projections. It says where your roster is thin, not who to sign: fit and role are yours to judge."
+        },
+        {
+          "label": "How it is read",
+          "value": "Each position's best player by his expected wins for the rest of this season (the whole of it before it starts), most likely, from Player Value's production; the club's major-league position players by their listed position. A position whose players' production isn't established, or with nobody listed there, is named apart and never counted as zero."
+        },
+        {
+          "label": "C",
+          "value": "P 1012, 0.1 wins"
+        },
+        {
+          "label": "1B",
+          "value": "P 1006, 0.2 wins"
+        },
+        {
+          "label": "2B",
+          "value": "P 1001, 0.2 wins"
+        },
+        {
+          "label": "3B",
+          "value": "P 1000, 0.4 wins"
+        },
+        {
+          "label": "LF",
+          "value": "P 1007, 0.6 wins"
+        },
+        {
+          "label": "SS",
+          "value": "P 1003, 0.8 wins"
+        },
+        {
+          "label": "CF",
+          "value": "P 1005, 0.9 wins"
+        },
+        {
+          "label": "RF",
+          "value": "Nobody valued there"
+        }
+      ],
+      "source": {
+        "department": "finance",
+        "specialist": "Player Value",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [
+        "Nobody at RF has production established."
+      ],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "The three positions whose best player is expected to add the fewest wins"
+    },
+    "links": []
+  },
+  "lists": [
+    {
+      "id": "available",
+      "title": {
+        "display": "Available now"
+      },
+      "count": 0,
+      "explain": {
+        "text": "Available now",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Who is listed",
+              "value": "Players no club holds, who last played in this league: free to sign today."
+            },
+            {
+              "label": "Order",
+              "value": "Ordered by expected wins next season, most likely, most first; players whose production is not known come last."
+            },
+            {
+              "label": "Player",
+              "value": "Every name opens his own window."
+            },
+            {
+              "label": "Age",
+              "value": "His age as the export states it."
+            },
+            {
+              "label": "Scouted",
+              "value": "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
+            },
+            {
+              "label": "2040 wins",
+              "value": "His projected wins above replacement (WAR) for the rest of 2040 (the whole of it before it starts), most likely, with the range it could be. It rests on his major-league record and his scouted tools, and on how much he has played."
+            },
+            {
+              "label": "2041 wins",
+              "value": "His projected wins above replacement (WAR) in 2041, most likely, with the range it could be. A player whose production can't be projected says why and sorts last."
+            },
+            {
+              "label": "2041 at the market",
+              "value": "What this league's market pays for a season of his expected play in 2041: the league minimum plus his projected wins × what a win costs here. Most likely, with the range it could be. It isn't his asking price or an offer, and it isn't what he's worth to your club: fit, need and budget are yours to weigh. Below the minimum means he is expected to play below a replacement-level player."
+            },
+            {
+              "label": "2040 salary",
+              "value": "What he's paid this season by his current club, as the export states it."
+            }
+          ],
+          "source": {
+            "department": "finance",
+            "specialist": "Player Rights, through Player Value",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [
+            "This export doesn't say which league a free agent last played in, so the players available now can't be listed."
+          ],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "note": null,
+      "order": null,
+      "filters": [],
+      "table": {
+        "columns": [
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "position",
+            "title": {
+              "display": "Pos"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false,
+            "sortable": true,
+            "hidden": true
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "scouted",
+            "title": {
+              "display": "Scouted",
+              "hint": "Now → ceiling, your scouts' grades"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "winsNow",
+            "title": {
+              "display": "2040 wins"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "winsNext",
+            "title": {
+              "display": "2041 wins"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "market",
+            "title": {
+              "display": "2041 at the market"
+            },
+            "numeric": true,
+            "sortable": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "This export doesn't say which league a free agent last played in, so the players available now can't be listed."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
+        }
+      }
+    },
+    {
+      "id": "upcoming",
+      "title": {
+        "display": "Free agents after 2040"
+      },
+      "count": 0,
+      "explain": {
+        "text": "Free agents after 2040",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Who is listed",
+              "value": "Players around the league whose club's control ends after this season: they reach the market this winter. Players the club still controls through arbitration or renewal aren't here."
+            },
+            {
+              "label": "Order",
+              "value": "Ordered by expected wins next season, most likely, most first; players whose production is not known come last."
+            },
+            {
+              "label": "Player",
+              "value": "Every name opens his own window."
+            },
+            {
+              "label": "Age",
+              "value": "His age as the export states it."
+            },
+            {
+              "label": "Scouted",
+              "value": "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
+            },
+            {
+              "label": "2040 wins",
+              "value": "His projected wins above replacement (WAR) for the rest of 2040 (the whole of it before it starts), most likely, with the range it could be. It rests on his major-league record and his scouted tools, and on how much he has played."
+            },
+            {
+              "label": "2041 wins",
+              "value": "His projected wins above replacement (WAR) in 2041, most likely, with the range it could be. A player whose production can't be projected says why and sorts last."
+            },
+            {
+              "label": "2041 at the market",
+              "value": "What this league's market pays for a season of his expected play in 2041: the league minimum plus his projected wins × what a win costs here. Most likely, with the range it could be. It isn't his asking price or an offer, and it isn't what he's worth to your club: fit, need and budget are yours to weigh. Below the minimum means he is expected to play below a replacement-level player."
+            },
+            {
+              "label": "2040 salary",
+              "value": "What he's paid this season by his current club, as the export states it."
+            }
+          ],
+          "source": {
+            "department": "finance",
+            "specialist": "Player Rights, through Player Value",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "note": null,
+      "order": null,
+      "filters": [],
+      "table": {
+        "columns": [
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "position",
+            "title": {
+              "display": "Pos"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "scouted",
+            "title": {
+              "display": "Scouted",
+              "hint": "Now → ceiling, your scouts' grades"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "winsNow",
+            "title": {
+              "display": "2040 wins"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "winsNext",
+            "title": {
+              "display": "2041 wins"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "market",
+            "title": {
+              "display": "2041 at the market"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "salary",
+            "title": {
+              "display": "2040 salary"
+            },
+            "numeric": true,
+            "sortable": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "No free agents are set to reach the market after 2040."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
+        }
+      }
+    },
+    {
+      "id": "mightReach",
+      "title": {
+        "display": "Might reach the market"
+      },
+      "count": 0,
+      "explain": {
+        "text": "Might reach the market",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Who is listed",
+              "value": "Players around the league who could reach the market after this season or stay: an option or opt-out that would make him a free agent if it's declined, or a season the save can't settle yet. They aren't counted with the free agents, and a player his club keeps whichever way it goes isn't here."
+            },
+            {
+              "label": "Order",
+              "value": "Ordered by expected wins next season, most likely, most first; players whose production is not known come last."
+            },
+            {
+              "label": "Player",
+              "value": "Every name opens his own window."
+            },
+            {
+              "label": "Age",
+              "value": "His age as the export states it."
+            },
+            {
+              "label": "Scouted",
+              "value": "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
+            },
+            {
+              "label": "2040 wins",
+              "value": "His projected wins above replacement (WAR) for the rest of 2040 (the whole of it before it starts), most likely, with the range it could be. It rests on his major-league record and his scouted tools, and on how much he has played."
+            },
+            {
+              "label": "2041 wins",
+              "value": "His projected wins above replacement (WAR) in 2041, most likely, with the range it could be. A player whose production can't be projected says why and sorts last."
+            },
+            {
+              "label": "2041 at the market",
+              "value": "What this league's market pays for a season of his expected play in 2041: the league minimum plus his projected wins × what a win costs here. Most likely, with the range it could be. It isn't his asking price or an offer, and it isn't what he's worth to your club: fit, need and budget are yours to weigh. Below the minimum means he is expected to play below a replacement-level player."
+            },
+            {
+              "label": "2040 salary",
+              "value": "What he's paid this season by his current club, as the export states it."
+            }
+          ],
+          "source": {
+            "department": "finance",
+            "specialist": "Player Rights, through Player Value",
+            "asOf": null,
+            "gameDate": "2040-05-05"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "note": null,
+      "order": null,
+      "filters": [],
+      "table": {
+        "columns": [
+          {
+            "id": "player",
+            "title": {
+              "display": "Player"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "position",
+            "title": {
+              "display": "Pos"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "why",
+            "title": {
+              "display": "Why"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "club",
+            "title": {
+              "display": "Club"
+            },
+            "numeric": false,
+            "sortable": true
+          },
+          {
+            "id": "age",
+            "title": {
+              "display": "Age"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "scouted",
+            "title": {
+              "display": "Scouted",
+              "hint": "Now → ceiling, your scouts' grades"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "winsNow",
+            "title": {
+              "display": "2040 wins"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "winsNext",
+            "title": {
+              "display": "2041 wins"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "market",
+            "title": {
+              "display": "2041 at the market"
+            },
+            "numeric": true,
+            "sortable": true
+          },
+          {
+            "id": "salary",
+            "title": {
+              "display": "2040 salary"
+            },
+            "numeric": true,
+            "sortable": true
+          }
+        ],
+        "rows": [],
+        "empty": {
+          "display": "Nobody else could reach the market after 2040."
+        },
+        "noneKept": {
+          "display": "No players match these filters."
+        },
+        "choose": {
+          "display": "Select a row to see more."
+        }
+      }
+    }
+  ],
+  "opensOn": "available"
+}

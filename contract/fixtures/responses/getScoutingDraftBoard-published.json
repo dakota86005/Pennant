@@ -1,0 +1,1887 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "title": {
+    "display": "Draft Board"
+  },
+  "lede": {
+    "text": "This year's class in the scouting staff's order: ceiling first, then now",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "How to read it",
+          "value": "Every draft-eligible player our scouts have graded all the way to a ceiling, in the scouting staff's order: the highest ceiling first, then the best now. It is the staff's view of the class, never an order to draft anyone, and every grade on an amateur rests on the few looks the staff has had. The class shows only once OOTP publishes it. The read beside a name is the kind of prospect the staff reads him as, on stated lines: a ceiling of 55 or more with 15 or more still to come is a high ceiling with a long wait; within 8 of his ceiling and 45 or more now is close to ready; a ceiling of 52 or more is an everyday regular's; any other ceiling of 45 or more is a depth piece. A prospect whose grade now isn't known is read on his ceiling alone, and the read says so. Under 45, the staff gives no read. Select a player for his reasons."
+        }
+      ],
+      "source": {
+        "department": "scouting",
+        "specialist": "The scouting staff's draft board",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "policy",
+      "called": "A line chosen and stated",
+      "stamp": "How the staff reads it: stated, not fitted"
+    },
+    "links": []
+  },
+  "yardsticks": null,
+  "published": true,
+  "notShown": null,
+  "calendar": {
+    "columns": [
+      {
+        "id": "event",
+        "title": {
+          "display": "Event"
+        },
+        "numeric": false,
+        "sortable": true
+      },
+      {
+        "id": "date",
+        "title": {
+          "display": "Date"
+        },
+        "numeric": true,
+        "sortable": true
+      }
+    ],
+    "rows": [
+      {
+        "id": "calendar.draft",
+        "cells": {
+          "event": {
+            "display": "Draft day"
+          },
+          "date": {
+            "display": "July 10, 2040"
+          }
+        },
+        "sort": {
+          "event": 0,
+          "date": 20400710
+        },
+        "player": null,
+        "detail": [],
+        "actions": []
+      }
+    ],
+    "empty": {
+      "display": "The export dates none of the draft's calendar."
+    }
+  },
+  "summary": {
+    "text": "28 draft-eligible players. Draft day is July 10, 65 days out, 20 rounds.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "The class",
+          "value": "The players OOTP marks eligible for this league's draft and not yet drafted."
+        },
+        {
+          "label": "On the board",
+          "value": "26 players our scouts have graded all the way to a ceiling, in the scouting staff's order: ceiling first, then now."
+        },
+        {
+          "label": "Today",
+          "value": "May 6, 2040"
+        }
+      ],
+      "source": {
+        "department": "scouting",
+        "specialist": "The scouting staff's draft board",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "leftOut": {
+    "display": "Not on the board: 1 already drafted, 1 in another league's draft, 2 with no full scouted ceiling.",
+    "hint": "A ceiling counts only when our scouts have graded every tool"
+  },
+  "shortLists": [
+    {
+      "title": {
+        "display": "Best available"
+      },
+      "player": null,
+      "chips": [],
+      "claims": [
+        {
+          "text": "The top five on the board, in the staff's order",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "The order",
+                "value": "The highest scouted ceiling first, then the best now: the scouting staff's view of the class, never an order to draft anyone."
+              },
+              {
+                "label": "The staff",
+                "value": "Best available is the stronger idea of the two lists. Every grade on an amateur rests on the few looks the staff has had, so treat the order as rough."
+              }
+            ],
+            "source": {
+              "department": "scouting",
+              "specialist": "The scouting staff's draft board",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "The scouting staff's lines: stated, not fitted"
+          },
+          "links": []
+        }
+      ],
+      "lines": [
+        {
+          "text": {
+            "display": "1. Draft Kid27, P · 44 → 61 · High ceiling, long wait"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90027,
+              "name": "Draft Kid27",
+              "open": {
+                "kind": "player",
+                "playerId": 90027
+              }
+            }
+          ]
+        },
+        {
+          "text": {
+            "display": "2. Draft Kid24, P · 43 → 60 · High ceiling, long wait"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90024,
+              "name": "Draft Kid24",
+              "open": {
+                "kind": "player",
+                "playerId": 90024
+              }
+            }
+          ]
+        },
+        {
+          "text": {
+            "display": "3. Draft Kid21, P · 42 → 59 · High ceiling, long wait"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90021,
+              "name": "Draft Kid21",
+              "open": {
+                "kind": "player",
+                "playerId": 90021
+              }
+            }
+          ]
+        },
+        {
+          "text": {
+            "display": "4. Draft Kid23, LF · 42 → 58 · High ceiling, long wait"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90023,
+              "name": "Draft Kid23",
+              "open": {
+                "kind": "player",
+                "playerId": 90023
+              }
+            }
+          ]
+        },
+        {
+          "text": {
+            "display": "5. Draft Kid25, RF · 42 → 58 · High ceiling, long wait"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90025,
+              "name": "Draft Kid25",
+              "open": {
+                "kind": "player",
+                "playerId": 90025
+              }
+            }
+          ]
+        }
+      ],
+      "collapsed": false
+    },
+    {
+      "title": {
+        "display": "Best at your thinnest spots (C, 1B, 2B)"
+      },
+      "player": null,
+      "chips": [],
+      "claims": [
+        {
+          "text": "Your thinnest spots today: C, 1B, 2B",
+          "tone": "neutral",
+          "basis": {
+            "because": [
+              {
+                "label": "C",
+                "value": "P 1012, about 0.1 wins expected this season, is the club's best there."
+              },
+              {
+                "label": "1B",
+                "value": "P 1006, about 0.2 wins expected this season, is the club's best there."
+              },
+              {
+                "label": "2B",
+                "value": "P 1001, about 0.2 wins expected this season, is the club's best there."
+              },
+              {
+                "label": "How it is read",
+                "value": "Each position's best player by his expected wins for the rest of this season (the whole of it before it starts), most likely, from Player Value's production; the club's major-league position players by their listed position. A position whose players' production isn't established, or with nobody listed there, is named apart and never counted as zero."
+              },
+              {
+                "label": "The staff",
+                "value": "Drafting for a hole is the weaker idea and is offered second on purpose: a pick taken today is years from the majors, and the spot you are thin at now is rarely the one you will be short of when he arrives."
+              }
+            ],
+            "source": {
+              "department": "scouting",
+              "specialist": "The scouting staff's draft board",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "policy",
+            "called": "A line chosen and stated",
+            "stamp": "The scouting staff's lines: stated, not fitted"
+          },
+          "links": []
+        }
+      ],
+      "lines": [
+        {
+          "text": {
+            "display": "8. Draft Kid19, 1B · 41 → 57"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90019,
+              "name": "Draft Kid19",
+              "open": {
+                "kind": "player",
+                "playerId": 90019
+              }
+            }
+          ]
+        },
+        {
+          "text": {
+            "display": "9. Draft Kid20, 2B · 41 → 57"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90020,
+              "name": "Draft Kid20",
+              "open": {
+                "kind": "player",
+                "playerId": 90020
+              }
+            }
+          ]
+        },
+        {
+          "text": {
+            "display": "18. Draft Kid10, 1B · 39 → 55"
+          },
+          "quiet": false,
+          "chips": [],
+          "players": [
+            {
+              "playerId": 90010,
+              "name": "Draft Kid10",
+              "open": {
+                "kind": "player",
+                "playerId": 90010
+              }
+            }
+          ]
+        }
+      ],
+      "collapsed": false
+    }
+  ],
+  "filters": [
+    {
+      "id": "position",
+      "title": {
+        "display": "Position"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "All positions"
+          },
+          "selected": true,
+          "value": "all"
+        },
+        {
+          "text": {
+            "display": "Catchers"
+          },
+          "selected": false,
+          "value": "C"
+        },
+        {
+          "text": {
+            "display": "Infielders"
+          },
+          "selected": false,
+          "value": "IF"
+        },
+        {
+          "text": {
+            "display": "Outfielders"
+          },
+          "selected": false,
+          "value": "OF"
+        },
+        {
+          "text": {
+            "display": "Pitchers"
+          },
+          "selected": false,
+          "value": "P"
+        }
+      ]
+    },
+    {
+      "id": "school",
+      "title": {
+        "display": "From"
+      },
+      "choices": [
+        {
+          "text": {
+            "display": "High school and college"
+          },
+          "selected": true,
+          "value": "all"
+        },
+        {
+          "text": {
+            "display": "High school"
+          },
+          "selected": false,
+          "value": "HS"
+        },
+        {
+          "text": {
+            "display": "College"
+          },
+          "selected": false,
+          "value": "college"
+        }
+      ]
+    }
+  ],
+  "query": {
+    "position": "all",
+    "school": "all",
+    "all": false
+  },
+  "count": {
+    "display": "26 prospects on the board, in the staff's order"
+  },
+  "more": null,
+  "board": {
+    "columns": [
+      {
+        "id": "board",
+        "title": {
+          "display": "Board",
+          "hint": "The scouting staff's order: ceiling, then now"
+        },
+        "numeric": true,
+        "sortable": true
+      },
+      {
+        "id": "player",
+        "title": {
+          "display": "Player"
+        },
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
+      },
+      {
+        "id": "age",
+        "title": {
+          "display": "Age"
+        },
+        "numeric": true,
+        "sortable": true
+      },
+      {
+        "id": "position",
+        "title": {
+          "display": "Pos"
+        },
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
+      },
+      {
+        "id": "bt",
+        "title": {
+          "display": "B/T",
+          "hint": "Bats / throws"
+        },
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
+      },
+      {
+        "id": "school",
+        "title": {
+          "display": "From"
+        },
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
+      },
+      {
+        "id": "current",
+        "title": {
+          "display": "Now",
+          "hint": "Our scouts' grade now, on the 20–80 scale"
+        },
+        "numeric": true,
+        "sortable": true
+      },
+      {
+        "id": "ceiling",
+        "title": {
+          "display": "Ceiling",
+          "hint": "Our scouts' grade at his ceiling, on the 20–80 scale"
+        },
+        "numeric": true,
+        "sortable": true
+      },
+      {
+        "id": "upside",
+        "title": {
+          "display": "Upside",
+          "hint": "Ceiling minus now: the projection still to happen"
+        },
+        "numeric": true,
+        "sortable": true
+      },
+      {
+        "id": "read",
+        "title": {
+          "display": "Read",
+          "hint": "The kind of prospect the scouting staff reads him as"
+        },
+        "numeric": false,
+        "sortable": true,
+        "byWords": true
+      }
+    ],
+    "rows": [
+      {
+        "id": "prospect-90027",
+        "cells": {
+          "board": {
+            "display": "1"
+          },
+          "player": {
+            "display": "Draft Kid27"
+          },
+          "age": {
+            "display": "20"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "44"
+          },
+          "ceiling": {
+            "display": "61"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 1,
+          "age": 20,
+          "current": 44,
+          "ceiling": 61,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90027,
+          "name": "Draft Kid27",
+          "open": {
+            "kind": "player",
+            "playerId": 90027
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90024",
+        "cells": {
+          "board": {
+            "display": "2"
+          },
+          "player": {
+            "display": "Draft Kid24"
+          },
+          "age": {
+            "display": "17"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "43"
+          },
+          "ceiling": {
+            "display": "60"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 2,
+          "age": 17,
+          "current": 43,
+          "ceiling": 60,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90024,
+          "name": "Draft Kid24",
+          "open": {
+            "kind": "player",
+            "playerId": 90024
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90021",
+        "cells": {
+          "board": {
+            "display": "3"
+          },
+          "player": {
+            "display": "Draft Kid21"
+          },
+          "age": {
+            "display": "20"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "42"
+          },
+          "ceiling": {
+            "display": "59"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 3,
+          "age": 20,
+          "current": 42,
+          "ceiling": 59,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90021,
+          "name": "Draft Kid21",
+          "open": {
+            "kind": "player",
+            "playerId": 90021
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90023",
+        "cells": {
+          "board": {
+            "display": "4"
+          },
+          "player": {
+            "display": "Draft Kid23"
+          },
+          "age": {
+            "display": "22"
+          },
+          "position": {
+            "display": "LF"
+          },
+          "bt": {
+            "display": "S/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "42"
+          },
+          "ceiling": {
+            "display": "58"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 4,
+          "age": 22,
+          "current": 42,
+          "ceiling": 58,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90023,
+          "name": "Draft Kid23",
+          "open": {
+            "kind": "player",
+            "playerId": 90023
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90025",
+        "cells": {
+          "board": {
+            "display": "5"
+          },
+          "player": {
+            "display": "Draft Kid25"
+          },
+          "age": {
+            "display": "18"
+          },
+          "position": {
+            "display": "RF"
+          },
+          "bt": {
+            "display": "L/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "42"
+          },
+          "ceiling": {
+            "display": "58"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 5,
+          "age": 18,
+          "current": 42,
+          "ceiling": 58,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90025,
+          "name": "Draft Kid25",
+          "open": {
+            "kind": "player",
+            "playerId": 90025
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90026",
+        "cells": {
+          "board": {
+            "display": "6"
+          },
+          "player": {
+            "display": "Draft Kid26"
+          },
+          "age": {
+            "display": "19"
+          },
+          "position": {
+            "display": "DH"
+          },
+          "bt": {
+            "display": "S/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "42"
+          },
+          "ceiling": {
+            "display": "58"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 6,
+          "age": 19,
+          "current": 42,
+          "ceiling": 58,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90026,
+          "name": "Draft Kid26",
+          "open": {
+            "kind": "player",
+            "playerId": 90026
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90018",
+        "cells": {
+          "board": {
+            "display": "7"
+          },
+          "player": {
+            "display": "Draft Kid18"
+          },
+          "age": {
+            "display": "17"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "41"
+          },
+          "ceiling": {
+            "display": "58"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 7,
+          "age": 17,
+          "current": 41,
+          "ceiling": 58,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90018,
+          "name": "Draft Kid18",
+          "open": {
+            "kind": "player",
+            "playerId": 90018
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90019",
+        "cells": {
+          "board": {
+            "display": "8"
+          },
+          "player": {
+            "display": "Draft Kid19"
+          },
+          "age": {
+            "display": "18"
+          },
+          "position": {
+            "display": "1B"
+          },
+          "bt": {
+            "display": "L/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "41"
+          },
+          "ceiling": {
+            "display": "57"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 8,
+          "age": 18,
+          "current": 41,
+          "ceiling": 57,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90019,
+          "name": "Draft Kid19",
+          "open": {
+            "kind": "player",
+            "playerId": 90019
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90020",
+        "cells": {
+          "board": {
+            "display": "9"
+          },
+          "player": {
+            "display": "Draft Kid20"
+          },
+          "age": {
+            "display": "19"
+          },
+          "position": {
+            "display": "2B"
+          },
+          "bt": {
+            "display": "S/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "41"
+          },
+          "ceiling": {
+            "display": "57"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 9,
+          "age": 19,
+          "current": 41,
+          "ceiling": 57,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90020,
+          "name": "Draft Kid20",
+          "open": {
+            "kind": "player",
+            "playerId": 90020
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90022",
+        "cells": {
+          "board": {
+            "display": "10"
+          },
+          "player": {
+            "display": "Draft Kid22"
+          },
+          "age": {
+            "display": "21"
+          },
+          "position": {
+            "display": "SS"
+          },
+          "bt": {
+            "display": "L/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "41"
+          },
+          "ceiling": {
+            "display": "57"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 10,
+          "age": 21,
+          "current": 41,
+          "ceiling": 57,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90022,
+          "name": "Draft Kid22",
+          "open": {
+            "kind": "player",
+            "playerId": 90022
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90015",
+        "cells": {
+          "board": {
+            "display": "11"
+          },
+          "player": {
+            "display": "Draft Kid15"
+          },
+          "age": {
+            "display": "20"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "40"
+          },
+          "ceiling": {
+            "display": "57"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 11,
+          "age": 20,
+          "current": 40,
+          "ceiling": 57,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90015,
+          "name": "Draft Kid15",
+          "open": {
+            "kind": "player",
+            "playerId": 90015
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90013",
+        "cells": {
+          "board": {
+            "display": "12"
+          },
+          "player": {
+            "display": "Draft Kid13"
+          },
+          "age": {
+            "display": "18"
+          },
+          "position": {
+            "display": "SS"
+          },
+          "bt": {
+            "display": "L/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "40"
+          },
+          "ceiling": {
+            "display": "56"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 12,
+          "age": 18,
+          "current": 40,
+          "ceiling": 56,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90013,
+          "name": "Draft Kid13",
+          "open": {
+            "kind": "player",
+            "playerId": 90013
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90014",
+        "cells": {
+          "board": {
+            "display": "13"
+          },
+          "player": {
+            "display": "Draft Kid14"
+          },
+          "age": {
+            "display": "19"
+          },
+          "position": {
+            "display": "LF"
+          },
+          "bt": {
+            "display": "S/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "40"
+          },
+          "ceiling": {
+            "display": "56"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 13,
+          "age": 19,
+          "current": 40,
+          "ceiling": 56,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90014,
+          "name": "Draft Kid14",
+          "open": {
+            "kind": "player",
+            "playerId": 90014
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90016",
+        "cells": {
+          "board": {
+            "display": "14"
+          },
+          "player": {
+            "display": "Draft Kid16"
+          },
+          "age": {
+            "display": "21"
+          },
+          "position": {
+            "display": "RF"
+          },
+          "bt": {
+            "display": "L/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "40"
+          },
+          "ceiling": {
+            "display": "56"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 14,
+          "age": 21,
+          "current": 40,
+          "ceiling": 56,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90016,
+          "name": "Draft Kid16",
+          "open": {
+            "kind": "player",
+            "playerId": 90016
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90017",
+        "cells": {
+          "board": {
+            "display": "15"
+          },
+          "player": {
+            "display": "Draft Kid17"
+          },
+          "age": {
+            "display": "22"
+          },
+          "position": {
+            "display": "DH"
+          },
+          "bt": {
+            "display": "S/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "40"
+          },
+          "ceiling": {
+            "display": "56"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 15,
+          "age": 22,
+          "current": 40,
+          "ceiling": 56,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90017,
+          "name": "Draft Kid17",
+          "open": {
+            "kind": "player",
+            "playerId": 90017
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90012",
+        "cells": {
+          "board": {
+            "display": "16"
+          },
+          "player": {
+            "display": "Draft Kid12"
+          },
+          "age": {
+            "display": "17"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "39"
+          },
+          "ceiling": {
+            "display": "56"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 16,
+          "age": 17,
+          "current": 39,
+          "ceiling": 56,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90012,
+          "name": "Draft Kid12",
+          "open": {
+            "kind": "player",
+            "playerId": 90012
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90008",
+        "cells": {
+          "board": {
+            "display": "17"
+          },
+          "player": {
+            "display": "Draft Kid8"
+          },
+          "age": {
+            "display": "19"
+          },
+          "position": {
+            "display": "DH"
+          },
+          "bt": {
+            "display": "S/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "39"
+          },
+          "ceiling": {
+            "display": "55"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 17,
+          "age": 19,
+          "current": 39,
+          "ceiling": 55,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90008,
+          "name": "Draft Kid8",
+          "open": {
+            "kind": "player",
+            "playerId": 90008
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90010",
+        "cells": {
+          "board": {
+            "display": "18"
+          },
+          "player": {
+            "display": "Draft Kid10"
+          },
+          "age": {
+            "display": "21"
+          },
+          "position": {
+            "display": "1B"
+          },
+          "bt": {
+            "display": "L/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "39"
+          },
+          "ceiling": {
+            "display": "55"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 18,
+          "age": 21,
+          "current": 39,
+          "ceiling": 55,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90010,
+          "name": "Draft Kid10",
+          "open": {
+            "kind": "player",
+            "playerId": 90010
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90011",
+        "cells": {
+          "board": {
+            "display": "19"
+          },
+          "player": {
+            "display": "Draft Kid11"
+          },
+          "age": {
+            "display": "22"
+          },
+          "position": {
+            "display": "2B"
+          },
+          "bt": {
+            "display": "S/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "39"
+          },
+          "ceiling": {
+            "display": "55"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 19,
+          "age": 22,
+          "current": 39,
+          "ceiling": 55,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90011,
+          "name": "Draft Kid11",
+          "open": {
+            "kind": "player",
+            "playerId": 90011
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90009",
+        "cells": {
+          "board": {
+            "display": "20"
+          },
+          "player": {
+            "display": "Draft Kid9"
+          },
+          "age": {
+            "display": "20"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "38"
+          },
+          "ceiling": {
+            "display": "55"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "High ceiling, long wait"
+          }
+        },
+        "sort": {
+          "board": 20,
+          "age": 20,
+          "current": 38,
+          "ceiling": 55,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90009,
+          "name": "Draft Kid9",
+          "open": {
+            "kind": "player",
+            "playerId": 90009
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90005",
+        "cells": {
+          "board": {
+            "display": "21"
+          },
+          "player": {
+            "display": "Draft Kid5"
+          },
+          "age": {
+            "display": "22"
+          },
+          "position": {
+            "display": "LF"
+          },
+          "bt": {
+            "display": "S/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "38"
+          },
+          "ceiling": {
+            "display": "54"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "Everyday-regular ceiling"
+          }
+        },
+        "sort": {
+          "board": 21,
+          "age": 22,
+          "current": 38,
+          "ceiling": 54,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90005,
+          "name": "Draft Kid5",
+          "open": {
+            "kind": "player",
+            "playerId": 90005
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90007",
+        "cells": {
+          "board": {
+            "display": "22"
+          },
+          "player": {
+            "display": "Draft Kid7"
+          },
+          "age": {
+            "display": "18"
+          },
+          "position": {
+            "display": "RF"
+          },
+          "bt": {
+            "display": "L/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "38"
+          },
+          "ceiling": {
+            "display": "54"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "Everyday-regular ceiling"
+          }
+        },
+        "sort": {
+          "board": 22,
+          "age": 18,
+          "current": 38,
+          "ceiling": 54,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90007,
+          "name": "Draft Kid7",
+          "open": {
+            "kind": "player",
+            "playerId": 90007
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90001",
+        "cells": {
+          "board": {
+            "display": "23"
+          },
+          "player": {
+            "display": "Draft Kid1"
+          },
+          "age": {
+            "display": "18"
+          },
+          "position": {
+            "display": "1B"
+          },
+          "bt": {
+            "display": "L/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "37"
+          },
+          "ceiling": {
+            "display": "53"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "Everyday-regular ceiling"
+          }
+        },
+        "sort": {
+          "board": 23,
+          "age": 18,
+          "current": 37,
+          "ceiling": 53,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90001,
+          "name": "Draft Kid1",
+          "open": {
+            "kind": "player",
+            "playerId": 90001
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90002",
+        "cells": {
+          "board": {
+            "display": "24"
+          },
+          "player": {
+            "display": "Draft Kid2"
+          },
+          "age": {
+            "display": "19"
+          },
+          "position": {
+            "display": "2B"
+          },
+          "bt": {
+            "display": "S/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "37"
+          },
+          "ceiling": {
+            "display": "53"
+          },
+          "upside": {
+            "display": "+16"
+          },
+          "read": {
+            "display": "Everyday-regular ceiling"
+          }
+        },
+        "sort": {
+          "board": 24,
+          "age": 19,
+          "current": 37,
+          "ceiling": 53,
+          "upside": 16
+        },
+        "player": {
+          "playerId": 90002,
+          "name": "Draft Kid2",
+          "open": {
+            "kind": "player",
+            "playerId": 90002
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90003",
+        "cells": {
+          "board": {
+            "display": "25"
+          },
+          "player": {
+            "display": "Draft Kid3"
+          },
+          "age": {
+            "display": "20"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/L"
+          },
+          "school": {
+            "display": "College"
+          },
+          "current": {
+            "display": "Not graded",
+            "tone": "unknown",
+            "hint": "Our scouts haven't graded every tool he has now"
+          },
+          "ceiling": {
+            "display": "53"
+          },
+          "upside": {
+            "display": "Not known",
+            "tone": "unknown",
+            "hint": "Not known until every tool he has now is graded"
+          },
+          "read": {
+            "display": "Everyday-regular ceiling, now not graded"
+          }
+        },
+        "sort": {
+          "board": 25,
+          "age": 20,
+          "current": null,
+          "ceiling": 53,
+          "upside": null
+        },
+        "player": {
+          "playerId": 90003,
+          "name": "Draft Kid3",
+          "open": {
+            "kind": "player",
+            "playerId": 90003
+          }
+        },
+        "detail": [],
+        "actions": []
+      },
+      {
+        "id": "prospect-90000",
+        "cells": {
+          "board": {
+            "display": "26"
+          },
+          "player": {
+            "display": "Draft Kid0"
+          },
+          "age": {
+            "display": "17"
+          },
+          "position": {
+            "display": "P"
+          },
+          "bt": {
+            "display": "R/R"
+          },
+          "school": {
+            "display": "High school"
+          },
+          "current": {
+            "display": "35"
+          },
+          "ceiling": {
+            "display": "52"
+          },
+          "upside": {
+            "display": "+17"
+          },
+          "read": {
+            "display": "Everyday-regular ceiling"
+          }
+        },
+        "sort": {
+          "board": 26,
+          "age": 17,
+          "current": 35,
+          "ceiling": 52,
+          "upside": 17
+        },
+        "player": {
+          "playerId": 90000,
+          "name": "Draft Kid0",
+          "open": {
+            "kind": "player",
+            "playerId": 90000
+          }
+        },
+        "detail": [],
+        "actions": []
+      }
+    ],
+    "empty": {
+      "display": "Nobody in the class has a full scouted ceiling yet."
+    }
+  },
+  "empty": null
+}

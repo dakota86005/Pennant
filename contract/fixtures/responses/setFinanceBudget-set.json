@@ -1,0 +1,10 @@
+{
+  "nextSeasonBudget": 150000000,
+  "done": {
+    "display": "Next season's budget set to $150M; was today's budget held flat",
+    "hint": "A Pennant setting: nothing is written to OOTP"
+  },
+  "undo": {
+    "amount": 0
+  }
+}

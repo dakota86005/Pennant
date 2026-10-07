@@ -208,6 +208,12 @@ nonisolated public enum PreviewFixtures {
         return try? JSONDecoder().decode(type, from: data)
     }
 
+    /// A fuller Finance payload than the contract's synthetic save makes (`contract/fixtures/finance/`, N12).
+    public static func financeFixture<T: Decodable>(_ type: T.Type, _ name: String) -> T? {
+        guard let data = try? Data(contentsOf: repositoryRoot.appending(path: "contract/fixtures/finance/\(name).json")) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
     /// The captured wire and a rival's report (`getWire`, `getClubReport`).
     @MainActor
     public static var league: LeagueStore {
@@ -243,6 +249,56 @@ nonisolated public enum PreviewFixtures {
             roster: decode(Components.Schemas.MlbRostersView.self, "getMajorLeagueRosters"),
             trends: decode(Components.Schemas.MlbSeasonTrendsView.self, "getMajorLeagueSeasonTrends")
         )
+    }
+
+    /// Finance's and Medical's captured views (`getFinance…`, `getMedicalInjuryReport`, N12).
+    @MainActor
+    public static var office: OfficeStore {
+        .preview(
+            payroll: decode(Components.Schemas.FinancePayrollView.self, "getFinancePayroll"),
+            contracts: decode(Components.Schemas.FinanceContractsView.self, "getFinanceContracts"),
+            // The contract's save has no free agent: the fuller payload worded from it with four released (N12)
+            freeAgents: financeFixture(Components.Schemas.FinanceFreeAgentsView.self, "free-agents")
+                ?? decode(Components.Schemas.FinanceFreeAgentsView.self, "getFinanceFreeAgents"),
+            horizon: decode(Components.Schemas.FinanceHorizonView.self, "getFinanceHorizon"),
+            injuries: decode(Components.Schemas.MedicalInjuryReportView.self, "getMedicalInjuryReport"),
+            freeAgentDetails: [freeAgentDetail].compactMap { $0 }
+        )
+    }
+
+    /// The first listed free agent's detail in the fuller Free Agents payload (N12 review, M4: served when his row is chosen).
+    public static var freeAgentDetail: Components.Schemas.FinanceFreeAgentDetail? {
+        financeFixture(Components.Schemas.FinanceFreeAgentDetail.self, "free-agent-detail")
+    }
+
+    /// League Office's captured views (`getLeague…`, N12 Track B): Standings, Leaders, Org Comparison, Franchise History
+    /// and Us vs Them as it opens.
+    @MainActor
+    public static var leagueOffice: LeagueOfficeStore {
+        .preview(
+            standings: decode(Components.Schemas.LeagueStandingsView.self, "getLeagueStandings"),
+            leaders: decode(Components.Schemas.LeagueLeadersView.self, "getLeagueLeaders"),
+            orgComparison: decode(Components.Schemas.LeagueOrgComparisonView.self, "getLeagueOrgComparison"),
+            franchise: decode(Components.Schemas.LeagueFranchiseView.self, "getLeagueFranchiseHistory"),
+            usVsThem: decode(Components.Schemas.LeagueUsVsThemView.self, "getLeagueUsVsThem")
+        )
+    }
+
+    /// Scouting's captured views (`getScouting…`, N12 Track B): the Draft Board on a published class with its first
+    /// prospect's reasons (`getScoutingDraftBoard-published`, `getScoutingDraftProspect`), and Player Search as it opens.
+    @MainActor
+    public static var scouting: ScoutingStore {
+        .preview(
+            draftBoard: decode(Components.Schemas.ScoutingDraftBoardView.self, "getScoutingDraftBoard-published"),
+            prospects: [decode(Components.Schemas.ScoutingProspectView.self, "getScoutingDraftProspect")].compactMap { $0 },
+            search: decode(Components.Schemas.ScoutingPlayerSearchView.self, "getScoutingPlayerSearch")
+        )
+    }
+
+    /// Scouting's Draft Board on the synthetic save as it is: OOTP has published a class with nobody in it.
+    @MainActor
+    public static var scoutingEmptyClass: ScoutingStore {
+        .preview(draftBoard: decode(Components.Schemas.ScoutingDraftBoardView.self, "getScoutingDraftBoard"))
     }
 
     /// The Trade Desk's captured payloads (N12 Track C): the desk, and a deal on the builder weighed (our regular going
@@ -316,6 +372,7 @@ nonisolated public enum PreviewFixtures {
         clubOwed: Components.Schemas.ClubOwed? = nil,
         farm: FarmStore? = nil,
         players: PlayerStore? = nil,
+        scouting: ScoutingStore? = nil,
         trades: TradesStore? = nil,
         philosophy: PhilosophyStore? = nil
     ) -> AppModel {
@@ -357,6 +414,9 @@ nonisolated public enum PreviewFixtures {
             majorLeague: configured ? majorLeague : nil,
             clubhouse: configured ? clubhouse : nil,
             players: configured ? (players ?? Self.players) : nil,
+            office: configured ? office : nil,
+            leagueOffice: configured ? leagueOffice : nil,
+            scouting: configured ? (scouting ?? Self.scouting) : nil,
             trades: configured ? (trades ?? Self.trades) : nil,
             philosophy: configured ? (philosophy ?? Self.philosophy) : nil
         )

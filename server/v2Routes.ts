@@ -26,6 +26,13 @@ import type { ClubReport, FollowChange, Following, SearchAnswer, Wire } from './
 import type { ThemeChoice, ThemeChoices } from './contract/themePack.js';
 import { ThemeChoiceRefusal, activePack, chooseTheme, chosenPacks, installedPacks, themeChoices } from './themePackStore.js';
 import { currentOrganization } from './viewingOrganization.js';
+import {
+  financeContractsNow, financeFreeAgentNow, financeFreeAgentsNow, financeHorizonNow, financePayrollNow, medicalInjuryReportNow, setFinanceBudget,
+} from './officeViewService.js';
+import type {
+  FinanceBudgetChange, FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentsView, FinanceHorizonView, FinancePayrollView,
+} from './presentation/finance/types.js';
+import type { MedicalInjuryReportView } from './presentation/medical/injuryReport.js';
 import { answerHistoryOffer, carryOvers, currentHistoryKey, HistoryChoiceRefusal, historyCandidates, historyDates, historyNote, historyOffers } from './historyIdentity.js';
 import { ratingHistoryView, type RatingHistoryChoice, type RatingHistoryView } from './presentation/ratingHistoryWords.js';
 import {
@@ -52,6 +59,15 @@ import { TradesRefusal, tradeAnalysisNow, tradeDeskNow } from './tradeDeskServic
 import { PhilosophyRefusal, coachingStaffNow, philosophyNow, resetPhilosophyNow, setPhilosophyNow } from './philosophyViewService.js';
 import type { CoachingStaffView, PhilosophyChange, PhilosophyView } from './presentation/philosophy/types.js';
 import type { TradeAnalysisView, TradeDeskView } from './presentation/trades/types.js';
+
+import {
+  leagueFranchiseNow, leagueLeadersNow, leagueOrgComparisonNow, leagueStandingsNow, leagueUsVsThemNow, scoutingDraftBoardNow,
+  scoutingDraftProspectNow, scoutingPlayerSearchNow,
+} from './leagueViewService.js';
+import type {
+  LeagueFranchiseView, LeagueLeadersView, LeagueOrgComparisonView, LeagueStandingsView, LeagueUsVsThemView,
+} from './presentation/league/types.js';
+import type { ScoutingDraftBoardView, ScoutingPlayerSearchView, ScoutingProspectView } from './presentation/scouting/types.js';
 
 export const v2Routes = Router();
 
@@ -247,6 +263,41 @@ v2Routes.put('/views/:org/philosophy/organizationalPhilosophy', frontOffice<Phil
 v2Routes.delete('/views/:org/philosophy/organizationalPhilosophy', frontOffice<PhilosophyChange>(async (req) =>
   resetPhilosophyNow(String(req.params.org))));
 v2Routes.get('/views/:org/philosophy/coachingStaff', frontOffice<CoachingStaffView>(async (req) => coachingStaffNow(String(req.params.org))));
+
+/**
+ * Finance's and Medical's views (N12, D-071): each a payload of its own, built in the worker after every import and
+ * served from the cache; another club's are built on their first open and kept until the next import.
+ */
+v2Routes.get('/views/:org/finance/payrollBudget', frontOffice<FinancePayrollView>((req) => financePayrollNow(String(req.params.org))));
+v2Routes.put('/views/:org/finance/payrollBudget/nextSeasonBudget', frontOffice<FinanceBudgetChange>(async (req) => {
+  const answer = setFinanceBudget(String(req.params.org), req.body);
+  if ('refused' in answer) throw new DeskRefusal(answer.refused, 400);
+  return answer;
+}));
+v2Routes.get('/views/:org/finance/contracts', frontOffice<FinanceContractsView>((req) => financeContractsNow(String(req.params.org))));
+v2Routes.get('/views/:org/finance/freeAgents', frontOffice<FinanceFreeAgentsView>((req) => financeFreeAgentsNow(String(req.params.org))));
+v2Routes.get('/views/:org/finance/freeAgents/players/:player', frontOffice<FinanceFreeAgentDetail>((req) =>
+  financeFreeAgentNow(String(req.params.org), String(req.params.player))));
+v2Routes.get('/views/:org/finance/horizonBoard', frontOffice<FinanceHorizonView>((req) => financeHorizonNow(String(req.params.org))));
+v2Routes.get('/views/:org/medical/injuryReport', frontOffice<MedicalInjuryReportView>((req) => medicalInjuryReportNow(String(req.params.org))));
+
+/**
+ * League Office's and Scouting's views (N12 Track B, D-072): each a payload of its own, built in the worker after every
+ * import and served from the cache; Us vs Them against another club is read on its first ask and kept, and Player
+ * Search with words or tokens is a bounded query read when asked and kept until the next import.
+ */
+v2Routes.get('/views/:org/league/standings', frontOffice<LeagueStandingsView>((req) => leagueStandingsNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/leaders', frontOffice<LeagueLeadersView>((req) => leagueLeadersNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/orgComparison', frontOffice<LeagueOrgComparisonView>((req) => leagueOrgComparisonNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/franchiseHistory', frontOffice<LeagueFranchiseView>((req) => leagueFranchiseNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/usVsThem', frontOffice<LeagueUsVsThemView>((req) => leagueUsVsThemNow(String(req.params.org), req.query.team)));
+v2Routes.get('/views/:org/scouting/draftBoard', frontOffice<ScoutingDraftBoardView>((req) =>
+  scoutingDraftBoardNow(String(req.params.org), req.query as Record<string, unknown>)));
+/** A prospect's reasons for the staff's read, read when he is chosen on the board (N12 Track B review, M2). */
+v2Routes.get('/views/:org/scouting/draftBoard/prospects/:player', frontOffice<ScoutingProspectView>((req) =>
+  scoutingDraftProspectNow(String(req.params.org), req.params.player)));
+v2Routes.get('/views/:org/scouting/playerSearch', frontOffice<ScoutingPlayerSearchView>((req) =>
+  scoutingPlayerSearchNow(String(req.params.org), req.query as Record<string, unknown>)));
 
 /** The club a theme route is about (a team id, or `automatic`), with its colours as the export has them. */
 function themedClub(param: string) {

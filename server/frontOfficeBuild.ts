@@ -24,7 +24,9 @@ import { needTrail } from './presentation/frontOffice/claims.js';
 import { assemble, type BuildContext, type DepartmentAnswer, type DepartmentContext } from './presentation/frontOffice/desk.js';
 import type { FarmDecisionRequest, FarmViewsRequest } from './farmViewsBuild.js';
 import type { PlayerDossiersRequest } from './playerDossierBuild.js';
+import type { OfficeViewsRequest } from './officeViewsBuild.js';
 import type { ClubhouseAskRequest, ClubhouseViewsRequest } from './clubhouseViewsBuild.js';
+import type { LeagueAskRequest, LeagueViewsRequest } from './leagueViewsBuild.js';
 import type { TradeDeskRequest } from './tradeDeskBuild.js';
 import { farmMaterial } from './presentation/frontOffice/farm.js';
 import { financeMaterial } from './presentation/frontOffice/finance.js';
@@ -289,5 +291,10 @@ export type WorkerJob =
   | { kind: 'clubhouseAsk'; request: ClubhouseAskRequest }
   // N11: the player window's dossiers for our club's players, read ahead after an import (`playerDossierBuild.ts`)
   | { kind: 'playerDossiers'; request: PlayerDossiersRequest }
+  // N12, Track A: Finance's and Medical's views (`officeViewsBuild.ts`)
+  | { kind: 'officeViews'; request: OfficeViewsRequest }
+  // N12 Track B: League Office's and Scouting's views, and Us vs Them asked on a click (`leagueViewsBuild.ts`)
+  | { kind: 'leagueViews'; request: LeagueViewsRequest }
+  | { kind: 'leagueAsk'; request: LeagueAskRequest }
   // N12 Track C: the Trade Desk for our club, read ahead after an import (`tradeDeskBuild.ts`)
   | { kind: 'tradeDesk'; request: TradeDeskRequest };
