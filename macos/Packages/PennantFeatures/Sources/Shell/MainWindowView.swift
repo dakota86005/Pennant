@@ -213,11 +213,11 @@ struct PaletteOverlay: View {
                                  inspectorShown: window.inspectorPresented, search: search, searchFailed: failed != nil)
         ZStack(alignment: .top) {
             Color.black.opacity(0.18).ignoresSafeArea()
-                .onTapGesture { window.paletteShown = false }
+                .onTapGesture { window.hidePalette("a click outside it") }
                 .accessibilityHidden(true)
             CommandPalette(entries: index.entries, served: index.served, emptyLine: index.emptyLine, problem: failed?.title,
                            updating: updating, query: $window.paletteQuery, open: { entry in
-                window.paletteShown = false
+                window.hidePalette("a result chosen")
                 switch index.action(for: entry) {
                 case .served(let target): open(target)
                 case .route(let route): window.go(to: route)
@@ -229,7 +229,7 @@ struct PaletteOverlay: View {
                 case .command(.forward): window.goForward()
                 case nil: break
                 }
-            }, dismiss: { window.paletteShown = false })
+            }, dismiss: { window.hidePalette("Escape") })
             .padding(.top, 120)
         }
         // Asked as the GM types, a moment after the last key, and cancelled by the next one

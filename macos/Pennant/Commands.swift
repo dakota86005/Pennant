@@ -27,18 +27,21 @@ struct PennantCommands: Commands {
     /// last comes forward with its palette up; with every main window closed, a new one opens with it. Which way it went
     /// is said in the app's log.
     private func findAnything() {
-        if let window {
-            window.togglePalette()
-            return
-        }
         let log = model.serverController.log
         let key = NSApp.keyWindow?.identifier?.rawValue ?? "none"
+        if let window {
+            let before = window.paletteShown
+            window.togglePalette()
+            log.write("find anything: the key main window's palette (key window: \(key)); palette up before \(before), after \(window.paletteShown)", source: "app")
+            return
+        }
         if let last = MainWindows.shared.last() {
-            log.write("find anything: no main window was key (key window: \(key)); the main window used last came forward with its palette", source: "app")
+            let before = last.model.paletteShown
             if last.window.isMiniaturized { last.window.deminiaturize(nil) }
             last.window.makeKeyAndOrderFront(nil)
             NSApp.activate()
             last.model.showPalette()
+            log.write("find anything: no main window was key (key window: \(key)); the main window used last (\(last.window.identifier?.rawValue ?? "unnamed")) came forward with its palette; palette up before \(before), after \(last.model.paletteShown)", source: "app")
         } else {
             log.write("find anything: no main window was open (key window: \(key)); a new one opens with its palette", source: "app")
             routing.requestPalette()

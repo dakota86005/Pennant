@@ -426,8 +426,13 @@ final class PennantUITests: XCTestCase {
     @MainActor
     private func paletteOpened(_ app: XCUIApplication, _ query: XCUIElement) -> Bool {
         if query.waitForExistence(timeout: 5) { return true }
-        let windows = app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame) key=\($0.isHittable)" }
+        let windows = app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame) hittable=\($0.isHittable)" }
         print("[palette] \(methodName): no palette 5 s after ⌘K (state \(app.state.rawValue)); windows: \(windows)")
+        // The command itself, as the app's menu bar offers it: View ▸ Find Anything… there, and enabled
+        let view = app.menuBars.menuBarItems["View"]
+        let item = view.menus.menuItems["Find Anything…"]
+        let shown = item.exists ? "exists, enabled \(item.isEnabled)" : "missing"
+        print("[palette] \(methodName): menu bar View \(view.exists ? "exists" : "missing"); View ▸ Find Anything… \(shown)")
         return false
     }
 

@@ -42,7 +42,7 @@ struct MainWindowScene: View {
                 expanded: expanded
             )
             // Find Anything (⌘K) chosen with every main window closed: this one opens with the palette up
-            if routing.takePaletteRequest() { restored.showPalette() }
+            if routing.takePaletteRequest() { restored.showPalette("a main window opened for Find Anything") }
             #if DEBUG
             // A Debug build launched by a script for window screenshots can open with the ⌘K palette up
             // (`-PennantDebugPalette <query>`) or with a route (`-PennantDebugRoute department.view`, or
@@ -53,7 +53,7 @@ struct MainWindowScene: View {
             }
             if defaults.bool(forKey: "PennantDebugInspector") { restored.inspectorPresented = true }
             if let query = defaults.string(forKey: "PennantDebugPalette") {
-                restored.paletteShown = true
+                restored.showPalette("-PennantDebugPalette")
                 restored.paletteQuery = query
             }
             // …or with a club's window open beside it (`-PennantDebugOpenClub <team id>`), for its captures

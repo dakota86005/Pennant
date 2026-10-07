@@ -98,8 +98,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A UI test's first launch starts from fresh defaults (`-PennantTestFreshDefaults YES`): the window frames and
         // choices an earlier test left in the app's defaults never carry into the next (PR #58 on the runner: after the
         // player-window tests, ⌘K's palette no longer appeared in the tests that followed)
+        // …and from no saved windows: the app's own saved-state folder is removed before any window is restored, as the
+        // test process (which may not reach it on the runner) cannot be relied on to (PR #58). Said in the app's log below.
+        var savedStateLine: String?
         if UserDefaults.standard.bool(forKey: "PennantTestFreshDefaults"), let id = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: id)
+            let state = FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: "Library/Saved Application State/\(id).savedState", directoryHint: .isDirectory)
+            if FileManager.default.fileExists(atPath: state.path(percentEncoded: false)) {
+                do {
+                    try FileManager.default.removeItem(at: state)
+                    savedStateLine = "launch: fresh test defaults; the saved windows were removed"
+                } catch {
+                    savedStateLine = "launch: fresh test defaults; the saved windows could not be removed (\((error as NSError).domain) \((error as NSError).code))"
+                }
+            } else {
+                savedStateLine = "launch: fresh test defaults; no saved windows were there"
+            }
         }
         #endif
         let model = AppModel(configuration: AppConfiguration.server())
@@ -108,8 +123,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         outside = OutsideTheWindow(model: model)
         let log = controller.log
         appLog = { log.write($0, source: "app") }
+        // Each time a main window's ⌘K palette comes up or goes away, with why (PR #58)
+        MainWindowModel.paletteLog = { log.write($0, source: "app") }
         // Which process this is, for reading a quit that stops short against the processes running then (PR #58)
         log.write("launch: this is process \(ProcessInfo.processInfo.processIdentifier)", source: "app")
+        #if DEBUG
+        if let savedStateLine { log.write(savedStateLine, source: "app") }
+        #endif
         quit = QuitCoordinator(
             prepare: { model.beginShutdown() },
             lastWords: { model.lastNoteSaves() },
