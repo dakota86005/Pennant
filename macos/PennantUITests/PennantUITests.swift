@@ -120,6 +120,14 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(sidebar.exists)
         // The shell is drawn while the server starts (N6, Stage B2): the view says "Starting…" until it is ready
         XCTAssertTrue(element(app, "server.waiting").waitForNonExistence(timeout: 60), "the server did not become ready; see \(scratch.path)/logs/server.log")
+        // Key equivalents (⌘K, ⌘1…) go to the app in front; a launch that left Pennant behind another app is said and
+        // brought forward (PR #58 on the runner: ⌘K and ⌘4 typed after a launch reached no Pennant window, while typing
+        // into a clicked field, which brings the app forward, worked)
+        if app.state != .runningForeground {
+            print("[focus] \(methodName): Pennant was not in front after launch (state \(app.state.rawValue)); brought forward")
+            app.activate()
+            _ = app.wait(for: .runningForeground, timeout: 5)
+        }
     }
 
     @MainActor
