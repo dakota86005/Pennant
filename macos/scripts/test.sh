@@ -22,7 +22,8 @@
 #   PENNANT_TEST_UNSIGNED  1 builds without signing (CODE_SIGNING_ALLOWED=NO)
 #   PENNANT_TEST_NO_UI     1 skips step 4 and 5 (the package tests still run)
 #   PENNANT_TEST_NO_PACKAGES  1 skips step 3 (to iterate on the UI tests)
-#   PENNANT_TEST_ONLY      one UI test, as xcodebuild's -only-testing names it (PennantUITests/PennantUITests/testX)
+#   PENNANT_TEST_ONLY      UI tests to run, as xcodebuild's -only-testing names them (PennantUITests/PennantUITests/testX),
+#                          separated by spaces: run in the suite's order, to reproduce one test's effect on the next
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -161,7 +162,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testPlayerNoteKeptOnLeaving configured '{"theme":"light"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
-  if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi
+  for only in ${PENNANT_TEST_ONLY:-}; do signing+=("-only-testing:$only"); done
   # TEST_RUNNER_ variables reach the test runner without the prefix: each UI test finds its prepared folder under the
   # scratch root and launches the app on it
   run xcodebuild-test "Executed|\*\* TEST" \
