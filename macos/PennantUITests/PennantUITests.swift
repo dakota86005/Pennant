@@ -1249,6 +1249,14 @@ final class PennantUITests: XCTestCase {
                 // sidebar's list mid-run (as N9's test saw), so nothing is left for it to scroll
                 leading(item)
                 let shown = starting(view.shows)
+                if !shown.waitForExistence(timeout: 15) {
+                    // The sidebar can move under the click while a department unfolds (the click lands on the row above):
+                    // once more, with the row at rest
+                    print("[narrow] \(view.view) did not draw after the first click, round \(round); clicked again")
+                    up("again before \(view.view), round \(round)")
+                    within(item, in: sidebar)
+                    leading(item)
+                }
                 if !shown.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12b-narrow-900-missing-\(view.view)") }
                 XCTAssertTrue(shown.exists, "round \(round): \(view.view) did not draw")
                 if view.table {
@@ -1256,7 +1264,10 @@ final class PennantUITests: XCTestCase {
                     let row = firstRow(of: shown)
                     XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): \(view.view)'s table has no row")
                     leading(row)
-                    if !element(app, "row.detail").waitForExistence(timeout: 10) { keep(window.screenshot(), named: "n12b-narrow-900-no-detail-\(view.view)") }
+                    if !element(app, "row.detail").waitForExistence(timeout: 10) {
+                        keep(window.screenshot(), named: "n12b-narrow-900-no-detail-\(view.view)")
+                        print("[narrow] no detail on \(view.view), round \(round); windows: \(app.windows.allElementsBoundByIndex.map { "\($0.identifier) '\($0.title)'" })")
+                    }
                     XCTAssertTrue(element(app, "row.detail").exists, "round \(round): \(view.view)'s row showed no detail")
                 }
                 switch view.view {
@@ -1283,17 +1294,10 @@ final class PennantUITests: XCTestCase {
                     XCTAssertTrue(element(app, "standings.division").exists, "round \(round): Standings offers no division")
                 case "draftBoard":
                     // The published class (N12 Track B review, M8): the chosen prospect's reasons, read when he was chosen
-                    let reasons = element(app, "row.detail").staticTexts.matching(NSPredicate(format: "value BEGINSWITH %@ OR label BEGINSWITH %@", "Staff's read", "Staff's read")).firstMatch
+                    let reasons = element(app, "row.detail").descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "points of it is still projection", "points of it is still projection")).firstMatch
                     if !reasons.waitForExistence(timeout: 15) { keep(window.screenshot(), named: "n12b-narrow-900-no-reasons") }
                     XCTAssertTrue(reasons.exists, "round \(round): the chosen prospect's reasons did not draw")
                 case "playerSearch":
-                    if round == 1 {
-                        // The whole first page (300 rows of season lines) audited once, as the GM first sees it (review, L10)
-                        let busy = app.progressIndicators.firstMatch
-                        if busy.exists { _ = busy.waitForNonExistence(timeout: 20) }
-                        up("audit of playerSearch's first page")
-                        try audit(app, named: "accessibility-audit-n12b-narrow-playerSearch-300")
-                    }
                     // A name typed in the window's search field (scoped to Player Search) is asked of the server, and the
                     // results drawn again: a few rows, so the audit below reads a short table (300 rows of season lines
                     // made each audit element's lookup take most of a second)
@@ -1327,6 +1331,33 @@ final class PennantUITests: XCTestCase {
                 }
             }
         }
+        quitCleanly(app)
+    }
+
+    /// Player Search's whole first page (up to 300 rows of season lines; every batter on the synthetic league) audited once,
+    /// as the GM first sees it (N12 Track B review, L10). On its own: the audit reads every row's cells, about nine minutes,
+    /// too long for the narrow test's rounds, which audit it on a narrowed search.
+    @MainActor
+    func testPlayerSearchFullPageAudit() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("4", modifierFlags: .command)
+        let item = element(app, "sidebar.scouting.playerSearch")
+        let sidebar = element(app, "sidebar")
+        XCTAssertTrue(item.waitForExistence(timeout: 30), "the sidebar has no Player Search")
+        if !item.isHittable { reveal(item, in: sidebar) }
+        within(item, in: sidebar)
+        item.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click()
+        let table = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "table.playerSearch.results.")).firstMatch
+        XCTAssertTrue(table.waitForExistence(timeout: 30), "Player Search did not draw")
+        // The whole first page as served (on the synthetic league, every batter it has: fewer than 300)
+        let full = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in table.tableRows.count + table.outlineRows.count >= 50 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [full], timeout: 30), .completed, "Player Search did not show its first page")
+        print("[audit] Player Search's first page: \(table.tableRows.count + table.outlineRows.count) rows")
+        let busy = app.progressIndicators.firstMatch
+        if busy.exists { _ = busy.waitForNonExistence(timeout: 20) }
+        keep(app.windows.firstMatch.screenshot(), named: "n12b-player-search-300")
+        try audit(app, named: "accessibility-audit-n12b-playerSearch-300")
         quitCleanly(app)
     }
 
