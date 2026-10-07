@@ -49,8 +49,8 @@ final class PennantUITests: XCTestCase {
         removeSavedState()
     }
 
-    /// The windows on the screen, front to back, each by its owner, layer and frame (no window names, no pixels): the
-    /// menu bar's and the Dock's left out, up to ten.
+    /// The windows on the screen, front to back, each by its owner, layer and frame (no window names, no pixels): every
+    /// layer (a text input panel sits above the windows), the Window Server's own left out, up to sixteen.
     static func windowsOnScreen() -> String {
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
             return "unreadable"
@@ -58,13 +58,13 @@ final class PennantUITests: XCTestCase {
         let shown = list.compactMap { info -> String? in
             let owner = info[kCGWindowOwnerName as String] as? String ?? "?"
             let layer = info[kCGWindowLayer as String] as? Int ?? 0
-            guard layer < 20, owner != "Dock", owner != "Window Server" else { return nil }
+            guard owner != "Window Server" else { return nil }
             let pid = info[kCGWindowOwnerPID as String] as? Int ?? 0
             let bounds = (info[kCGWindowBounds as String] as? [String: Any]).flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) } ?? .zero
             let alpha = info[kCGWindowAlpha as String] as? Double ?? 1
             return "\(owner) pid \(pid) layer \(layer) \(Int(bounds.minX)),\(Int(bounds.minY)) \(Int(bounds.width))×\(Int(bounds.height))\(alpha < 1 ? " alpha \(alpha)" : "")"
         }
-        return shown.isEmpty ? "none" : shown.prefix(10).joined(separator: "; ")
+        return shown.isEmpty ? "none" : shown.prefix(16).joined(separator: "; ")
     }
 
     /// The app's saved windows (its saved-state folder, under the real home), removed.
@@ -1933,6 +1933,26 @@ final class PennantUITests: XCTestCase {
         // and the 5-second _exit net set, and the same pid alive 20 s later. A process _exit cannot end is held in the
         // kernel, not by the app. Closing a window and quitting is still exercised by testPlayerNoteKeptOnLeaving, and
         // the case is recorded in SWIFTUI_REBUILD "As built at N11".)
+        quitCleanly(again)
+    }
+
+    /// ⌘K answers at the launch after the GM closed a player's window and quit at once (PR #58: on GitHub's macOS 26
+    /// runner, the launch after testPlayerNoteKeptOnLeaving, whose last launches close his window and quit at once,
+    /// received no key at all, though it was in front with its window key).
+    @MainActor
+    func testFindAnythingAfterAWindowClosedAndAQuitAtOnce() throws {
+        let first = launch(arguments: ["-PennantDebugOpenPlayer", "1000"])
+        waitForShell(first)
+        XCTAssertTrue(playerWindow(first, "1000").waitForExistence(timeout: 15), "the player's window did not open")
+        XCTAssertTrue(element(first, "player.header").waitForExistence(timeout: 30))
+        first.windows.containing(.any, identifier: "player.window.1000").firstMatch.buttons[XCUIIdentifierCloseWindow].click()
+        quitCleanly(first)
+        let again = launch()
+        waitForShell(again)
+        XCTAssertTrue(element(again, "masthead").waitForExistence(timeout: 30))
+        again.typeKey("k", modifierFlags: .command)
+        XCTAssertTrue(paletteOpened(again, element(again, "palette.query")), "⌘K did not open the palette at the next launch")
+        again.typeKey(.escape, modifierFlags: [])
         quitCleanly(again)
     }
 
