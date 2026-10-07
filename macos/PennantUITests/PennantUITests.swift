@@ -1254,14 +1254,15 @@ final class PennantUITests: XCTestCase {
                 _ = app.wait(for: .runningForeground, timeout: 5)
             }
         }
-        // The sidebar can be pressed and scrolled: it has a hit point (nothing over it, the window in front). A scroll or
-        // click on a container with none fails the test outright ("Unable to find hit point"), so it is waited for
+        // A row about to be clicked has a hit point (nothing over it, the window in front): a click on an element with
+        // none fails the test outright ("Unable to find hit point"), so it is waited for, Pennant brought back between
+        // the two waits (an expectation is waited on once, so each wait has its own). The sidebar itself isn't waited on:
+        // a container can report no hit point of its own while its rows have one
         let pressable = { (target: XCUIElement, step: String) in
-            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in target.exists && target.isHittable }, object: nil)
-            if XCTWaiter.wait(for: [ready], timeout: 10) != .completed {
-                up("\(step), waiting for a hit point")
-                XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, "\(step): no hit point after 20 s")
-            }
+            let ready = { XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in target.exists && target.isHittable }, object: nil) }
+            guard XCTWaiter.wait(for: [ready()], timeout: 10) != .completed else { return }
+            up("\(step), waiting for a hit point")
+            XCTAssertEqual(XCTWaiter.wait(for: [ready()], timeout: 10), .completed, "\(step): no hit point after 20 s")
         }
         let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
         let any = { (prefix: String) in app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch }
@@ -1282,7 +1283,7 @@ final class PennantUITests: XCTestCase {
                 let item = element(app, "sidebar.\(view.department).\(view.view)")
                 let sidebar = element(app, "sidebar")
                 up("before \(view.view), round \(round)")
-                pressable(sidebar, "the sidebar before \(view.view), round \(round)")
+                if !sidebar.isHittable { up("the sidebar before \(view.view), round \(round)") }
                 if !item.isHittable { reveal(item, in: sidebar) }
                 XCTAssertTrue(item.waitForExistence(timeout: 10), "round \(round): the sidebar has no \(view.view)")
                 within(item, in: sidebar)
