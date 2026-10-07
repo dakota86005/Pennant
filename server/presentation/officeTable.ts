@@ -1,35 +1,37 @@
 /**
- * The front office's served tables (N12, D-071): Finance's and Medical's views draw their lists with these few shapes,
- * so the Mac app draws every one of them with the same native table (`OfficeTable` in FeatureCore). A table is its
- * columns, its rows in the specialist's own order (each a cell and an ordinal sort key per column, null when unknown so
- * it sorts last both ways) and the sentence it says when it has no rows. A row about a player names him, so he opens
- * his own window, compares and follows; what goes with a chosen row (its facts and its claims) is drawn beneath the
- * table. A filter's choices name no rows: each row names the choice it falls under (`filterKeys`). Every word is
- * served; nothing here decides anything (D-001).
+ * The Office kit's server half (N12, D-071 and D-072; D-071's amendment): the few shapes every front-office table outside
+ * Major League Ops is served in, Finance's, Medical's, League Office's and Scouting's alike, so the Mac app draws them
+ * all with one native table (FeatureCore's `OfficeKit.swift`). A table is its columns, its rows in the specialist's own
+ * order (a cell and an ordinal sort key per column, null when unknown so it sorts last both ways) and the sentence it says
+ * when it has none. A row names the player or the club it is about, so either opens its own window; what goes with a
+ * chosen row (N8's detail blocks, or Finance's facts, claims and short table) is drawn beneath the table. A filter's
+ * choices name no rows: each row names the choice it falls under (`filterKeys`). Every word is served; nothing here
+ * decides anything (D-001, D-056).
  */
 import type { GameDate } from '../dataFreshness.js';
-import type { BasisLine, Cell, Claim, DeptId, Row, Target } from '../contract/presentation.js';
+import type { BasisLine, Cell, Claim, DeptId, Target } from '../contract/presentation.js';
 import type { Integer } from '../contract/primitives.js';
 import { basis, cell, claim, HINT_MAX, row, target } from './claim.js';
+import type { MlbAction, MlbColumn, MlbPlayer, MlbRow } from './majorLeague/types.js';
 
-/** A player a front-office table names: his id and name, and his window (`open`, a player target). */
-export interface OfficePlayer {
-  playerId: Integer;
+/** A club a view names: its id, its name, whether it is ours, and where it opens (its club window). */
+export interface OfficeClub {
+  teamId: Integer;
   name: string;
+  abbr: string | null;
+  ours: boolean;
   open: Target;
 }
 
 /**
- * A table's column: its id (the key of each row's cells and sort keys), its title (its hint says how to read it), whether
- * it holds numbers, and whether it sorts (a column of words with no order, such as a contract's notes, does not).
+ * A table's column: N8's column (its id, title with its hint, whether it holds numbers, hidden until shown), whether it
+ * sorts (a column of mixed units, Us vs Them's figures, or a contract's notes, doesn't), and whether it sorts by its
+ * cells' words: then its rows carry no sort key for it (they would only repeat the words), and the app sorts by the
+ * words, an unknown cell last.
  */
-export interface OfficeColumn {
-  id: string;
-  title: Cell;
-  numeric: boolean;
+export interface OfficeColumn extends MlbColumn {
   sortable: boolean;
-  /** Hidden until the GM shows it from the table's columns; absent is shown. */
-  hidden?: boolean;
+  byWords?: boolean;
 }
 
 /** One labelled fact beneath a chosen row ("Signed through", "2031"). */
@@ -39,13 +41,15 @@ export interface OfficeFact {
 }
 
 /**
- * A row: a cell and a sort key per column, the player it is about (null for none), what is drawn beneath the table when
- * it is chosen (its facts, claims and short table; each left out when it has none, and a long list's served on its own
- * when the row is chosen), the choice of each filter group it falls under, and the OSA mark when the grades it shows are
- * OSA's view filling in for our scouts (D-067).
+ * A row: N8's row (its cells and sort keys, the player it is about with his OSA mark, its detail blocks and what it
+ * offers to open), the club it is about when it is about one (a standings line) and whether it is ours (drawn marked,
+ * never the only signal: its words say so too); Finance's facts, claims and short table drawn beneath it when chosen
+ * (each left out when it has none, and a long list's served on its own when the row is chosen); and the choice of each
+ * filter group it falls under.
  */
-export interface OfficeRow extends Row<string> {
-  player: OfficePlayer | null;
+export interface OfficeRow extends MlbRow {
+  club?: OfficeClub;
+  ours?: boolean;
   facts?: OfficeFact[];
   claims?: Claim[];
   /** A short table beneath the chosen row (a contract's seasons under control). */
@@ -55,7 +59,6 @@ export interface OfficeRow extends Row<string> {
    * a group it falls under no choice of (his age not known) is left out, so only that group's first choice keeps him.
    */
   filterKeys?: Record<string, string>;
-  ratingsFill?: Cell;
 }
 
 /** A short table drawn as a grid (its columns' titles and its rows' cells), never sorted. */
@@ -67,15 +70,48 @@ export interface OfficeGrid {
   empty: Cell | null;
 }
 
-/** A table ready to show: its columns, its rows in the served order, and its sentence when it has none. */
+/** A table, ready to show: its columns, its rows in the served order, and its sentence when it has none. */
 export interface OfficeTable {
   columns: OfficeColumn[];
   rows: OfficeRow[];
   empty: Cell | null;
+  /**
+   * The server sorts this table, over more rows than it serves (Player Search's whole league): a column's sort is asked
+   * for (`sort`, `dir`), its rows carry no sort keys, and the app shows them as served. Absent: the app sorts by the keys.
+   */
+  serverSorts?: boolean;
   /** A table drawn with a chosen row's detail beneath it: what it says when the filters keep none of its rows. */
   noneKept?: Cell;
   /** And what it says beneath it while no row is chosen. */
   choose?: Cell;
+}
+
+/** A titled table of a view (a division, a leader category, the season by season): its line above it and a note under it. */
+export interface OfficeSection {
+  /** Structural: where the app keeps the table's columns, never shown. */
+  id: string;
+  title: Cell;
+  summary: Cell | null;
+  table: OfficeTable;
+  note: Claim | null;
+}
+
+/** One choice of a group, sent back exactly as served (`?<group id>=<value>`). */
+export interface OfficeChoice {
+  text: Cell;
+  selected: boolean;
+  value: string;
+}
+
+/**
+ * A group of the GM's choices for a view that the server answers (the opponent, the batters or the pitchers): the query
+ * parameter it sets. Apart from `OfficeFilterGroup`, which narrows a served table in the app by its rows' `filterKeys`.
+ */
+export interface OfficeChoiceGroup {
+  /** The query parameter the choice is sent as (`team`). */
+  id: string;
+  title: Cell;
+  choices: OfficeChoice[];
 }
 
 /** A table drawn with its chosen row's detail beneath it, with the two sentences that go with that (N12 review, L6). */
@@ -124,20 +160,81 @@ export interface OfficeViewHead {
   freshness: Claim | null;
 }
 
-/** A column. */
-export function column(id: string, title: string, options: { numeric?: boolean; sortable?: boolean; hint?: string; hidden?: boolean } = {}): OfficeColumn {
-  const out: OfficeColumn = {
+/** A column: sortable unless said, by its rows' keys unless it sorts by its words. */
+export function column(
+  id: string,
+  title: string,
+  numeric = false,
+  extra: { hint?: string; hidden?: boolean; sortable?: boolean; byWords?: boolean } = {},
+): OfficeColumn {
+  return {
     id,
-    title: cell(title, options.hint ? { hint: options.hint } : {}),
-    numeric: options.numeric ?? false,
-    sortable: options.sortable ?? true,
+    title: cell(title, extra.hint ? { hint: extra.hint } : {}),
+    numeric,
+    sortable: extra.sortable ?? true,
+    ...(extra.hidden ? { hidden: true } : {}),
+    ...(extra.byWords ? { byWords: true } : {}),
   };
-  if (options.hidden) out.hidden = true;
-  return out;
+}
+
+/** A club a view names, opening its club window; "Unnamed club" when the export names none. */
+export function officeClub(teamId: number, name: string | null | undefined, abbr: string | null | undefined, ours: boolean): OfficeClub {
+  return {
+    teamId,
+    name: (name ?? '').trim() || 'Unnamed club',
+    abbr: (abbr ?? '').trim() || null,
+    ours,
+    open: target({ kind: 'club', teamId }),
+  };
+}
+
+/** What a club's row offers to open: its club window. */
+export function openClub(club: OfficeClub): MlbAction {
+  return { text: cell(`Open the ${club.name}`), open: club.open };
+}
+
+/** A club's cell: its name, marked as ours in words when it is (never colour alone). */
+export function clubCell(club: OfficeClub): Cell {
+  return club.ours ? cell(club.name, { hint: 'Your club' }) : cell(club.name);
+}
+
+/** A row about a club: its cells and sort keys, the club, ours marked, opening its window, with any detail given. */
+export function clubRow(
+  id: string,
+  club: OfficeClub,
+  cells: Record<string, Cell>,
+  sort: Record<string, number | string | null>,
+  extra: Partial<Pick<OfficeRow, 'detail' | 'claim' | 'players'>> = {},
+): OfficeRow {
+  return {
+    id,
+    cells,
+    sort,
+    player: null,
+    detail: extra.detail ?? [],
+    actions: [openClub(club)],
+    club,
+    ...(club.ours ? { ours: true } : {}),
+    ...(extra.claim ? { claim: extra.claim } : {}),
+    ...(extra.players ? { players: extra.players } : {}),
+  };
+}
+
+/**
+ * A row with only the sort keys its table serves (N12 Track B review, M2): built with every key (`row()`'s rule), then
+ * none for a column that sorts by its words (they would only repeat the words), and none at all when the server sorts.
+ */
+export function keysServed<R extends MlbRow>(row: R, columns: OfficeColumn[], serverSorts = false): R {
+  if (serverSorts) return { ...row, sort: {} };
+  const words = columns.filter((c) => c.byWords).map((c) => c.id);
+  if (!words.length) return row;
+  const sort = { ...row.sort };
+  for (const id of words) delete sort[id];
+  return { ...row, sort };
 }
 
 /** A player a table names, opening his window (with his organization's club when known). */
-export function officePlayer(playerId: number, name: string, teamId?: number | null): OfficePlayer {
+export function officePlayer(playerId: number, name: string, teamId?: number | null): MlbPlayer {
   return { playerId, name, open: target({ kind: 'player', playerId, teamId: teamId ?? null }) };
 }
 
@@ -150,12 +247,12 @@ export function officeRow(
   cells: Record<string, Cell>,
   sort: Record<string, number | string | null>,
   extra: {
-    player?: OfficePlayer | null; facts?: OfficeFact[]; claims?: Claim[]; claim?: Claim; grid?: OfficeGrid | null; ratingsFill?: Cell | null;
+    player?: MlbPlayer | null; facts?: OfficeFact[]; claims?: Claim[]; claim?: Claim; grid?: OfficeGrid | null; ratingsFill?: Cell | null;
     filterKeys?: Record<string, string | null>;
   } = {},
 ): OfficeRow {
   const base = row(id, cells, sort, extra.claim);
-  const out: OfficeRow = { ...base, player: extra.player ?? null };
+  const out: OfficeRow = { ...base, player: extra.player ?? null, detail: [], actions: [] };
   if (extra.facts && extra.facts.length > 0) out.facts = extra.facts;
   if (extra.claims && extra.claims.length > 0) out.claims = extra.claims;
   if (extra.grid) out.grid = extra.grid;

@@ -28,6 +28,8 @@ public struct MainWindowView: View {
             }
         }
         .focusedSceneValue(\.mainWindow, model.isReady ? window : nil)
+        // The main window used last, for Find Anything from any other window (PR #58)
+        .background(MainWindowTracker(model: window))
         .onAppear { AfterNextFrame.run { model.noteLaunchStep("the main window's first frame is drawn") } }
         .onChange(of: model.needsSetup, initial: true) { _, needsSetup in
             if routing.shouldOpenSetupAutomatically(needsSetup: needsSetup) {
@@ -86,15 +88,26 @@ struct ShellSplitView: View {
         }
         // The toolbar's search field (N7): the server's results as suggestions, grouped as served, followed first; a
         // suggestion opens its view or its club's window, and Return opens the first
-        .searchable(text: $window.searchText, placement: .toolbar, prompt: Text("Search"))
-        .searchSuggestions { ToolbarSearchSuggestions(window: window, open: openSearchResult) }
+        // A view may scope it to itself (N12 Track B: Player Search's tokens), as Finder's search scopes to the folder
+        .searchable(
+            text: $window.searchText, tokens: Bindable(window.search).tokens, suggestedTokens: Bindable(window.search).suggested,
+            placement: .toolbar, prompt: Text(window.search.scope ?? "Search")
+        ) { token in
+            Text(verbatim: token.text)
+        }
+        .searchSuggestions {
+            if window.search.scope == nil { ToolbarSearchSuggestions(window: window, open: openSearchResult) }
+        }
+        .environment(\.windowSearch, window.search)
         .onSubmit(of: .search) {
+            guard window.search.scope == nil else { return }
             let results = window.currentSearch?.groups.flatMap(\.results) ?? []
             if let first = results.first(where: { PaletteIndex.opens($0.open) }) { openSearchResult(first.open) }
         }
         .task(id: window.searchText) {
             let query = window.searchText.trimmingCharacters(in: .whitespaces)
-            guard !query.isEmpty else { return }
+            // A scoped field asks its view's question, not the league's
+            guard !query.isEmpty, window.search.scope == nil else { return }
             try? await Task.sleep(for: .milliseconds(150))
             // The last answer stays, said to be updating, until this one is in; a failure is said, never left silent (L3)
             switch await model.search(query) {
@@ -211,11 +224,11 @@ struct PaletteOverlay: View {
                                  inspectorShown: window.inspectorPresented, search: search, searchFailed: failed != nil)
         ZStack(alignment: .top) {
             Color.black.opacity(0.18).ignoresSafeArea()
-                .onTapGesture { window.paletteShown = false }
+                .onTapGesture { window.hidePalette("a click outside it") }
                 .accessibilityHidden(true)
             CommandPalette(entries: index.entries, served: index.served, emptyLine: index.emptyLine, problem: failed?.title,
                            updating: updating, query: $window.paletteQuery, open: { entry in
-                window.paletteShown = false
+                window.hidePalette("a result chosen")
                 switch index.action(for: entry) {
                 case .served(let target): open(target)
                 case .route(let route): window.go(to: route)
@@ -227,7 +240,7 @@ struct PaletteOverlay: View {
                 case .command(.forward): window.goForward()
                 case nil: break
                 }
-            }, dismiss: { window.paletteShown = false })
+            }, dismiss: { window.hidePalette("Escape") })
             .padding(.top, 120)
         }
         // Asked as the GM types, a moment after the last key, and cancelled by the next one

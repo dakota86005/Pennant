@@ -588,6 +588,8 @@
                 "playerId": 1027
               }
             },
+            "detail": [],
+            "actions": [],
             "filterKeys": {
               "side": "hitters",
               "position": "LF",
@@ -650,6 +652,8 @@
                 "playerId": 1028
               }
             },
+            "detail": [],
+            "actions": [],
             "filterKeys": {
               "side": "hitters",
               "position": "1B",
@@ -708,6 +712,8 @@
                 "playerId": 1026
               }
             },
+            "detail": [],
+            "actions": [],
             "filterKeys": {
               "side": "hitters",
               "position": "LF",
@@ -768,6 +774,8 @@
                 "playerId": 1104
               }
             },
+            "detail": [],
+            "actions": [],
             "filterKeys": {
               "side": "hitters",
               "position": "2B",

@@ -56,6 +56,15 @@ import type {
   MlbSeasonTrendsView,
 } from './presentation/clubhouse/types.js';
 
+import {
+  leagueFranchiseNow, leagueLeadersNow, leagueOrgComparisonNow, leagueStandingsNow, leagueUsVsThemNow, scoutingDraftBoardNow,
+  scoutingDraftProspectNow, scoutingPlayerSearchNow,
+} from './leagueViewService.js';
+import type {
+  LeagueFranchiseView, LeagueLeadersView, LeagueOrgComparisonView, LeagueStandingsView, LeagueUsVsThemView,
+} from './presentation/league/types.js';
+import type { ScoutingDraftBoardView, ScoutingPlayerSearchView, ScoutingProspectView } from './presentation/scouting/types.js';
+
 export const v2Routes = Router();
 
 /**
@@ -245,6 +254,24 @@ v2Routes.get('/views/:org/finance/freeAgents/players/:player', frontOffice<Finan
   financeFreeAgentNow(String(req.params.org), String(req.params.player))));
 v2Routes.get('/views/:org/finance/horizonBoard', frontOffice<FinanceHorizonView>((req) => financeHorizonNow(String(req.params.org))));
 v2Routes.get('/views/:org/medical/injuryReport', frontOffice<MedicalInjuryReportView>((req) => medicalInjuryReportNow(String(req.params.org))));
+
+/**
+ * League Office's and Scouting's views (N12 Track B, D-072): each a payload of its own, built in the worker after every
+ * import and served from the cache; Us vs Them against another club is read on its first ask and kept, and Player
+ * Search with words or tokens is a bounded query read when asked and kept until the next import.
+ */
+v2Routes.get('/views/:org/league/standings', frontOffice<LeagueStandingsView>((req) => leagueStandingsNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/leaders', frontOffice<LeagueLeadersView>((req) => leagueLeadersNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/orgComparison', frontOffice<LeagueOrgComparisonView>((req) => leagueOrgComparisonNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/franchiseHistory', frontOffice<LeagueFranchiseView>((req) => leagueFranchiseNow(String(req.params.org))));
+v2Routes.get('/views/:org/league/usVsThem', frontOffice<LeagueUsVsThemView>((req) => leagueUsVsThemNow(String(req.params.org), req.query.team)));
+v2Routes.get('/views/:org/scouting/draftBoard', frontOffice<ScoutingDraftBoardView>((req) =>
+  scoutingDraftBoardNow(String(req.params.org), req.query as Record<string, unknown>)));
+/** A prospect's reasons for the staff's read, read when he is chosen on the board (N12 Track B review, M2). */
+v2Routes.get('/views/:org/scouting/draftBoard/prospects/:player', frontOffice<ScoutingProspectView>((req) =>
+  scoutingDraftProspectNow(String(req.params.org), req.params.player)));
+v2Routes.get('/views/:org/scouting/playerSearch', frontOffice<ScoutingPlayerSearchView>((req) =>
+  scoutingPlayerSearchNow(String(req.params.org), req.query as Record<string, unknown>)));
 
 /** The club a theme route is about (a team id, or `automatic`), with its colours as the export has them. */
 function themedClub(param: string) {

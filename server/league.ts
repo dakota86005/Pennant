@@ -187,12 +187,42 @@ leagueRoutes.get('/name-index/:orgId', (req, res) => {
   res.json({ names: rows.map((r) => [r.id, r.name, r.ours] as const) });
 });
 
-leagueRoutes.get('/players', (req, res) => {
-  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+/** One page of the league's players (`GET /api/players`): how many match, the page, and its order. */
+export type PlayersPage = {
+  total: number;
+  offset: number;
+  limit: number;
+  sort: string | null;
+  dir: 'asc' | 'desc';
+  players: Array<{
+    player_id: number | string | null;
+    name: string;
+    age: number | string | null;
+    positionName: string;
+    bats: string;
+    throws: string;
+    team: number | string | null;
+    abbr: number | string | null;
+    levelName: string | null;
+    organization: number | string | null;
+    inYourOrg: boolean | null;
+    stats: Record<string, number | string | null> | null;
+    stints: Array<Record<string, number | string>> | undefined;
+  }>;
+};
 
-  const q = String(req.query.q ?? '').trim();
-  const level = req.query.level === 'all' ? null : Number(req.query.level ?? 1);
-  const orgId = req.query.orgId ? Number(req.query.orgId) : null;
+/**
+ * The league's players for a query as the route reads it (`q`, `level`, `orgId`, `viewer`, `group`, `freeAgents`,
+ * `limit`, `offset`, `position`, `role`, `bats`, `throws`, `minAge`, `maxAge`, `minPt`, `sort`, `dir`), or why they cannot
+ * be read (the route's own answer). `within` (the Mac app's search, never the route) keeps only the players named, the
+ * ones its name matching found.
+ */
+export function computePlayers(query: Record<string, unknown>, within?: { playerIds: readonly number[] }): Computed<PlayersPage> {
+  if (!tableExists('players')) return refuse(400, 'No data imported yet');
+
+  const q = String(query.q ?? '').trim();
+  const level = query.level === 'all' ? null : Number(query.level ?? 1);
+  const orgId = query.orgId ? Number(query.orgId) : null;
   /*
    * Whose eyes this is being read through, which is not the same as the org
    * filter: the chat searches other clubs' players constantly and still wants
@@ -200,15 +230,15 @@ leagueRoutes.get('/players', (req, res) => {
    * being played as, so the flag is right even when nobody passed anything.
    */
   const viewerOrg =
-    (req.query.viewer ? Number(req.query.viewer) : null) ??
+    (query.viewer ? Number(query.viewer) : null) ??
     orgId ??
     ((db.prepare(`SELECT team_id FROM teams WHERE human_team = 1 LIMIT 1`).get() as
       | { team_id: number }
       | undefined)?.team_id ?? null);
-  const group = req.query.group === 'pitching' ? 'pitching' : 'batting';
-  const freeAgents = req.query.freeAgents === '1';
-  const limit = Math.min(Number(req.query.limit ?? 100), 300);
-  const offset = Math.max(Number(req.query.offset ?? 0), 0);
+  const group = query.group === 'pitching' ? 'pitching' : 'batting';
+  const freeAgents = query.freeAgents === '1';
+  const limit = Math.min(Number(query.limit ?? 100), 300);
+  const offset = Math.max(Number(query.offset ?? 0), 0);
 
   /*
    * The narrowing that makes a list of four hundred and sixty men usable.
@@ -220,13 +250,13 @@ leagueRoutes.get('/players', (req, res) => {
     const n = Number(v);
     return v !== undefined && v !== '' && Number.isFinite(n) ? n : null;
   };
-  const position = num(req.query.position);
-  const role = num(req.query.role);
-  const bats = num(req.query.bats);
-  const throws = num(req.query.throws);
-  const minAge = num(req.query.minAge);
-  const maxAge = num(req.query.maxAge);
-  const minPt = num(req.query.minPt);
+  const position = num(query.position);
+  const role = num(query.role);
+  const bats = num(query.bats);
+  const throws = num(query.throws);
+  const minAge = num(query.minAge);
+  const maxAge = num(query.maxAge);
+  const minPt = num(query.minPt);
 
   const where: string[] = ['p.retired = 0'];
   const params: Array<string | number> = [];
@@ -248,6 +278,10 @@ leagueRoutes.get('/players', (req, res) => {
     params.push(`%${q}%`);
   }
   where.push(group === 'pitching' ? 'p.position = 1' : 'p.position != 1');
+  if (within) {
+    where.push('p.player_id IN (SELECT value FROM json_each(?))');
+    params.push(JSON.stringify(within.playerIds));
+  }
 
   // Position for a hitter, role for a pitcher — the same question either way
   if (position !== null) { where.push('p.position = ?'); params.push(position); }
@@ -296,8 +330,8 @@ leagueRoutes.get('/players', (req, res) => {
     level: 't.level, p.last_name',
     pt: 'COALESCE(pt.pt, 0)',
   };
-  const sortKey = typeof req.query.sort === 'string' ? req.query.sort : null;
-  const descending = req.query.dir !== 'asc';
+  const sortKey = typeof query.sort === 'string' ? query.sort : null;
+  const descending = query.dir !== 'asc';
   const plainSort = sortKey !== null ? PLAIN_SORTS[sortKey] : undefined;
   /** A stat sort: not a plain column, so it needs every match computed first. */
   const statSort = sortKey !== null && plainSort === undefined ? sortKey : null;
@@ -478,7 +512,7 @@ leagueRoutes.get('/players', (req, res) => {
     page = page.slice(offset, offset + limit);
   }
 
-  res.json({
+  return answer({
     total,
     offset,
     limit,
@@ -508,4 +542,10 @@ leagueRoutes.get('/players', (req, res) => {
       stints: stintsById.get(r.player_id as number) ?? undefined,
     })),
   });
+}
+
+leagueRoutes.get('/players', (req, res) => {
+  const page = computePlayers(req.query as Record<string, unknown>);
+  if (!page.ok) return res.status(page.status).json({ error: page.error });
+  res.json(page.body);
 });

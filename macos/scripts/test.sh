@@ -22,7 +22,8 @@
 #   PENNANT_TEST_UNSIGNED  1 builds without signing (CODE_SIGNING_ALLOWED=NO)
 #   PENNANT_TEST_NO_UI     1 skips step 4 and 5 (the package tests still run)
 #   PENNANT_TEST_NO_PACKAGES  1 skips step 3 (to iterate on the UI tests)
-#   PENNANT_TEST_ONLY      one UI test, as xcodebuild's -only-testing names it (PennantUITests/PennantUITests/testX)
+#   PENNANT_TEST_ONLY      UI tests to run, as xcodebuild's -only-testing names them (PennantUITests/PennantUITests/testX),
+#                          separated by spaces: run in the suite's order, to reproduce one test's effect on the next
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -161,9 +162,12 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testPlayerNoteKeptOnLeaving configured '{"theme":"light"}'
   # N12, Track A: every Finance and Medical view at 900 × 700 with the inspector open
   prepare_ui_test testFinanceNarrowWindow configured '{"theme":"light"}'
+  # N12 Track B: League Office's and Scouting's views at 900 × 700 with the inspector open
+  prepare_ui_test testLeagueOfficeNarrowWindow configured '{"theme":"light"}'
+  prepare_ui_test testPlayerSearchFullPageAudit configured '{"theme":"light"}'
   signing=()
   if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
-  if [ -n "${PENNANT_TEST_ONLY:-}" ]; then signing+=("-only-testing:$PENNANT_TEST_ONLY"); fi
+  for only in ${PENNANT_TEST_ONLY:-}; do signing+=("-only-testing:$only"); done
   # TEST_RUNNER_ variables reach the test runner without the prefix: each UI test finds its prepared folder under the
   # scratch root and launches the app on it
   run xcodebuild-test "Executed|\*\* TEST" \
@@ -175,7 +179,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   rm -rf "$HOME/Library/Saved Application State/com.dakotawise.pennant.dev.savedState"
   # What each accessibility audit set aside, and why, and any finding, and a quit that needed help or did not finish:
   # printed by the tests, repeated here for the CI log
-  grep -E "^\[(audit|quit)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
+  grep -E "^\[(audit|quit|palette|focus)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
   # Each test's app log (the server's lines and the app's own: the launch, the quit's steps), kept with the run's logs
   # (the CI artifact): the synthetic league's only
   for log in "$UI_SCRATCH"/*/logs/server*.log; do
@@ -207,7 +211,7 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
         const fs = require("fs"), path = require("path");
         const dir = process.argv[1];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
-        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n9-|n10-|n11-|n12-)/;
+        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n9-|n10-|n11-|n12-|n12b-)/;
         const kept = new Set();
         for (const test of manifest) for (const a of test.attachments ?? []) {
           const name = a.suggestedHumanReadableName ?? "";

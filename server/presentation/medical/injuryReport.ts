@@ -126,12 +126,12 @@ export function injuryReportView(ctx: OfficeContext, injuries: readonly Injury[]
     table: paneTable({
       columns: [
         column('player', 'Player'),
-        column('age', 'Age', { numeric: true }),
+        column('age', 'Age', true),
         column('position', 'Pos'),
         column('club', 'Club'),
         column('status', 'Status'),
-        column('back', 'Back in', { numeric: true }),
-        column('ilDays', 'IL days this season', { numeric: true }),
+        column('back', 'Back in', true),
+        column('ilDays', 'IL days this season', true),
       ],
       rows,
       empty: cell('Everyone is healthy across the organization.'),

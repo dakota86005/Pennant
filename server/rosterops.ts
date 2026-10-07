@@ -169,17 +169,43 @@ rosterOpsRoutes.get('/roster-crunch/:orgId', (req, res) => {
 
 // ── Leaderboards ────────────────────────────────────────────────────────
 
-rosterOpsRoutes.get('/leaderboards/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('players_career_batting_stats')) return res.status(400).json({ error: 'No data imported yet' });
+/** One of a category's top ten: who, his club's abbreviation, his figure as the page shows it, and whether he is ours. */
+export interface Leader {
+  player_id: number | string;
+  name: number | string;
+  team: number | string;
+  value: string | number;
+  isOrg: boolean;
+}
+
+/** The league's leaders (`GET /api/leaderboards/:orgId`): the season, who qualifies for a rate, and each category's top ten. */
+export interface Leaderboards {
+  seasonYear: number;
+  minPA: number;
+  minIP: number;
+  batting: Record<'AVG' | 'OPS' | 'HR' | 'RBI' | 'SB' | 'WAR', Leader[]>;
+  pitching: Record<'ERA' | 'WHIP' | 'K' | 'W' | 'SV' | 'WAR', Leader[]>;
+}
+
+/**
+ * Who qualifies for a rate leader: 3.1 plate appearances and one inning (three outs) per game the club has played, its
+ * games read from the club's record, or 20 when the export doesn't carry it (the page's own fallback, said where shown).
+ */
+export function leaderQualifier(orgId: number): { games: number; gamesFromExport: boolean; minPA: number; minOuts: number } {
+  const g = (db.prepare(`SELECT g FROM team_record WHERE team_id = ?`).get(orgId) as { g: number } | undefined)?.g;
+  const games = g ?? 20;
+  return { games, gamesFromExport: g !== undefined && g !== null, minPA: Math.round(games * 3.1), minOuts: Math.round(games * 3) };
+}
+
+/** The league's leaders for the club's league, or why they cannot be read (the route's own answer). */
+export function computeLeaderboards(orgId: number): Computed<Leaderboards> {
+  if (!tableExists('players_career_batting_stats')) return refuse(400, 'No data imported yet');
   const org = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as
     | { league_id: number }
     | undefined;
-  if (!org) return res.status(404).json({ error: 'Unknown org' });
+  if (!org) return refuse(404, 'Unknown org');
   const year = seasonYear(org.league_id);
-  const games = ((db.prepare(`SELECT g FROM team_record WHERE team_id = ?`).get(orgId) as { g: number } | undefined)?.g ?? 20);
-  const minPA = Math.round(games * 3.1);
-  const minOuts = Math.round(games * 3); // 1 IP per team game
+  const { minPA, minOuts } = leaderQualifier(orgId); // 1 IP per team game
 
   const bat = db
     .prepare(
@@ -245,7 +271,7 @@ rosterOpsRoutes.get('/leaderboards/:orgId', (req, res) => {
 
   const f3 = (v: number) => v.toFixed(3).replace(/^0\./, '.');
   const f2 = (v: number) => v.toFixed(2);
-  res.json({
+  return answer({
     seasonYear: year,
     minPA,
     minIP: Math.round(minOuts / 3),
@@ -266,6 +292,12 @@ rosterOpsRoutes.get('/leaderboards/:orgId', (req, res) => {
       WAR: top(withPitchRates, 'war'),
     },
   });
+}
+
+rosterOpsRoutes.get('/leaderboards/:orgId', (req, res) => {
+  const leaders = computeLeaderboards(Number(req.params.orgId));
+  if (!leaders.ok) return res.status(leaders.status).json({ error: leaders.error });
+  res.json(leaders.body);
 });
 
 // ── Staff evaluation ────────────────────────────────────────────────────
@@ -460,7 +492,8 @@ export function padDate(raw: unknown): string | null {
   return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : null;
 }
 
-interface DraftLeague {
+/** The league whose amateur draft the club takes part in, and its calendar (`draftLeague`). */
+export interface DraftLeague {
   league_id: number;
   leagueName: string;
   /** The league runs an amateur draft at all. Reserve-era and custom leagues may not. */
@@ -483,7 +516,7 @@ interface DraftLeague {
  * The amateur draft belongs to the top-level league, so an affiliate org has to
  * walk up to its parent before any of these settings mean anything.
  */
-function draftLeague(orgId: number): DraftLeague | null {
+export function draftLeague(orgId: number): DraftLeague | null {
   const team = db.prepare(`SELECT league_id FROM teams WHERE team_id = ?`).get(orgId) as
     | { league_id: number }
     | undefined;
@@ -538,7 +571,8 @@ function draftLeague(orgId: number): DraftLeague | null {
   };
 }
 
-interface Prospect {
+/** What the staff's read of a prospect rests on (`advise`): his age, position, school and his now, ceiling and upside grades. */
+export interface Prospect {
   age: number;
   positionName: string;
   school: string;
@@ -558,12 +592,17 @@ interface Prospect {
  * from the majors, and today's thin position rarely predicts the one you will
  * actually be short of when he arrives.
  */
-function advise(p: Prospect, thin: Set<string>): { label: string; reasons: string[] } | null {
+export function advise(p: Prospect, thin: Set<string>): { label: string; reasons: string[] } | null {
   const pot = p.pot ?? 0;
   const cur = p.cur ?? 0;
   const upside = p.upside ?? 0;
   if (pot < 45) return null;
+  const { label, reasons } = adviseOnGrades(pot, cur, upside);
+  return { label, reasons: [...reasons, ...prospectContext(p, thin)] };
+}
 
+/** The read's label and its first reason, from a known ceiling, now and upside (`advise`'s stated lines). */
+function adviseOnGrades(pot: number, cur: number, upside: number): { label: string; reasons: string[] } {
   const reasons: string[] = [];
   let label: string;
 
@@ -580,7 +619,12 @@ function advise(p: Prospect, thin: Set<string>): { label: string; reasons: strin
     label = 'Depth piece';
     reasons.push(`${pot} ceiling — organizational depth rather than a future regular`);
   }
+  return { label, reasons };
+}
 
+/** The read's other reasons: his age against the class, his school, and whether he plays one of the thinnest spots. */
+function prospectContext(p: Prospect, thin: Set<string>): string[] {
+  const reasons: string[] = [];
   // Age is read against the class, not the calendar: the draft pool runs 16-25,
   // so the same ceiling at 18 is a much better bet than at 22
   if (p.age <= 18) reasons.push(`only ${p.age} — years of development still ahead`);
@@ -588,40 +632,62 @@ function advise(p: Prospect, thin: Set<string>): { label: string; reasons: strin
 
   if (p.school === 'HS') reasons.push('high schooler — further away, more variance');
   if (thin.has(p.positionName)) reasons.push(`${p.positionName} is among your thinnest spots today`);
-
-  return { label, reasons };
+  return reasons;
 }
 
-rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
-  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
-
-  const league = draftLeague(Number(req.params.orgId));
-  if (!league) return res.status(404).json({ error: 'Unknown team' });
-
-  // Nothing is read from the players table until OOTP itself publishes the class
-  if (!league.poolVisible) {
-    return res.json({ ...league, total: 0, batters: [], pitchers: [] });
+/**
+ * The staff's read for the Mac's Draft Board (N12 Track B review, M4; D-018): `advise`'s stated lines, with nothing
+ * unknown read as zero. No ceiling, no read. A prospect whose grade now isn't known is read on his ceiling alone (an
+ * everyday regular's ceiling or a depth piece), and the label says his grade now isn't known; the reads that need it
+ * (a long wait, close to ready) are never given without it. The React page's route keeps `advise`.
+ */
+export function adviseScouted(p: Prospect, thin: Set<string>): { label: string; reasons: string[] } | null {
+  if (p.pot === null || !Number.isFinite(p.pot) || p.pot < 45) return null;
+  const pot = p.pot;
+  if (p.cur !== null && Number.isFinite(p.cur)) {
+    const { label, reasons } = adviseOnGrades(pot, p.cur, pot - p.cur);
+    return { label, reasons: [...reasons, ...prospectContext(p, thin)] };
   }
+  const regular = pot >= 52;
+  return {
+    label: `${regular ? 'Everyday-regular ceiling' : 'Depth piece'}, now not graded`,
+    reasons: [
+      regular ? `${pot} ceiling` : `${pot} ceiling — organizational depth rather than a future regular`,
+      'his grade now isn\'t known, so how far he has to go isn\'t either',
+      ...prospectContext(p, thin),
+    ],
+  };
+}
 
-  /*
-   * How this save marks the class, which is not the same in every save.
-   *
-   * A league whose amateurs are free-floating players — the ordinary case —
-   * has them flagged draft_eligible, and that is what to read. A league that
-   * runs its own high-school and college competitions does not: its amateurs
-   * are rostered players on school clubs, OOTP works eligibility out from
-   * their class when the draft comes round, and the flag stays at zero.
-   *
-   * A reader's export settled it. His pool players carried draft_eligible = 0
-   * with hsc_status 4 and his own league in draft_league_id, while the 123 the
-   * flag did pick out belonged, every one, to a second league's draft. So the
-   * flag is used where it says something and the school class where it does
-   * not — 4 is a high-school senior, 9 and 10 the college upperclassmen.
-   *
-   * The class rule reproduced his published pool exactly: 298 men in those
-   * classes, two of them with a career-ending injury, and OOTP's own screen
-   * said 296.
-   */
+/** Which rule finds the class in this save (`flag` or `class`), and the SQL that keeps its members (one `?`: the league). */
+export interface DraftPool {
+  poolRule: 'flag' | 'class';
+  /** How many players the eligibility flag picks out for this league's draft (zero: the class rule is read). */
+  eligibleByFlag: number;
+  /** The condition on `players p` that keeps a member of this league's class who is still on the board. */
+  where: string;
+}
+
+/**
+ * Who is in this league's draft class, by whichever rule this save answers to.
+ *
+ * A league whose amateurs are free-floating players — the ordinary case —
+ * has them flagged draft_eligible, and that is what to read. A league that
+ * runs its own high-school and college competitions does not: its amateurs
+ * are rostered players on school clubs, OOTP works eligibility out from
+ * their class when the draft comes round, and the flag stays at zero.
+ *
+ * A reader's export settled it. His pool players carried draft_eligible = 0
+ * with hsc_status 4 and his own league in draft_league_id, while the 123 the
+ * flag did pick out belonged, every one, to a second league's draft. So the
+ * flag is used where it says something and the school class where it does
+ * not — 4 is a high-school senior, 9 and 10 the college upperclassmen.
+ *
+ * The class rule reproduced his published pool exactly: 298 men in those
+ * classes, two of them with a career-ending injury, and OOTP's own screen
+ * said 296.
+ */
+export function draftPool(league: DraftLeague): DraftPool {
   const eligibleByFlag = (db
     .prepare(
       `SELECT COUNT(*) AS n FROM players
@@ -637,6 +703,83 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
   const flagRule =
     `p.draft_eligible = 1 AND COALESCE(p.draft_league_id, 0) IN (0, ?)`;
   const poolRule = eligibleByFlag > 0 ? flagRule : classRule;
+  return {
+    poolRule: eligibleByFlag > 0 ? 'flag' : 'class',
+    eligibleByFlag,
+    /*
+     * Still on the board, and for THIS league's draft, by whichever rule
+     * this save answers to. The eligibility flag also stays set after a man
+     * has been taken — 185 players in one save carried both it and
+     * picked_in_draft, every one stamped with this year as his draft year —
+     * so the board went on offering men who were already gone.
+     */
+    where: `${poolRule} AND p.retired = 0 AND p.hidden = 0
+         AND COALESCE(p.picked_in_draft, 0) != 1`,
+  };
+}
+
+/** A member of the class as the export describes him (no grade: those are read through the evidence). */
+export interface DraftClassMember {
+  player_id: number;
+  name: string;
+  age: number | null;
+  position: number | null;
+  bats: number | null;
+  throws: number | null;
+  college: number | null;
+}
+
+/** The class's members still on the board, by the pool's rule. */
+export function draftClassMembers(league: DraftLeague, pool: DraftPool): DraftClassMember[] {
+  return db
+    .prepare(
+      `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.age, p.position, p.bats, p.throws, p.college
+       FROM players p
+       WHERE ${pool.where}`
+    )
+    .all(league.league_id) as DraftClassMember[];
+}
+
+/** The flagged players the board leaves out: already drafted, and (while the flag is what it reads) another league's draft. */
+export function draftExcluded(league: DraftLeague, pool: DraftPool): { alreadyPicked: number; otherDraft: number } {
+  const excluded = db
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN COALESCE(picked_in_draft, 0) = 1 THEN 1 ELSE 0 END) AS alreadyPicked,
+         SUM(CASE WHEN COALESCE(picked_in_draft, 0) != 1
+                   AND COALESCE(draft_league_id, 0) NOT IN (0, ?) THEN 1 ELSE 0 END) AS otherDraft
+       FROM players
+       WHERE draft_eligible = 1 AND retired = 0 AND hidden = 0`
+    )
+    .get(league.league_id) as { alreadyPicked: number | null; otherDraft: number | null };
+  return {
+    alreadyPicked: excluded.alreadyPicked ?? 0,
+    /*
+     * Only meaningful while the flag is what the board reads. Once it has
+     * fallen back to the school class, the men the flag picked out belong to
+     * another league's draft by definition, and saying so on this page would
+     * be reporting a fact about somebody else's club.
+     */
+    otherDraft: pool.eligibleByFlag > 0 ? excluded.otherDraft ?? 0 : 0,
+  };
+}
+
+/** The draft board (`GET /api/draft/:orgId`), as the React page reads it. */
+export type DraftBoard = Record<string, unknown> & DraftLeague;
+
+/** The club's draft board, or why it cannot be read (the route's own answer). */
+export function computeDraft(orgId: number): Computed<DraftBoard> {
+  if (!tableExists('players')) return refuse(400, 'No data imported yet');
+
+  const league = draftLeague(orgId);
+  if (!league) return refuse(404, 'Unknown team');
+
+  // Nothing is read from the players table until OOTP itself publishes the class
+  if (!league.poolVisible) {
+    return answer({ ...league, total: 0, batters: [], pitchers: [] });
+  }
+
+  const pool = draftPool(league);
 
   // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
   const battingFrom = ratingFrom('batting')?.from ?? 'players_batting';
@@ -658,15 +801,7 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
        FROM players p
        LEFT JOIN ${battingFrom} b ON b.player_id = p.player_id
        LEFT JOIN ${pitchingFrom} pi ON pi.player_id = p.player_id
-       /*
-        * Still on the board, and for THIS league's draft, by whichever rule
-        * this save answers to. The eligibility flag also stays set after a man
-        * has been taken — 185 players in one save carried both it and
-        * picked_in_draft, every one stamped with this year as his draft year —
-        * so the board went on offering men who were already gone.
-        */
-       WHERE ${poolRule} AND p.retired = 0 AND p.hidden = 0
-         AND COALESCE(p.picked_in_draft, 0) != 1`
+       WHERE ${pool.where}`
     )
     .all(league.league_id) as Array<Record<string, number | string | null>>;
 
@@ -708,7 +843,7 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
     .sort((a, b) => (b.pot ?? 0) - (a.pot ?? 0) || (b.cur ?? 0) - (a.cur ?? 0));
 
   // The club's thinnest positions by its best player's expected wins, each figure shown (Player Value, phase 6c)
-  const needs = positionNeeds(Number(req.params.orgId));
+  const needs = positionNeeds(orgId);
   const thin = new Set(needs.thinnest);
 
   const withAdvice = prospects.map((p, i) => ({
@@ -728,38 +863,29 @@ rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
    * query. They are shown only when they are not zero, so a save where none of
    * this applies reads exactly as before.
    */
-  const excluded = db
-    .prepare(
-      `SELECT
-         SUM(CASE WHEN COALESCE(picked_in_draft, 0) = 1 THEN 1 ELSE 0 END) AS alreadyPicked,
-         SUM(CASE WHEN COALESCE(picked_in_draft, 0) != 1
-                   AND COALESCE(draft_league_id, 0) NOT IN (0, ?) THEN 1 ELSE 0 END) AS otherDraft
-       FROM players
-       WHERE draft_eligible = 1 AND retired = 0 AND hidden = 0`
-    )
-    .get(league.league_id) as { alreadyPicked: number | null; otherDraft: number | null };
+  const excluded = draftExcluded(league, pool);
 
-  res.json({
+  return answer({
     ...league,
     total: prospects.length,
     /** Every fielding position, thinnest first by its best player's expected wins; one with nobody valued last. */
     needs: needs.positions,
     needsBasis: needs.basis,
     excluded: {
-      alreadyPicked: excluded.alreadyPicked ?? 0,
-      /*
-       * Only meaningful while the flag is what the board reads. Once it has
-       * fallen back to the school class, the men the flag picked out belong to
-       * another league's draft by definition, and saying so on this page would
-       * be reporting a fact about somebody else's club.
-       */
-      otherDraft: eligibleByFlag > 0 ? excluded.otherDraft ?? 0 : 0,
+      alreadyPicked: excluded.alreadyPicked,
+      otherDraft: excluded.otherDraft,
       // Eligible, unpicked, in this draft, but carrying no scouted ceiling —
       // there is nothing to rank him on
       unrated: rows.length - prospects.length,
     },
     /** Which rule found this class, so the page can say when it is the class. */
-    poolRule: eligibleByFlag > 0 ? 'flag' : 'class',
+    poolRule: pool.poolRule,
     prospects: withAdvice,
   });
+}
+
+rosterOpsRoutes.get('/draft/:orgId', (req, res) => {
+  const board = computeDraft(Number(req.params.orgId));
+  if (!board.ok) return res.status(board.status).json({ error: board.error });
+  res.json(board.body);
 });

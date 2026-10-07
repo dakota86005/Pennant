@@ -73,6 +73,10 @@ public final class AppModel {
     public private(set) var clubhouse: ClubhouseStore
     /// Finance's and Medical's views (`OfficeStore`, N12), loaded on `storeKey`.
     public private(set) var office: OfficeStore
+    /// League Office's views (`LeagueOfficeStore`, N12 Track B), loaded on `storeKey`.
+    public private(set) var leagueOffice: LeagueOfficeStore
+    /// Scouting's views (`ScoutingStore`, N12 Track B), loaded on `storeKey`.
+    public private(set) var scouting: ScoutingStore
     /// The player windows and Compare (N11): each player's dossier, the GM's notes, comparisons.
     public private(set) var players: PlayerStore
     /// The club question still open for the chosen save, as the server last said on the status or the settings (N7,
@@ -140,6 +144,8 @@ public final class AppModel {
         majorLeague = MajorLeagueStore { line in log.write(line, source: "app") }
         clubhouse = ClubhouseStore { line in log.write(line, source: "app") }
         office = OfficeStore { line in log.write(line, source: "app") }
+        leagueOffice = LeagueOfficeStore { line in log.write(line, source: "app") }
+        scouting = ScoutingStore { line in log.write(line, source: "app") }
         players = PlayerStore { line in log.write(line, source: "app") }
     }
 
@@ -164,7 +170,9 @@ public final class AppModel {
         majorLeague: MajorLeagueStore? = nil,
         clubhouse: ClubhouseStore? = nil,
         players: PlayerStore? = nil,
-        office: OfficeStore? = nil
+        office: OfficeStore? = nil,
+        leagueOffice: LeagueOfficeStore? = nil,
+        scouting: ScoutingStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -194,6 +202,14 @@ public final class AppModel {
         if let office {
             model.office = office
             office.previewAdopt(model.storeKey)
+        }
+        if let leagueOffice {
+            model.leagueOffice = leagueOffice
+            leagueOffice.previewAdopt(model.storeKey)
+        }
+        if let scouting {
+            model.scouting = scouting
+            scouting.previewAdopt(model.storeKey)
         }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
@@ -764,6 +780,8 @@ public final class AppModel {
         majorLeague.follow(storeKey)
         clubhouse.follow(storeKey)
         office.follow(storeKey)
+        leagueOffice.follow(storeKey)
+        scouting.follow(storeKey)
         let stamp = next.lastImport?.finishedAt ?? ""
         guard stamp != importStamp else { return }
         importStamp = stamp
@@ -827,6 +845,8 @@ public final class AppModel {
         majorLeague.follow(storeKey)
         clubhouse.follow(storeKey)
         office.follow(storeKey)
+        leagueOffice.follow(storeKey)
+        scouting.follow(storeKey)
         if storeKey != nil, !loggedKey {
             loggedKey = true
             controller.log.write("store key known \(launchClock)", source: "app")

@@ -6,7 +6,8 @@
  */
 import type { Cell, Claim } from '../../contract/presentation.js';
 import type { Integer } from '../../contract/primitives.js';
-import type { OfficeFact, OfficeFilterGroup, OfficePlayer, OfficeTable, OfficeViewHead } from '../officeTable.js';
+import type { MlbPlayer } from '../majorLeague/types.js';
+import type { OfficeFact, OfficeFilterGroup, OfficeTable, OfficeViewHead } from '../officeTable.js';
 
 /** Contracts: the club's finance figures, the price of a win, the groups, and every contract as a table. */
 export interface FinanceContractsView extends OfficeViewHead {
@@ -150,7 +151,7 @@ export interface FinanceBudgetChange {
 
 /** A player in a Horizon Board cell: who, and how the club controls him that season (the full reason in `why`). */
 export interface FinanceHorizonEntry {
-  player: OfficePlayer;
+  player: MlbPlayer;
   status: Cell;
   why: Claim;
 }
@@ -168,7 +169,7 @@ export interface FinanceHorizonCell {
 
 /** The farm's next man at a position: never placed in a season. */
 export interface FinanceHorizonProspect {
-  player: OfficePlayer;
+  player: MlbPlayer;
   level: Cell;
   /** Player Development's readiness against its bar, in words. */
   readiness: Cell;

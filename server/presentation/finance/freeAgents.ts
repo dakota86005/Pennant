@@ -178,13 +178,13 @@ function listOf(
     column('player', 'Player'),
     column('position', 'Pos'),
     ...(id === 'mightReach' ? [column('why', 'Why')] : []),
-    column('club', 'Club', { hidden: id === 'available' }),
-    column('age', 'Age', { numeric: true }),
-    column('scouted', 'Scouted', { numeric: true, hint: 'Now → ceiling, your scouts\' grades' }),
-    column('winsNow', `${args.y} wins`, { numeric: true }),
-    column('winsNext', `${args.n} wins`, { numeric: true }),
-    column('market', `${args.n} at the market`, { numeric: true }),
-    ...(id === 'available' ? [] : [column('salary', `${args.y} salary`, { numeric: true })]),
+    column('club', 'Club', false, { hidden: id === 'available' }),
+    column('age', 'Age', true),
+    column('scouted', 'Scouted', true, { hint: 'Now → ceiling, your scouts\' grades' }),
+    column('winsNow', `${args.y} wins`, true),
+    column('winsNext', `${args.n} wins`, true),
+    column('market', `${args.n} at the market`, true),
+    ...(id === 'available' ? [] : [column('salary', `${args.y} salary`, true)]),
   ];
   // A column not shown in this list is left out of each row too (every row carries exactly the table's columns)
   const shown = new Set(columns.map((c) => c.id));

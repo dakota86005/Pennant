@@ -29,7 +29,9 @@ import {
   BANNED_JARGON, BANNED_VERDICTS, FOLDER_PATHS, JARGON_EXCEPTIONS, bannedIn, bannedInPayload, exceptionsUsed, shownStrings,
   type JargonException,
 } from './bannedJargon';
+import { addDraftClass, removeDraftClass } from './draftClassFixture';
 import { buildSave, type BuiltSave } from './syntheticSave';
+import { resetLeagueViews } from '../server/leagueViewService.js';
 import { detectSaves } from '../server/paths.js';
 import { discoveryClock, resetSaveDiscovery, scanSaves } from '../server/saveDiscovery.js';
 import { subscribe, type ServerEvent } from '../server/serverEvents.js';
@@ -340,8 +342,12 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     fs.rmSync(themePacksFolder(), { recursive: true, force: true });
   });
 
-  // A free agent's detail is checked on its own below: the synthetic save lists no free agent until one is made
-  const reads = operations.filter((op) => op.method === 'get' && !op.stream && op.operationId !== 'getFinanceFreeAgent');
+  /**
+   * Read only on what the synthetic save hasn't, each captured on one made below: a prospect on a published draft class
+   * (N12 Track B review, M8), a listed free agent's detail (N12 Track A review, M4).
+   */
+  const CAPTURED_ON_THEIR_OWN = new Set(['getScoutingDraftProspect', 'getFinanceFreeAgent']);
+  const reads = operations.filter((op) => op.method === 'get' && !op.stream && !CAPTURED_ON_THEIR_OWN.has(op.operationId));
   /** The scoped jargon exceptions the live payloads lean on; one none of them uses is stale. */
   const exceptionsInUse = new Set<JargonException>();
   /** An item's evidence key on the synthetic save (a Major League Ops need), found once the save is built. */
@@ -498,6 +504,33 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
       break;
     }
     expect(captured).toBe(true);
+  }, SLOW);
+
+  it('serves a published draft class and a prospect\'s reasons in the contract\'s shape, plain (captured for the previews, review M8)', async () => {
+    addDraftClass(save);
+    resetLeagueViews();
+    try {
+      const board = await (await fetch(`${base}/api/v2/views/${save.org}/scouting/draftBoard`)).json() as { published: boolean; board: { rows: Array<{ player: { playerId: number } | null }> } };
+      expect(board.published).toBe(true);
+      expect(board.board.rows.length).toBeGreaterThan(10);
+      const validate = validator('ScoutingDraftBoardView');
+      expect(validate(board) ? [] : validate.errors).toEqual([]);
+      expect(bannedInPayload(board, 'getScoutingDraftBoard')).toEqual([]);
+      expect(servedBasisProblems(board)).toEqual([]);
+      fixture('responses/getScoutingDraftBoard-published.json', json(board));
+      const chosen = board.board.rows[0].player!.playerId;
+      const res = await fetch(`${base}/api/v2/views/${save.org}/scouting/draftBoard/prospects/${chosen}`);
+      expect(res.status).toBe(200);
+      const prospect = await res.json();
+      const validateProspect = validator('ScoutingProspectView');
+      expect(validateProspect(prospect) ? [] : validateProspect.errors).toEqual([]);
+      expect(bannedInPayload(prospect, 'getScoutingDraftProspect')).toEqual([]);
+      fixture('responses/getScoutingDraftProspect.json', json(prospect));
+      expect((await fetch(`${base}/api/v2/views/${save.org}/scouting/draftBoard/prospects/1`)).status).toBe(404);
+    } finally {
+      removeDraftClass();
+      resetLeagueViews();
+    }
   }, SLOW);
 
   it('uses every scoped jargon exception in force, so a stale one is found', () => {

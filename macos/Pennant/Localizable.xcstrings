@@ -109,6 +109,9 @@
     "Card": {
       "extractionState": "manual"
     },
+    "Category": {
+      "extractionState": "manual"
+    },
     "Ceiling": {
       "extractionState": "manual"
     },
@@ -131,9 +134,6 @@
       "extractionState": "manual"
     },
     "Chosen in Settings": {
-      "extractionState": "manual"
-    },
-    "Clear": {
       "extractionState": "manual"
     },
     "Close": {
@@ -213,6 +213,9 @@
     "Dismiss": {
       "extractionState": "manual"
     },
+    "Division": {
+      "extractionState": "manual"
+    },
     "Draft Board": {
       "extractionState": "manual"
     },
@@ -234,9 +237,6 @@
     "Farm's next man": {
       "extractionState": "manual"
     },
-    "Filter": {
-      "extractionState": "manual"
-    },
     "Finance": {
       "extractionState": "manual"
     },
@@ -246,7 +246,7 @@
     "Find Automatically": {
       "extractionState": "manual"
     },
-    "Find a player": {
+    "Find a Player": {
       "extractionState": "manual"
     },
     "Find anything": {
@@ -467,6 +467,9 @@
     "Open": {
       "extractionState": "manual"
     },
+    "Open Club": {
+      "extractionState": "manual"
+    },
     "Open Decision": {
       "extractionState": "manual"
     },
@@ -474,6 +477,9 @@
       "extractionState": "manual"
     },
     "Open in %@": {
+      "extractionState": "manual"
+    },
+    "Opponent": {
       "extractionState": "manual"
     },
     "Or choose a folder": {
@@ -613,6 +619,9 @@
     "Search": {
       "extractionState": "manual"
     },
+    "Search Players": {
+      "extractionState": "manual"
+    },
     "Season Trends": {
       "extractionState": "manual"
     },
@@ -623,6 +632,9 @@
       "extractionState": "manual"
     },
     "Select a player to see his assignment.": {
+      "extractionState": "manual"
+    },
+    "Select a row to see more.": {
       "extractionState": "manual"
     },
     "Select a row to see the staff's read.": {
@@ -645,9 +657,6 @@
       "extractionState": "manual"
     },
     "Show Decision": {
-      "extractionState": "manual"
-    },
-    "Show Everyone": {
       "extractionState": "manual"
     },
     "Show Inspector": {

@@ -113,9 +113,11 @@ export type {
   FarmEvaluationRow, FarmProspectCard, FarmProspectsView, FarmDevelopmentTab, FarmDevelopmentRow, FarmSnapshotRow, FarmMovementRow,
   FarmDevelopmentDetail, FarmDevelopmentView,
 } from '../presentation/farm/types.js';
-// Finance's and Medical's views (N12, D-071): `/api/v2/views/:org/{finance,medical}/…`
+// The Office kit every front-office table outside Major League Ops shares (N12, D-071 and D-072), and Finance's and
+// Medical's views (N12, D-071): `/api/v2/views/:org/{finance,medical}/…`
 export type {
-  OfficePlayer, OfficeColumn, OfficeFact, OfficeGrid, OfficeRow, OfficeTable, OfficeFilter, OfficeFilterGroup, OfficeViewHead,
+  OfficeClub, OfficeColumn, OfficeFact, OfficeGrid, OfficeRow, OfficeTable, OfficeSection, OfficeChoice, OfficeChoiceGroup,
+  OfficeFilter, OfficeFilterGroup, OfficeViewHead,
 } from '../presentation/officeTable.js';
 export type {
   FinanceContractsView, FinanceFreeAgentDetail, FinanceFreeAgentList, FinanceFreeAgentsView, FinanceProjected, FinancePayrollSeason, FinanceBudgetLine,
@@ -156,3 +158,13 @@ export type {
   MlbScheduleView, MlbGamePlanView, MlbDepthEntry, MlbDepthPosition, MlbDepthClub, MlbDepthChartView, MlbFortyManView, MlbRosterQuery,
   MlbRosterChoice, MlbRostersView, MlbTrendPoint, MlbTrendSeries, MlbTrendChart, MlbSeasonTrendsView,
 } from '../presentation/clubhouse/types.js';
+// League Office's and Scouting's views (N12 Track B): `GET /api/v2/views/:org/league/<view>`, `/scouting/<view>`
+export type {
+  LeagueStandingsGroup, LeagueStaffRead,
+  LeagueStandingsView, LeagueLeaderGroup, LeagueLeadersView, LeagueOrgComparisonView, LeagueSeasonPoint, LeagueSeasonChart, LeagueChartLegend, LeagueTenure,
+  LeagueFranchiseView, LeagueOpponentQuery, LeagueUsVsThemView,
+} from '../presentation/league/types.js';
+export type {
+  ScoutingBoardQuery, ScoutingProspectView, ScoutingMore, ScoutingDraftBoardView, ScoutingSearchToken, ScoutingTokenKind, ScoutingSearchQuery,
+  ScoutingPlayerSearchView,
+} from '../presentation/scouting/types.js';

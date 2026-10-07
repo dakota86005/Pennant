@@ -6,24 +6,26 @@ import SwiftUI
 
 /// Contracts (N12): what each deal costs, how long the club controls him and what he's worth, as a native table in a
 /// `TablePane`. The served groups (free agents after this season, options, arbitration, ...) and all players or pitchers
-/// are the toolbar's filter, the GM's search words find a name; the club's figures and the price of a win sit beneath the
+/// are choices in the head, the window's search field (scoped to the view) finds a name; the club's figures and the price
+/// of a win sit beneath the
 /// table while no row is chosen, and a chosen row shows his seasons under control and what his figures rest on. Value
 /// describes, never authorizes: no row says what to do (D-052).
 struct ContractsView: View {
     @Environment(AppModel.self) private var model
     @State private var chosen: [String: String] = [:]
-    @State private var search = ""
+    /// The window's one search field, scoped to this view while it is shown (as Finder's searches the folder shown).
+    @Environment(\.windowSearch) private var search
 
     var body: some View {
         let store = model.office
         OfficeState(payload: store.contracts, problem: store.problems[OfficeStore.View.contracts.rawValue]) { view in
-            let kept = officeRowsKept(view.table, filters: view.filters, chosen: chosen, search: search)
-            OfficeTablePane(view.table, id: "contracts", name: view.title.display, kept: kept) {
+            let kept = officeRowsKept(view.table, filters: view.filters, chosen: chosen, search: search?.text ?? "")
+            OfficeTablePane(view.table, id: "contracts", name: view.title.display, only: kept) {
                 VStack(alignment: .leading, spacing: 8) {
-                    OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
+                    OfficeHead(title: view.title, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
                                refreshing: model.officeUpdating(.contracts))
-                    HStack(spacing: 12) {
-                        OfficeFindField(text: $search, id: "contracts.find")
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        OfficeFilterChoices(groups: view.filters, chosen: $chosen, id: "contracts.filter")
                         ShownCount(shown: kept?.count ?? view.table.rows.count, of: view.table.rows.count)
                     }
                 }
@@ -34,12 +36,9 @@ struct ContractsView: View {
                     if let price = view.price { ClaimLine(price, font: .callout) }
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    OfficeFilterButton(groups: view.filters, chosen: $chosen, id: "contracts.filter")
-                }
-            }
         }
+        .onAppear { search?.scope = "Find a Player" }
+        .onDisappear { search?.unscope() }
         .task(id: model.storeKey) { await model.loadOffice() }
     }
 }

@@ -327,10 +327,10 @@ const betweenWords = (between: readonly string[]): string => between.map((b) => 
 function briefTable(ctx: OfficeContext, id: string, b: Brief, kind: 'leaving' | 'staying' | 'open', empty: string): OfficeTable {
   const columns = [
     column('player', 'Player'),
-    column('age', 'Age', { numeric: true }),
+    column('age', 'Age', true),
     ...(kind === 'staying' ? [column('standing', 'Next season')] : kind === 'open' ? [column('between', 'Could be')] : []),
-    column('salary', 'Salary', { numeric: true }),
-    ...(kind === 'staying' ? [column('nextCost', 'Next season could cost', { numeric: true })] : []),
+    column('salary', 'Salary', true),
+    ...(kind === 'staying' ? [column('nextCost', 'Next season could cost', true)] : []),
   ];
   const rows = b.players.map((p): OfficeRow => {
     const cells: Record<string, Cell> = {
@@ -372,7 +372,7 @@ function sectionOf(ctx: OfficeContext, id: string, title: string, explain: strin
 function contractsTable(ctx: OfficeContext, payroll: Payroll): OfficeTable {
   const years = payroll.years;
   const thisSeason = payroll.seasonYear;
-  const yearColumns = years.map((y) => column(`y${y}`, String(y), { numeric: true, hint: y === thisSeason ? `Guaranteed salary owed in ${y}, the current season` : `Guaranteed salary committed for ${y}` }));
+  const yearColumns = years.map((y) => column(`y${y}`, String(y), true, { hint: y === thisSeason ? `Guaranteed salary owed in ${y}, the current season` : `Guaranteed salary committed for ${y}` }));
   const rows = payroll.players.map((p: PayrollPlayer) => {
     const cells: Record<string, Cell> = {};
     const sort: Record<string, number | string | null> = {};
@@ -416,7 +416,7 @@ function contractsTable(ctx: OfficeContext, payroll: Payroll): OfficeTable {
     return officeRow(`payroll-${p.player_id}`, cells, sort, { player: officePlayer(p.player_id, p.name, p.deadMoney ? null : ctx.orgId), claims });
   });
   return paneTable({
-    columns: [column('player', 'Player'), column('position', 'Pos'), column('age', 'Age', { numeric: true }), ...yearColumns, column('through', 'Through', { numeric: true }), column('notes', 'Notes', { sortable: false })],
+    columns: [column('player', 'Player'), column('position', 'Pos'), column('age', 'Age', true), ...yearColumns, column('through', 'Through', true), column('notes', 'Notes', false, { sortable: false })],
     rows,
     empty: cell('No contracts on the books.'),
   });

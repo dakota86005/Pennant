@@ -26,7 +26,8 @@ public final class QuitCoordinator {
     let replyDeadline: Duration
     /// How long AppKit has to end the app once the quit is answered yes; after it the app ends itself (`forceExit`).
     let exitGrace: Duration
-    /// Ends the process when AppKit has not: the app hands `exit(0)`; nothing by default, so a test process is never ended.
+    /// Ends the process when AppKit has not: the app hands `_exit(0)` (immediate: `exit` cannot run while the stuck exit
+    /// holds its lock); nothing by default, so a test process is never ended.
     private let forceExit: @Sendable () -> Void
     /// A reply is owed to AppKit.
     public private(set) var replyPending = false
@@ -90,17 +91,21 @@ public final class QuitCoordinator {
             self?.replied = ok
             self?.replyPending = false
             log("quit: replied \(ok ? "yes" : "no")")
-            reply(ok)
-            guard ok else { return }
-            // The quit is decided and the server stopped: if AppKit has not ended the app by now (PR #58 on GitHub's
-            // macOS 26 runner, after a restored window was closed: the reply went out and the app stayed), it ends
-            // itself rather than leave the GM with an app that will not quit. Off the main thread, which may be the
-            // one held.
-            Task.detached(priority: .userInitiated) {
-                try? await Task.sleep(for: exitGrace)
-                log("quit: AppKit had not ended the app \(exitGrace) after the reply; ending it")
-                forceExit()
+            if ok {
+                // The quit is decided and the server stopped: if AppKit has not ended the app within the grace (PR #58 on
+                // GitHub's macOS 26 runner, after a restored window was closed: the app reached
+                // applicationWillTerminate and stayed inside its own exit), it ends itself rather than leave the GM with
+                // an app that will not quit. Set BEFORE the reply: AppKit ends the app inside `reply` itself, so nothing
+                // after it runs. A raw thread that only sleeps and ends the process: no Swift task, no dispatch, no log
+                // or Foundation formatting on the way.
+                let (seconds, attoseconds) = exitGrace.components
+                let microseconds = UInt32(clamping: Int(seconds) * 1_000_000 + Int(attoseconds / 1_000_000_000_000))
+                log("quit: if AppKit has not ended the app in \(exitGrace), the app ends itself")
+                let net = Thread { usleep(microseconds); forceExit() }
+                net.stackSize = 64 * 1024
+                net.start()
             }
+            reply(ok)
         }
         Task.detached(priority: .userInitiated) {
             if await Self.finishes(within: lastWordsDeadline, last) {

@@ -15,7 +15,7 @@
  */
 import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js';
 import { freshnessCue, getDataStatus } from './dataStatus.js';
-import { FrontOfficeRefusal, NO_DATA, frontOfficeInputsKeyWithoutLog, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
+import { FrontOfficeRefusal, NO_DATA, frontOfficeImportKey, frontOfficeStampOf, onFrontOfficeKept, resolveOrg, runDepartmentJob } from './frontOfficeService.js';
 import { buildOfficeViews, type OfficePart, type OfficeViewsResult } from './officeViewsBuild.js';
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored } from './presentation/claim.js';
@@ -55,7 +55,7 @@ export function resetOfficeViews(): void {
  */
 export function officeViewsKey(orgId: number): string {
   const cue = freshnessCue(getDataStatus({ importedAt: importedAt.value }));
-  return `${frontOfficeInputsKeyWithoutLog(orgId)}|${cue.state}/${cue.lagDays}`;
+  return `${frontOfficeImportKey(orgId)}|${cue.state}/${cue.lagDays}`;
 }
 
 /** The club's Finance and Medical views for the current inputs: the kept ones, the ones being built, or a new build. */

@@ -41,7 +41,7 @@ struct OfficeSnapshotTests {
     func payrollContracts(dark: Bool) throws {
         let view = try #require(PreviewFixtures.office.payroll)
         try draw(hosted(OfficeTablePane(view.contracts, id: "payroll.contracts", name: view.title.display) {
-            OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness, refreshing: false)
+            OfficeHead(title: view.title, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness, refreshing: false)
         } notes: { EmptyView() }), size: CGSize(width: 1280, height: 820), dark: dark, name: "n12-payroll-contracts")
     }
 

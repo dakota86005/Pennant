@@ -158,6 +158,15 @@ struct ThemeTests {
             // The system's white words on an action's tint
             let action = contrast(.white, on: .readableActionTint, in: name)
             #expect(action >= needed, "action \(name.rawValue): \(action)")
+            // A season chart's marks as graphics, and the hollow mark's outline (N12 Track B review, M7): 3:1 on the page
+            // and the window's background, 4.5:1 with Increase Contrast; the playoff blue and the title gold apart from each
+            // other and from the grey, never the system accent
+            for fill in [NSColor.readablePage, .windowBackgroundColor] {
+                for mark in [NSColor.readableChartTitle, .readableChartPlayoffs, .readableChartOther, .readableSecondaryLabel] {
+                    let ratio = contrast(mark, on: fill, in: name)
+                    #expect(ratio >= (needed > 4.5 ? 4.5 : 3), "chart mark \(name.rawValue): \(ratio)")
+                }
+            }
         }
         // The neutral heading chip no longer draws on the system accent, and neither does a position's badge
         #expect(Theme.Palette.neutral.isNeutral)

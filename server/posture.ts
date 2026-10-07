@@ -107,6 +107,11 @@ export interface OddsModel {
    * (`no_race`: the club is not in its conference's standings) or a one-game cushion (`no_rival`: nobody is outside its place).
    */
   gapRead: 'race' | 'no_race' | 'no_rival';
+  /**
+   * Where the schedule's length came from: the export's `games` table, or (`assumed`) 162 games when the export has no
+   * schedule. A reader that must not assume (League Office's Standings, D-018) makes no read on an assumed schedule.
+   */
+  scheduleRead: 'games' | 'assumed';
 }
 
 /** The club's odds model, or why it cannot be read. */
@@ -155,7 +160,7 @@ export function oddsModelOf(teamId: number): { model: OddsModel; reason: null } 
   return {
     model: {
       teamId, leagueId: team.league_id, w: record.w, l: record.l, gamesPlayed: played, gamesLeft, rs, ra, talent,
-      rival: RIVAL_TALENT, picture, gap, gapRead,
+      rival: RIVAL_TALENT, picture, gap, gapRead, scheduleRead: tableExists('games') ? 'games' : 'assumed',
     },
     reason: null,
   };

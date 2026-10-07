@@ -35,7 +35,7 @@ struct PayrollView: View {
                 case .contracts:
                     OfficeTablePane(view.contracts, id: "payroll.contracts", name: view.title.display, detailShare: 0.3) {
                         VStack(alignment: .leading, spacing: 10) {
-                            OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
+                            OfficeHead(title: view.title, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness,
                                        refreshing: model.officeUpdating(.payrollBudget))
                             PayrollModePicker(mode: $mode)
                         }
@@ -77,7 +77,7 @@ struct PayrollSeasonsPage: View {
         // The head stays put above the page, as a TablePane's does: never under the toolbar's scroll edge
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
-                OfficeHead(title: view.title.display, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness, refreshing: refreshing)
+                OfficeHead(title: view.title, byline: view.byline, parts: view.bylineParts, lede: view.lede, freshness: view.freshness, refreshing: refreshing)
                 if let mode { PayrollModePicker(mode: mode) }
             }
             .padding(.horizontal, 28).padding(.top, 16).padding(.bottom, 10)

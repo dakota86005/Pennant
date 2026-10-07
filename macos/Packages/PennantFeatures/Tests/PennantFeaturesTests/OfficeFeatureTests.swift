@@ -1,4 +1,4 @@
-import FeatureCore
+@testable import FeatureCore
 @testable import Finance
 import Foundation
 @testable import Medical
@@ -48,10 +48,10 @@ struct OfficeFeatureTests {
     @Test("a column sorts by the served keys, an unknown last whichever way, ties in the served order")
     func unknownLast() throws {
         let table = try #require(store.contracts?.table)
-        let items = table.rows.enumerated().map { OfficeRowItem(row: $0.element, index: $0.offset) }
+        let items = table.rows.enumerated().map { OfficeTableRow(row: $0.element, index: $0.offset) }
         for column in table.columns.map(\.id) {
             for order in [SortOrder.forward, .reverse] {
-                let sorted = ServedColumnSort<OfficeRowItem>(column, order: order) { $0.key(column) }.sorted(items)
+                let sorted = OfficeSort(column: column, order: order).sorted(items)
                 let unknown = sorted.drop { $0.key(column) != nil }
                 #expect(unknown.allSatisfy { $0.key(column) == nil }, "\(column): an unknown came before a known key")
             }
@@ -86,7 +86,7 @@ struct OfficeFeatureTests {
     @Test("Compare takes each chosen player once, in the table's order")
     func compareTakesEachOnce() throws {
         let rows = try #require(store.contracts?.table.rows.prefix(3))
-        let refs = OfficeTableView.players(in: Array(rows) + Array(rows))
+        let refs = OfficeTable.players(in: Array(rows) + Array(rows))
         #expect(refs == rows.compactMap { $0.player.map { PlayerRef(id: $0.playerId) } })
     }
 

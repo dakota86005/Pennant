@@ -70,6 +70,9 @@ export const BANNED_VERDICTS: readonly RegExp[] = [
   // careful with", "the card to send up", "which rarely holds"
   /\bcheck (?:him|her|them)\b(?: \w+)? (?:first|before)\b/i, /\bbefore you post\b/i, /\bbe careful with\b/i, /\bthe card to send up\b/i,
   /\b(?:rarely|seldom|never|always) (?:holds|lasts)\b/i,
+  // The deadline posture as an order (N12 Track B review, L1; D-001): the staff's read "reads the club as a buyer" or
+  // "leans toward selling", never "…: buy", "sell and look to next year" or an imperative "lean toward selling"
+  /:\s*(?:buy|sell)\b/i, /^(?:buy|sell)\b/i, /\bsell and look to\b/i, /\blean toward (?:buying|selling)\b/i,
 ];
 
 /**

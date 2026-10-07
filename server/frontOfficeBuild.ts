@@ -26,6 +26,7 @@ import type { FarmDecisionRequest, FarmViewsRequest } from './farmViewsBuild.js'
 import type { PlayerDossiersRequest } from './playerDossierBuild.js';
 import type { OfficeViewsRequest } from './officeViewsBuild.js';
 import type { ClubhouseAskRequest, ClubhouseViewsRequest } from './clubhouseViewsBuild.js';
+import type { LeagueAskRequest, LeagueViewsRequest } from './leagueViewsBuild.js';
 import { farmMaterial } from './presentation/frontOffice/farm.js';
 import { financeMaterial } from './presentation/frontOffice/finance.js';
 import { majorLeagueMaterial, type MajorLeagueInput } from './presentation/frontOffice/majorLeague.js';
@@ -290,4 +291,7 @@ export type WorkerJob =
   // N11: the player window's dossiers for our club's players, read ahead after an import (`playerDossierBuild.ts`)
   | { kind: 'playerDossiers'; request: PlayerDossiersRequest }
   // N12, Track A: Finance's and Medical's views (`officeViewsBuild.ts`)
-  | { kind: 'officeViews'; request: OfficeViewsRequest };
+  | { kind: 'officeViews'; request: OfficeViewsRequest }
+  // N12 Track B: League Office's and Scouting's views, and Us vs Them asked on a click (`leagueViewsBuild.ts`)
+  | { kind: 'leagueViews'; request: LeagueViewsRequest }
+  | { kind: 'leagueAsk'; request: LeagueAskRequest };
