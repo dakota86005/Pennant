@@ -51,8 +51,19 @@ public final class MainWindowModel {
         guard !query.isEmpty, let searchProblem, searchProblem.query == query else { return nil }
         return searchProblem.problem
     }
-    /// The ⌘K palette: whether it is up, and what is typed in it.
-    public var paletteShown = false
+    /// The ⌘K palette: whether it is up, and what is typed in it. Each time it comes up or goes away the app's log says
+    /// so, with why (`paletteLog`; PR #58, where ⌘K opened no palette on GitHub's runner).
+    public var paletteShown = false {
+        didSet {
+            guard paletteShown != oldValue else { return }
+            Self.paletteLog?("palette: \(paletteShown ? "up" : "away") (\(paletteReason ?? "set directly"))")
+            paletteReason = nil
+        }
+    }
+    /// Why the palette is changing now, for its line in the app's log.
+    @ObservationIgnored private var paletteReason: String?
+    /// Where a change of the palette is said: the app's log (set by the app at launch); nil says nothing.
+    public static var paletteLog: ((String) -> Void)?
     public var paletteQuery = ""
     /// The claim pinned to the inspector's evidence tab (SWIFTUI_REBUILD.md section 3.3); nil when none is.
     public var pinnedClaim: Components.Schemas.Claim?
@@ -123,15 +134,26 @@ public final class MainWindowModel {
     }
 
     /// View ▸ Find Anything… (⌘K): the palette, its query cleared each time it opens.
-    public func togglePalette() {
+    public func togglePalette(_ reason: String = "Find Anything toggled it") {
+        paletteReason = reason
         paletteShown.toggle()
+        paletteReason = nil
         if paletteShown { paletteQuery = "" }
     }
 
     /// Find Anything (⌘K) chosen while another window is key: the palette up (never toggled away), its query cleared.
-    public func showPalette() {
+    public func showPalette(_ reason: String = "Find Anything from another window") {
         if !paletteShown { paletteQuery = "" }
+        paletteReason = reason
         paletteShown = true
+        paletteReason = nil
+    }
+
+    /// The palette put away: a click outside it, Escape, or a result chosen (said in the app's log as `reason`).
+    public func hidePalette(_ reason: String) {
+        paletteReason = reason
+        paletteShown = false
+        paletteReason = nil
     }
 
     public func isExpanded(_ id: DeptID) -> Binding<Bool> {
