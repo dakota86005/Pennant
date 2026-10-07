@@ -134,9 +134,13 @@ struct LineSplitterTests {
 
     @Test("a real child's lines arrive while it is still running")
     func liveProcess() async throws {
+        // The child that is signalled is the one that waits: the shell replaces itself with `cat` (reading the stdin the
+        // test holds open), so SIGTERM ends the very process the test waits for. It used to end with `sleep 30` under a
+        // shell that stayed to wait for it: SIGTERM then went to the shell while a grandchild held the pipes, and how
+        // the shell ended depended on which `sh` the Mac has and where it was when the signal came (the flake, N11)
         let process = try FoundationSidecarProcess(LaunchSpec(
             executable: URL(fileURLWithPath: "/bin/sh"),
-            arguments: ["-c", "echo first; read line; echo \"got $line\"; sleep 30"],
+            arguments: ["-c", "echo first; read line; echo \"got $line\"; exec /bin/cat >/dev/null"],
             environment: [:]
         ))
         var lines = process.outputLines.makeAsyncIterator()

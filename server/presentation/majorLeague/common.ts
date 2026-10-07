@@ -5,6 +5,7 @@
  */
 import type { Cell, Certainty, Claim, Target, Tone } from '../../contract/presentation.js';
 import type { MlbOverview } from '../../mlbOperations.js';
+import { ratingFillOf } from '../../scoutedEvidence.js';
 import { basis, cell, claim, row, target } from '../claim.js';
 import { sourceOf, type DepartmentContext } from '../frontOffice/desk.js';
 import type { MlbAction, MlbBlock, MlbColumn, MlbLine, MlbPlayer, MlbRow, MlbViewHead } from './types.js';
@@ -145,10 +146,14 @@ export function tableRow(
   id: string,
   cells: Record<string, Cell>,
   sort: Record<string, number | string | null>,
-  extra: { player?: MlbPlayer | null; detail?: MlbBlock[]; actions?: MlbAction[]; claim?: Claim } = {},
+  extra: { player?: MlbPlayer | null; detail?: MlbBlock[]; actions?: MlbAction[]; claim?: Claim; ratingsFill?: Cell | null; players?: MlbPlayer[] } = {},
 ): MlbRow {
   const base = row(id, cells, sort, extra.claim);
-  return { ...base, player: extra.player ?? null, detail: extra.detail ?? [], actions: extra.actions ?? [] };
+  return {
+    ...base, player: extra.player ?? null, detail: extra.detail ?? [], actions: extra.actions ?? [],
+    ...(extra.ratingsFill ? { ratingsFill: extra.ratingsFill } : {}),
+    ...(extra.players?.length ? { players: extra.players } : {}),
+  };
 }
 
 /** A column. */
@@ -157,4 +162,26 @@ export const column = (id: string, title: string, numeric = false): MlbColumn =>
 /** A number's cell: its words, or the sentence for an unknown (never a zero), with its tone. */
 export function numberCell(display: string | null, unknown: string, extra: { tone?: Tone; hint?: string } = {}): Cell {
   return display === null ? cell(unknown, { tone: 'unknown', ...(extra.hint ? { hint: extra.hint } : {}) }) : cell(display, extra);
+}
+
+/** The mark a row carries beside his grades when they are OSA's view filling in for our scouts (N11), or null. */
+export function fillMark(playerId: number): Cell | null {
+  const fill = ratingFillOf(playerId);
+  return fill ? cell(fill.mark, { hint: fill.hint }) : null;
+}
+
+/**
+ * A row whose grades are OSA's view filling in for our scouts (D-067): every cell that rests on his grades carries the
+ * sentence in its hint, and his detail opens with it as a quiet line, so the Mac can draw the mark ("OSA") beside them.
+ * Nothing changes for a player our scouts rate.
+ */
+export function markFill(playerId: number, cells: Record<string, Cell>, ratingKeys: readonly string[], detail: MlbBlock[]): MlbBlock[] {
+  const note = ratingFillOf(playerId)?.hint ?? null;
+  if (!note) return detail;
+  for (const k of ratingKeys) {
+    const c = cells[k];
+    if (c) cells[k] = { ...c, hint: c.hint ? `${c.hint}. ${note}` : note };
+  }
+  const [first, ...rest] = detail;
+  return first ? [{ ...first, lines: [line(note, { quiet: true }), ...first.lines] }, ...rest] : [block(null, [line(note, { quiet: true })])];
 }

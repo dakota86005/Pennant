@@ -35,6 +35,12 @@ import type {
   FarmAffiliatesView, FarmAssignmentsView, FarmDecisionView, FarmDevelopmentDetail, FarmDevelopmentView, FarmOrganizationView, FarmProspectsView,
 } from './presentation/farm/types.js';
 import {
+  playerCompareNow, playerDossierJsonNow, playerNotesNow, removeStaffNoteNow, restoreStaffNoteNow, setPlayerNoteNow, undoFirstNoteNow,
+} from './playerViewService.js';
+import type {
+  PlayerCompareView, PlayerNoteChange, PlayerNotesView, StaffNoteChange,
+} from './presentation/player/types.js';
+import {
   clubhouseDepthNow, clubhouseFortyManNow, clubhouseGamePlanNow, clubhouseLineupNow, clubhousePitchingNow, clubhouseRostersNow,
   clubhouseScheduleNow, clubhouseTrendsNow,
 } from './clubhouseViewService.js';
@@ -170,6 +176,29 @@ v2Routes.get('/views/:org/majorLeague/decision', frontOffice<MlbDecisionView>((r
   context: textQuery(req.query.context),
   days: wholeQuery(req.query.days),
 })));
+
+/**
+ * The player window (N11): one player's dossier (`?org=` the club it is read for, `automatic` by default), the GM's
+ * notes on him, and two to four players side by side. Our club's players are read ahead after each import; any other on
+ * his first open; both kept until the next import (`playerViewService.ts`).
+ */
+const orgQuery = (value: unknown): string => (typeof value === 'string' && value.trim() ? value.trim() : 'automatic');
+// The dossier is kept as the JSON this route sends, checked when it was kept (`assertAuthored`): sent as it is (review M5)
+v2Routes.get('/player/:id', (req: Request, res: Response<Buffer | ApiError>, next: NextFunction): void => {
+  playerDossierJsonNow(String(req.params.id), orgQuery(req.query.org)).then((bytes) => {
+    res.type('application/json').send(bytes);
+  }).catch((err: unknown) => {
+    if (err instanceof FrontOfficeRefusal || err instanceof DeskRefusal || err instanceof LeagueRefusal) res.status(err.status).json({ error: err.message });
+    else next(err);
+  });
+});
+v2Routes.get('/player/:id/notes', frontOffice<PlayerNotesView>((req) => playerNotesNow(String(req.params.id))));
+v2Routes.put('/player/:id/notes', frontOffice<PlayerNoteChange>((req) => setPlayerNoteNow(String(req.params.id), req.body)));
+v2Routes.delete('/player/:id/notes', frontOffice<PlayerNoteChange>((req) => undoFirstNoteNow(String(req.params.id))));
+v2Routes.post('/player/:id/staff-notes', frontOffice<StaffNoteChange>((req) => restoreStaffNoteNow(String(req.params.id), req.body)));
+v2Routes.delete('/player/:id/staff-notes/:noteId', frontOffice<StaffNoteChange>((req) =>
+  removeStaffNoteNow(String(req.params.id), String(req.params.noteId))));
+v2Routes.get('/compare', frontOffice<PlayerCompareView>((req) => playerCompareNow(req.query as Record<string, unknown>)));
 
 /**
  * Major League Ops' clubhouse tools (N9, D-069): each a payload of its own, built in the worker after every import and

@@ -38,6 +38,28 @@ struct ClubhouseFeatureTests {
         }
     }
 
+    @Test("every player a clubhouse table names opens in his own window, and the rows chosen are compared (N11)")
+    func playersOpenAndCompare() throws {
+        for table in tables {
+            for row in table.rows {
+                for named in (row.player.map { [$0] } ?? row.players ?? []) {
+                    #expect(playerRef(opening: named.open) == PlayerRef(id: named.playerId))
+                }
+            }
+        }
+        // A game's two starters: no one player is the row's, both are named, ours first, and Compare takes each once
+        let games = try #require(store.schedule?.games.table.rows)
+        let named = games.filter { ($0.players?.count ?? 0) == 2 }
+        let first = try #require(named.first)
+        #expect(first.player == nil)
+        let chosen = ServedTable.players(in: [first, first] + named.dropFirst().prefix(1))
+        #expect(Array(chosen.prefix(2)) == first.players!.map { PlayerRef(id: $0.playerId) })
+        #expect(Set(chosen.map(\.id)).count == chosen.count)
+        // Rows about a player: his, in the table's order
+        let lineup = try #require(store.lineup(nil)?.order.rows)
+        #expect(ServedTable.players(in: lineup) == lineup.compactMap { $0.player.map { PlayerRef(id: $0.playerId) } })
+    }
+
     @Test("a roster's usual season lines are shown and the rest start hidden, to be shown from the table's columns")
     func hiddenColumns() throws {
         let hitters = try #require(store.roster(nil)?.sections.first { $0.id == "hitters" })

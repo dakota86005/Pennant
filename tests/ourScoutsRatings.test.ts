@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { db, forgetImportRecord, LAST_IMPORT_PATH } from '../server/db.js';
-import { developmentHistoryFor, developmentTrendByPlayer, historyDb, modeFilter, snapshotModes, stampSnapshotMode } from '../server/history.js';
+import { developmentHistoryFor, developmentTrendByPlayer, historyDb, modeFilter, playerRatingHistory, snapshotModes, stampSnapshotMode } from '../server/history.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { takeImportSnapshots } from '../server/importSnapshots.js';
 import { indexesFor } from '../server/importWorker.js';
@@ -227,6 +227,91 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
     expect(seen).toBeGreaterThanOrEqual(2);
   });
 
+  it('marks a filled player\'s grades wherever they are shown: the player window, Major League Ops\' rows and the farm\'s (N11)', async () => {
+    setImport('osa');
+    const { buildPlayerDossiers } = await import('../server/playerDossierBuild.js');
+    const { fillMark: mlbMark } = await import('../server/presentation/majorLeague/common.js');
+    const { tableRow } = await import('../server/presentation/majorLeague/common.js');
+    const { fillMark: farmMark } = await import('../server/presentation/farm/common.js');
+    const sentence = 'OSA\'s view: our scouts haven\'t rated him.';
+    const { views } = buildPlayerDossiers({ orgId: OURS, importStamp: null, reportStamp: 'r1', playerIds: [UNRATED, RATED] });
+    const filled = views.find((v) => v.playerId === UNRATED)!;
+    const ours = views.find((v) => v.playerId === RATED)!;
+    expect(filled.header.ratingsFill).toMatchObject({ display: 'OSA', hint: sentence });
+    expect(filled.ratings.source.text).toBe(sentence);
+    const grades = filled.ratings.groups.flatMap((g) => g.rows);
+    expect(grades.length).toBeGreaterThan(0);
+    for (const r of grades) expect(r.cells.grade.hint).toBe(sentence);
+    expect(grades.find((r) => r.id === 'contact')?.now).toBe(OSA_GRADE);
+    expect(ours.header.ratingsFill).toBeNull();
+    expect(ours.ratings.groups.flatMap((g) => g.rows).find((r) => r.id === 'contact')?.now).toBe(OUR_GRADE);
+    // The departments' rows carry the same mark for him alone
+    expect(tableRow('a', {}, {}, { ratingsFill: mlbMark(UNRATED) }).ratingsFill).toMatchObject({ display: 'OSA', hint: sentence });
+    expect(tableRow('b', {}, {}, { ratingsFill: mlbMark(RATED) }).ratingsFill).toBeUndefined();
+    const farmCtx = { fill: ratingFillOf } as unknown as Parameters<typeof farmMark>[0];
+    expect(farmMark(farmCtx, UNRATED)).toMatchObject({ ratingsFill: { display: 'OSA', hint: sentence } });
+    expect(farmMark(farmCtx, RATED)).toEqual({});
+  });
+
+  it('carries the mark on every served row, card and detail that shows a filled player\'s grades (review M4)', async () => {
+    // A farmhand OSA rates and our scouts don't, beside the major leaguer: both filled
+    const FARMHAND = IDS.minorDeal;
+    scoutRow(FARMHAND, OSA, OSA_GRADE);
+    setImport('osa');
+    const filled = new Set<unknown>([UNRATED, FARMHAND]);
+    const { resetFrontOfficeCache } = await import('../server/frontOfficeService.js');
+    const { resetFarmViews } = await import('../server/farmViewService.js');
+    const { resetPlayerViews } = await import('../server/playerViewService.js');
+    resetFrontOfficeCache();
+    resetFarmViews();
+    resetPlayerViews();
+    /** Cells, facts and fields that show grades (or rest on them), by the names the payloads use. */
+    const GRADE_CELLS = new Set(['ratings', 'current', 'grade', 'estimate', 'bat', 'glove', 'run', 'tools', 'canPlay', 'fit', 'against']);
+    const GRADE_FIELDS = ['first', 'latest', 'snapshots'];
+    const showsGrades = (o: Record<string, unknown>): boolean => {
+      const cells = (o.cells ?? {}) as Record<string, unknown>;
+      if (Object.keys(cells).some((k) => GRADE_CELLS.has(k))) return true;
+      if (GRADE_FIELDS.some((k) => k in o)) return true;
+      const facts = (o.facts ?? []) as Array<{ label?: { display?: string } }>;
+      return facts.some((f) => /Scouted/.test(f.label?.display ?? ''));
+    };
+    const unmarked: string[] = [];
+    let checked = 0;
+    const walk = (v: unknown, path: string): void => {
+      if (Array.isArray(v)) return v.forEach((x, i) => walk(x, `${path}[${i}]`));
+      if (!v || typeof v !== 'object') return;
+      const o = v as Record<string, unknown>;
+      // A target ({ kind: 'player', playerId }) names him; it shows nothing
+      const his = filled.has(o.playerId) || filled.has((o.player as { playerId?: unknown } | null | undefined)?.playerId);
+      if (his && typeof o.kind !== 'string' && showsGrades(o)) {
+        checked += 1;
+        if (!o.ratingsFill) unmarked.push(path);
+      }
+      for (const [k, x] of Object.entries(o)) walk(x, `${path}.${k}`);
+    };
+    const paths = [
+      ...['overview', 'positionPlayers', 'pitchingStaff', 'benchBackups'].map((view) => `/api/v2/views/${OURS}/majorLeague/${view}`),
+      ...['organization', 'affiliates', 'assignments', 'prospects', 'development'].map((view) => `/api/v2/views/${OURS}/farm/${view}`),
+      `/api/v2/views/${OURS}/farm/development/${FARMHAND}`,
+      `/api/v2/views/${OURS}/farm/decision?player=${FARMHAND}`,
+    ];
+    for (const path of paths) {
+      try {
+        walk(await request(path), path);
+      } catch (err) {
+        // A view the small fixture can't build is not a row left unmarked
+        if (!/-> (404|409)/.test(String(err))) throw err;
+      }
+    }
+    try {
+      expect(checked).toBeGreaterThan(0);
+      expect(unmarked).toEqual([]);
+    } finally {
+      db.prepare('DELETE FROM players_scouted_ratings WHERE player_id = ? AND scouting_team_id = ?').run(FARMHAND, OSA);
+      setImport('osa');
+    }
+  });
+
   it('stamps a snapshot read from our scouts\' reports as their own kind, and never compares it with another kind', async () => {
     const outcome = await takeImportSnapshots({
       importFinishedAt: null, importStartedAt: '2040-07-01T12:00:00.000Z',
@@ -300,6 +385,11 @@ describe('our scouts\' full reports as the scouted evidence (D-067)', () => {
       expect(trend?.snapshotCount ?? 0).toBe(1);
       expect(trend?.reasons.join(' ')).toMatch(/changed source/);
       expect((loadScoutedObservations([SWITCHER]).get(SWITCHER) ?? []).map((o) => o.ability.ratingsFrom)).toEqual(['our_scouts']);
+      // His own window's history (N11, review M2): OSA's row set aside, the change of source said
+      const own = playerRatingHistory(SWITCHER);
+      expect(own.rows.map((r) => r.game_date)).toEqual([dates[1]]);
+      expect(own.setAside).toBe(1);
+      expect(own.sourceSwitch).toBe(switched.text);
     } finally {
       historyDb.prepare(`DELETE FROM save_rating_snapshots WHERE save_key = ? AND game_date IN (?, ?)`).run(save, ...dates);
       historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date IN (?, ?)`).run(save, ...dates);

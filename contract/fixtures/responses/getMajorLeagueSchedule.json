@@ -1815,7 +1815,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1013,
+              "name": "P 1013",
+              "open": {
+                "kind": "player",
+                "playerId": 1013,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1091,
+              "name": "P 1091",
+              "open": {
+                "kind": "player",
+                "playerId": 1091,
+                "teamId": 4
+              }
+            }
+          ]
         },
         {
           "id": "game-63",
@@ -1862,7 +1882,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1014,
+              "name": "P 1014",
+              "open": {
+                "kind": "player",
+                "playerId": 1014,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1040,
+              "name": "P 1040",
+              "open": {
+                "kind": "player",
+                "playerId": 1040,
+                "teamId": 2
+              }
+            }
+          ]
         },
         {
           "id": "game-65",
@@ -1909,7 +1949,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1015,
+              "name": "P 1015",
+              "open": {
+                "kind": "player",
+                "playerId": 1015,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1067,
+              "name": "P 1067",
+              "open": {
+                "kind": "player",
+                "playerId": 1067,
+                "teamId": 3
+              }
+            }
+          ]
         },
         {
           "id": "game-67",
@@ -1956,7 +2016,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1016,
+              "name": "P 1016",
+              "open": {
+                "kind": "player",
+                "playerId": 1016,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1094,
+              "name": "P 1094",
+              "open": {
+                "kind": "player",
+                "playerId": 1094,
+                "teamId": 4
+              }
+            }
+          ]
         },
         {
           "id": "game-69",
@@ -2003,7 +2083,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1017,
+              "name": "P 1017",
+              "open": {
+                "kind": "player",
+                "playerId": 1017,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1043,
+              "name": "P 1043",
+              "open": {
+                "kind": "player",
+                "playerId": 1043,
+                "teamId": 2
+              }
+            }
+          ]
         },
         {
           "id": "game-71",
@@ -2050,7 +2150,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1013,
+              "name": "P 1013",
+              "open": {
+                "kind": "player",
+                "playerId": 1013,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1065,
+              "name": "P 1065",
+              "open": {
+                "kind": "player",
+                "playerId": 1065,
+                "teamId": 3
+              }
+            }
+          ]
         },
         {
           "id": "game-73",
@@ -2097,7 +2217,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1014,
+              "name": "P 1014",
+              "open": {
+                "kind": "player",
+                "playerId": 1014,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1092,
+              "name": "P 1092",
+              "open": {
+                "kind": "player",
+                "playerId": 1092,
+                "teamId": 4
+              }
+            }
+          ]
         },
         {
           "id": "game-75",
@@ -2144,7 +2284,27 @@
           },
           "player": null,
           "detail": [],
-          "actions": []
+          "actions": [],
+          "players": [
+            {
+              "playerId": 1015,
+              "name": "P 1015",
+              "open": {
+                "kind": "player",
+                "playerId": 1015,
+                "teamId": 1
+              }
+            },
+            {
+              "playerId": 1041,
+              "name": "P 1041",
+              "open": {
+                "kind": "player",
+                "playerId": 1041,
+                "teamId": 2
+              }
+            }
+          ]
         },
         {
           "id": "game-77",

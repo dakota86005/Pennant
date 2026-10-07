@@ -3,11 +3,15 @@ import { db, tableExists } from './db.js';
 import { glovesFromRow } from './gloves.js';
 import { contactLeague, contactProfiles, situationalSplits } from './battedball.js';
 import { contractSummaryOf, controlAfterThisSeason, valueSummaryOf } from './contracts.js';
-import { freshnessCue, getDataStatus } from './dataStatus.js';
-import { playerValue, type PlayerValuation } from './playerValue.js';
+import { freshnessCue, getDataStatus, type FreshnessCue } from './dataStatus.js';
+import { playerValues, type PlayerValuation } from './playerValue.js';
+import { answer, refuse } from './computed.js';
+import type { DataStatus } from './dataStatus.js';
+import type { AssignmentContext } from './assignmentContext.js';
+import type { PlayerRights } from './playerRights.js';
 import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
-import { loadScoutedAbilities, ratingFillOf, scoutedRatingRow } from './scoutedEvidence.js';
+import { loadScoutedAbilities, ratingFillOf, scoutedRatingRow, type ScoutedAbility } from './scoutedEvidence.js';
 import { twoWayBatters, twoWayPitchers } from './twoway.js';
 
 export const playerRoutes = Router();
@@ -102,9 +106,41 @@ const cmToFtIn = (cm: number): string => {
 const veloLabel = (v: number | null): string | null =>
   v === null || v <= 0 ? null : `${78 + v}–${80 + v} mph`;
 
-playerRoutes.get('/player/:id', (req, res) => {
-  const id = Number(req.params.id);
-  if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
+/**
+ * What the card's dossier reads that a batch can share (N11: the player window builds our club's players together): how
+ * current the data is, the players' valuations, their rights and assignment context, and their scouted tools. Each is the
+ * same answer the one-player read computes for him alone (`playerValues`, `rightsFor`, `loadScoutedAbilities` are batched
+ * reads of the same functions).
+ */
+export interface DossierShared {
+  status: DataStatus;
+  cue: FreshnessCue;
+  valuation: (id: number) => PlayerValuation | null;
+  rights: (id: number) => { assignment: AssignmentContext | null; rights: PlayerRights } | undefined;
+  ability: (id: number) => ScoutedAbility;
+}
+
+/** The shared reads for a set of players, read once. */
+export function dossierShared(ids: readonly number[]): DossierShared {
+  const status = getDataStatus();
+  const cue = freshnessCue(status);
+  const valuations = playerValues([...ids], { currentState: cue.state });
+  const rights = rightsFor([...ids], status);
+  const abilities = loadScoutedAbilities([...ids]);
+  return {
+    status, cue,
+    valuation: (id) => valuations.get(id) ?? null,
+    rights: (id) => rights.get(id),
+    ability: (id) => abilities.for(id),
+  };
+}
+
+/**
+ * The player card's dossier (`GET /api/player/:id`), computed without HTTP (N11: the player window reads it too, so the
+ * card and the window cannot drift apart). `shared` is the batch's reads; without it, the player's own.
+ */
+export function computePlayerDossier(id: number, shared?: DossierShared) {
+  if (!tableExists('players')) return refuse<never>(400, 'No data imported yet');
 
   const p = db
     .prepare(
@@ -119,7 +155,7 @@ playerRoutes.get('/player/:id', (req, res) => {
        WHERE p.player_id = ?`
     )
     .get(id) as Record<string, unknown> | undefined;
-  if (!p) return res.status(404).json({ error: 'Player not found' });
+  if (!p) return refuse<never>(404, 'Player not found');
 
   // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
   const batting = scoutedRatingRow('batting', id) as Record<string, number> | undefined;
@@ -193,9 +229,9 @@ playerRoutes.get('/player/:id', (req, res) => {
    * current as the export is: a stale export leaves service-dependent answers not established (D-023), and the
    * header says how current it is (A-20). The same valuation the card's Value section is served.
    */
-  const status = getDataStatus();
-  const cue = freshnessCue(status);
-  const valuation: PlayerValuation | null = playerValue(id, { currentState: cue.state });
+  const given = shared ?? dossierShared([id]);
+  const { status, cue } = given;
+  const valuation: PlayerValuation | null = given.valuation(id);
   const summary = valuation ? contractSummaryOf(valuation) : null;
   // The contract table: every season his contract (and a signed extension) covers from this one on, with its
   // salary as the export states it; a salary it does not state is null, never $0 (D-018)
@@ -273,8 +309,8 @@ playerRoutes.get('/player/:id', (req, res) => {
 
   // The one scouting figure on the header: the organization's scouted tools, through the evidence boundary (D-017),
   // never OOTP's Overall or Potential from players_value
-  const ability = loadScoutedAbilities([id]).for(id);
-  const rights = rightsFor([id], status).get(id);
+  const ability = given.ability(id);
+  const rights = given.rights(id);
 
   const pitches: Array<{ name: string; rating: number; talent: number }> = [];
   if (pitching) {
@@ -383,7 +419,7 @@ playerRoutes.get('/player/:id', (req, res) => {
         .get(id) as { total: number | null; first: number | null; last: number | null })
     : null;
 
-  res.json({
+  return answer({
     player_id: id,
     contact,
     careerEarnings: earnings?.total ?? null,
@@ -502,4 +538,14 @@ playerRoutes.get('/player/:id', (req, res) => {
     leagueLeader,
     fieldingYears,
   });
+}
+
+/** The dossier as the card reads it: everything `computePlayerDossier` answers for a player. */
+export type PlayerDossierBody = Extract<ReturnType<typeof computePlayerDossier>, { ok: true }>['body'];
+
+playerRoutes.get('/player/:id', (req, res) => {
+  const computed = computePlayerDossier(Number(req.params.id));
+  if (computed.ok) res.json(computed.body);
+  else res.status(computed.status).json({ error: computed.error });
 });
+

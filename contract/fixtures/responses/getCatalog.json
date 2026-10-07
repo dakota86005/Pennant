@@ -1765,6 +1765,17 @@
       "more": {
         "display": "Hover for more; click for the basis"
       }
+    },
+    "compare": {
+      "most": 4,
+      "empty": {
+        "display": "Drop two to four players here",
+        "hint": "Or choose Compare on a player anywhere"
+      },
+      "full": {
+        "display": "Compare holds four players at most",
+        "hint": "Compare on another player opens a new Compare window"
+      }
     }
   }
 }

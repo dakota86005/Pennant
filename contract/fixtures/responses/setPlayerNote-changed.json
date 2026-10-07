@@ -1,0 +1,22 @@
+{
+  "done": {
+    "display": "Note saved for P 1019"
+  },
+  "notes": {
+    "playerId": 1019,
+    "following": true,
+    "note": "Ready for the late innings.",
+    "explain": {
+      "display": "Saved as you type, with your follow",
+      "hint": "Your note stays while you follow him"
+    },
+    "staff": [],
+    "staffEmpty": {
+      "display": "Nothing filed by the staff yet"
+    }
+  },
+  "undo": {
+    "note": "  Hits left-handers hard.\n\n  Watch his back on day games.  "
+  },
+  "undoUnfollows": false
+}

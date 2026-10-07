@@ -203,7 +203,7 @@ let workerBroken = false;
 
 type Job = WorkerJob;
 /** Another department's jobs (N10: the farm's), which its own service posts, checks and keeps (`runDepartmentJob`). */
-type DepartmentJob = Extract<Job, { kind: 'farmViews' | 'farmDecision' | 'clubhouseViews' | 'clubhouseAsk' }>;
+type DepartmentJob = Extract<Job, { kind: 'farmViews' | 'farmDecision' | 'clubhouseViews' | 'clubhouseAsk' | 'playerDossiers' }>;
 /** The Front Office's own jobs, which this service checks and keeps. */
 type OwnJob = Exclude<Job, DepartmentJob>;
 

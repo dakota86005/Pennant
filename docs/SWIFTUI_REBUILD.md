@@ -146,6 +146,75 @@ served `theme` and applies it to every window once saved; AI lists each provider
 request that fails shows the server's sentence, or one of three structural lines ("Couldn't reach the Pennant server",
 "The Pennant server isn't running", "The request failed") with the raw error in the help tag and the log, never as text.
 
+**As built at N11 (2026-10-04): the player window and Compare.** Branch `feature/swiftui-n11-player`; D-070 (BEHAVIOR_CASES.md
+"Player card", the N11 rows).
+- **Served** (`server/presentation/player/`, `server/playerDossierBuild.ts`, `server/playerViewService.ts`): `GET
+  /api/v2/player/:id[?org=]`, one `PlayerDossierView` in sections (header with three tiles and how current the data is;
+  overview; ratings with the scale, whose grades they are, every group, the rating history; value with the totals, our
+  view, the production cone and the season-by-season breakdown; contract and rights; history with where he is now, the
+  log's lines and his record as tables). Read by `computePlayerDossier` (the React card's `/api/player/:id`, extracted,
+  byte-identical on the owner's export and USBL, 126 requests; pinned in `routeExtractions.test.ts`) with Player Value's
+  cone, surplus and our view, Player Rights, Player State, the log and `playerRatingHistory` (the organization's history
+  filter, shared). `GET|PUT|DELETE /api/v2/player/:id/notes` (the GM's note on his follow, as typed; a first note follows
+  him and its undo stops following), `POST|DELETE /api/v2/player/:id/staff-notes[/:noteId]` (the staff's notes; a removal
+  undone), `GET /api/v2/compare?players=` (two to four, each figure his own dossier's, ranges read by overlap only). Our
+  club's players are read ahead in the Front Office's worker after each kept build (`playerDossiers`, a `WorkerJob`); any
+  other on his first open; kept on the Front Office's key and the rating-snapshot writes. The React card's playoff-odds
+  line is not served (D-060). Major League Ops' and the farm's rows carry `ratingsFill`, the OSA mark (D-067).
+- **Drawn** (PennantFeatures' Player target, `PlayerStore` in PennantKit): `WindowGroup("Player", for: PlayerRef.self)`
+  and `WindowGroup("Compare", for: ComparisonRef.self)`, both restored at relaunch by their values and offering no empty
+  window from File. The sections are chosen with a segmented control centred above them, as Music's Get Info window
+  shows one album's kinds of detail (a sidebar would be a second navigation in a window of one subject; a `TabView` put
+  its tabs in the toolbar on macOS 26, where they fell into the overflow menu beside the window's buttons and were not
+  seen; on a narrow window the segments show their symbols, each still named): Overview, Ratings (grades as bars between the served scale's ends, the history as a Swift Charts line
+  with an `AXChartDescriptor`), Value (the totals, our view, the cone as Swift Charts ranges with the replacement rule
+  and the seasons not established outlined, an audio-graph descriptor, each season a button opening its basis), Contract
+  & Rights, History (a native `Table` of the chosen record in a `TablePane` over where he is now and the log), Notes
+  (saved 0.6 s after the last key, undone like any text; staff notes removable with ⌘Z). Below 820 points wide the header keeps
+  to his name, line and club, and the tiles open the Overview instead, so the sections keep the room. A player's name anywhere (`playerName`), a Major League Ops row (double-click
+  or Return), the palette's player result, Following, a desk item whose headline names a player and the Player menu
+  (⌥⌘O Open Player, ⌥⌘C Compare, on the focused player) open or bring forward his window; Open His Club stays in the
+  menus. Compare takes the chosen rows (Major League Ops' tables allow several), a drop anywhere on its window, or the
+  Compare command (the window used last takes the player, `CompareRouter`, or a new one when it is full); a player is
+  removed in one click; it holds as many as the catalog serves (four). The OSA mark (`RatingFillMark`) is drawn beside every grade, the header, the source line, Major League
+  Ops' and the farm's player cells and Compare's players, its sentence the help tag and the VoiceOver label.
+- **Measured** (in process over HTTP on an M4; the synthetic league, read-only scratch copies of the owner's export and
+  of USBL): our club read ahead in 0.4 s (32 players), 2.8 s (285) and 1.6 s (162); a dossier from the cache p50 / p95
+  0.8–1.9 / 1.4–3.9 ms, 43–60 kB; another club's player on his first open 0.13 s on the owner's export and 0.05 s on
+  USBL (the first after a start 0.8 s and 0.34 s: that league's reads, cold on the server's thread), 1.1 / 2.0 ms after;
+  USBL's longest career (97 seasons' rows) 0.13 s first, 1.2 / 1.6 ms after, 71 kB; Compare of three 0.7–1.0 / 1.4–1.8
+  ms; notes 0.3–0.6 / 0.6–1.2 ms.
+- **Verified:** `playerDossier.test.ts`, `playerCompare.test.ts`, `playerNotes.test.ts`, `playerViews.test.ts`, the
+  contract test (fixtures `getPlayerDossier`, `getPlayerNotes`, `getPlayerCompare`, the note and staff-note changes; the
+  fuller `contract/fixtures/player/`), `routeExtractions.test.ts`, `ourScoutsRatings.test.ts` (the mark end to end);
+  `PlayerFeatureTests` and `PlayerSnapshotTests` (`n11-*` in `build/macos-snapshots/`, light and dark); XCUITests
+  `testPlayerWindows` (palette, a table's row twice, Following, a decision's player; every section; audited),
+  `testCompareByMenuAndDrag` (two chosen rows by the menu, a third dropped, one removed; audited),
+  `testPlayerWindowRestored` and `testPlayerNarrowWindow` (520 × 480, every section five rounds, five runs in a row;
+  audited), each at no finding and no new set-aside. PennantKit's live-pipe test signals the process it waits for (the
+  flake: 50 consecutive runs of the suite with the real server).
+- **Review fixes (2026-10-05):** the GM's note is held by `PlayerStore` per player and saved 0.6 s after the last key in
+  the store's own task (a keystroke never cancels a save), at once when the section or window goes away, and sent off the
+  main actor before the server stops at quit (`QuitCoordinator`'s `lastWords`); a cancelled request is a non-event, and no
+  error's description reaches the log (`RequestProblem.logLine`: operation, status, domain and code). Option years are
+  Rights' standing behind the stale gate; the rating history says what it set aside and whose grades it draws; Compare
+  reads wins in the roster map's words with the bands said in the hover, draws no likely mark that isn't served, and
+  takes its limit and words from the catalog; the farm's cards and Development details and Major League Ops' decision
+  candidates carry and draw the OSA mark; the Value section's seasons wrap in a grid, not a nested sideways scroll.
+  Measured with 500 other clubs' players opened after our club (read-only scratch copies): USBL steady RSS 627 to 578
+  MB, heap 91 to 38 MB, the first open after a start 498 to 76 ms; the owner's export 1133 to 819 MB, heap 103 to 39 MB,
+  the first open 1467 to 166 ms (the idle warm-up it moves costs 0.4 s and 1.2 s on an idle thread); a kept dossier p50
+  0.3 ms.
+- **With N9's clubhouse tools (2026-10-05):** every player the seven tools name opens his window (a row on Return, a
+  double-click or its menu; a depth-chart entry, a plan's line or a matchup row by his name), and their tables compare
+  the rows chosen. A game's row serves its two starters (`players`, ours first): its menu opens either and Compare takes
+  both. The Lineup's, Pitching Availability's, the Depth Chart's (both modes) and the Rosters' rows and entries carry and
+  draw the OSA mark; `ratingFillEverywhere.test.ts` walks the clubhouse payloads too. `ClubhouseStore` logs only `RequestProblem.logLine`'s
+  line, and a request called off is a non-event there as in the player's store.
+- *Left for later:* the React card's hover card (a summary on resting over a name) is not drawn: the name opens the
+  window; the season-by-season breakdown's row hover (the season's control) is in the cone's season detail instead; the
+  farm's tables compare the right-clicked player (several chosen only in Major League Ops' tables).
+
 ### 3.2 The main window
 
 - **Sidebar** (`NavigationSplitView`; floats as glass automatically on macOS 26+):
@@ -1406,7 +1475,10 @@ Reference pictures, made-up data only: `docs/design/morning-report-light.png`, `
   its "why" lines as custom content.
 - **The ⌘K palette (section 3.6).** View ▸ Find Anything… (⌘K) opens `CommandPalette` over the window with the
   registry's views (their served names, the Go menu's ⌘1 to ⌘9 beside the first view of each department) and the
-  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes. Players
+  commands that can act now (`PaletteIndex`, in Shell); ↑ and ↓ move, ↩ opens, esc or a click outside closes.
+  Since PR #58 (N11) ⌘K works from every window, as Open Quickly does in Xcode: with no main window key (a player's,
+  a club's or Compare's window in front, or none) the main window used last (`MainWindows`) comes forward with its
+  palette up, or a new main window opens with it; the app's log says which, with the key window's identifier. Players
   and clubs join when the server serves search (N7); the toolbar's search field stays a stub until then.
 - **The Morning Report today and at N6.** The app draws what is served: the masthead's kicker (the club and how current
   the report is), the served headline and the record; the desk in the lead column and the department tiles beside it;
@@ -1815,8 +1887,29 @@ with scripted processes, and `ServerIntegrationTests` with the real staged serve
   neither needs the main dispatch queue, which the nested run loop `.terminateLater` waits in cannot drain while it is
   inside a main-queue job (every main-actor `Task` is one). Asking to quit (`requestQuit()`, used by the SIGTERM
   handler and every future Quit) schedules `NSApp.terminate` on the main run loop for the same reason. A second request
-  while a reply is owed is cancelled. When the app is killed outright, the server sees stdin close and stops itself,
+  while a reply is owed is cancelled. The quit always finishes (PR #58): the last words (notes not kept yet) get 2 s and
+  are then given up, the reply goes out at 12 s whatever is still under way, and each step is written to the app's log
+  (`quit: asked`, `quit: the server is stopped`, …). AppKit ends the app inside `reply(toApplicationShouldTerminate:)`
+  itself, so nothing after the reply runs: an ask that comes after the reply quits at once (`.terminateNow`), and
+  before replying yes the coordinator starts a raw thread that calls `_exit(0)` 5 s later if the app is still there.
+  Open (PR #58, GitHub's macOS 26 runner, a virtual machine): after a *restored* player window was closed, a quit
+  answered yes reached `applicationWillTerminate`, set that net, and the same pid was still alive 20 s later (its
+  launch line and the running-process list in the UI test's output name it). A process `_exit` cannot end is held in
+  the kernel, not by the app; it was never seen on macOS 27, and closing an ordinary window and quitting passes on the
+  runner. The restoration test now quits with the restored window open; check it on a real macOS 26 Mac before
+  release (N14). When the app is killed outright, the server sees stdin close and stops itself,
   releasing the lock (checked on a real build).
+- **A UI test never leaves the pointer on a window's title-bar buttons (PR #58).** On GitHub's 1024 × 768 runner every
+  main window opens at x 0 and a player's window (920 points wide) centred at x 52, so a click on the player window's
+  close button leaves the pointer exactly on the next launch's zoom button. macOS 26 then opens its window-tiling menu
+  over that window (AppKit's ThemeWidgetControlViewService, a popup at layer 101), and the menu takes every key: the
+  app, in front with its window key, receives no ⌘1, ⌘K or ⌘Q until a click closes the menu. testPlayerNoteKeptOnLeaving
+  closed his window that way and quit at once, and the next tests failed at their first key (testPlayerWindows and
+  testSearchToClubWindow here; testPlayerSearchFullPageAudit and the restoration test's ⌘Q on #59). It closes with ⌘W
+  now. After clicking a title-bar button a test closes with the keyboard instead, or moves the pointer off before the
+  next launch (`audit` hovers it to the title bar's middle). If keys stop arriving again, the Debug key log
+  (`-PennantTestLogKeys`, `KeyEquivalentLog.swift`: each key with ⌘ or ⌃, activation and key-window changes) and
+  each setUp's list of the windows on the screen, at every layer, say so.
 - stdout is read with a readability handler, a line at a time: `FileHandle.bytes.lines` held the ready line back until
   the pipe closed.
 - `server.log` rotates at 5 MB and keeps three older files; the token and keys are never written (the handshake is on
@@ -2406,6 +2499,9 @@ Organization lines say a fit set aside. The farm's XCUITests (`testFarmDeskToDec
 **N9 (2026-10-04)** on `feature/swiftui-n9-clubhouse`: Major League Ops' clubhouse tools, server and Mac (section 3.5,
 "As built at N9"; D-069), every Major League Ops view now drawn, and the save's place kept per import. Left open: the
 owner's calls listed in D-069.
+
+**N11 (2026-10-04)** on `feature/swiftui-n11-player`: the player window and Compare, server and Mac (section 3.1, "As built at
+N11"; D-070), with the OSA mark drawn wherever a grade is shown and PennantKit's live-pipe test made deterministic.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

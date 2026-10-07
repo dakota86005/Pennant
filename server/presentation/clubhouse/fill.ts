@@ -5,11 +5,20 @@
  * our scouts rate.
  */
 import type { Cell } from '../../contract/presentation.js';
+import { cell } from '../claim.js';
 import { block, line } from '../majorLeague/common.js';
 import type { MlbBlock } from '../majorLeague/types.js';
 
 /** The per-player mark and its sentence (`ratingFillOf`), or null for a player our scouts rate. */
 export type RatingFill = { mark: string; hint: string } | null;
+
+/**
+ * The mark a row or an entry carries beside his grades (`ratingsFill`, N11), as N8's rows carry it, so the Mac draws it
+ * with the sentence as its help tag and VoiceOver label; null for a player our scouts rate.
+ */
+export function fillMark(fill: RatingFill): Cell | null {
+  return fill ? cell(fill.mark, { hint: fill.hint }) : null;
+}
 
 /** A cell resting on his grades, with the fill's sentence in its hint. */
 export function fillHint(c: Cell, fill: RatingFill): Cell {

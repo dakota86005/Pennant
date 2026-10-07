@@ -1,0 +1,1146 @@
+{
+  "orgId": 1,
+  "importStamp": "2040-05-06T12:00:00.000Z",
+  "players": [
+    {
+      "playerId": 1000,
+      "name": "P 1000",
+      "line": {
+        "display": "LF · Bats S, throws R · Age 30"
+      },
+      "open": {
+        "kind": "player",
+        "playerId": 1000,
+        "teamId": 1
+      },
+      "ratingsFill": null
+    },
+    {
+      "playerId": 1001,
+      "name": "P 1001",
+      "line": {
+        "display": "3B · Bats R, throws R · Age 29"
+      },
+      "open": {
+        "kind": "player",
+        "playerId": 1001,
+        "teamId": 1
+      },
+      "ratingsFill": {
+        "display": "OSA",
+        "hint": "OSA's view: our scouts haven't rated him."
+      }
+    },
+    {
+      "playerId": 1019,
+      "name": "P 1019",
+      "line": {
+        "display": "RP · Bats L, throws R · Age 28"
+      },
+      "open": {
+        "kind": "player",
+        "playerId": 1019,
+        "teamId": 1
+      },
+      "ratingsFill": null
+    }
+  ],
+  "note": {
+    "display": "Each figure is his own, as his window shows it; ranges are compared only by whether they overlap",
+    "hint": "Nothing here says who is the better player"
+  },
+  "sections": [
+    {
+      "id": "who",
+      "title": {
+        "display": "Who"
+      },
+      "rows": [
+        {
+          "id": "position",
+          "label": {
+            "display": "Position"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "LF"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "3B"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "RP"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "age",
+          "label": {
+            "display": "Age"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "30"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "29"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "28"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "club",
+          "label": {
+            "display": "Club"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "Club 1 N (MLB)"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Club 1 N (MLB)"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Club 1 N (MLB)"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "bt",
+          "label": {
+            "display": "Bats / throws"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "S / R"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "R / R"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "L / R"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "service",
+          "label": {
+            "display": "Major-league service"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "1 year"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "1 year"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "1 year"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "thisSeason",
+          "label": {
+            "display": "This season"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "2040: 108 PA · .000/.000/.000 · 0 HR"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "2040: 124 PA · .000/.000/.000 · 0 HR"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "2040: 11.7 IP · 0.00 ERA · — K"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        }
+      ]
+    },
+    {
+      "id": "contract",
+      "title": {
+        "display": "Contract"
+      },
+      "rows": [
+        {
+          "id": "salary",
+          "label": {
+            "display": "This season"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "$700K in 2040"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "$7.2M in 2040"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "$1.1M in 2040"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "term",
+          "label": {
+            "display": "Term"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "Signed through 2041"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Signed through 2041"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Signed through 2041"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "after",
+          "label": {
+            "display": "After this season"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "Free agent after 2045"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Free agent after 2045"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Free agent after 2045"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        }
+      ]
+    },
+    {
+      "id": "value",
+      "title": {
+        "display": "Value"
+      },
+      "rows": [
+        {
+          "id": "value-wins",
+          "label": {
+            "display": "Wins above replacement",
+            "hint": "His wins over a minimum-salary replacement"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "Most likely 0.1 wins",
+                "hint": "could be −3.7 wins to 6.5 wins (2040–2045)"
+              },
+              "range": {
+                "low": -3.6607444649746896,
+                "high": 6.4979026860840605,
+                "mid": 0.14051342082919246
+              }
+            },
+            {
+              "display": {
+                "display": "Most likely 1.1 wins",
+                "hint": "could be −3.1 wins to 8.3 wins (2040–2045)"
+              },
+              "range": {
+                "low": -3.069471235731062,
+                "high": 8.30062081109993,
+                "mid": 1.092531819034006
+              }
+            },
+            {
+              "display": {
+                "display": "Most likely −0.4 wins",
+                "hint": "could be −1.7 wins to 0.8 wins (2040–2045)"
+              },
+              "range": {
+                "low": -1.698297290522805,
+                "high": 0.805500789856603,
+                "mid": -0.4120356322303309
+              }
+            }
+          ],
+          "reading": {
+            "text": "Can't tell apart: every range overlaps",
+            "tone": "unknown",
+            "basis": {
+              "because": [
+                {
+                  "label": "P 1000",
+                  "value": "−3.7 wins to 6.5 wins"
+                },
+                {
+                  "label": "P 1001",
+                  "value": "−3.1 wins to 8.3 wins"
+                },
+                {
+                  "label": "P 1019",
+                  "value": "−1.7 wins to 0.8 wins"
+                },
+                {
+                  "label": "How it is read",
+                  "value": "Two players are told apart on wins above replacement only when their ranges don't overlap (the range of reasonable outcomes). A range sitting above another says which figure is higher, not who is the better player."
+                }
+              ],
+              "source": {
+                "department": "finance",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": null
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A new export that moves either range."
+              ],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Compared by overlap only"
+            },
+            "links": []
+          }
+        },
+        {
+          "id": "wins-2040",
+          "label": {
+            "display": "Expected wins, 2040"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "<0.1 wins",
+                "hint": "Half the time −0.4 to 0.5"
+              },
+              "range": {
+                "low": -0.5953987789400577,
+                "high": 0.6702008987300296,
+                "mid": 0.03248509885432944
+              }
+            },
+            {
+              "display": {
+                "display": "−0.1 wins",
+                "hint": "Half the time −0.6 to 0.4"
+              },
+              "range": {
+                "low": -0.7615780823498841,
+                "high": 0.5135755923875684,
+                "mid": -0.10596159280226736
+              }
+            },
+            {
+              "display": {
+                "display": "0.2 wins",
+                "hint": "Half the time 0.1 to 0.3"
+              },
+              "range": {
+                "low": -0.030293306901074513,
+                "high": 0.30131715576073215,
+                "mid": 0.19198089513348743
+              }
+            }
+          ],
+          "reading": {
+            "text": "Not separable: every pair's half-time ranges meet",
+            "tone": "unknown",
+            "basis": {
+              "because": [
+                {
+                  "label": "P 1000",
+                  "value": "−0.4 to 0.5"
+                },
+                {
+                  "label": "P 1001",
+                  "value": "−0.6 to 0.4"
+                },
+                {
+                  "label": "P 1019",
+                  "value": "0.1 to 0.3"
+                },
+                {
+                  "label": "How it is read",
+                  "value": "Two players are told apart on expected wins in 2040 only when their ranges don't overlap (the range each lands in half the time, as the roster map places players). A range sitting above another says which figure is higher, not who is the better player."
+                },
+                {
+                  "label": "What is drawn",
+                  "value": "Each bar is the range he lands in 8 seasons in 10, the mark his most likely. Who is ahead is read on the narrower range he lands in half the time, as the roster map places players, so two bars can overlap while one player is still clearly ahead."
+                }
+              ],
+              "source": {
+                "department": "finance",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": null
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A new export that moves either range."
+              ],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Compared by overlap only"
+            },
+            "links": [],
+            "hint": "The bars hold 8 seasons in 10; who is ahead is read on 5 in 10"
+          }
+        },
+        {
+          "id": "wins-2041",
+          "label": {
+            "display": "Expected wins, 2041"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "0.1 wins",
+                "hint": "Half the time −0.5 to 0.7"
+              },
+              "range": {
+                "low": -0.7673086379264611,
+                "high": 1.5959204361278594,
+                "mid": 0.1331921639414426
+              }
+            },
+            {
+              "display": {
+                "display": "0.4 wins",
+                "hint": "Half the time −0.3 to 1.0"
+              },
+              "range": {
+                "low": -0.5790086656426523,
+                "high": 1.9768198029027437,
+                "mid": 0.39381547722193033
+              }
+            },
+            {
+              "display": {
+                "display": "−0.1 wins",
+                "hint": "Half the time −0.3 to −<0.1"
+              },
+              "range": {
+                "low": -0.3889435268608303,
+                "high": 0.12830404786854793,
+                "mid": -0.12824276856686892
+              }
+            }
+          ],
+          "reading": {
+            "text": "Not separable: every pair's half-time ranges meet",
+            "tone": "unknown",
+            "basis": {
+              "because": [
+                {
+                  "label": "P 1000",
+                  "value": "−0.5 to 0.7"
+                },
+                {
+                  "label": "P 1001",
+                  "value": "−0.3 to 1.0"
+                },
+                {
+                  "label": "P 1019",
+                  "value": "−0.3 to −<0.1"
+                },
+                {
+                  "label": "How it is read",
+                  "value": "Two players are told apart on expected wins in 2041 only when their ranges don't overlap (the range each lands in half the time, as the roster map places players). A range sitting above another says which figure is higher, not who is the better player."
+                },
+                {
+                  "label": "What is drawn",
+                  "value": "Each bar is the range he lands in 8 seasons in 10, the mark his most likely. Who is ahead is read on the narrower range he lands in half the time, as the roster map places players, so two bars can overlap while one player is still clearly ahead."
+                }
+              ],
+              "source": {
+                "department": "finance",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": null
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A new export that moves either range."
+              ],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Compared by overlap only"
+            },
+            "links": [],
+            "hint": "The bars hold 8 seasons in 10; who is ahead is read on 5 in 10"
+          }
+        },
+        {
+          "id": "wins-2042",
+          "label": {
+            "display": "Expected wins, 2042"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "0.1 wins",
+                "hint": "Half the time −0.5 to 0.4"
+              },
+              "range": {
+                "low": -0.7922533291372948,
+                "high": 1.5462746199536614,
+                "mid": 0.08250804837082507
+              }
+            },
+            {
+              "display": {
+                "display": "0.3 wins",
+                "hint": "Half the time −0.4 to 0.7"
+              },
+              "range": {
+                "low": -0.6397458098858422,
+                "high": 1.8830130502944729,
+                "mid": 0.30106947296935643
+              }
+            },
+            {
+              "display": {
+                "display": "−0.1 wins",
+                "hint": "Half the time −0.2 to −<0.1"
+              },
+              "range": {
+                "low": -0.3183370350691806,
+                "high": 0.2529705362295498,
+                "mid": -0.07399850075744194
+              }
+            }
+          ],
+          "reading": {
+            "text": "Not separable: every pair's half-time ranges meet",
+            "tone": "unknown",
+            "basis": {
+              "because": [
+                {
+                  "label": "P 1000",
+                  "value": "−0.5 to 0.4"
+                },
+                {
+                  "label": "P 1001",
+                  "value": "−0.4 to 0.7"
+                },
+                {
+                  "label": "P 1019",
+                  "value": "−0.2 to −<0.1"
+                },
+                {
+                  "label": "How it is read",
+                  "value": "Two players are told apart on expected wins in 2042 only when their ranges don't overlap (the range each lands in half the time, as the roster map places players). A range sitting above another says which figure is higher, not who is the better player."
+                },
+                {
+                  "label": "What is drawn",
+                  "value": "Each bar is the range he lands in 8 seasons in 10, the mark his most likely. Who is ahead is read on the narrower range he lands in half the time, as the roster map places players, so two bars can overlap while one player is still clearly ahead."
+                }
+              ],
+              "source": {
+                "department": "finance",
+                "specialist": "Player Value",
+                "asOf": null,
+                "gameDate": null
+              },
+              "unknown": [],
+              "wouldChange": [
+                "A new export that moves either range."
+              ],
+              "lean": null,
+              "certainty": "policy",
+              "called": "A line chosen and stated",
+              "stamp": "Compared by overlap only"
+            },
+            "links": [],
+            "hint": "The bars hold 8 seasons in 10; who is ahead is read on 5 in 10"
+          }
+        }
+      ]
+    },
+    {
+      "id": "scouted",
+      "title": {
+        "display": "Scouted grades"
+      },
+      "rows": [
+        {
+          "id": "scouted",
+          "label": {
+            "display": "Scouted, now → ceiling"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "34 → 34"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "49 → 49",
+                "hint": "OSA's view: our scouts haven't rated him."
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "32 → 32"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-contact",
+          "label": {
+            "display": "Contact"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "33"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "51"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-gap",
+          "label": {
+            "display": "Gap power"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "29"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "54"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-power",
+          "label": {
+            "display": "Power"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "39"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "54"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-eye",
+          "label": {
+            "display": "Eye"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "30"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "47"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-avoidK",
+          "label": {
+            "display": "Avoiding strikeouts"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "39"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "41"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-speed",
+          "label": {
+            "display": "Speed"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "50"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "50"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-stealing",
+          "label": {
+            "display": "Stealing"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "Not scouted",
+                "tone": "unknown"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Not scouted",
+                "tone": "unknown"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-batting-baserunning",
+          "label": {
+            "display": "Baserunning"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "Not scouted",
+                "tone": "unknown"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "Not scouted",
+                "tone": "unknown"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No batting grades for him"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-pitching-stuff",
+          "label": {
+            "display": "Stuff"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "33"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-pitching-movement",
+          "label": {
+            "display": "Movement"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "32"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-pitching-control",
+          "label": {
+            "display": "Control"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "30"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-pitching-stamina",
+          "label": {
+            "display": "Stamina"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No pitching grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "35"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-arsenal-fastball",
+          "label": {
+            "display": "Fastball"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No arsenal grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No arsenal grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "60"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-arsenal-slider",
+          "label": {
+            "display": "Slider"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No arsenal grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No arsenal grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "55"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        },
+        {
+          "id": "grade-arsenal-changeup",
+          "label": {
+            "display": "Changeup"
+          },
+          "cells": [
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No arsenal grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "—",
+                "tone": "unknown",
+                "hint": "No arsenal grades for him"
+              },
+              "range": null
+            },
+            {
+              "display": {
+                "display": "50"
+              },
+              "range": null
+            }
+          ],
+          "reading": null
+        }
+      ]
+    }
+  ]
+}

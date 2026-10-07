@@ -1,6 +1,7 @@
 import FeatureCore
 import PennantAPI
 import PennantKit
+import Player
 import Shell
 import SwiftUI
 
@@ -43,6 +44,26 @@ struct PennantApp: App {
         // A club window opens only for a club (never File ▸ New Club Window with none)
         .commandsRemoved()
 
+        // A player's dossier, one window per player (N11): opened or brought forward from his name anywhere, restored at
+        // relaunch (its value is his id)
+        WindowGroup("Player", for: PlayerRef.self) { player in
+            PlayerWindowScene(player: player.wrappedValue)
+                .environment(appDelegate.model)
+                .environment(appDelegate.routing)
+        }
+        .defaultSize(width: 920, height: 780)
+        // A player window opens only for a player (never File ▸ New Player Window with none)
+        .commandsRemoved()
+
+        // Two to four players side by side (N11): drop players on it or choose Compare; restored with its players
+        WindowGroup("Compare", for: ComparisonRef.self) { comparison in
+            CompareWindowView(value: comparison)
+                .environment(appDelegate.model)
+                .environment(appDelegate.routing)
+        }
+        .defaultSize(width: 980, height: 760)
+        .commandsRemoved()
+
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()
                 .environment(appDelegate.model)
@@ -68,14 +89,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The served notification when a new export is read, and the desk's count on the Dock icon (N7).
     private let outside: OutsideTheWindow
     private let quit: QuitCoordinator
+    /// The app's own log (the quit's steps).
+    private let appLog: @Sendable (String) -> Void
     private var terminationSignal: (any DispatchSourceSignal)?
 
     override init() {
+        #if DEBUG
+        // A UI test's first launch starts from fresh defaults (`-PennantTestFreshDefaults YES`): the window frames and
+        // choices an earlier test left in the app's defaults never carry into the next (PR #58 on the runner: after the
+        // player-window tests, ⌘K's palette no longer appeared in the tests that followed)
+        // …and from no saved windows: the app's own saved-state folder is removed before any window is restored, as the
+        // test process (which may not reach it on the runner) cannot be relied on to (PR #58). Said in the app's log below.
+        var savedStateLine: String?
+        if UserDefaults.standard.bool(forKey: "PennantTestFreshDefaults"), let id = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: id)
+            let state = FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: "Library/Saved Application State/\(id).savedState", directoryHint: .isDirectory)
+            if FileManager.default.fileExists(atPath: state.path(percentEncoded: false)) {
+                do {
+                    try FileManager.default.removeItem(at: state)
+                    savedStateLine = "launch: fresh test defaults; the saved windows were removed"
+                } catch {
+                    savedStateLine = "launch: fresh test defaults; the saved windows could not be removed (\((error as NSError).domain) \((error as NSError).code))"
+                }
+            } else {
+                savedStateLine = "launch: fresh test defaults; no saved windows were there"
+            }
+        }
+        #endif
         let model = AppModel(configuration: AppConfiguration.server())
         let controller = model.serverController
         self.model = model
         outside = OutsideTheWindow(model: model)
-        quit = QuitCoordinator(prepare: { model.beginShutdown() }, stop: { await controller.stop() })
+        let log = controller.log
+        appLog = { log.write($0, source: "app") }
+        // Each time a main window's ⌘K palette comes up or goes away, with why (PR #58)
+        MainWindowModel.paletteLog = { log.write($0, source: "app") }
+        // Which process this is, for reading a quit that stops short against the processes running then (PR #58)
+        log.write("launch: this is process \(ProcessInfo.processInfo.processIdentifier)", source: "app")
+        #if DEBUG
+        if let savedStateLine { log.write(savedStateLine, source: "app") }
+        #endif
+        quit = QuitCoordinator(
+            prepare: { model.beginShutdown() },
+            lastWords: { model.lastNoteSaves() },
+            forceExit: { _exit(0) },
+            log: { log.write($0, source: "app") },
+            stop: { await controller.stop() }
+        )
         super.init()
         // The server starts now, while the windows are built (the launch budget); `applicationDidFinishLaunching` follows it
         model.startEarly()
@@ -90,6 +151,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.noteLaunchStep("the app finished launching")
         terminationSignal = Self.quitOnTerminationSignal()
+        #if DEBUG
+        // A UI test's launch: each key equivalent and the modifier keys held, said in the app's log (PR #58)
+        if UserDefaults.standard.bool(forKey: "PennantTestLogKeys") { KeyEquivalentLog.start(appLog) }
+        #endif
         outside.start()
         Task { await model.start() }
         #if DEBUG
@@ -223,7 +288,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quit waits for the server (SIGTERM, up to 5 seconds, then SIGKILL; SWIFTUI_REBUILD.md section 5.3), without
     /// depending on the main queue (`QuitCoordinator`).
+    /// Said in the app's log, so a quit that stops short shows how far AppKit got (PR #58).
+    func applicationWillTerminate(_ notification: Notification) {
+        appLog("quit: AppKit is ending the app")
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        quit.shouldTerminate { ok in NSApp.reply(toApplicationShouldTerminate: ok) }
+        #if DEBUG
+        // Where the keyboard's text input stood as the quit was asked (PR #58), for the UI tests' key log
+        if UserDefaults.standard.bool(forKey: "PennantTestLogKeys") {
+            let key = NSApp.keyWindow.map { String(($0.identifier?.rawValue ?? "unnamed").prefix(60)) } ?? "none"
+            let responder = NSApp.keyWindow?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"
+            let editing = NSApp.windows.filter { $0.firstResponder is NSText }.count
+            appLog("keys: quit asked; key window \(key), first responder \(responder); windows editing text \(editing); input context \(NSTextInputContext.current.map { _ in "active" } ?? "none")")
+        }
+        #endif
+        return quit.shouldTerminate { ok in NSApp.reply(toApplicationShouldTerminate: ok) }
     }
 }

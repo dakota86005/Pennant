@@ -28,6 +28,8 @@ public struct MainWindowView: View {
             }
         }
         .focusedSceneValue(\.mainWindow, model.isReady ? window : nil)
+        // The main window used last, for Find Anything from any other window (PR #58)
+        .background(MainWindowTracker(model: window))
         .onAppear { AfterNextFrame.run { model.noteLaunchStep("the main window's first frame is drawn") } }
         .onChange(of: model.needsSetup, initial: true) { _, needsSetup in
             if routing.shouldOpenSetupAutomatically(needsSetup: needsSetup) {
@@ -37,6 +39,8 @@ public struct MainWindowView: View {
         .onChange(of: AppAppearance.served(model.settings), initial: true) { _, theme in
             AppAppearance.apply(theme)
         }
+        // How many a comparison holds, as served, for Compare from any menu
+        .onChange(of: model.phrases?.compare.most, initial: true) { _, most in CompareRouter.shared.most = most }
     }
 }
 
@@ -111,7 +115,7 @@ struct ShellSplitView: View {
         .accessibilityHidden(window.paletteShown)
         // The ⌘K palette: a glass control over the whole window, keyboard first; a click outside closes it
         .overlay(alignment: .top) {
-            if window.paletteShown { PaletteOverlay(window: window) }
+            if window.paletteShown { PaletteOverlay(window: window, openOutside: openOutside) }
         }
         // The club's theme for every coloured piece in the window: the club card, the mastheads, the floating control
         .environment(\.theme, model.theme)
@@ -120,10 +124,24 @@ struct ShellSplitView: View {
 }
 
 extension ShellSplitView {
-    /// A served result: its view in this window, or a club's window (a player's for now: his club's); the field clears.
+    /// A player's or a club's window for a served target, opened by this window (which outlives the palette) once the
+    /// palette has closed, so the new window comes to the front rather than behind this one (N11).
+    func openOutside(_ target: Components.Schemas.Target) {
+        DispatchQueue.main.async {
+            if let player = playerRef(opening: target) {
+                openWindow(value: player)
+            } else if let club = clubRef(opening: target) {
+                openWindow(value: club)
+            }
+        }
+    }
+
+    /// A served result: its view in this window, a player's own window (N11), or a club's; the field clears.
     func openSearchResult(_ target: Components.Schemas.Target) {
         if let route = route(target) {
             window.go(to: route)
+        } else if let player = playerRef(opening: target) {
+            openWindow(value: player)
         } else if let club = clubRef(opening: target) {
             openWindow(value: club)
         }
@@ -177,6 +195,8 @@ struct PaletteOverlay: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @Bindable var window: MainWindowModel
+    /// Opens a player's or a club's window from the window behind the palette (the palette is gone by then).
+    let openOutside: (Components.Schemas.Target) -> Void
     /// The server's answer for the query typed, and the query it answers.
     @State private var answer: (query: String, answer: Components.Schemas.SearchAnswer)?
     /// Why the search for a query failed, and the query.
@@ -193,11 +213,11 @@ struct PaletteOverlay: View {
                                  inspectorShown: window.inspectorPresented, search: search, searchFailed: failed != nil)
         ZStack(alignment: .top) {
             Color.black.opacity(0.18).ignoresSafeArea()
-                .onTapGesture { window.paletteShown = false }
+                .onTapGesture { window.hidePalette("a click outside it") }
                 .accessibilityHidden(true)
             CommandPalette(entries: index.entries, served: index.served, emptyLine: index.emptyLine, problem: failed?.title,
                            updating: updating, query: $window.paletteQuery, open: { entry in
-                window.paletteShown = false
+                window.hidePalette("a result chosen")
                 switch index.action(for: entry) {
                 case .served(let target): open(target)
                 case .route(let route): window.go(to: route)
@@ -209,7 +229,7 @@ struct PaletteOverlay: View {
                 case .command(.forward): window.goForward()
                 case nil: break
                 }
-            }, dismiss: { window.paletteShown = false })
+            }, dismiss: { window.hidePalette("Escape") })
             .padding(.top, 120)
         }
         // Asked as the GM types, a moment after the last key, and cancelled by the next one
@@ -230,12 +250,12 @@ struct PaletteOverlay: View {
         }
     }
 
-    /// A served target: a view in this window, or a club's window (a player's for now: his club's).
+    /// A served target: a view in this window, or a player's own window (N11) or a club's, opened by the window behind.
     private func open(_ target: Components.Schemas.Target) {
         if let route = route(target) {
             window.go(to: route)
-        } else if let club = clubRef(opening: target) {
-            openWindow(value: club)
+        } else {
+            openOutside(target)
         }
     }
 }

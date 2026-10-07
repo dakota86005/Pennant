@@ -14,6 +14,7 @@ import { getDataStatus } from './dataStatus.js';
 import { farmConsequenceFor, type FarmConsequenceV2 } from './farmConsequence.js';
 import { computeFarmSystem, openFarmSession, type FarmSession, type FarmSystemView } from './farmOperations.js';
 import { developmentHistoryFor } from './history.js';
+import { ratingFillOf } from './scoutedEvidence.js';
 import { servedDepartments } from './presentation/catalog.js';
 import { cell } from './presentation/claim.js';
 import { farmDecision, farmViews, type FarmContext, type FarmViews } from './presentation/farm/index.js';
@@ -68,6 +69,8 @@ function contextFor(request: FarmViewsRequest): FarmContext {
     gameDate: status.csv.simulatedThrough ?? status.csv.currentDate,
     preparedBy: farm?.preparedBy ?? cell('Prepared by the minor league staff'),
     department: FARM,
+    // N11: the OSA mark on a filled player's rows (D-067)
+    fill: ratingFillOf,
   };
 }
 

@@ -17,7 +17,7 @@ export interface FollowInput {
   /** The name recorded when it was followed. */
   name: string | null;
   note: string | null;
-  source: 'gm' | 'watchlist';
+  source: 'gm' | 'watchlist' | 'note';
   createdText: string | null;
 }
 

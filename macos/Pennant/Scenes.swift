@@ -3,6 +3,7 @@ import PennantAPI
 import PennantDesign
 import PennantKit
 import FrontOffice
+import Player
 import Setup
 import Shell
 import SwiftUI
@@ -11,6 +12,7 @@ import SwiftUI
 /// inspector, the sidebar and its open departments; SWIFTUI_REBUILD.md section 3.1).
 struct MainWindowScene: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(AppRouting.self) private var routing
     @SceneStorage("pennant.history") private var historyData = Data()
     @SceneStorage("pennant.inspector") private var inspectorPresented = false
     @SceneStorage("pennant.sidebarVisible") private var sidebarVisible = true
@@ -39,6 +41,8 @@ struct MainWindowScene: View {
                 sidebarVisible: sidebarVisible,
                 expanded: expanded
             )
+            // Find Anything (⌘K) chosen with every main window closed: this one opens with the palette up
+            if routing.takePaletteRequest() { restored.showPalette("a main window opened for Find Anything") }
             #if DEBUG
             // A Debug build launched by a script for window screenshots can open with the ⌘K palette up
             // (`-PennantDebugPalette <query>`) or with a route (`-PennantDebugRoute department.view`, or
@@ -49,12 +53,19 @@ struct MainWindowScene: View {
             }
             if defaults.bool(forKey: "PennantDebugInspector") { restored.inspectorPresented = true }
             if let query = defaults.string(forKey: "PennantDebugPalette") {
-                restored.paletteShown = true
+                restored.showPalette("-PennantDebugPalette")
                 restored.paletteQuery = query
             }
             // …or with a club's window open beside it (`-PennantDebugOpenClub <team id>`), for its captures
             if let club = defaults.string(forKey: "PennantDebugOpenClub").flatMap(Int.init) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: ClubRef(id: club)) }
+            }
+            // …or a player's (`-PennantDebugOpenPlayer <player id>`), or players compared (`-PennantDebugCompare 1,2`) (N11)
+            if let player = defaults.string(forKey: "PennantDebugOpenPlayer").flatMap(Int.init) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: PlayerRef(id: player)) }
+            }
+            if let ids = defaults.string(forKey: "PennantDebugCompare")?.split(separator: ",").compactMap({ Int($0) }), !ids.isEmpty {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { openWindow(value: ComparisonRef(players: ids.map(PlayerRef.init(id:)))) }
             }
             #endif
             window = restored
@@ -162,6 +173,26 @@ struct ClubWindowScene: View {
     var body: some View {
         if let club {
             ClubReportView(teamId: club.id)
+                .environment(\.claimActions, ClaimActions(
+                    detach: { openWindow(value: $0) },
+                    departmentName: { [catalog = model.catalog] id in AppRegistry.shared.name(of: id, catalog: catalog) }
+                ))
+        } else {
+            Text("Nothing to show").padding()
+        }
+    }
+}
+
+/// A player's dossier in his own window (N11): opened from his name anywhere, restored at relaunch since its value is his
+/// id. A basis detaches into its own panel; there is no inspector to pin to here.
+struct PlayerWindowScene: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+    let player: PlayerRef?
+
+    var body: some View {
+        if let player {
+            PlayerWindowView(playerId: player.id)
                 .environment(\.claimActions, ClaimActions(
                     detach: { openWindow(value: $0) },
                     departmentName: { [catalog = model.catalog] id in AppRegistry.shared.name(of: id, catalog: catalog) }

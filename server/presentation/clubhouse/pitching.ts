@@ -12,7 +12,7 @@ import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbBlock, MlbLine, MlbRow, MlbTable } from '../majorLeague/types.js';
 import { PITCHING_STATS } from '../statCatalog.js';
 import { ageCell, factClaim, head, plural, player, statCell, statSort, type ClubhouseContext } from './common.js';
-import { withFill } from './fill.js';
+import { fillMark, withFill } from './fill.js';
 import type { MlbPitchingAvailabilityView, MlbTableSection } from './types.js';
 
 const STAFF = 'The pitching staff\'s workload';
@@ -136,7 +136,9 @@ function bullpenTable(v: ClubhouseContext, staff: Staff): { table: MlbTable; lim
       }
     }
     const detail: MlbBlock[] = [block('Tonight', [line(tonight.display, { tone: tonight.tone }), lastOuting(p, gameLog, today)])];
-    return tableRow(`pen-${p.player_id}`, cells, sort, { player: player(p.player_id, p.name, orgId), detail: withFill(p.ratingsFill, cells, [], detail) });
+    return tableRow(`pen-${p.player_id}`, cells, sort, {
+      player: player(p.player_id, p.name, orgId), detail: withFill(p.ratingsFill, cells, [], detail), ratingsFill: fillMark(p.ratingsFill),
+    });
   });
   const limited = pen.filter((p) => p.tone !== 'ok').length;
   return {
@@ -191,7 +193,7 @@ function starterRow(v: ClubhouseContext, p: Starter, gameLog: boolean, today: nu
     health: p.injury ? (p.injury.playable ? 1 : 2) : 0,
   };
   const detail = withFill(p.ratingsFill, cells, ['stamina'], [block(depth ? 'Starting depth' : 'His turn', [lastOuting(p, gameLog, today)])]);
-  return tableRow(`${depth ? 'depth' : 'rotation'}-${p.player_id}`, cells, sort, { player: player(p.player_id, p.name, orgId), detail });
+  return tableRow(`${depth ? 'depth' : 'rotation'}-${p.player_id}`, cells, sort, { player: player(p.player_id, p.name, orgId), detail, ratingsFill: fillMark(p.ratingsFill) });
 }
 
 const ROTATION_COLUMNS = [

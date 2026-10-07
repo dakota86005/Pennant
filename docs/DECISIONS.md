@@ -2882,3 +2882,47 @@ The builder's calls (for the owner's review):
    pull-down with each group inline and checked, rather than four menus that overflow a narrow toolbar.
 7. *The boundary between a table and its detail is the GM's to move*, as in Mail, remembered per view; the table keeps
    at least 120 points.
+
+## D-070 — The player window: one dossier per player, read ahead for our club; Compare says only what ranges allow
+
+**Status:** Proposed (N11 builder, 2026-10-04; the supervisor renumbers on a collision; N9 holds D-069). Applies D-065 to
+the player card and refines D-052 (value), D-056 (the words), D-057 (stated places), D-058 (notes), D-060 and D-067 for the
+presentation layer only: no value, rights, development or scouting judgment changes. **Implementation:**
+`server/presentation/player/` (the words), `server/playerDossierBuild.ts` (the reader), `server/playerViewService.ts` (the
+cache, Compare and the notes), `computePlayerDossier` (`server/player.ts`, the extraction `/api/player/:id` and the window
+share), `playerRatingHistory`, `staffNotesOf`, `addStaffNote` and `removeStaffNote` (`server/history.ts`, extracted from the
+routes they serve); `GET /api/v2/player/:id`, `GET|PUT|DELETE /api/v2/player/:id/notes`, `POST
+/api/v2/player/:id/staff-notes`, `DELETE /api/v2/player/:id/staff-notes/:noteId`, `GET /api/v2/compare`; the Mac app's
+`PlayerStore` and PennantFeatures' Player target. SWIFTUI_REBUILD.md section 3.1, "As built at N11".
+
+- **One payload per player, in sections.** The dossier is one `PlayerDossierView` (header, overview, ratings, value,
+  contract and rights, history): 40 to 75 kB on a full league, so one read per window, kept per import. The React card's
+  client-side words (`valueWords.ts`, `costBand.ts`, the cone's words, the rating scale, the hovers) are served; the React
+  card keeps its own copy until the cutover (D-066's precedent).
+- **Read ahead for our club, on the click for any other.** After each kept build of the club's Front Office, every player
+  the organization holds is read in one job in the Front Office's worker (their reads shared: about 2 s for 285 players on
+  the owner's export); any other player on his first open on the server's thread (about 0.1 s), then kept. Kept on the
+  Front Office's key and the save's rating-snapshot writes (as the farm's views, D-066): nothing is served across an import,
+  a setting, the live log or a new rating snapshot.
+- **The club's value of a win is not on it** (D-060): the React card's playoff-odds line stays off the player window; it
+  belongs with the standings (League Office, N12). Our view (the lens) stays, every lean named with its amount.
+- **Compare lines fields up and says only what the ranges allow.** Two to four players, each figure as his own dossier
+  serves it (nothing recomputed). A range is compared only by overlap: "Can't tell apart" when they overlap, else which
+  sits wholly above the other ("which figure is higher, not who is the better player", in the basis); expected wins are told
+  apart on the range each lands in half the time in the roster map's own reading (`separationOf`) and words (D-057:
+  "clearly ahead of", "not separable"), drawn on the wider one, and the reading's hover says which band is drawn and which
+  decides (review M3, 2026-10-05); every player with no figure is named and left out of the reading. The most a
+  comparison holds and its words are served in the catalog (`phrases.compare`); Compare on a full one opens another. No
+  verdict, rank or combined score (D-052).
+- **The GM's note is his own words, on his follow** (D-058): stored exactly as typed (no trimming; up to 10,000
+  characters), as the watchlist kept it; a note on a player he doesn't follow follows him (the React card's behaviour), and
+  its undo stops following him, only while that follow is still the note's (`source` `note`; a plain follow since makes it
+  the GM's own, review L1); an empty note clears it. What he types is held by the app per player and saved whatever closes
+  the view, a quit included, and never logged (review H1, H2). The staff's notes are listed as filed, and a removal is undone by
+  putting the note back as it was.
+- **The OSA mark is drawn wherever a grade is shown** (D-067): the dossier's header, its ratings and each grade, and the
+  rows of Major League Ops' and the farm's views, Major League Ops' decision candidates, the farm's prospect meeting cards
+  and Development details (`ratingsFill`, additive), each with the sentence as its hint and VoiceOver label.
+- **Kept as bytes** (review M5, 2026-10-05): each dossier is checked once when kept and held as the JSON the route sends;
+  at most 150 of other clubs' players per build, the least recently opened let go first; after a kept build the server's
+  thread builds one dossier on idle so the first open of anyone else's doesn't pay for initialization.

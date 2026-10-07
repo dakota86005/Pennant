@@ -7,6 +7,7 @@
  * A seat the save does not fill says so: never a made-up name (D-018).
  */
 import type { Cell, DeptId } from '../contract/presentation.js';
+import { COMPARE_MOST } from './player/compare.js';
 import type { Integer } from '../contract/primitives.js';
 import { clubRecord } from '../league.js';
 import { logoReference } from '../logos.js';
@@ -117,6 +118,17 @@ export interface RosterLegend {
 export interface CatalogPhrases {
   missingValue: Cell;
   rosterLegend: RosterLegend;
+  compare: ComparePhrases;
+}
+
+/** The Compare window's limit and its words (N11, review L5): the app holds neither. */
+export interface ComparePhrases {
+  /** The most players one comparison holds. */
+  most: Integer;
+  /** Said by an empty Compare window. */
+  empty: Cell;
+  /** Said when a player is dropped on a full one. */
+  full: Cell;
 }
 
 export interface Catalog {
@@ -265,6 +277,11 @@ export function buildCatalog(clubs: ClubSource[], orgId: number | null, themeOf:
         control: cell('Pips: seasons we control him'),
         need: cell('Ring and word: a need Major League Ops raised'),
         more: cell('Hover for more; click for the basis'),
+      },
+      compare: {
+        most: COMPARE_MOST,
+        empty: cell('Drop two to four players here', { hint: 'Or choose Compare on a player anywhere' }),
+        full: cell('Compare holds four players at most', { hint: 'Compare on another player opens a new Compare window' }),
       },
     },
   };

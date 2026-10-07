@@ -1,0 +1,22 @@
+{
+  "done": {
+    "display": "Note removed, and no longer following him"
+  },
+  "notes": {
+    "playerId": 1019,
+    "following": false,
+    "note": null,
+    "explain": {
+      "display": "Saved as you type. Writing a note follows him",
+      "hint": "Your note is kept with his follow, as the watchlist kept it"
+    },
+    "staff": [],
+    "staffEmpty": {
+      "display": "Nothing filed by the staff yet"
+    }
+  },
+  "undo": {
+    "note": "Ready for the late innings."
+  },
+  "undoUnfollows": false
+}

@@ -14,7 +14,7 @@ struct ScheduleView: View {
     @Environment(\.currentRoute) private var currentRoute
     @State private var filter: Int?
     @State private var section = 0
-    @State private var selection: ServedRow.ID?
+    @State private var selection: Set<ServedRow.ID> = []
 
     var body: some View {
         let store = model.clubhouse
@@ -57,7 +57,7 @@ struct ScheduleView: View {
                     .id("\(index)-\(chosen)")
             } detail: {
                 VStack(alignment: .leading, spacing: 14) {
-                    if isGames, let row = selection.flatMap(gameId) {
+                    if isGames, selection.count == 1, let row = selection.first.flatMap(gameId) {
                         GamePlanPane(game: row)
                     } else if isGames {
                         Text(verbatim: view.choose.display).font(.callout).foregroundStyle(.readableSecondary)
@@ -65,8 +65,8 @@ struct ScheduleView: View {
                     ClaimLine(view.note, font: .callout)
                 }
             }
-            .onAppear { if selection == nil { selection = initial } }
-            .onChange(of: opened) { _, next in if let next { selection = next; section = 0; filter = nil } }
+            .onAppear { if selection.isEmpty, let initial { selection = [initial] } }
+            .onChange(of: opened) { _, next in if let next { selection = [next]; section = 0; filter = nil } }
         }
         .task(id: model.storeKey) { await store.loadSchedule(client: model.client, key: model.storeKey) }
     }

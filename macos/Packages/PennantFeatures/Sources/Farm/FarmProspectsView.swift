@@ -50,7 +50,7 @@ struct ProspectsBoard: View {
         } table: {
                 Table(of: Components.Schemas.FarmProspectRow.self, selection: $selection, sortOrder: $order, columnCustomization: $columns) {
                     TableColumn("Player", sortUsing: ServedColumnSort("player") { .served($0.sort.player?.value1, $0.sort.player?.value2) }) {
-                        CellText($0.cells.player).fontWeight(.medium)
+                        FarmPlayerCell(cell: $0.cells.player, fill: $0.ratingsFill)
                     }
                     .width(min: 90, ideal: 150).customizationID("player")
                     TableColumn("Age", sortUsing: ServedColumnSort("age") { .served($0.sort.age?.value1, $0.sort.age?.value2) }) { CellText($0.cells.age).monospacedDigit() }
@@ -187,7 +187,11 @@ struct ProspectCardView: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Player Development").font(.caption.weight(.semibold)).foregroundStyle(.readableSecondary).textCase(.uppercase)
-                Text(verbatim: card.name).font(.title2.weight(.bold)).farmPlayer(id: card.playerId, name: card.name, open: card.open)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(verbatim: card.name).font(.title2.weight(.bold)).farmPlayer(id: card.playerId, name: card.name, open: card.open)
+                    // His grades ("Scouted now → ceiling") are OSA's view filling in for our scouts (D-067)
+                    if let fill = card.ratingsFill { RatingFillMark(fill) }
+                }
                 Text(verbatim: card.line.display).foregroundStyle(.readableSecondary)
                 CellText(card.queueLine, secondary: true).font(.callout)
             }

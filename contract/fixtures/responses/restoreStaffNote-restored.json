@@ -1,0 +1,28 @@
+{
+  "done": {
+    "display": "Staff note put back"
+  },
+  "notes": {
+    "playerId": 1000,
+    "following": false,
+    "note": null,
+    "explain": {
+      "display": "Saved as you type. Writing a note follows him",
+      "hint": "Your note is kept with his follow, as the watchlist kept it"
+    },
+    "staff": [
+      {
+        "id": 1,
+        "who": {
+          "display": "Bench coach"
+        },
+        "when": {
+          "display": "May 3, 2040"
+        },
+        "body": "Keep him off back-to-back day games for two weeks."
+      }
+    ],
+    "staffEmpty": null
+  },
+  "undo": null
+}

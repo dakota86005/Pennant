@@ -110,4 +110,30 @@ struct ClubhouseStoreTests {
         #expect(store.schedule == nil && store.trends == nil)
         #expect(!store.isCurrent("schedule", for: key(club: 2, save: "a")))
     }
+
+    @Test("a request called off is a non-event, and a failed one logs no error's description (N11 review, H1)")
+    func cancelledAndFailedReads() async throws {
+        var lines: [String] = []
+        let store = ClubhouseStore { lines.append($0) }
+        await store.loadDepth(client: client(Refusing(URLError(.cancelled))), key: key())
+        #expect(store.problems["depth"] == nil)
+        #expect(lines.isEmpty)
+        await store.loadDepth(client: client(Refusing(URLError(.cannotConnectToHost))), key: key("again"))
+        #expect(store.problems["depth"] != nil)
+        let line = try #require(lines.first)
+        #expect(lines.count == 1)
+        #expect(line.contains("getMajorLeagueDepthChart"))
+        #expect(line.contains("NSURLErrorDomain -1004"))
+        // Never the error's own description (an OpenAPIRuntime `ClientError` describes the request's input)
+        #expect(!line.contains("operationInput") && !line.contains("Could not connect"))
+    }
+}
+
+/// A transport that throws the same error for every request.
+private struct Refusing: ClientTransport {
+    let error: URLError
+    init(_ error: URLError) { self.error = error }
+    func send(_: HTTPRequest, body _: HTTPBody?, baseURL _: URL, operationID _: String) async throws -> (HTTPResponse, HTTPBody?) {
+        throw error
+    }
 }

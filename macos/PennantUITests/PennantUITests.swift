@@ -11,6 +11,8 @@ import XCTest
 final class PennantUITests: XCTestCase {
     private var environment: [String: String] { ProcessInfo.processInfo.environment }
     private var scratch: URL!
+    /// Whether this test has launched the app yet (its first launch starts from fresh defaults).
+    private var launchedThisTest = false
     private var dataFolder: URL!
 
     /// The running test's method name (`testSetupFlowOnAScratchFolder`), the name of its prepared folder.
@@ -24,12 +26,71 @@ final class PennantUITests: XCTestCase {
         guard let root = environment["PENNANT_UI_SCRATCH"] else {
             throw XCTSkip("PENNANT_UI_SCRATCH is not set: the UI tests run only on scratch data folders (macos/scripts/test.sh)")
         }
+        // Independent of the test before it (PR #58 on the runner: a quit that did not finish left that app running past
+        // its tear-down, writing its saved windows again, and the next tests found the keyboard elsewhere): no earlier
+        // instance still running, and no saved windows, before anything is launched
+        endEarlierInstances()
+        removeSavedState()
+        // What is on the screen before this test launches anything, front to back (PR #58: after the player-note test,
+        // a launched Pennant in front received no key at all until a click)
+        print("[focus] \(methodName): on screen before launch: \(Self.windowsOnScreen())")
         scratch = URL(fileURLWithPath: root).appending(path: methodName, directoryHint: .isDirectory)
         dataFolder = scratch.appending(path: "data", directoryHint: .isDirectory)
         guard FileManager.default.fileExists(atPath: dataFolder.appending(path: "league.db").path(percentEncoded: false)) else {
             XCTFail("macos/scripts/test.sh prepares \(scratch.path(percentEncoded: false)); add \(methodName) to its prepare_ui_test list")
             return
         }
+    }
+
+    /// A test of restoration leaves the app's saved windows behind if it fails midway: they are removed, so the next test
+    /// (and the next run) opens without them (review L6). The app's own saved-state folder, under the real home; a runner
+    /// that may not reach it leaves it, and `test.sh` removes it after the run as well.
+    override func tearDownWithError() throws {
+        removeSavedState()
+    }
+
+    /// The windows on the screen, front to back, each by its owner, layer and frame (no window names, no pixels): every
+    /// layer (a text input panel sits above the windows), the Window Server's own left out, up to sixteen.
+    static func windowsOnScreen() -> String {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            return "unreadable"
+        }
+        let shown = list.compactMap { info -> String? in
+            let owner = info[kCGWindowOwnerName as String] as? String ?? "?"
+            let layer = info[kCGWindowLayer as String] as? Int ?? 0
+            guard owner != "Window Server" else { return nil }
+            let pid = info[kCGWindowOwnerPID as String] as? Int ?? 0
+            let bounds = (info[kCGWindowBounds as String] as? [String: Any]).flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) } ?? .zero
+            let alpha = info[kCGWindowAlpha as String] as? Double ?? 1
+            return "\(owner) pid \(pid) layer \(layer) \(Int(bounds.minX)),\(Int(bounds.minY)) \(Int(bounds.width))×\(Int(bounds.height))\(alpha < 1 ? " alpha \(alpha)" : "")"
+        }
+        return shown.isEmpty ? "none" : shown.prefix(16).joined(separator: "; ")
+    }
+
+    /// The app's saved windows (its saved-state folder, under the real home), removed.
+    private func removeSavedState() {
+        guard let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir else { return }
+        let state = URL(fileURLWithPath: String(cString: home))
+            .appending(path: "Library/Saved Application State/com.dakotawise.pennant.dev.savedState", directoryHint: .isDirectory)
+        try? FileManager.default.removeItem(at: state)
+    }
+
+    /// The app this suite drives (its Debug build's identifier): any instance still running from an earlier test (one whose
+    /// quit did not finish) is asked to quit, then ended if it has not within 20 seconds, so a test never starts beside it.
+    private func endEarlierInstances() {
+        let id = "com.dakotawise.pennant.dev"
+        func running() -> [NSRunningApplication] { NSRunningApplication.runningApplications(withBundleIdentifier: id) }
+        func waitForNone(_ seconds: TimeInterval) -> Bool {
+            let deadline = Date.now.addingTimeInterval(seconds)
+            while !running().isEmpty, Date.now < deadline { RunLoop.current.run(until: Date.now.addingTimeInterval(0.2)) }
+            return running().isEmpty
+        }
+        guard !running().isEmpty else { return }
+        print("[quit] \(methodName): an earlier instance of the app is still running; asking it to quit")
+        running().forEach { $0.terminate() }
+        if waitForNone(20) { return }
+        running().forEach { $0.forceTerminate() }
+        XCTAssertTrue(waitForNone(10), "an earlier instance of the app is still running")
     }
 
     // MARK: Helpers
@@ -40,7 +101,9 @@ final class PennantUITests: XCTestCase {
     }
 
     @MainActor
-    private func launch(arguments: [String] = [], environment: [String: String] = [:]) -> XCUIApplication {
+    private func launch(arguments: [String] = [], environment: [String: String] = [:], restoresState: Bool = false) -> XCUIApplication {
+        // The last launch has quit (`quitCleanly`) or is ended now, never left beside this one
+        endEarlierInstances()
         let app = XCUIApplication()
         app.launchEnvironment["PENNANT_DEV_DATA_DIR"] = dataFolder.path(percentEncoded: false)
         app.launchEnvironment["PENNANT_DEV_LOG_DIR"] = scratch.appending(path: "logs").path(percentEncoded: false)
@@ -49,9 +112,34 @@ final class PennantUITests: XCTestCase {
         for (name, value) in environment { app.launchEnvironment[name] = value }
         // A fresh window each time: no restored route from an earlier run; no notification permission asked of the Mac
         // running the tests (Pennant asks at the first export read while it is in front, L4)
-        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-PennantNotifiesNewExport", "NO"] + arguments
+        // (N11: a test of restoration keeps the windows open at quit and restores them at the next launch)
+        let state = restoresState ? ["-ApplePersistenceIgnoreState", "NO", "-NSQuitAlwaysKeepsWindows", "YES"] : ["-ApplePersistenceIgnoreState", "YES"]
+        // Each test's first launch starts from fresh app defaults (window frames, choices), so nothing an earlier test
+        // left there reaches it; a test's later launches keep what its own first launch wrote
+        let fresh = launchedThisTest ? [] : ["-PennantTestFreshDefaults", "YES"]
+        launchedThisTest = true
+        // Each key equivalent the app receives, and the modifier keys held at launch, said in its log (PR #58)
+        app.launchArguments += state + fresh + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
         app.launch()
         return app
+    }
+
+    /// A launch's arguments on a Mac with a larger screen than GitHub's runner, as the runner's 1024 × 768 screen holds
+    /// the main window (`PENNANT_UI_WINDOW_CAP=1024x677`, set as `TEST_RUNNER_PENNANT_UI_WINDOW_CAP` for `test.sh`): a
+    /// `-PennantDebugWindowSize` asked for is made no larger, and one is added where none was, so a local run reproduces
+    /// the runner's window. Without it the arguments are unchanged.
+    private func capped(_ arguments: [String]) -> [String] {
+        guard let cap = environment["PENNANT_UI_WINDOW_CAP"]?.split(separator: "x").compactMap({ Int($0) }), cap.count == 2 else {
+            return arguments
+        }
+        var arguments = arguments
+        if let at = arguments.firstIndex(of: "-PennantDebugWindowSize"), at + 1 < arguments.count {
+            let asked = arguments[at + 1].split(separator: "x").compactMap { Int($0) }
+            if asked.count == 2 { arguments[at + 1] = "\(min(asked[0], cap[0]))x\(min(asked[1], cap[1]))" }
+        } else {
+            arguments += ["-PennantDebugWindowSize", "\(cap[0])x\(cap[1])"]
+        }
+        return arguments
     }
 
     @MainActor
@@ -72,6 +160,14 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(sidebar.exists)
         // The shell is drawn while the server starts (N6, Stage B2): the view says "Starting…" until it is ready
         XCTAssertTrue(element(app, "server.waiting").waitForNonExistence(timeout: 60), "the server did not become ready; see \(scratch.path)/logs/server.log")
+        // Key equivalents (⌘K, ⌘1…) go to the app in front; a launch that left Pennant behind another app is said and
+        // brought forward (PR #58 on the runner: ⌘K and ⌘4 typed after a launch reached no Pennant window, while typing
+        // into a clicked field, which brings the app forward, worked)
+        if app.state != .runningForeground {
+            print("[focus] \(methodName): Pennant was not in front after launch (state \(app.state.rawValue)); brought forward")
+            app.activate()
+            _ = app.wait(for: .runningForeground, timeout: 5)
+        }
     }
 
     @MainActor
@@ -277,8 +373,12 @@ final class PennantUITests: XCTestCase {
                 setAside.append(line + String(format: " (text on a 1× screen whose own pixels read at %.1f:1)", ratio))
             } else if issue.auditType == .contrast {
                 // Never set aside: its own pixels are measured only to help find it
-                let ratio = windows.first { $0.frame.contains(frame) }?.pixels?.contrast(in: frame)
-                issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? ""))
+                let holder = windows.first { $0.frame.contains(frame) }
+                let ratio = holder?.pixels?.contrast(in: frame)
+                // Where no pixels were read, the windows as measured, so the line says why (PR #58: a finding with none)
+                let unread = " (no pixels read: windows " + shots.map { "\($0.frame) pictured \(Int($0.shot.image.size.width))×\(Int($0.shot.image.size.height))" }
+                    .joined(separator: ", ") + (holder == nil ? "; none holds it)" : "; its window's picture is not at one scale)")
+                issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? unread))
                 pictured.append(element)
             } else {
                 issues.append(line)
@@ -359,10 +459,50 @@ final class PennantUITests: XCTestCase {
         if sidebar.exists { sidebar.scroll(byDeltaX: 0, deltaY: 2000) }
     }
 
+    /// ⌘Q, and the app gone within 20 seconds with its server stopped. ⌘Q goes to the app in front: one that is not (its
+    /// last key window just closed) is brought forward first, and said in the log. A quit that does not finish says the
+    /// app's state and windows; the app's own log (`logs/server.log`, kept by `test.sh`) says how far the quit went.
+    /// The palette's field appeared after ⌘K; when it did not, the windows then are printed for the CI log (PR #58).
+    @MainActor
+    private func paletteOpened(_ app: XCUIApplication, _ query: XCUIElement) -> Bool {
+        if query.waitForExistence(timeout: 5) { return true }
+        let windows = app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame) hittable=\($0.isHittable)" }
+        print("[palette] \(methodName): no palette 5 s after ⌘K (state \(app.state.rawValue)); windows: \(windows)")
+        // The command itself, as the app's menu bar offers it: View ▸ Find Anything… there, and enabled
+        let view = app.menuBars.menuBarItems["View"]
+        let item = view.menus.menuItems["Find Anything…"]
+        let shown = item.exists ? "exists, enabled \(item.isEnabled)" : "missing"
+        print("[palette] \(methodName): menu bar View \(view.exists ? "exists" : "missing"); View ▸ Find Anything… \(shown)")
+        // The keyboard as the system holds it now (a modifier key stuck down turns ⌘K into another shortcut), and the app
+        // in front by the system's account
+        let held = CGEventSource.flagsState(.combinedSessionState)
+        let names: [(CGEventFlags, String)] = [(.maskCommand, "⌘"), (.maskShift, "⇧"), (.maskAlternate, "⌥"), (.maskControl, "⌃"),
+                                              (.maskAlphaShift, "caps lock"), (.maskSecondaryFn, "fn")]
+        let keys = names.filter { held.contains($0.0) }.map(\.1)
+        let front = NSWorkspace.shared.frontmostApplication.map { "\($0.bundleIdentifier ?? "?") pid \($0.processIdentifier)" } ?? "none"
+        print("[palette] \(methodName): modifier keys held now: \(keys.isEmpty ? "none" : keys.joined(separator: " ")); frontmost app: \(front); see the app's log for the keys it received")
+        print("[palette] \(methodName): on screen, front to back: \(Self.windowsOnScreen())")
+        return false
+    }
+
     @MainActor
     private func quitCleanly(_ app: XCUIApplication) {
+        if app.state != .runningForeground {
+            print("[quit] \(methodName): the app was not in front (state \(app.state.rawValue)); brought forward for ⌘Q")
+            app.activate()
+        }
         app.typeKey("q", modifierFlags: .command)
-        XCTAssertTrue(app.wait(for: .notRunning, timeout: 20))
+        let ended = app.wait(for: .notRunning, timeout: 20)
+        if !ended {
+            let windows = app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame)" }
+            print("[quit] \(methodName): still running 20 s after ⌘Q (state \(app.state.rawValue)); windows: \(windows)")
+            // Which process is it: the one that quit (its pid is in the app's log, "launch: this is process …"), or
+            // another instance something launched as it went (PR #58 on the macOS 26 runner)
+            let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.dakotawise.pennant.dev")
+                .map { "pid \($0.processIdentifier) launched \($0.launchDate.map { "\($0)" } ?? "?") terminated \($0.isTerminated)" }
+            print("[quit] \(methodName): Pennant processes now: \(running)")
+        }
+        XCTAssertTrue(ended, "the app did not quit within 20 s of ⌘Q; see \(scratch.path)/logs/server.log")
         XCTAssertFalse(FileManager.default.fileExists(atPath: dataFolder.appending(path: "server.lock").path))
     }
 
@@ -704,7 +844,7 @@ final class PennantUITests: XCTestCase {
         // ⌘K: the palette, its query, the arrow keys and Return
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
-        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        XCTAssertTrue(paletteOpened(app, query), "⌘K did not open the palette")
         // The query takes the keyboard as the palette opens; a click makes sure of it on a runner whose window is slow
         // to become key
         query.click()
@@ -1243,9 +1383,12 @@ final class PennantUITests: XCTestCase {
         waitForShell(app)
         app.typeKey("1", modifierFlags: .command)
         XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30))
+        // The report drawn whole first, as testDesignPaletteBasisAndInspector waits for it (PR #58 on the runner: ⌘K
+        // typed as the desk appeared opened no palette, the window still finishing its first draw)
+        XCTAssertTrue(element(app, "masthead").waitForExistence(timeout: 10))
         app.typeKey("k", modifierFlags: .command)
         let query = element(app, "palette.query")
-        XCTAssertTrue(query.waitForExistence(timeout: 5), "⌘K did not open the palette")
+        XCTAssertTrue(paletteOpened(app, query), "⌘K did not open the palette")
         query.click()
         query.typeText("club 3")
         let result = element(app, "palette.result.search.club.3")
@@ -1576,6 +1719,297 @@ final class PennantUITests: XCTestCase {
             keep(app.windows.firstMatch.screenshot(), named: "n10-farm-\(view)-dark")
             try audit(app, named: "accessibility-audit-n10-farm-\(view)-dark")
         }
+        quitCleanly(app)
+    }
+
+    // MARK: The player window and Compare (N11)
+
+    /// The player windows open, as the identifier of his window says, and no more than one per player.
+    @MainActor
+    private func playerWindows(_ app: XCUIApplication) -> XCUIElementQuery {
+        app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'player.window.' OR identifier BEGINSWITH 'Player'"))
+    }
+
+    /// Brings a window to the front with ⌘` (the app's own window cycling), until it is the front window.
+    @MainActor
+    private func bringForward(_ app: XCUIApplication, _ window: XCUIElement) {
+        let front = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            if app.windows.firstMatch.identifier == window.identifier { return true }
+            app.typeKey("`", modifierFlags: .command)
+            return false
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [front], timeout: 10), .completed, "\(window.identifier) did not come to the front")
+    }
+
+    /// Audits the front window alone: the main window brought forward with ⌘` and closed first (as `auditClubWindow`,
+    /// whose Window-menu raise was seen to leave a player's window in front).
+    @MainActor
+    private func auditAlone(_ app: XCUIApplication, named name: String) throws {
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        if main.exists {
+            bringForward(app, main)
+            main.buttons[XCUIIdentifierCloseWindow].firstMatch.click()
+            XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
+        }
+        try audit(app, named: name)
+    }
+
+    /// A player's window, by the identifier on its content.
+    @MainActor
+    private func playerWindow(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        element(app, "player.window.\(id)")
+    }
+
+    /// Every section of a player's window in turn: the tab chosen by its name, its page drawn.
+    @MainActor
+    private func everyTab(_ app: XCUIApplication, capture prefix: String? = nil) {
+        for (tab, page) in [("Overview", "overview"), ("Ratings", "ratings"), ("Value", "value"), ("Contract & Rights", "contract"), ("History", "history"), ("Notes", "notes")] {
+            // The section's segment in the player window's own control (never another window's "Ratings")
+            let button = element(app, "player.sections").radioButtons.matching(NSPredicate(format: "label == %@ OR title == %@", tab, tab)).firstMatch
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "the player window has no \(tab) tab")
+            button.click()
+            // A segment clicked while the last section's table still held the keyboard can take a second click
+            if !element(app, "player.tab.\(page)").waitForExistence(timeout: 4) { button.click() }
+            XCTAssertTrue(element(app, "player.tab.\(page)").waitForExistence(timeout: 10), "the \(tab) tab did not draw")
+            if let prefix { keep(app.windows.firstMatch.screenshot(), named: "\(prefix)-\(page)") }
+        }
+    }
+
+    /// A player opens in his own window from anywhere (N11): the palette's served result, a table's row (a double-click),
+    /// a name in a decision opened from the desk, and Following; opening him again brings his window forward rather than
+    /// a second one. ⌘K in his window brings the main window forward with its palette (PR #58). Every section draws; the
+    /// window is audited alone.
+    @MainActor
+    func testPlayerWindows() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "1280x820"])
+        waitForShell(app)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.desk").waitForExistence(timeout: 30))
+        // The report drawn whole first, as testDesignPaletteBasisAndInspector waits for it (PR #58 on the runner)
+        XCTAssertTrue(element(app, "masthead").waitForExistence(timeout: 10))
+        // From the palette: the server's player result opens his window
+        app.typeKey("k", modifierFlags: .command)
+        let query = element(app, "palette.query")
+        XCTAssertTrue(paletteOpened(app, query), "⌘K did not open the palette")
+        query.click()
+        query.typeText("p 1000")
+        let result = element(app, "palette.result.search.player.1000")
+        XCTAssertTrue(result.waitForExistence(timeout: 10), "the palette did not list the server's player")
+        // The answer for the whole query in (the list is asked again as each letter is typed), then his result chosen
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !self.element(app, "palette.updating").exists }, object: nil)
+        _ = XCTWaiter.wait(for: [settled], timeout: 5)
+        // Return opens the result chosen, the first (his name, the query exactly)
+        query.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(playerWindow(app, "1000").waitForExistence(timeout: 10), "the palette's player did not open his window")
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30), "his dossier did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "n11-player-window-from-palette")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(playerWindow(app, "1000").waitForNonExistence(timeout: 5), "⌘W did not close his window")
+        // From a table: the rotation's first arm (every row there is a pitcher), double-clicked; again, and his one window
+        // comes forward
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30))
+        element(app, "sidebar.majorLeague.pitchingStaff").click()
+        let lineup = element(app, "table.pitching.0")
+        XCTAssertTrue(lineup.waitForExistence(timeout: 20), "the rotation's table did not load")
+        let row = firstRow(of: lineup)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).doubleClick()
+        let opened = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'player.window.'")).firstMatch
+        XCTAssertTrue(opened.waitForExistence(timeout: 10), "a double-click on a row did not open his window")
+        let id = String(opened.identifier.dropFirst("player.window.".count))
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        bringForward(app, main)
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).doubleClick()
+        let once = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "player.window.\(id)")).count == 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [once], timeout: 10), .completed, "opening him again made a second window")
+        // Every section, and Follow (the sidebar's Following then names him)
+        everyTab(app, capture: "n11-player")
+        element(app, "player.follow").click()
+        let followed = element(app, "following.player.\(id)")
+        XCTAssertTrue(followed.waitForExistence(timeout: 10), "Follow in his window did not follow him")
+        // From Following: his one window comes forward
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(playerWindow(app, id).waitForNonExistence(timeout: 5))
+        followed.doubleClick()
+        XCTAssertTrue(playerWindow(app, id).waitForExistence(timeout: 10), "Following did not open his window")
+        app.typeKey("w", modifierFlags: .command)
+        // From the desk: the need's decision, and a player it names
+        bringForward(app, main)
+        app.typeKey("2", modifierFlags: .command)
+        let decision = element(app, "item.decision")
+        XCTAssertTrue(decision.waitForExistence(timeout: 20), "the report's need offers no decision")
+        decision.click()
+        XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "the decision did not load")
+        let named = element(app, "detail.majorLeague.decision").descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'player.' AND NOT (identifier BEGINSWITH 'player.window')")).firstMatch
+        reveal(named, in: element(app, "detail.majorLeague.decision"))
+        XCTAssertTrue(named.waitForExistence(timeout: 10), "the decision names no player")
+        let namedId = String(named.identifier.dropFirst("player.".count))
+        named.doubleClick()
+        XCTAssertTrue(playerWindow(app, namedId).waitForExistence(timeout: 10), "a player named in the decision did not open his window")
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
+        keep(app.windows.firstMatch.screenshot(), named: "n11-player-window-from-decision")
+        // ⌘K in his window (PR #58): the main window comes forward with its palette up; Escape puts it away
+        app.typeKey("k", modifierFlags: .command)
+        let palette = element(app, "palette.query")
+        XCTAssertTrue(palette.waitForExistence(timeout: 5), "⌘K in his window did not open the palette")
+        XCTAssertTrue(app.windows.firstMatch.identifier.hasPrefix("main"), "⌘K in his window left \(app.windows.firstMatch.identifier) in front")
+        palette.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element(app, "palette").waitForNonExistence(timeout: 5), "Escape did not put the palette away")
+        // Audited alone (the main window closed, as a club's window is)
+        try auditAlone(app, named: "accessibility-audit-n11-player-window")
+        quitCleanly(app)
+    }
+
+    /// Compare (N11): two players chosen in a table compared from its context menu, a third dropped on the Compare window,
+    /// one removed in a click. Audited alone.
+    @MainActor
+    func testCompareByMenuAndDrag() throws {
+        // The Compare window against the screen's trailing edge, so its trailing side shows beside the main window
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugCompareWindowSize", "560x600"])
+        waitForShell(app)
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.majorLeague.report").waitForExistence(timeout: 30))
+        element(app, "sidebar.majorLeague.pitchingStaff").click()
+        let lineup = element(app, "table.pitching.0")
+        XCTAssertTrue(lineup.waitForExistence(timeout: 20))
+        XCTAssertTrue(firstRow(of: lineup).waitForExistence(timeout: 10))
+        let rows = lineup.descendants(matching: .outlineRow).allElementsBoundByIndex + lineup.tableRows.allElementsBoundByIndex
+        XCTAssertGreaterThanOrEqual(rows.count, 3, "the rotation lists fewer than three")
+        let leading = { (row: XCUIElement) in row.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)) }
+        leading(rows[0]).click()
+        XCUIElement.perform(withKeyModifiers: .command) { leading(rows[1]).click() }
+        leading(rows[1]).rightClick()
+        let compare = contextMenuItem(app, "Compare")
+        XCTAssertTrue(compare.waitForExistence(timeout: 5), "the rows' context menu has no Compare")
+        compare.click()
+        let window = element(app, "compare.window")
+        XCTAssertTrue(window.waitForExistence(timeout: 10), "Compare did not open its window")
+        let players = window.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'compare.player.'"))
+        let two = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in players.count == 2 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [two], timeout: 10), .completed, "Compare did not take the two chosen players")
+        XCTAssertTrue(element(app, "compare.table").waitForExistence(timeout: 30), "the comparison did not load")
+        keep(app.windows.firstMatch.screenshot(), named: "n11-compare-two")
+        // The main window in front, the Compare window's trailing side beside it: a third row dragged onto it
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        bringForward(app, main)
+        let compareWindow = app.windows.containing(.any, identifier: "compare.window").firstMatch
+        let drop = compareWindow.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.6))
+        leading(rows[2]).click(forDuration: 0.4, thenDragTo: drop, withVelocity: .slow, thenHoldForDuration: 0.8)
+        let three = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in players.count == 3 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [three], timeout: 10), .completed, "the dropped player did not join the comparison")
+        // Removing one is one click (the Compare window in front again)
+        bringForward(app, compareWindow)
+        let remove = window.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'compare.remove.'")).firstMatch
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        remove.click()
+        let twoAgain = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in players.count == 2 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [twoAgain], timeout: 10), .completed, "removing a player did not take him out")
+        XCTAssertTrue(element(app, "compare.table").waitForExistence(timeout: 30))
+        keep(app.windows.firstMatch.screenshot(), named: "n11-compare")
+        try auditAlone(app, named: "accessibility-audit-n11-compare")
+        quitCleanly(app)
+    }
+
+    /// A player's window comes back at the next launch, on his dossier (its value is his id).
+    @MainActor
+    func testPlayerWindowRestored() throws {
+        let first = launch(arguments: ["-PennantDebugOpenPlayer", "1000"], restoresState: true)
+        waitForShell(first)
+        XCTAssertTrue(playerWindow(first, "1000").waitForExistence(timeout: 15), "the player's window did not open")
+        XCTAssertTrue(element(first, "player.header").waitForExistence(timeout: 30))
+        quitCleanly(first)
+        let again = launch(restoresState: true)
+        XCTAssertTrue(playerWindow(again, "1000").waitForExistence(timeout: 30), "his window was not restored at relaunch")
+        XCTAssertTrue(element(again, "player.header").waitForExistence(timeout: 60), "the restored window did not load his dossier")
+        keep(again.windows.firstMatch.screenshot(), named: "n11-player-window-restored")
+        // Quit with the restored window still open; setUp and tearDown remove the saved windows, so the next test opens
+        // without it. (Closing the restored window first and then quitting left the process unkillable on GitHub's
+        // macOS 26 runner, a virtual machine: the app's log shows the quit answered, applicationWillTerminate reached
+        // and the 5-second _exit net set, and the same pid alive 20 s later. A process _exit cannot end is held in the
+        // kernel, not by the app. Closing a window and quitting is still exercised by testPlayerNoteKeptOnLeaving, and
+        // the case is recorded in SWIFTUI_REBUILD "As built at N11".)
+        quitCleanly(again)
+    }
+
+    /// The GM's note survives leaving it at once (review H2): typed, then another section chosen and the app quit at
+    /// once; typed again, then the window closed and the app quit at once. Each time the next launch reads it back.
+    /// The window is closed with ⌘W (File ▸ Close, the close button's own `performClose`), never by a click on its close
+    /// button: that click leaves the pointer resting on the button, and on GitHub's 1024 × 768 runner the player's window
+    /// (920 points wide, centred at x 52) has its close button exactly where the next launch's main window (at x 0) has
+    /// its zoom button. Resting there, the pointer opens macOS 26's window-tiling menu over the next test's window
+    /// (AppKit's ThemeWidgetControlViewService), and that menu takes every key the test types (PR #58).
+    @MainActor
+    func testPlayerNoteKeptOnLeaving() throws {
+        let notes = { (app: XCUIApplication) -> XCUIElement in
+            let tab = self.element(app, "player.sections").radioButtons.matching(NSPredicate(format: "label == 'Notes' OR title == 'Notes'")).firstMatch
+            XCTAssertTrue(tab.waitForExistence(timeout: 10))
+            tab.click()
+            // The editor is named so once his note is read
+            let editor = self.element(app, "player.notes.editor")
+            XCTAssertTrue(editor.waitForExistence(timeout: 20), "his note was not read")
+            return editor
+        }
+        let open = { () -> XCUIApplication in
+            let app = self.launch(arguments: ["-PennantDebugOpenPlayer", "1000"])
+            self.waitForShell(app)
+            XCTAssertTrue(self.playerWindow(app, "1000").waitForExistence(timeout: 15), "the player's window did not open")
+            XCTAssertTrue(self.element(app, "player.header").waitForExistence(timeout: 30))
+            return app
+        }
+        let reads = { (app: XCUIApplication, text: String) in
+            let editor = notes(app)
+            let kept = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in (editor.value as? String) == text }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [kept], timeout: 10), .completed, "the note read back \(String(describing: editor.value)), not \(text)")
+        }
+        // Typed, then another section at once, then quit at once
+        let first = open()
+        let editor = notes(first)
+        editor.click()
+        editor.typeText("Kept on switching")
+        element(first, "player.sections").radioButtons.matching(NSPredicate(format: "label == 'Overview' OR title == 'Overview'")).firstMatch.click()
+        quitCleanly(first)
+        let second = open()
+        reads(second, "Kept on switching")
+        // Typed again, then the window closed at once (⌘W), then quit at once
+        let again = notes(second)
+        again.click()
+        again.typeKey("a", modifierFlags: .command)
+        again.typeText("Kept on closing")
+        second.typeKey("w", modifierFlags: .command)
+        quitCleanly(second)
+        let third = open()
+        reads(third, "Kept on closing")
+        third.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(playerWindow(third, "1000").waitForNonExistence(timeout: 5), "⌘W did not close his window")
+        quitCleanly(third)
+    }
+
+    /// A small player window (520 × 480): every section, five rounds, nothing cut off and the app up throughout (the N8
+    /// crash was a constraint loop on a narrow window); audited.
+    @MainActor
+    func testPlayerNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugOpenPlayer", "1000", "-PennantDebugPlayerWindowSize", "520x480"])
+        waitForShell(app)
+        let window = playerWindow(app, "1000")
+        XCTAssertTrue(window.waitForExistence(timeout: 15), "the player's window did not open")
+        XCTAssertTrue(element(app, "player.header").waitForExistence(timeout: 30))
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.windows.containing(.any, identifier: "player.window.1000").firstMatch.frame.width <= 525
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 10), .completed, "the player's window did not take the small size")
+        for round in 1...5 {
+            everyTab(app, capture: round == 1 ? "n11-player-narrow" : nil)
+            XCTAssertEqual(app.state, .runningForeground, "the app stopped in round \(round)")
+        }
+        // The header's name and the tabs are inside the window, not cut by its edge
+        let frame = app.windows.containing(.any, identifier: "player.window.1000").firstMatch.frame
+        XCTAssertTrue(frame.insetBy(dx: -1, dy: -1).contains(element(app, "player.name").frame), "his name runs past the window")
+        try auditAlone(app, named: "accessibility-audit-n11-player-narrow")
         quitCleanly(app)
     }
 }

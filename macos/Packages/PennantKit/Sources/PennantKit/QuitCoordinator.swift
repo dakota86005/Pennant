@@ -9,19 +9,52 @@ import AppKit
 ///   loop, which also runs inside that nested loop, so it is safe from a `Task`, a main-queue block, a menu command or
 ///   another thread (the SIGTERM handler);
 /// - **the stop and the reply** (`shouldTerminate`) do not need the main queue: the server is stopped on a detached
-///   task (the controller is an actor), and the reply is delivered through the main run loop.
+///   task (the controller is an actor), and the reply is delivered through the main run loop;
+/// - **the quit always finishes**: the last words (the notes not kept yet) get `lastWordsDeadline` and are then given up,
+///   and the reply goes out by `replyDeadline` whatever is still under way (PR #58 on GitHub's macOS 26 runner: a quit
+///   left waiting kept the app running, and every test after it found the keyboard elsewhere).
 /// Quit only through `requestQuit()`.
 @MainActor
 public final class QuitCoordinator {
     private let prepare: @MainActor () -> Void
+    private let lastWords: @MainActor () -> @Sendable () async -> Void
     private let stop: @Sendable () async -> Void
+    private let log: @Sendable (String) -> Void
+    /// How long the last words may take before the quit goes on without them.
+    let lastWordsDeadline: Duration
+    /// How long AppKit waits for the reply at most: the server's stop has its own grace and kill within it.
+    let replyDeadline: Duration
+    /// How long AppKit has to end the app once the quit is answered yes; after it the app ends itself (`forceExit`).
+    let exitGrace: Duration
+    /// Ends the process when AppKit has not: the app hands `_exit(0)` (immediate: `exit` cannot run while the stuck exit
+    /// holds its lock); nothing by default, so a test process is never ended.
+    private let forceExit: @Sendable () -> Void
     /// A reply is owed to AppKit.
     public private(set) var replyPending = false
+    /// The reply has gone out: the app is quitting, so a later ask (AppKit can ask again on its way out) quits at once.
+    public private(set) var replied = false
 
-    /// `prepare` runs at once, on the main actor (the model stops starting things); `stop` stops the server off the
-    /// main actor.
-    public init(prepare: @escaping @MainActor () -> Void, stop: @escaping @Sendable () async -> Void) {
+    /// `prepare` runs at once, on the main actor (the model stops starting things); `lastWords` is asked then, on the
+    /// main actor, for what must reach the server before it stops (the notes typed and not saved yet), which is sent
+    /// off the main actor, for `lastWordsDeadline` at most; `stop` then stops the server off the main actor. The reply
+    /// goes out when the stop has ended, or at `replyDeadline`, whichever comes first; `log` says each step.
+    public init(
+        prepare: @escaping @MainActor () -> Void,
+        lastWords: @escaping @MainActor () -> @Sendable () async -> Void = { {} },
+        lastWordsDeadline: Duration = .seconds(2),
+        replyDeadline: Duration = .seconds(12),
+        exitGrace: Duration = .seconds(5),
+        forceExit: @escaping @Sendable () -> Void = {},
+        log: @escaping @Sendable (String) -> Void = { _ in },
+        stop: @escaping @Sendable () async -> Void
+    ) {
         self.prepare = prepare
+        self.lastWords = lastWords
+        self.lastWordsDeadline = lastWordsDeadline
+        self.replyDeadline = replyDeadline
+        self.exitGrace = exitGrace
+        self.forceExit = forceExit
+        self.log = log
         self.stop = stop
     }
 
@@ -32,18 +65,90 @@ public final class QuitCoordinator {
         onMainRunLoop(terminate)
     }
 
-    /// `applicationShouldTerminate`'s answer: stop the server, then reply. A second request while a reply is owed is
-    /// cancelled (the first one is still under way).
+    /// `applicationShouldTerminate`'s answer: send the last words (for `lastWordsDeadline` at most), stop the server,
+    /// then reply; the reply goes out at `replyDeadline` if the stop has not ended by then, and only once. A second
+    /// request while a reply is owed is cancelled (the first one is still under way).
     public func shouldTerminate(reply: @escaping @MainActor @Sendable (Bool) -> Void) -> NSApplication.TerminateReply {
-        if replyPending { return .terminateCancel }
+        // Asked again after the reply (PR #58 on GitHub's macOS 26 runner: after a window was closed the quit stopped
+        // short, the app's log showing the server stopped and the reply sent): the quit is already decided, so it goes
+        // on rather than being cancelled
+        if replied {
+            log("quit: asked again after the reply; quitting now")
+            return .terminateNow
+        }
+        if replyPending {
+            log("quit: asked again while the first quit is under way")
+            return .terminateCancel
+        }
         replyPending = true
+        log("quit: asked")
+        let last = lastWords()
         prepare()
-        let stop = stop
+        let stop = stop, log = log, lastWordsDeadline = lastWordsDeadline, replyDeadline = replyDeadline
+        let answer = Once()
+        let exitGrace = exitGrace, forceExit = forceExit
+        let send: @MainActor @Sendable (Bool) -> Void = { [weak self] ok in
+            self?.replied = ok
+            self?.replyPending = false
+            log("quit: replied \(ok ? "yes" : "no")")
+            if ok {
+                // The quit is decided and the server stopped: if AppKit has not ended the app within the grace (PR #58 on
+                // GitHub's macOS 26 runner, after a restored window was closed: the app reached
+                // applicationWillTerminate and stayed inside its own exit), it ends itself rather than leave the GM with
+                // an app that will not quit. Set BEFORE the reply: AppKit ends the app inside `reply` itself, so nothing
+                // after it runs. A raw thread that only sleeps and ends the process: no Swift task, no dispatch, no log
+                // or Foundation formatting on the way.
+                let (seconds, attoseconds) = exitGrace.components
+                let microseconds = UInt32(clamping: Int(seconds) * 1_000_000 + Int(attoseconds / 1_000_000_000_000))
+                log("quit: if AppKit has not ended the app in \(exitGrace), the app ends itself")
+                let net = Thread { usleep(microseconds); forceExit() }
+                net.stackSize = 64 * 1024
+                net.start()
+            }
+            reply(ok)
+        }
         Task.detached(priority: .userInitiated) {
+            if await Self.finishes(within: lastWordsDeadline, last) {
+                log("quit: the last words are sent")
+            } else {
+                log("quit: the last words took longer than \(lastWordsDeadline); quitting without them")
+            }
             await stop()
-            Self.onMainRunLoop { reply(true) }
+            log("quit: the server is stopped")
+            if answer.claim() { Self.onMainRunLoop { send(true) } }
+        }
+        Task.detached(priority: .userInitiated) {
+            try? await Task.sleep(for: replyDeadline)
+            guard answer.claim() else { return }
+            log("quit: the stop took longer than \(replyDeadline); quitting anyway")
+            Self.onMainRunLoop { send(true) }
         }
         return .terminateLater
+    }
+
+    /// Runs `work` for `limit` at most: true when it ended in time. A send that never answers, and ignores being
+    /// cancelled, is left behind (it is cancelled) rather than waited on, so this never waits longer than `limit`.
+    nonisolated static func finishes(within limit: Duration, _ work: @escaping @Sendable () async -> Void) async -> Bool {
+        let first = Once()
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            let job = Task.detached(priority: .userInitiated) {
+                await work()
+                if first.claim() { continuation.resume(returning: true) }
+            }
+            Task.detached(priority: .userInitiated) {
+                try? await Task.sleep(for: limit)
+                guard first.claim() else { return }
+                job.cancel()
+                continuation.resume(returning: false)
+            }
+        }
+    }
+
+    /// The first of several racing callers wins (`claim()` is true once).
+    private final class Once: @unchecked Sendable {
+        private let lock = NSLock()
+        private var claimed = false
+        func claim() -> Bool { lock.withLock { defer { claimed = true }; return !claimed } }
     }
 
     /// Runs `work` on the main thread from the main run loop (in its common modes, which include the nested loop

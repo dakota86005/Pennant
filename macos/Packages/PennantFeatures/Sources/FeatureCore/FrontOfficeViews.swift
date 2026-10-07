@@ -86,6 +86,7 @@ public struct DeskItemRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var windowUndoManager
     @Environment(\.routeOpener) private var opener
+    @Environment(\.openWindow) private var openWindow
     @State private var editingNote = false
 
     public init(_ item: Components.Schemas.FoItem, showsDepartment: Bool = true, compact: Bool = false, undoManager: UndoManager? = nil) {
@@ -120,6 +121,12 @@ public struct DeskItemRow: View {
         .contextMenu {
             if let decision = route(item.open), opener?.canOpen(decision) == true {
                 Button(openLabel(item.open), systemImage: item.open?.kind.value1 == .decision ? "checkmark.seal" : "arrow.forward.circle") { opener?.open(decision) }
+            }
+            // The player the item is about, as its headline names him (N11): his own window
+            if let player = linkedPlayer(item.headline) {
+                OpenPlayerMenuItem(player)
+            }
+            if route(item.open) != nil || linkedPlayer(item.headline) != nil {
                 Divider()
             }
             DeskItemMenu(status: item.attention.status, deferChoices: choices, perform: perform, editNote: { editingNote = true })
@@ -134,6 +141,9 @@ public struct DeskItemRow: View {
         .accessibilityActions {
             if let decision = route(item.open), opener?.canOpen(decision) == true {
                 Button(openLabel(item.open)) { opener?.open(decision) }
+            }
+            if let player = linkedPlayer(item.headline) {
+                Button("Open Player") { openWindow(value: player) }
             }
         }
         .accessibilityAction(named: Text("Mark Reviewed")) { perform(.reviewed) }

@@ -12,7 +12,7 @@ import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbColumn, MlbRow } from '../majorLeague/types.js';
 import { BATTING_STATS, CONTACT_STATS, FIELDING_STATS, PITCHING_STATS, type StatDef } from '../statCatalog.js';
 import { factClaim, head, hintIf, player, statCell, statSort, type ClubhouseContext } from './common.js';
-import { withFill } from './fill.js';
+import { fillMark, withFill } from './fill.js';
 import type { MlbRosterChoice, MlbRostersView, MlbTableSection } from './types.js';
 
 const ROSTER = 'The club\'s roster';
@@ -103,7 +103,7 @@ function section(v: ClubhouseContext, roster: ClubRoster, pitching: boolean): Ml
       ...(a ? [line(`${a.label}${a.note ? `: ${a.note}` : ''}`, { quiet: true })] : []),
     ];
     const detail = withFill(p.ratingsFill, cells, ['scouted', ...ratings.map(([k]) => `rating.${k}`)], [block('His card', lines)]);
-    return tableRow(`${pitching ? 'pitcher' : 'hitter'}-${p.player_id}`, cells, sort, { player: player(p.player_id, name, orgId), detail });
+    return tableRow(`${pitching ? 'pitcher' : 'hitter'}-${p.player_id}`, cells, sort, { player: player(p.player_id, name, orgId), detail, ratingsFill: fillMark(p.ratingsFill) });
   });
   return {
     id: pitching ? 'pitchers' : 'hitters',

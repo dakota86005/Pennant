@@ -1654,6 +1654,85 @@ export function peerDevelopmentTrendByPlayerForOrg(
 export const historyRoutes = Router();
 
 
+/**
+ * The rating-history rows a trend may read, and each player whose ratings changed source: snapshots in another known kind
+ * of ratings than today's export are a switch, never movement (D-061), and so are a player's rows from another source
+ * than his today's (D-067). One filter for the organization's history and one player's (N11: the player window), so the
+ * two never read different rows.
+ */
+function usableHistoryRows<T extends { game_date: string; player_id: number }>(allRows: readonly T[]): { rows: T[]; sourceSwitches: Map<number, string> } {
+  const { excluded: otherMode } = modeFilter();
+  const sourceSwitches = new Map<number, string>();
+  const rows = allRows.filter((row) => {
+    if (otherMode.has(row.game_date)) return false;
+    const other = otherSource(row.player_id, (row as { src?: unknown }).src);
+    if (other) sourceSwitches.set(row.player_id, sourceSwitchText(other, other === 'osa' ? 'our_scouts' : 'osa'));
+    return !other;
+  });
+  return { rows, sourceSwitches };
+}
+
+/** One row of a player's rating history: the composite and the tools at one snapshot, as recorded. */
+export interface PlayerHistoryRow {
+  game_date: string;
+  player_id: number;
+  team_id: number | null;
+  org_id: number | null;
+  level: number | null;
+  age: number | null;
+  cur: number | null;
+  pot: number | null;
+  con: number | null;
+  gap: number | null;
+  pow: number | null;
+  eye: number | null;
+  avk: number | null;
+  spd: number | null;
+  stu: number | null;
+  mov: number | null;
+  ctl: number | null;
+}
+
+/**
+ * One player's rating history in this save (N11: the player window's chart), whatever organization held him at each
+ * snapshot, oldest first (by `compareGameDates`: OOTP writes dates unpadded), read through the same filter as the
+ * organization's (`usableHistoryRows`). Nothing is left out silently (review M2): his snapshots of another kind of ratings
+ * are counted and the save's changes of kind said, his snapshots whose kind couldn't be read are said with the reason,
+ * and a change of his own source is said (`sourceSwitch`).
+ */
+export function playerRatingHistory(playerId: number): {
+  rows: PlayerHistoryRow[];
+  sourceSwitch: string | null;
+  /** The save's changes of the kind of ratings, said when any of his snapshots is of a kind set aside. */
+  modeSwitches: string[];
+  /** Why his snapshots of an unknown kind are set aside; null when he has none. */
+  unknownKind: string | null;
+  /** How many of his snapshots are set aside (another kind, an unknown kind, or another source). */
+  setAside: number;
+  history: ReturnType<typeof historyNote>;
+} {
+  const all = historyDb
+    .prepare(
+      `SELECT game_date, player_id, team_id, org_id, level, age, cur, pot, con, gap, pow, eye, avk, spd, stu, mov, ctl, src
+       FROM save_rating_snapshots WHERE save_key = ? AND player_id = ?`
+    )
+    .all(currentHistoryKey(), playerId) as PlayerHistoryRow[];
+  const { rows, sourceSwitches } = usableHistoryRows(all);
+  rows.sort((a, b) => compareGameDates(a.game_date, b.game_date));
+  const { excluded, switches, unknownKind } = modeFilter();
+  const unknownDates = new Set(unknownKind);
+  const his = new Set(all.map((r) => r.game_date));
+  const otherKind = [...his].some((date) => excluded.has(date) && !unknownDates.has(date));
+  return {
+    rows: rows.map(({ src: _src, ...row }: PlayerHistoryRow & { src?: unknown }) => row),
+    sourceSwitch: sourceSwitches.get(playerId) ?? null,
+    modeSwitches: otherKind ? switches.map((x) => x.text) : [],
+    unknownKind: unknownKindReason(unknownKind.filter((date) => his.has(date))),
+    setAside: all.length - rows.length,
+    history: historyNote(),
+  };
+}
+
 /** The organization's rating history in this save (D-064), as `/api/development-history/:orgId` serves it (N10: the Mac
  * app's Development tracking reads the same function, so the two never read different histories). */
 export function developmentHistoryFor(orgId: number) {
@@ -1713,17 +1792,7 @@ export function developmentHistoryFor(orgId: number) {
         ctl: number | null;
       }>;
 
-  // Snapshots in another known kind of ratings than today's export are a switch, never movement (D-061): left out here
-  // as in every trend, so the Development page's changes never read a switch; the switches themselves are served below
-  const { excluded: otherMode } = modeFilter();
-  // And a player's rows from another source than his today's (D-067): a switch, never movement, served below
-  const sourceSwitches = new Map<number, string>();
-  const rows = allRows.filter((row) => {
-    if (otherMode.has(row.game_date)) return false;
-    const other = otherSource(row.player_id, (row as { src?: unknown }).src);
-    if (other) sourceSwitches.set(row.player_id, sourceSwitchText(other, other === 'osa' ? 'our_scouts' : 'osa'));
-    return !other;
-  });
+  const { rows, sourceSwitches } = usableHistoryRows(allRows);
 
   rows.sort(
     (a, b) =>
@@ -1967,15 +2036,63 @@ historyRoutes.get('/watchlist/:playerId', (req, res) => {
 
 // ── Notes on a player ───────────────────────────────────────────────────
 
-historyRoutes.get('/player-notes/:playerId', (req, res) => {
-  const rows = historyDb
+/** One staff note on a player, as filed (`player_notes`). */
+export interface StaffNoteRow {
+  id: number;
+  player_id: number;
+  player_name: string | null;
+  source: string | null;
+  body: string;
+  game_date: string | null;
+  created_at: string | null;
+}
+
+/** What the staff have filed about a player in this save, newest first (the card's and the player window's). */
+export function staffNotesOf(playerId: number): StaffNoteRow[] {
+  return historyDb
     .prepare(
       `SELECT id, player_id, player_name, source, body, game_date, created_at
        FROM player_notes WHERE save_name = ? AND player_id = ?
        ORDER BY id DESC`
     )
-    .all(currentSaveName(), Number(req.params.playerId));
-  res.json({ notes: rows });
+    .all(currentSaveName(), playerId) as StaffNoteRow[];
+}
+
+/**
+ * Files a note on a player. `gameDate` is the league's day it was said on (a note put back keeps its own); the in-game
+ * date, not today's: a plan made in May is judged against the season, and the wall clock means nothing to a save being simmed.
+ */
+export function addStaffNote(note: { playerId: number; playerName: string | null; source: string | null; body: string; gameDate?: string | null }): number {
+  const info = historyDb
+    .prepare(
+      `INSERT INTO player_notes (save_name, player_id, player_name, source, body, game_date, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      currentSaveName(),
+      note.playerId,
+      note.playerName,
+      note.source ?? 'You',
+      note.body,
+      note.gameDate === undefined ? leagueGameDate() : note.gameDate,
+      new Date().toISOString()
+    );
+  return Number(info.lastInsertRowid);
+}
+
+/** Removes a staff note; the note as it was (for an undo), or null when there was none. */
+export function removeStaffNote(id: number): StaffNoteRow | null {
+  const row = historyDb
+    .prepare(`SELECT id, player_id, player_name, source, body, game_date, created_at FROM player_notes WHERE save_name = ? AND id = ?`)
+    .get(currentSaveName(), id) as StaffNoteRow | undefined;
+  historyDb
+    .prepare(`DELETE FROM player_notes WHERE save_name = ? AND id = ?`)
+    .run(currentSaveName(), id);
+  return row ?? null;
+}
+
+historyRoutes.get('/player-notes/:playerId', (req, res) => {
+  res.json({ notes: staffNotesOf(Number(req.params.playerId)) });
 });
 
 historyRoutes.post('/player-notes', (req, res) => {
@@ -1988,28 +2105,11 @@ historyRoutes.post('/player-notes', (req, res) => {
   if (!Number.isFinite(Number(player_id)) || !body || !body.trim()) {
     return res.status(400).json({ error: 'A player and some text are required' });
   }
-  const info = historyDb
-    .prepare(
-      `INSERT INTO player_notes (save_name, player_id, player_name, source, body, game_date, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      currentSaveName(),
-      Number(player_id),
-      player_name ?? null,
-      source ?? 'You',
-      body.trim(),
-      // The in-game date, not today's: a plan made in May is judged against the
-      // season, and the wall clock means nothing to a save being simmed
-      leagueGameDate(),
-      new Date().toISOString()
-    );
-  res.json({ ok: true, id: info.lastInsertRowid });
+  const id = addStaffNote({ playerId: Number(player_id), playerName: player_name ?? null, source: source ?? 'You', body: body.trim() });
+  res.json({ ok: true, id });
 });
 
 historyRoutes.delete('/player-notes/:id', (req, res) => {
-  historyDb
-    .prepare(`DELETE FROM player_notes WHERE save_name = ? AND id = ?`)
-    .run(currentSaveName(), Number(req.params.id));
+  removeStaffNote(Number(req.params.id));
   res.json({ ok: true });
 });

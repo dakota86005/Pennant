@@ -132,6 +132,14 @@ export type {
   MlbChoices, MlbGauge, MlbWhy, MlbLens, MlbPerson, MlbPicture, MlbCall, MlbPlan, MlbResponses, MlbCandidateGroup, MlbCandidates, MlbConstraint,
   MlbMechanics, MlbDecisionView,
 } from '../presentation/majorLeague/types.js';
+// The player window and Compare (N11): `GET /api/v2/player/:id`, its notes, and `GET /api/v2/compare`
+export type {
+  PlayerFact, PlayerColumn, PlayerTableRow, PlayerTable, PlayerTile, PlayerHeaderView, PlayerAssignmentView, PlayerOverview, PlayerRatingRow,
+  PlayerRatingGroup, PlayerHistoryPoint, PlayerRatingHistory, PlayerRatingsView, PlayerValueTotal, PlayerOurView, PlayerConeSeason, PlayerConeView,
+  PlayerValueView, PlayerRightsAction, PlayerContractView, PlayerLogEntry, PlayerContactView, PlayerHistoryView, PlayerDossierView,
+  PlayerStaffNote, PlayerNotesView, PlayerNoteUpdate, PlayerNoteChange, StaffNoteRestore, StaffNoteChange,
+  ComparePlayer, CompareCell, CompareRow, CompareSection, PlayerCompareView,
+} from '../presentation/player/types.js';
 // Major League Ops' clubhouse tools (N9): `GET /api/v2/views/:org/majorLeague/<tool>`
 export type {
   MlbTableSection, MlbLineupQuery, MlbLineupChoice, MlbLineupChoices, MlbLineupView, MlbPitchingAvailabilityView, MlbGamePlanQuery,

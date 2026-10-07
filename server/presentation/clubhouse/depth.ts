@@ -8,7 +8,7 @@ import type { DepthChart } from '../../org.js';
 import { cell } from '../claim.js';
 import { column, tableRow } from '../majorLeague/common.js';
 import { ageWords, factClaim, head, hintIf, player, type ClubhouseContext } from './common.js';
-import { fillHint, type RatingFill } from './fill.js';
+import { fillHint, fillMark, type RatingFill } from './fill.js';
 import type { MlbDepthChartView, MlbDepthClub, MlbDepthEntry, MlbDepthPosition, MlbTableSection } from './types.js';
 
 const DEPTH = 'The depth chart';
@@ -51,7 +51,9 @@ function entry(p: Player, orgId: number, input: DepthInput): MlbDepthEntry {
     ? 'not scouted'
     : ceiling === null || ceiling === now ? (now ?? 'not scouted now') : `${now ?? 'not scouted now'} → ${ceiling}`;
   const c = cell(`${ageWords(p.age) ?? 'Age not known'} · ${graded}`, { hint: 'Age · the scouts\' grade now → his ceiling' });
-  return { player: player(p.player_id, p.name, orgId), line: fillHint(c, input.fills.get(p.player_id) ?? null) };
+  const fill = input.fills.get(p.player_id) ?? null;
+  const mark = fillMark(fill);
+  return { player: player(p.player_id, p.name, orgId), line: fillHint(c, fill), ...(mark ? { ratingsFill: mark } : {}) };
 }
 
 /** Graded now, highest first; ungraded after every graded one, in the export's order. */
@@ -126,7 +128,7 @@ function byPosition(chart: DepthChart, orgId: number, input: DepthInput): MlbTab
         }, {
           level: order.get(t.team_id) ?? null, club, depth: i + 1, player: p.name, age: age === null ? null : p.age,
           now: now === null ? null : Number(now), ceiling: ceiling === null ? null : Number(ceiling),
-        }, { player: player(p.player_id, p.name, orgId) });
+        }, { player: player(p.player_id, p.name, orgId), ratingsFill: fillMark(fill) });
       });
     });
     return {

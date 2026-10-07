@@ -180,6 +180,19 @@ describe('option years', () => {
     expect(rights({ used: null }).optionYears.standing).toBe('indeterminate');
     expect(rights({}, { league: league({ rules_minor_league_options: 0 }) }).optionYears.standing).toBe('indeterminate');
   });
+
+  it('says why a standing is indeterminate, and nothing when it is established', () => {
+    expect(rights({ used: 1 }).optionYears.reason).toBeNull();
+    expect(rights({ used: null }).optionYears.reason).toMatch(/used are not in the export/);
+    // The options rule not observed: never assumed on
+    const unobserved = rights({ used: 1 }, { league: league({ rules_minor_league_options: null }) }).optionYears;
+    expect(unobserved).toMatchObject({ standing: 'indeterminate' });
+    expect(unobserved.reason).toMatch(/rule is not in the export/);
+    // All three used, this season's charge unknown
+    const spent = rights({ used: 3, usedThisYear: null }).optionYears;
+    expect(spent).toMatchObject({ standing: 'indeterminate', remaining: 0 });
+    expect(spent.reason).toMatch(/charged this season is not in the export/);
+  });
 });
 
 describe('recall', () => {

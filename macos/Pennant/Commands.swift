@@ -5,7 +5,7 @@ import Shell
 import SwiftUI
 
 /// The menu bar's commands (SWIFTUI_REBUILD.md section 3.6). Go and View act on the key main window
-/// (`FocusedValues.mainWindow`); Club acts on the app. What can act comes from `CommandAvailability`.
+/// (`FocusedValues.mainWindow`), except Find Anything, which works from every window; Club acts on the app. What can act comes from `CommandAvailability`.
 struct PennantCommands: Commands {
     let model: AppModel
     let routing: AppRouting
@@ -15,10 +15,39 @@ struct PennantCommands: Commands {
     @FocusedValue(\.deskItem) private var deskItem
     /// The club or player name the keyboard focus is on (Follow or Unfollow, by key).
     @FocusedValue(\.followable) private var followable
+    /// The player whose name, row or window has the focus (N11: the Player menu acts on him).
+    @FocusedValue(\.player) private var player
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
     private var can: CommandAvailability { .of(model, window: window) }
+
+    /// Find Anything (⌘K) from any Pennant window (PR #58), as Open Quickly works from any of Xcode's: the key main
+    /// window's palette; else, from a player's, a club's or Compare's window or with no window key, the main window used
+    /// last comes forward with its palette up; with every main window closed, a new one opens with it. Which way it went
+    /// is said in the app's log.
+    private func findAnything() {
+        let log = model.serverController.log
+        let key = NSApp.keyWindow?.identifier?.rawValue ?? "none"
+        if let window {
+            let before = window.paletteShown
+            window.togglePalette()
+            log.write("find anything: the key main window's palette (key window: \(key)); palette up before \(before), after \(window.paletteShown)", source: "app")
+            return
+        }
+        if let last = MainWindows.shared.last() {
+            let before = last.model.paletteShown
+            if last.window.isMiniaturized { last.window.deminiaturize(nil) }
+            last.window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+            last.model.showPalette()
+            log.write("find anything: no main window was key (key window: \(key)); the main window used last (\(last.window.identifier?.rawValue ?? "unnamed")) came forward with its palette; palette up before \(before), after \(last.model.paletteShown)", source: "app")
+        } else {
+            log.write("find anything: no main window was open (key window: \(key)); a new one opens with its palette", source: "app")
+            routing.requestPalette()
+            openWindow(id: SceneID.main)
+        }
+    }
 
     var body: some Commands {
         SidebarCommands()
@@ -30,7 +59,7 @@ struct PennantCommands: Commands {
             .keyboardShortcut("i", modifiers: [.command, .option])
             .disabled(!can.inspector)
             Button("Find Anything…") {
-                window?.togglePalette()
+                findAnything()
             }
             .keyboardShortcut("k", modifiers: .command)
             .disabled(!can.findAnything)
@@ -86,6 +115,16 @@ struct PennantCommands: Commands {
             Button { followable?.toggle() } label: { followable?.following == true ? Text("Unfollow") : Text("Follow") }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
                 .disabled(followable == nil)
+        }
+
+        // N11: the player in focus (his name, his row, his window), as section 3.6's Player menu
+        CommandMenu("Player") {
+            Button("Open Player") { if let player { openWindow(value: player) } }
+                .keyboardShortcut("o", modifiers: [.command, .option])
+                .disabled(player == nil)
+            Button("Compare") { if let player { CompareRouter.shared.compare([player]) { openWindow(value: $0) } } }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+                .disabled(player == nil)
         }
 
         CommandMenu("Club") {

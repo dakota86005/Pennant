@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { developmentTrendByPlayer, historyDb, modeFilter, modeSwitches, snapshotModes, stampSnapshotMode } from '../server/history.js';
+import { developmentTrendByPlayer, historyDb, modeFilter, modeSwitches, playerRatingHistory, snapshotModes, stampSnapshotMode } from '../server/history.js';
 import { currentHistoryKey } from '../server/historyIdentity.js';
 import { takeImportSnapshots } from '../server/importSnapshots.js';
 import { loadScoutedObservations } from '../server/scoutedEvidence.js';
@@ -148,5 +148,67 @@ describe('rating history across a switch in the kind of ratings', () => {
     } finally {
       historyDb.prepare('DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?').run(SAVE(), '2029-7-1');
     }
+  });
+});
+
+/**
+ * One player's rating history for his window (review M2, N11): his snapshots of another kind, or of a kind that couldn't be
+ * read, are set aside and said, never silently dropped, and his rows run in game-date order (OOTP writes dates unpadded).
+ */
+describe('a player\'s rating history says what it set aside', () => {
+  const ONE = 930_002;
+  const rows: Array<{ date: string; cur: number; mode: RatingMode }> = [
+    { date: '2029-4-1', cur: 40, mode: 'real' },
+    { date: '2029-6-1', cur: 50, mode: 'scouted' },
+    { date: '2029-10-2', cur: 53, mode: 'scouted' },
+    { date: '2029-9-30', cur: 52, mode: 'scouted' },
+  ];
+  const clean = () => {
+    historyDb.prepare('DELETE FROM save_rating_snapshots WHERE save_key = ? AND player_id = ?').run(SAVE(), ONE);
+    historyDb.prepare(`DELETE FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date LIKE '2029-%'`).run(SAVE());
+  };
+  beforeAll(() => {
+    clean();
+    const insert = historyDb.prepare(
+      `INSERT INTO save_rating_snapshots (save_key, game_date, player_id, name, team_id, org_id, level, position, age, cur, pot, con, gap, pow, eye, avk)
+       VALUES (?, ?, ?, 'Window Case', ?, ?, 1, 6, 25, ?, 60, ?, ?, ?, ?, ?)`
+    );
+    for (const r of rows) {
+      insert.run(SAVE(), r.date, ONE, ORG, ORG, r.cur, r.cur, r.cur, r.cur, r.cur, r.cur);
+      stampSnapshotMode(r.date, { mode: r.mode, additionalScouted: null, source: 'export_settings', reason: null }, null);
+    }
+  });
+  afterAll(() => {
+    clean();
+    setExportRatingMode(null);
+  });
+
+  it('orders his snapshots by game date, sets the other kind aside and says the change of kind', () => {
+    setExportRatingMode('scouted');
+    const history = playerRatingHistory(ONE);
+    expect(history.rows.map((r) => r.game_date)).toEqual(['2029-6-1', '2029-9-30', '2029-10-2']);
+    expect(history.setAside).toBe(1);
+    expect(history.modeSwitches.join(' ')).toMatch(/from true ratings to your scouts' view: the change is a switch, not development/i);
+    expect(history.unknownKind).toBeNull();
+  });
+
+  it('sets aside a snapshot whose kind couldn\'t be read, with the reason', () => {
+    setExportRatingMode('scouted');
+    stampSnapshotMode('2029-9-30', { mode: 'unknown', additionalScouted: null, source: 'export_settings', reason: 'two kinds on' }, null);
+    try {
+      const history = playerRatingHistory(ONE);
+      expect(history.rows.map((r) => r.game_date)).toEqual(['2029-6-1', '2029-10-2']);
+      expect(history.setAside).toBe(2);
+      expect(history.unknownKind).toMatch(/2029-9-30 couldn't be read/);
+    } finally {
+      stampSnapshotMode('2029-9-30', { mode: 'scouted', additionalScouted: null, source: 'export_settings', reason: null }, null);
+    }
+  });
+
+  it('says nothing of a change of kind when none of his snapshots is of another kind', () => {
+    setExportRatingMode('real');
+    // Today true ratings: his scouted rows are set aside, and the change is said; with none of his rows in another kind, nothing
+    expect(playerRatingHistory(ONE).modeSwitches.length).toBeGreaterThan(0);
+    expect(playerRatingHistory(999_999_001)).toMatchObject({ rows: [], modeSwitches: [], unknownKind: null, setAside: 0 });
   });
 });

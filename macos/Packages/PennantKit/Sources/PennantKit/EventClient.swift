@@ -140,7 +140,7 @@ public struct EventClient: Sendable {
                 onError("the event stream ended")
             } catch {
                 if Task.isCancelled { return }
-                onError("the event stream failed: \(error)")
+                onError("the event stream failed: \(RequestProblem.logLine(error))")
             }
             failures = connected ? 1 : failures + 1
             await handle(.disconnected)

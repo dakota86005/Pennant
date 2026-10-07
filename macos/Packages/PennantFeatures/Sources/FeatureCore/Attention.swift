@@ -183,6 +183,8 @@ public struct FocusedFollowable {
 
 extension FocusedValues {
     @Entry public var followable: FocusedFollowable?
+    /// The player whose name or row has the keyboard focus (N11: the Player menu's Open Player and Compare act on him).
+    @Entry public var player: PlayerRef?
 }
 
 /// Follow or Unfollow in a menu, by what the served Following names.
@@ -208,8 +210,8 @@ public struct FollowMenuItem: View {
 
 // MARK: A club's name, a player's name
 
-/// Where a player opens for now (N7): his organization's club window, when the served target names it (player windows
-/// arrive with N11).
+/// His organization's club window, when the served target names it (N7; since N11 a player opens his own window, and
+/// his club is Open His Club).
 public func clubRef(opening target: Components.Schemas.Target?) -> ClubRef? {
     guard let target, let team = target.teamId else { return nil }
     switch target.kind.value1 {
@@ -226,8 +228,8 @@ extension View {
         modifier(ClubNameModifier(id: id, name: name))
     }
 
-    /// A player's name: Follow or Unfollow and Copy Name in its context menu, the nearest view (his organization's club
-    /// window) on a double-click or Return when served, and a drag (onto Following).
+    /// A player's name: his own window on a double-click or Return (N11), and in its context menu Open Player, Open His
+    /// Club when served, Compare, Follow or Unfollow and Copy Name; a drag (onto Following, Compare or another window).
     /// `name` is his served name, or nil where only a served line about him is shown (no Copy Name then).
     public func playerName(id: Int, name: String?, opens club: ClubRef?) -> some View {
         modifier(PlayerNameModifier(id: id, name: name, club: club))
@@ -285,39 +287,41 @@ struct PlayerNameModifier: ViewModifier {
     @Environment(\.undoManager) private var undoManager
 
     func body(content: Content) -> some View {
+        let player = PlayerRef(id: id)
         content
             .contentShape(.rect)
-            // Reached by the keyboard too (M4): Return opens his club when one is served, the Desk menu follows him
+            // Reached by the keyboard too (M4): Return opens his window, the Desk menu follows him
             .focusable()
             .onKeyPress(.return) {
-                guard let club else { return .ignored }
-                openWindow(value: club)
+                openWindow(value: player)
                 return .handled
             }
-            .onTapGesture(count: 2) { if let club { openWindow(value: club) } }
+            .onTapGesture(count: 2) { openWindow(value: player) }
             .contextMenu {
+                OpenPlayerMenuItem(player)
                 if let club {
                     Button("Open His Club", systemImage: "macwindow.badge.plus") { openWindow(value: club) }
                 }
+                CompareMenuItem([player])
                 FollowMenuItem(kind: "player", id: id)
                 if let name {
                     Divider()
                     Button("Copy Name", systemImage: "doc.on.doc") { copy(name) }
                 }
             }
-            .draggable(PlayerRef(id: id)) {
+            .draggable(player) {
                 Label { if let name { Text(verbatim: name) } } icon: { Image(systemName: "person") }
                     .padding(6).background(.regularMaterial, in: .capsule)
             }
             .accessibilityElement(children: .combine)
-            // A button that opens his club when one is served; Open His Club and Follow as actions
-            .accessibilityAddTraits(club != nil ? .isButton : [])
-            // A button presses: its default action opens his club (the audit found the button with nothing to press)
-            .accessibilityAction { if let club { openWindow(value: club) } }
+            // A button that opens his window; Open His Club, Compare and Follow as actions
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { openWindow(value: player) }
             .accessibilityActions {
                 if let club {
                     Button("Open His Club") { openWindow(value: club) }
                 }
+                Button("Compare") { CompareRouter.shared.compare([player]) { openWindow(value: $0) } }
             }
             .accessibilityAction(named: model.following.isFollowing(kind: "player", id: id) ? Text("Unfollow") : Text("Follow")) {
                 model.toggleFollow(kind: "player", id: id, undoManager: undoManager)
@@ -326,6 +330,7 @@ struct PlayerNameModifier: ViewModifier {
                 kind: "player", id: id, following: model.following.isFollowing(kind: "player", id: id),
                 toggle: { model.toggleFollow(kind: "player", id: id, undoManager: undoManager) }
             ))
+            .focusedValue(\.player, player)
             .accessibilityIdentifier("player.\(id)")
     }
 }

@@ -23,6 +23,7 @@ import { prospectsView } from '../server/presentation/farm/prospects.js';
 import { CALL_ORDER, MEETING_CALLS, PLAIN, callWord, plain, tierWord } from '../server/presentation/farm/words.js';
 import type { ScoutedDevelopmentPlayer } from '../server/scoutedDevelopment.js';
 import { BANNED_JARGON, BANNED_VERDICTS, bannedInPayload } from './bannedJargon';
+import { gradeOwners } from './ratingFillMarks';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
 /*
@@ -229,6 +230,18 @@ describe('no hidden score orders the prospects (D-044)', () => {
     expect(view.filters.find((f) => f.id === 'watch')!.count).toBe(1);
   });
 
+  it('carries the OSA mark on every row and meeting card of a filled player (D-067, review M4)', () => {
+    const filled = { ...ctx, fill: () => ({ mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' }) };
+    const players = [scoutedPlayer(1, 2), scoutedPlayer(2, 3)];
+    const view = prospectsView(filled, players, [prospect(1, 'hold', 10), prospect(2, 'strong_promotion_case', 90)], RATING);
+    const owners = gradeOwners(view, 'prospects');
+    expect(owners.some((o) => o.path.includes('.meetings['))).toBe(true);
+    expect(owners.filter((o) => !o.marked).map((o) => o.path)).toEqual([]);
+    for (const m of view.meetings) expect(m.ratingsFill).toMatchObject({ display: 'OSA' });
+    // A player our scouts rate: no mark anywhere
+    expect(gradeOwners(prospectsView(ctx, players, [prospect(2, 'strong_promotion_case', 90)], RATING), 'p').every((o) => !o.marked)).toBe(true);
+  });
+
   it('says in "Behind their peers" how many players have no pace yet, and "Not yet" when nobody has one (D-018)', () => {
     const some = prospectsView(ctx, [scoutedPlayer(1, 2, { pace: 'behind' }), scoutedPlayer(2, 3, { pace: 'insufficient', percentile: null })], [], RATING);
     const behind = some.figures.find((f) => f.text === 'Behind their peers')!;
@@ -308,6 +321,17 @@ describe('development tracking compares only this save\'s own history (D-064, D-
     // Both directions are movers
     expect(changes.order.some((id) => players.find((p) => `development:${p.playerId}` === id)!.evidence.developmentHistory.currentDelta! < 0)).toBe(true);
     expect(changes.rule.display).toMatch(new RegExp(`${MOVERS_SHOWN} largest changes`));
+  });
+
+  it('carries the OSA mark on a filled player\'s row and Development detail, his snapshots included (review M4)', () => {
+    const dates = ['2040-4-1', '2040-7-1'];
+    const players = [scoutedPlayer(1, 3, {}, 2)];
+    const filled = { ...ctx, fill: () => ({ mark: 'OSA', hint: 'OSA\'s view: our scouts haven\'t rated him.' }) };
+    const { view, details } = developmentViews(filled, players, history(rowsFor(1, dates, [45, 47]), dates), RATING);
+    const owners = [...gradeOwners(view, 'development'), ...gradeOwners(details, 'details')];
+    expect(owners.some((o) => o.path.startsWith('details'))).toBe(true);
+    expect(owners.filter((o) => !o.marked).map((o) => o.path)).toEqual([]);
+    expect(details[0].ratingsFill).toMatchObject({ display: 'OSA' });
   });
 
   it('says a change of rating source on the player and on the view, never a silent gap (D-067)', () => {

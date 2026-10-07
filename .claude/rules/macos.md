@@ -108,3 +108,9 @@ and those documents differ, they win. The presentation cases are in `docs/BEHAVI
   with the chosen row beneath it in its own scroll area), never a table inside a page's scroll view; the window's
   columns take no minimum from their content (`.noContentMinimum()`). A view that opens on one thing reads
   `\.currentRoute`'s `key`. SWIFTUI_REBUILD.md section 3.5, "As built at N8", "As built at N9" and "As built at N10"; D-065, D-066, D-069.
+- **The player window and Compare (N11, D-070):** a player opens in his own window (`WindowGroup("Player", for:
+  PlayerRef.self)`) from any served target that names him (`playerRef(opening:)`), his name (`playerName`), a table's
+  row, the palette, Following or a desk item's player; Compare (`WindowGroup("Compare", for: ComparisonRef.self)`,
+  `CompareRouter`) keeps two to four. One served `PlayerDossierView` per player (`/api/v2/player/:id`), drawn as tabs;
+  short tables are grids, a long record a native `Table` in a `TablePane`; charts carry `AXChartDescriptor`s. The OSA
+  mark (`RatingFillMark`) is drawn wherever a grade is shown. SWIFTUI_REBUILD.md section 3.1, "As built at N11".

@@ -754,16 +754,23 @@ function farmMan(f: FarmNext): FarmNextMan {
 }
 
 /**
+ * The roster map's words for two ranges each lands in half the time (D-057): one wholly above the other is "clearly ahead
+ * of" it, wholly below "clearly behind", and ranges that meet are "not separable" (the side is `separationOf`, the
+ * map's own reading). One vocabulary: the map's places and Compare's readings (N11) both say them.
+ */
+export const SEPARATION = { ahead: 'clearly ahead of', behind: 'clearly behind', level: 'not separable from' } as const;
+
+/**
  * Where our holder stands against the other clubs placed, told apart on the range each lands in half the time: "Clearly
  * ahead of 4 · not separable from 22 · clearly behind 3", and a universal overlap once, "Not separable from the other 29".
  */
 export function separationWords(ahead: number, level: number, behind: number): string {
   const others = ahead + level + behind;
   if (others === 0) return 'The only club placed here';
-  if (level === others) return `Not separable from the other ${others}`;
-  if (ahead === others) return `Clearly ahead of the other ${others}`;
-  if (behind === others) return `Clearly behind the other ${others}`;
-  return capital([ahead ? `clearly ahead of ${ahead}` : null, level ? `not separable from ${level}` : null, behind ? `clearly behind ${behind}` : null]
+  if (level === others) return capital(`${SEPARATION.level} the other ${others}`);
+  if (ahead === others) return capital(`${SEPARATION.ahead} the other ${others}`);
+  if (behind === others) return capital(`${SEPARATION.behind} the other ${others}`);
+  return capital([ahead ? `${SEPARATION.ahead} ${ahead}` : null, level ? `${SEPARATION.level} ${level}` : null, behind ? `${SEPARATION.behind} ${behind}` : null]
     .filter(Boolean).join(' · '));
 }
 
