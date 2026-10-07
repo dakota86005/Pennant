@@ -1323,6 +1323,16 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   Philosophy 3.0 / 4.2 ms, Coaching Staff 2.5 / 7.9 ms (80 kB); another club's desk 1.9 s on first open, then 8.3 / 18 ms.
   USBL (a scratch copy): the desk 1.3 s cold, 1.0 s through the worker; warm p95 at most 6.7 ms; another club's 1.0 s first.
   The synthetic save: the desk 0.4 s through the worker, warm p95 at most 2.5 ms.
+- **The audits.** `testTradesNarrowWindow` runs three rounds at 900 × 700 with the inspector open: an offer from the inbox
+  put on the builder and weighed (its difference and chart drawn, AI said off, the deal cleared), a preference moved by the
+  slider's own value and put back with ⌘Z through the served undo, and a coach chosen with his ratings beneath; each view is
+  audited on its first visit at 0 findings with no new set-aside, and it passed five runs in a row (2026-10-06, about 134 s
+  each, the display to itself). Found and fixed on the way: a borderless menu with no action (the row's move and remove are
+  two buttons), SwiftUI's slider thumb with no description (AppKit's slider), `Form`'s vibrant rows on a system background,
+  the status strip read as nothing, a summary line in the secondary colour read as too faint. A preference's description
+  that wrapped mid-phrase failed the contrast audit at 14:1 whatever its colour, wording or position (Track A found the
+  same of a byline wrapped inside a date): in a column this narrow every description wraps, and served in parts it would
+  read as fragments, so it is the label's help tag and the slider's VoiceOver help, as the house style puts an explanation.
 - *Left for later:* a staff window (a coach opens nothing of his own); the philosophy's staff-driven and hybrid modes (the
   editor serves "Set by you"); keys in the Keychain (N13).
 
