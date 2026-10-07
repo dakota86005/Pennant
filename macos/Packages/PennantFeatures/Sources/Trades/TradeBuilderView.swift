@@ -305,6 +305,13 @@ private struct PartsGrid: View {
 struct DifferenceChart: View {
     let chart: Components.Schemas.TradeRangeChart
 
+    /// The served scale, never zero-width or unbounded: a scale the server could not give is zero's own, −1 to 1.
+    static func domain(_ chart: Components.Schemas.TradeRangeChart) -> ClosedRange<Double> {
+        let (low, high) = (chart.scaleLow, chart.scaleHigh)
+        guard low.isFinite, high.isFinite, low < high else { return -1...1 }
+        return low...high
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Chart {
@@ -322,11 +329,15 @@ struct DifferenceChart: View {
                 RuleMark(x: .value("Even", 0))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .foregroundStyle(Color(nsColor: .labelColor))
-                    .annotation(position: .bottom) {
+                    // Never moved to fit (zero is the scale's middle): an annotation Charts repositions can move the plot
+                    .annotation(position: .bottom, overflowResolution: .init(x: .disabled, y: .disabled)) {
                         Text(verbatim: chart.zero.display).font(.caption2).foregroundStyle(.readableSecondary)
                     }
             }
-            .chartXScale(domain: chart.scaleLow...chart.scaleHigh)
+            // A fixed scale on both axes and no axis marks, so nothing in the chart's size depends on its width (Payroll's
+            // automatic axes never settled at a narrow width on macOS 26, PR #60)
+            .chartXScale(domain: Self.domain(chart))
+            .chartYScale(domain: ["deal"])
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .frame(height: 54)
