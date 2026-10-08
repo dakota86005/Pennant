@@ -7,11 +7,11 @@ on:
   pull_request:
   push:
     branches: [main]
-  # The XCUITest job (pennant-mac-ui) can be asked for by hand on any branch, all of it or one test
+  # The XCUITest jobs (pennant-mac-ui and its shards) can be asked for by hand on any branch, all of them or one test
   workflow_dispatch:
     inputs:
       only:
-        description: "One UI test only, as xcodebuild's -only-testing names it (PennantUITests/PennantUITests/testX); empty runs them all"
+        description: "One UI test only, as xcodebuild's -only-testing names it (PennantUITests/PennantUITests/testX), in a single shard; empty runs them all"
         required: false
         default: ""
 
@@ -96,27 +96,41 @@ jobs:
           -onlyUsePackageVersionsFromResolvedFile -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO PENNANT_SKIP_SERVER=YES build-for-testing
 
-  pennant-mac-ui:
-    # The XCUITests (SWIFTUI_REBUILD.md section 8) on GitHub's macOS runner, which has a logged-in GUI session no one is
-    # using, so no one's screen is taken over: the app with its bundled server on the synthetic league (never a real
-    # save), each test on a scratch folder of its own, as macos/scripts/test.sh runs them locally. The window
-    # screenshots, the accessibility audits and the launch timing (N6, Stage B1) are kept as an artifact. Its own job,
-    # only for pull requests into feature/swiftui (or by hand), and a hard gate: a failing XCUITest fails the run (it
-    # passed on the runner twice in a row before `continue-on-error` was removed, runs 36919366664 and 36922465784). If
-    # the runner's UI automation refuses (TCC), the log says so and nothing here changes the runner's security settings.
-    # No secrets: the app is built unsigned.
-    name: Mac app (XCUITests on the runner)
+  # The XCUITests (SWIFTUI_REBUILD.md section 8) on GitHub's macOS runner, which has a logged-in GUI session no one is
+  # using, so no one's screen is taken over: the app with its bundled server on the synthetic league (never a real
+  # save), each test on a scratch folder of its own, as macos/scripts/test.sh runs them locally. Only for pull requests
+  # into feature/swiftui (or by hand), and a hard gate: a failing XCUITest fails the run (it passed on the runner twice
+  # in a row before `continue-on-error` was removed, runs 36919366664 and 36922465784). If the runner's UI automation
+  # refuses (TCC), the log says so and nothing here changes the runner's security settings. No secrets: the app is
+  # built unsigned.
+  #
+  # In parallel shards: run one after another the tests took about 1 h 50 min (PR #61), so one job builds the app and
+  # its UI tests once (build-for-testing) with the synthetic league, and a matrix of shard jobs each runs its share on
+  # those products (test-without-building). Which tests each shard runs, their measured times and so each shard's
+  # timeout (about double its expected time) live in one place, macos/scripts/ui-test-shards.json; one shard, the
+  # catch-all, also runs every test no shard lists, so a new UI test runs before anyone assigns it. Four shards, not
+  # more: a free account runs at most five macOS jobs at once, and pennant-mac is still running when the shards start.
+  # Each shard keeps its screenshots, audits, launch timing and logs as its own artifact, xcuitest-shard-<n>. The
+  # gate the desktop app's CI monitor and the docs name, "Mac app (XCUITests on the runner)", needs them all.
+  pennant-mac-ui-build:
+    name: Mac app (XCUITests build)
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'feature/swiftui')
     runs-on: macos-26
-    # The suite grew past 90 minutes with N12's narrow-window tests (PR #59: 79 minutes of tests plus setup; the job
-    # was cut off at 90 twice). Splitting it across parallel jobs is the follow-up.
-    timeout-minutes: 150
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.shards.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+      # The shards and their timeouts; with the workflow_dispatch input, one shard for those tests
+      - name: The shards (macos/scripts/ui-test-shards.json)
+        id: shards
+        env:
+          ONLY: ${{ inputs.only }}
+        run: echo "matrix=$(node macos/scripts/ui-test-shards.mjs matrix "$ONLY")" >> "$GITHUB_OUTPUT"
       - run: xcodebuild -version
       - uses: actions/cache@v4
         with:
@@ -125,26 +139,87 @@ jobs:
             build/macos-test/DerivedData/SourcePackages
           key: pennant-mac-ui-${{ runner.os }}-${{ hashFiles('scripts/fetch-node-runtime.mjs', 'macos/Pennant.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
       - run: npm ci
-      # The package tests ran in pennant-mac; this job is the app, its server and the UI tests
+      # The package tests ran in pennant-mac; this job is the synthetic league, the staged server and the build
+      - name: Build the app, its server and the UI tests; write the synthetic league
+        env:
+          PENNANT_TEST_NO_PACKAGES: "1"
+          PENNANT_TEST_UNSIGNED: "1"
+          PENNANT_TEST_BUILD_ONLY: "1"
+          PENNANT_TEST_SCRATCH: ${{ runner.temp }}/pennant-ui
+        run: macos/scripts/test.sh
+      # A tar keeps what an artifact would lose: the bundles' symbolic links and executable bits
+      - name: Pack the products and the league for the shards
+        run: |
+          mkdir -p "$RUNNER_TEMP/xcuitest-build"
+          tar -czf "$RUNNER_TEMP/xcuitest-build/products.tar.gz" -C build/macos-test/DerivedData/Build Products
+          tar -czf "$RUNNER_TEMP/xcuitest-build/league.tar.gz" -C "$RUNNER_TEMP/pennant-ui" league
+          ls -lh "$RUNNER_TEMP/xcuitest-build"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xcuitest-build
+          path: ${{ runner.temp }}/xcuitest-build
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+      - name: Keep the build's logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcuitest-build-logs
+          path: build/macos-test/logs
+          if-no-files-found: warn
+          retention-days: 14
+
+  pennant-mac-ui-shard:
+    name: Mac app (XCUITests, shard ${{ matrix.shard }} of ${{ matrix.of }})
+    needs: pennant-mac-ui-build
+    runs-on: macos-26
+    # About double the shard's measured time (ui-test-shards.json): the matrix carries it
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      # Every shard runs to the end, so one failure does not hide another's
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.pennant-mac-ui-build.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      # Only for test.sh's own scripts (each test's folder, the shard's tests): no npm ci, nothing is built here
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: xcuitest-build
+          path: ${{ runner.temp }}/xcuitest-build
+      - name: Unpack the build job's products and league
+        run: |
+          mkdir -p build/macos-test/DerivedData/Build "$RUNNER_TEMP/pennant-ui"
+          tar -xzf "$RUNNER_TEMP/xcuitest-build/products.tar.gz" -C build/macos-test/DerivedData/Build
+          tar -xzf "$RUNNER_TEMP/xcuitest-build/league.tar.gz" -C "$RUNNER_TEMP/pennant-ui"
+      - run: xcodebuild -version
       - name: XCUITests on the synthetic league
         id: xcuitests
         env:
           PENNANT_TEST_NO_PACKAGES: "1"
-          PENNANT_TEST_UNSIGNED: "1"
+          PENNANT_TEST_PREBUILT: "1"
           PENNANT_TEST_SCRATCH: ${{ runner.temp }}/pennant-ui
+          PENNANT_TEST_SHARD: ${{ matrix.shard }}
           PENNANT_TEST_ONLY: ${{ inputs.only }}
         run: macos/scripts/test.sh
-      # The outcome on the run's summary page, with the launch timing the kept-payload test recorded
-      - name: Say how the XCUITests went, on the run's summary
+      # The outcome on the run's summary page, with the launch timing the kept-payload test recorded (in its shard)
+      - name: Say how the shard went, on the run's summary
         if: always()
         env:
           OUTCOME: ${{ steps.xcuitests.outcome }}
+          SHARD: ${{ matrix.shard }}
+          OF: ${{ matrix.of }}
+          EXPECTED: ${{ matrix.expected }}
         run: |
           if [ "$OUTCOME" = "success" ]; then line="PASSED"; else line="FAILED ($OUTCOME)"; fi
           {
-            echo "### Mac app XCUITests: $line"
+            echo "### Mac app XCUITests, shard $SHARD of $OF: $line"
             echo
-            echo "The screenshots, audits and logs are in the xcuitest-screenshots artifact."
+            echo "Expected about $EXPECTED minutes. The screenshots, audits and logs are in the xcuitest-shard-$SHARD artifact."
             timing=$(cat build/macos-test/screenshots/launch-timing* 2>/dev/null || true)
             if [ -n "$timing" ]; then echo; echo '```'; echo "$timing"; echo '```'; fi
           } >> "$GITHUB_STEP_SUMMARY"
@@ -152,9 +227,28 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: xcuitest-screenshots
+          name: xcuitest-shard-${{ matrix.shard }}
           path: |
             build/macos-test/screenshots
             build/macos-test/logs
           if-no-files-found: warn
           retention-days: 14
+
+  # The gate, under the name the desktop app's CI monitor and the docs use: it passes only when the build and every
+  # shard passed, and fails when any failed, was cancelled (a timeout among them) or never ran
+  pennant-mac-ui:
+    name: Mac app (XCUITests on the runner)
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'feature/swiftui'))
+    needs: [pennant-mac-ui-build, pennant-mac-ui-shard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        env:
+          BUILD: ${{ needs.pennant-mac-ui-build.result }}
+          SHARDS: ${{ needs.pennant-mac-ui-shard.result }}
+        run: |
+          echo "Build: $BUILD. Shards: $SHARDS."
+          if [ "$BUILD" = "success" ] && [ "$SHARDS" = "success" ]; then line="PASSED"; else line="FAILED (build $BUILD, shards $SHARDS)"; fi
+          echo "### Mac app XCUITests: $line" >> "$GITHUB_STEP_SUMMARY"
+          [ "$line" = "PASSED" ]
