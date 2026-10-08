@@ -54,6 +54,9 @@ public final class AppModel {
     public private(set) var lastRequestError: String?
     /// The client for the running server; nil while it is not ready.
     public private(set) var client: Client?
+    /// Moves whenever the server's AI keys may have changed: a server (re)started reads the Keychain anew, and
+    /// `updateKeys()` hands it new ones. Whatever says whether AI is on (the Trade Desk) reads again when it moves.
+    public private(set) var keysRevision = 0
     /// The desk and follow steps on the windows' undo managers (`Attention.swift`), and the save and club they were made
     /// for: taken off when either moves (M7).
     @ObservationIgnored var undoSteps: [UndoRegistration] = []
@@ -79,6 +82,10 @@ public final class AppModel {
     public private(set) var scouting: ScoutingStore
     /// The player windows and Compare (N11): each player's dossier, the GM's notes, comparisons.
     public private(set) var players: PlayerStore
+    /// Trades (`TradesStore`, N12 Track C): the Trade Desk, the deal on the builder and the optional AI desk.
+    public private(set) var trades: TradesStore
+    /// Philosophy & Staff (`PhilosophyStore`, N12 Track C): the philosophy editor and Coaching Staff.
+    public private(set) var philosophy: PhilosophyStore
     /// The club question still open for the chosen save, as the server last said on the status or the settings (N7,
     /// D-063's club question): while it is set the window holds the report and asks, across a relaunch. Nil when none.
     public private(set) var clubOwed: Components.Schemas.ClubOwed?
@@ -147,6 +154,8 @@ public final class AppModel {
         leagueOffice = LeagueOfficeStore { line in log.write(line, source: "app") }
         scouting = ScoutingStore { line in log.write(line, source: "app") }
         players = PlayerStore { line in log.write(line, source: "app") }
+        trades = TradesStore { line in log.write(line, source: "app") }
+        philosophy = PhilosophyStore { line in log.write(line, source: "app") }
     }
 
     #if DEBUG
@@ -172,7 +181,9 @@ public final class AppModel {
         players: PlayerStore? = nil,
         office: OfficeStore? = nil,
         leagueOffice: LeagueOfficeStore? = nil,
-        scouting: ScoutingStore? = nil
+        scouting: ScoutingStore? = nil,
+        trades: TradesStore? = nil,
+        philosophy: PhilosophyStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration)
         model.serverState = state
@@ -211,6 +222,8 @@ public final class AppModel {
             model.scouting = scouting
             scouting.previewAdopt(model.storeKey)
         }
+        if let trades { model.trades = trades }
+        if let philosophy { model.philosophy = philosophy }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }
@@ -640,6 +653,8 @@ public final class AppModel {
     private var loggedKey = false
 
     private func apply(_ state: ServerState) {
+        // A server that (re)started (a new connection) read the Keychain's keys afresh
+        if let connection = state.connection, connection != serverState.connection { keysRevision += 1 }
         serverState = state
         if state.connection != nil, !loggedReady {
             loggedReady = true
@@ -782,6 +797,8 @@ public final class AppModel {
         office.follow(storeKey)
         leagueOffice.follow(storeKey)
         scouting.follow(storeKey)
+        trades.follow(storeKey)
+        philosophy.follow(storeKey)
         let stamp = next.lastImport?.finishedAt ?? ""
         guard stamp != importStamp else { return }
         importStamp = stamp
@@ -847,6 +864,8 @@ public final class AppModel {
         office.follow(storeKey)
         leagueOffice.follow(storeKey)
         scouting.follow(storeKey)
+        trades.follow(storeKey)
+        philosophy.follow(storeKey)
         if storeKey != nil, !loggedKey {
             loggedKey = true
             controller.log.write("store key known \(launchClock)", source: "app")
@@ -877,5 +896,13 @@ public final class AppModel {
     private func note(_ error: any Error, reading what: String) {
         lastRequestError = "\(what): \(RequestProblem.logLine(error))"
         controller.log.write("could not read the \(what): \(RequestProblem.logLine(error))", source: "app")
+    }
+}
+
+extension AppModel {
+    /// Hands the running server the Keychain's keys again (Settings, N13), and says the AI's state may have changed.
+    public func updateKeys() async {
+        await serverController.updateKeys()
+        keysRevision += 1
     }
 }

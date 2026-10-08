@@ -260,6 +260,19 @@ export function philosophyForOrg(orgId: number): PhilosophyProfile {
   return normalizePhilosophyProfile(stored);
 }
 
+/**
+ * Records one organization's philosophy (null forgets it, so the club reads the neutral defaults); the rest of the
+ * settings are kept as they are. The React page's routes and the Mac app's editor (N12) write through this one function.
+ */
+export function savePhilosophyForOrg(orgId: number, profile: PhilosophyProfile | null): PhilosophyProfile {
+  const current = loadSettings();
+  const next = { ...current.organizationPhilosophies };
+  if (profile === null) delete next[String(orgId)];
+  else next[String(orgId)] = profile;
+  writeSettings({ ...current, organizationPhilosophies: next });
+  return philosophyForOrg(orgId);
+}
+
 // ── Secret storage ──────────────────────────────────────────────────────
 
 interface SecretCrypto {
@@ -533,19 +546,10 @@ settingsRoutes.put('/settings/philosophy/:orgId', (req, res) => {
     return res.status(400).json({ error: 'Invalid organization id.' });
   }
 
-  const current = loadSettings();
-  const profile = mergePhilosophyProfile(
+  const profile = savePhilosophyForOrg(orgId, mergePhilosophyProfile(
     philosophyForOrg(orgId),
     req.body
-  );
-
-  writeSettings({
-    ...current,
-    organizationPhilosophies: {
-      ...current.organizationPhilosophies,
-      [String(orgId)]: profile,
-    },
-  });
+  ));
 
   res.json({
     orgId,
@@ -562,16 +566,7 @@ settingsRoutes.delete('/settings/philosophy/:orgId', (req, res) => {
     return res.status(400).json({ error: 'Invalid organization id.' });
   }
 
-  const current = loadSettings();
-  const next = { ...current.organizationPhilosophies };
-  delete next[String(orgId)];
-
-  writeSettings({
-    ...current,
-    organizationPhilosophies: next,
-  });
-
-  const profile = philosophyForOrg(orgId);
+  const profile = savePhilosophyForOrg(orgId, null);
 
   res.json({
     orgId,

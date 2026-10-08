@@ -301,6 +301,25 @@ nonisolated public enum PreviewFixtures {
         .preview(draftBoard: decode(Components.Schemas.ScoutingDraftBoardView.self, "getScoutingDraftBoard"))
     }
 
+    /// The Trade Desk's captured payloads (N12 Track C): the desk, and a deal on the builder weighed (our regular going
+    /// out for another club's hitter).
+    @MainActor
+    public static var trades: TradesStore {
+        .preview(
+            desk: decode(Components.Schemas.TradeDeskView.self, "getTradeDesk"),
+            analysis: decode(Components.Schemas.TradeAnalysisView.self, "getTradeAnalysis")
+        )
+    }
+
+    /// Philosophy & Staff's captured payloads (N12 Track C): the editor and Coaching Staff.
+    @MainActor
+    public static var philosophy: PhilosophyStore {
+        .preview(
+            philosophy: decode(Components.Schemas.PhilosophyView.self, "getOrganizationalPhilosophy"),
+            staff: decode(Components.Schemas.CoachingStaffView.self, "getCoachingStaff")
+        )
+    }
+
     /// The captured search answer for "club".
     public static var search: Components.Schemas.SearchAnswer? {
         decode(Components.Schemas.SearchAnswer.self, "search")
@@ -353,7 +372,9 @@ nonisolated public enum PreviewFixtures {
         clubOwed: Components.Schemas.ClubOwed? = nil,
         farm: FarmStore? = nil,
         players: PlayerStore? = nil,
-        scouting: ScoutingStore? = nil
+        scouting: ScoutingStore? = nil,
+        trades: TradesStore? = nil,
+        philosophy: PhilosophyStore? = nil
     ) -> AppModel {
         var status = status(configured: configured)
         if let clubOwed { status?.clubOwed = clubOwed }
@@ -395,7 +416,9 @@ nonisolated public enum PreviewFixtures {
             players: configured ? (players ?? Self.players) : nil,
             office: configured ? office : nil,
             leagueOffice: configured ? leagueOffice : nil,
-            scouting: configured ? (scouting ?? Self.scouting) : nil
+            scouting: configured ? (scouting ?? Self.scouting) : nil,
+            trades: configured ? (trades ?? Self.trades) : nil,
+            philosophy: configured ? (philosophy ?? Self.philosophy) : nil
         )
     }
 

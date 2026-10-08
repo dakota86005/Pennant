@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, tableExists } from './db.js';
+import { db, hasColumns, tableExists } from './db.js';
 import { ratingFillOf, ratingFrom } from './scoutedEvidence.js';
 import { LEVEL_NAMES, seasonYear } from './valuation.js';
 import { positionNeeds } from './positionNeeds.js';
@@ -323,16 +323,60 @@ const COACH_FIELDS: Record<string, Array<[string, string]>> = {
 /** The seats the staff page lists, in the save's staff table's own names (`staff.ts`, shared with the Mac app's heads). */
 const ROLE_LABELS = STAFF_ROLE_LABELS;
 
-rosterOpsRoutes.get('/staff/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
+/** One major-league staff member as the staff page shows him. */
+export interface StaffMember {
+  role: string; coach_id: number; name: string; age: number; experience: number;
+  salary: number; yearsLeft: number; formerPlayer: boolean;
+  ratings: Array<{ label: string; value: number }>;
+}
+/** One coach on an affiliate's staff. */
+export interface FarmCoach {
+  role: string; coach_id: number; name: string; age: number; experience: number;
+  ratings: Array<{ label: string; value: number }>;
+}
+/** An affiliate's staff, with its record as context. */
+export interface FarmStaffClub {
+  team: string; team_id: number; levelName: string;
+  record: { w: number; l: number; pct: number } | null;
+  coaches: FarmCoach[];
+}
+/** A farm coach whose seat rating beats the major-league incumbent's by the margin. */
+export interface PromotionCandidate {
+  seat: string; incumbent: string; incumbentValue: number;
+  coach_id: number; name: string; currentRole: string;
+  team: string; levelName: string;
+  record: { w: number; l: number; pct: number } | null;
+  age: number; value: number; gap: number;
+}
+/** The club's staff as `/api/staff/:orgId` serves it, or why it can't be read (the route's own refusals). */
+export type StaffReading =
+  | {
+    status: 'read'; staff: StaffMember[]; farmStaff: FarmStaffClub[]; promotionCandidates: PromotionCandidate[];
+    /**
+     * The major-league seats nobody could be measured against: the export carries no rating for the seat, or (read with
+     * `blankIsUnknown`) the man in it has a blank or zero rating for it, which is not known, never 0 (D-018).
+     */
+    seatsUnread: string[];
+  }
+  | { status: 'no_data'; error: string }
+  | { status: 'no_staff'; error: string };
+
+/** Enough of a gap to be worth raising rather than noise in the ratings. */
+export const PROMOTION_MARGIN = 10;
+
+/**
+ * The club's staff, the farm's staff and who down there is ready for a job up here (the route and the Mac app read this).
+ * `blankIsUnknown` (the Mac app's): a seat whose incumbent's rating is blank or zero is unread, and a farm coach whose
+ * rating for the seat is blank or zero is not measured, never read as 0 (D-018). The React route reads as it always has.
+ */
+export function computeStaff(orgId: number, options: { blankIsUnknown?: boolean } = {}): StaffReading {
   if (!tableExists('team_roster_staff') || !tableExists('coaches')) {
-    return res.status(400).json({ error: 'No staff data imported yet' });
+    return { status: 'no_data', error: 'No staff data imported yet' };
   }
   const staffRow = db.prepare(`SELECT * FROM team_roster_staff WHERE team_id = ?`).get(orgId) as
     | Record<string, number>
     | undefined;
-  if (!staffRow) return res.status(404).json({ error: 'No staff found for this org' });
-
+  if (!staffRow) return { status: 'no_staff', error: 'No staff found for this org' };
   const staff = Object.keys(ROLE_LABELS)
     .map((role) => {
       const coachId = staffRow[role];
@@ -353,7 +397,7 @@ rosterOpsRoutes.get('/staff/:orgId', (req, res) => {
         ratings: COACH_FIELDS[role].map(([field, label]) => ({ label, value: c[field] as number })),
       };
     })
-    .filter(Boolean);
+    .filter((m): m is NonNullable<typeof m> => m !== null);
 
   /*
    * The whole farm staff, not just the managers.
@@ -438,10 +482,12 @@ rosterOpsRoutes.get('/staff/:orgId', (req, res) => {
     ['pitching_coach_value', 'Pitching Coach', 4],
     ['hitting_coach_value', 'Hitting Coach', 5],
   ];
-  /** Enough of a gap to be worth raising rather than noise in the ratings. */
-  const PROMOTION_MARGIN = 10;
 
-  const promotionCandidates = MLB_SEATS.flatMap(([field, label, occupation]) => {
+  // A seat whose rating the export doesn't carry can't be compared: it is named, never read as nobody out-rating him
+  const seatsUnread = MLB_SEATS.filter(([field]) => !hasColumns('coaches', field, 'occupation')).map(([, label]) => label);
+  // A rating the export leaves blank, or writes as zero on OOTP's 1-200 scale, is not known (D-018)
+  const known = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+  const promotionCandidates = MLB_SEATS.filter(([, label]) => !seatsUnread.includes(label)).flatMap(([field, label, occupation]) => {
     const incumbent = db
       .prepare(
         `SELECT first_name || ' ' || last_name AS name, "${field}" AS value
@@ -449,11 +495,16 @@ rosterOpsRoutes.get('/staff/:orgId', (req, res) => {
       )
       .get(orgId, occupation) as { name: string; value: number } | undefined;
     if (!incumbent) return [];
+    if (options.blankIsUnknown && !known(incumbent.value)) {
+      seatsUnread.push(label);
+      return [];
+    }
 
     return farmStaff
       .flatMap((club) =>
         (club.coaches as Array<Record<string, unknown>>).map((c) => {
           const full = coachById(c.coach_id as number);
+          if (options.blankIsUnknown && !known(full?.[field])) return null;
           const value = Number(full?.[field] ?? 0);
           return {
             seat: label,
@@ -471,9 +522,17 @@ rosterOpsRoutes.get('/staff/:orgId', (req, res) => {
           };
         })
       )
-      .filter((c) => c.gap >= PROMOTION_MARGIN);
+      .filter((c): c is NonNullable<typeof c> => c !== null && c.gap >= PROMOTION_MARGIN);
   }).sort((a, b) => b.gap - a.gap);
 
+  return { status: 'read', staff: staff as StaffMember[], farmStaff: farmStaff as FarmStaffClub[], promotionCandidates, seatsUnread };
+}
+
+rosterOpsRoutes.get('/staff/:orgId', (req, res) => {
+  const reading = computeStaff(Number(req.params.orgId));
+  if (reading.status === 'no_data') return res.status(400).json({ error: reading.error });
+  if (reading.status === 'no_staff') return res.status(404).json({ error: reading.error });
+  const { staff, farmStaff, promotionCandidates } = reading;
   res.json({ staff, farmStaff, promotionCandidates });
 });
 

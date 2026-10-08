@@ -3077,3 +3077,85 @@ description ("reads the club as a buyer", "leans toward buying", "hasn't decided
 the club as a seller"); no read once the regular season is decided; Us vs Them's opening club and its counting stats as
 season totals; a zero historical payroll or attendance read as not known; Player Value's production stamp as the
 certainty of the org comparison's figures (the farm's figure the ratings model's, which it rests on); Leaders' season named only when the league's own data names it.
+
+## D-073 — Trades and Philosophy & Staff on the Mac: the Trade Desk weighs a dropped deal; the philosophy's identity is the server's
+
+**Status:** Proposed (N12 Track C builder, 2026-10-06; the supervisor renumbers on a collision; Track A holds D-071, Track B
+D-072). Applies D-065 to Trades and Philosophy & Staff and refines D-001 (the AI desk), D-003, D-019 and D-045 (the
+authority chain in the editor's words), D-052 (a deal is a range), D-056 (the words) and D-060 for the presentation layer
+only: no value, rights, development or philosophy judgment changes. **Implementation:** `server/presentation/trades/` and
+`server/presentation/philosophy/` (the words, the identity included), `server/tradeDeskBuild.ts` (the reader, run in the
+Front Office's worker), `server/tradeDeskService.ts` (the cache, a deal weighed, the AI desk's answer worded), `server/philosophyViewService.ts`;
+the extractions `computeTradeFits`, `computeTradeProposals`, `computeTradeTalk` (`server/trade.ts`), `computeStaff`
+(`server/rosterops.ts`), `savePhilosophyForOrg` (`server/settings.ts`) and `tradeAiState`, `deskAnswer` (`server/ai.ts`,
+which also registers `POST …/trades/ask` on its router), each old route answering as before; `GET /api/v2/views/:org/trades/tradeDesk`, `GET …/trades/analysis?sent=&received=`, `POST
+…/trades/ask`, `GET|PUT|DELETE …/philosophy/organizationalPhilosophy`, `GET …/philosophy/coachingStaff`; the Mac app's
+`TradesStore`, `PhilosophyStore` and PennantFeatures' Trades and Philosophy targets. SWIFTUI_REBUILD.md section 3.5, "As
+built at N12 (Track C)".
+
+- **The desk is built after every import; a deal is weighed when it changes.** The desk (the inbox's offers with the
+  analyser's reading, the staff's trade talk, the league's fits) is one payload, built for our club in the Front Office's
+  worker after each kept build and kept on its inputs key; another club's on its first open. The key is the Front
+  Office's inputs without OOTP's live log (`frontOfficeImportKey`, settings included) plus the export's freshness as
+  derived, its state and days behind (`tradeDeskKey`, as Finance keys its views; review M2, 2026-10-07): a write to the
+  log during play that leaves the freshness as it was rebuilds nothing, while one that moves it does, since control reads
+  on it. The editor's stamp and Coaching Staff key the same way. Whether the AI desk is on is read on every request,
+  never kept. A deal (at most ten players a side, a player on one side only) is weighed on the server's thread when
+  asked, kept on the same key with its players (64 at most). The club's value of a win, which the
+  React analysis reads beside the deal, is not read for the desk at all (D-060: it belongs with the standings).
+- **A deal is a range around zero, never a verdict.** Each player is "most likely" with "could be", the difference is what
+  comes in less what goes out with its parts, drawn on a scale symmetric about zero with zero always on it (the server
+  serves the scale: `scaleOf`, the port of `src/tradeDifferenceGeometry.ts`); a player whose value isn't known is named and
+  left out, never zero. A difference whose range holds zero says so first, in Compare's words (D-070): "Can't tell apart
+  from an even deal: could be −5.9 to +2.2 wins (most likely −1.3)", on the builder, an offer's reading and our view alike
+  (review M3, 2026-10-06: a most likely below zero had read as a lean). The Mac draws the served figures in Swift Charts
+  and adds none.
+- **The builder takes players from anywhere.** Each side is a drop target for a `PlayerRef` (a table's row, a name, the
+  palette, Following, another window); a player dropped on the other side moves across; each side also finds a player by
+  name through the server's search (`/api/v2/search`, its players only) as native text suggestions. "Review" puts an
+  offer's two sides, or a target alone on the side received, on the builder.
+- **The AI desk is optional and is `ai.ts`'s** (D-001). With no key the desk says "AI is off. Everything on the desk works
+  without it." with the reason in its basis, and asking anyway is a 409 in words. With a key the answer comes from the one
+  function that answers the React page's `/trade/ai-eval` and `/trade/ai-reply` (`deskAnswer`; their answers unchanged,
+  byte for byte), its words marked as the AI's explanation of Pennant's figures ("decides nothing"), its conversation the
+  deal's (cleared when the deal changes). The Mac app's ask is never handed the club's value of a win, in the context or
+  the prompt (D-060; review M1, 2026-10-06: it had been). A provider that refuses the key is a 401 as on the React
+  routes, any other failure a 502, logged by its worded message only. The POST is registered on the AI router, which
+  hands the Trade Desk's service the answer to word (`tradeAskNow`), so the evidence boundary's list of modules that may
+  reach an AI module is unchanged (review M5: it had grown by one); the desk's own service and reader reach none.
+- **The philosophy's identity is the server's.** The React page's client-side identity (the headline, tags, summary and
+  nuance, the position words, the comparable clubs) is worded on the server from the settings alone, never the club's
+  record, odds or a posture; its lines are stated (policy). The visible words keep Player Value's method words off the
+  screen ("value for the money", "pay for ability"). The comparable clubs are shown closest first with how near in words,
+  without the React page's "#1" rank.
+- **Each policy is the native pop-up, and it passes the audit** (for reconsidering `ChoicePopover` project-wide). The
+  editor's policies use SwiftUI's own `Picker` in the `.menu` style, and the accessibility audit finds nothing on it, on
+  macOS 27.2 locally: in each of the narrow test's runs it is in the audited hierarchy with no "Action is missing", and
+  nothing about it is set aside. Exactly what it is: `Picker(selection:content:label:)` whose **label is a view inside
+  the picker** carrying the served words (`Text(verbatim: policy.label.display)`), hidden on screen by `.labelsHidden()`
+  (the same words stand visibly beside it in the row); a selection bound to the served value, each choice a `Text` with
+  a `.tag`; `.pickerStyle(.menu)`, `.fixedSize()` and an identifier; no `Menu`, no `menuStyle`, and no
+  `.accessibilityLabel`/`.accessibilityValue` modifier. What failed for Track B (League Office, `standings.division`) was
+  first a `Menu` with a button style and its name and value given by those modifiers, and then, by its notes, a pop-up
+  `Picker` with its label hidden "and an accessible name"; the attempt is not in the branch history, so whether its name
+  came from the picker's own label view, as here, is not known. That difference (the name from the picker's label view,
+  not a modifier) is the one to try first, and the audit on CI's macOS 26 runner is the test. Coaching Staff's section
+  control is now the shared kit's `OfficeSectionPicker` (the same segmented picker it had).
+- **The editor orders, never permits** (D-003, D-019, D-045). Its lede says the settings order the choices the staff
+  already finds sound and never make a move allowed or rule one out; "Promotion aggression" reads "among the moves Player
+  Development finds sound, how much the club prefers the quicker one".
+- **A change is checked whole and undone through the server.** An unknown setting (a key beside `dimensions` and
+  `policies`, or a policy id that is only a property every object has, such as `constructor`), a preference off 0–100 or
+  not a whole number, or a policy choice not offered is a 400 in words and writes nothing (the React route clamps silently; the v2 one
+  refuses). Each change answers with the editor, what it did ("Competitive window set to 70: Maximize current wins.") and
+  the request that undoes it; ⌘Z sends that request, its redo the original. Writing the settings moves the Front Office's
+  inputs, so every kept build that reads the philosophy is built again.
+- **Coaching Staff is the export's staff.** OOTP's 1–200 coach ratings as exported; a blank, zero or missing rating is
+  "not known", and a seat rating the export doesn't carry makes "who is ready for a job up here" not known rather than
+  "nobody" (the old route failed on such an export with a 500; it now answers 200 without that seat, and the old
+  proposals route likewise answers 200 on an export whose messages carry fewer player columns). On the Mac app's view
+  (`computeStaff(…, { blankIsUnknown: true })`; the React route reads as it did) an incumbent whose rating for his seat is
+  blank or zero makes that seat not known too, with no one listed against it, and a farm coach with no rating for a seat
+  is left off its list, never measured as 0 (D-018; review M4, 2026-10-06). An age or experience the export leaves blank
+  is "Not known". A coach opens nothing of his own
+  until a staff window exists; an affiliate's row opens its club.

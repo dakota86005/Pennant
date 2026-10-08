@@ -162,7 +162,10 @@ function clubName(teamId: number): string | null {
  * A deal read on Player Value: both sides and the difference between them, neutral, with our view beside it where the
  * viewer's philosophy is given. The neutral figures never depend on who looks (a contender and a seller read the same).
  */
-export function analyzeTrade(sentIds: number[], receivedIds: number[], viewer: TradeViewer, status: DataStatus = getDataStatus()): TradeAnalysis {
+export function analyzeTrade(
+  sentIds: number[], receivedIds: number[], viewer: TradeViewer, status: DataStatus = getDataStatus(),
+  options: { winValues?: boolean } = {},
+): TradeAnalysis {
   const sent = [...new Set(sentIds.map(Number).filter(Number.isInteger))];
   const received = [...new Set(receivedIds.map(Number).filter(Number.isInteger))].filter((id) => !sent.includes(id));
   const ids = [...sent, ...received];
@@ -189,7 +192,8 @@ export function analyzeTrade(sentIds: number[], receivedIds: number[], viewer: T
     ...(viewer.orgId !== null ? [viewer.orgId] : []),
     ...[...sentRows, ...receivedRows].map((r) => r.organizationId).filter((o): o is number => o !== null),
   ].filter((o, i, all) => all.indexOf(o) === i);
-  const winValues = clubs.slice(0, 4).map((c) => clubWinValue(c));
+  // The Mac app's Trade Desk leaves the club's value of a win to the standings (D-060), so it is not read for it
+  const winValues = options.winValues === false ? [] : clubs.slice(0, 4).map((c) => clubWinValue(c));
 
   return {
     organization: viewer.orgId !== null ? { id: viewer.orgId, name: clubName(viewer.orgId) } : null,
@@ -208,7 +212,7 @@ function limitationsOf(values: Map<number, PlayerValuation>): string[] {
 }
 
 /** The viewer for a request: the organization it names (else the configured one, else the managed club) and its philosophy. */
-function viewerFor(requested: unknown): TradeViewer {
+export function viewerFor(requested: unknown): TradeViewer {
   const org = viewingOrganization(requested);
   if (!org) return { orgId: null, philosophy: null };
   return { orgId: org.id, philosophy: lensPhilosophyFrom(resolvePhilosophy(philosophyForOrg(org.id))) };
@@ -253,13 +257,35 @@ function majorLeagueDepth(currentState?: FreshnessCue['state']): { clubs: Array<
  * most likely reading, from Player Value); the clubs are ordered by how many matches they have, a shown count. A lead for
  * the GM, not a verdict: the bands behind the figures are wide, and roster fit is his judgment.
  */
-tradeRoutes.get('/trade/fits/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('players') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
+/** One player in a fit: who, and his expected wins this season (most likely). */
+export interface TradeFitPlayer { player_id: number; name: string; wins: number }
+
+/** Trade fits for a club, as `/api/trade/fits/:orgId` serves them; null when the club is not a major-league club. */
+export interface TradeFits {
+  myWeakest: Array<{ position: number; positionName: string; best: TradeFitPlayer }>;
+  notEstablished: string[];
+  fits: Array<{
+    orgId: number;
+    label: string;
+    matches: number;
+    theyNeed: Array<{ positionName: string; theirBest: TradeFitPlayer; myCandidates: TradeFitPlayer[] }>;
+    theyOffer: Array<{ positionName: string; myBest: TradeFitPlayer; players: TradeFitPlayer[] }>;
+  }>;
+  freshness: FreshnessCue;
+  basis: string;
+}
+
+export const TRADE_FITS_BASIS =
+  "Expected wins this season (the part still to be played, most likely), from Player Value's production. A match is a player " +
+  "who isn't his club's starter at a position yet is expected to add more wins than the other club's best there. Players whose " +
+  'production is not established are left out and never counted as zero.';
+
+/** The league's trade fits for one club (the route and the Mac app's Trade Desk read this one function). */
+export function computeTradeFits(orgId: number): TradeFits | null {
   const cue = freshnessCue(getDataStatus());
   const { clubs, values, facts } = majorLeagueDepth(cue.state);
   const me = clubs.find((c) => c.teamId === orgId);
-  if (!me) return res.status(404).json({ error: 'Unknown org' });
+  if (!me) return null;
   const myDepth = clubDepth(orgId, values, facts.values());
   const mine = weakestOf(myDepth);
 
@@ -287,16 +313,15 @@ tradeRoutes.get('/trade/fits/:orgId', (req, res) => {
     .filter((f) => f.matches > 0)
     .sort((a, b) => b.matches - a.matches || a.label.localeCompare(b.label));
 
-  res.json({
-    myWeakest: mine.weakest,
-    notEstablished: mine.notEstablished,
-    fits: fits.slice(0, 10),
-    freshness: cue,
-    basis:
-      "Expected wins this season (the part still to be played, most likely), from Player Value's production. A match is a player " +
-      "who isn't his club's starter at a position yet is expected to add more wins than the other club's best there. Players whose " +
-      'production is not established are left out and never counted as zero.',
-  });
+  return { myWeakest: mine.weakest, notEstablished: mine.notEstablished, fits: fits.slice(0, 10), freshness: cue, basis: TRADE_FITS_BASIS };
+}
+
+tradeRoutes.get('/trade/fits/:orgId', (req, res) => {
+  const orgId = Number(req.params.orgId);
+  if (!tableExists('players') || !tableExists('teams')) return res.status(400).json({ error: 'No data imported yet' });
+  const fits = computeTradeFits(orgId);
+  if (!fits) return res.status(404).json({ error: 'Unknown org' });
+  res.json(fits);
 });
 
 tradeRoutes.get('/search-players', (req, res) => {
@@ -337,15 +362,37 @@ tradeRoutes.get('/search-players', (req, res) => {
  *
  * Each offer carries the same reading the analyser gives (phase 6b): the difference as a band, never a verdict.
  */
-tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('messages') || !tableExists('players')) return res.json({ proposals: [] });
+/** One player named in an offer or a talk item. */
+export interface TradeBrief { player_id: number; name: string; age: number | null; positionName: string; team: string | null }
 
+/** An offer in the OOTP inbox with the analyser's reading of it (`/api/trade-proposals/:orgId`). */
+export interface TradeProposal {
+  message_id: number;
+  trade_id: number;
+  subject: string;
+  date: string | null;
+  from: { team_id: number; label: string };
+  theySend: { players: TradeBrief[] };
+  weSend: { players: TradeBrief[] };
+  unit: TradeUnit | null;
+  difference: TradeDifference;
+  salary: TradeAnalysis['salary'];
+}
+
+/** The `player_id_N` columns this export's messages table carries (an older or smaller export has fewer). */
+function messagePlayerColumns(): string[] {
+  return Array.from({ length: 10 }, (_, i) => `player_id_${i}`).filter((c) => hasColumns('messages', c));
+}
+
+/** The offers in the OOTP inbox for a club, newest first (the route and the Mac app's Trade Desk read this one function). */
+export function computeTradeProposals(orgId: number, options: { winValues?: boolean } = {}): TradeProposal[] {
+  if (!tableExists('messages') || !tableExists('players')) return [];
+  const columns = messagePlayerColumns();
+  if (!columns.includes('player_id_0')) return [];
   const msgs = db
     .prepare(
       `SELECT m.message_id, m.subject, m.date, m.sender_id, m.trade_id,
-              m.player_id_0, m.player_id_1, m.player_id_2, m.player_id_3, m.player_id_4,
-              m.player_id_5, m.player_id_6, m.player_id_7, m.player_id_8, m.player_id_9,
+              ${columns.map((c) => `m.${c}`).join(', ')},
               ${teamLabel} AS sender_label
        FROM messages m
        LEFT JOIN teams t ON t.team_id = m.sender_id
@@ -357,10 +404,10 @@ tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
   const orgOf = db.prepare(`SELECT organization_id AS org FROM players WHERE player_id = ?`);
   const viewer = viewerFor(orgId);
 
-  const proposals = msgs
+  return msgs
     .map((m) => {
       const sender = Number(m.sender_id);
-      const ids = Array.from({ length: 10 }, (_, i) => Number(m[`player_id_${i}`] ?? 0)).filter(Boolean);
+      const ids = columns.map((c) => Number(m[c] ?? 0)).filter(Boolean);
       const theirs: number[] = [];
       const ours: number[] = [];
       for (const id of ids) {
@@ -371,8 +418,8 @@ tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
       // A message naming players on only one side is not an offer to weigh
       if (theirs.length === 0 || ours.length === 0) return null;
       // The same reading the analyser gives, so an offer read here and one loaded into the builder never disagree
-      const analysis = analyzeTrade(ours, theirs, { orgId: viewer.orgId ?? orgId, philosophy: null });
-      const brief = (r: TradeRow) => ({ player_id: r.playerId, name: r.name, age: r.age, positionName: r.position, team: r.team });
+      const analysis = analyzeTrade(ours, theirs, { orgId: viewer.orgId ?? orgId, philosophy: null }, undefined, options);
+      const brief = (r: TradeRow): TradeBrief => ({ player_id: r.playerId, name: r.name, age: r.age, positionName: r.position, team: r.team });
       return {
         message_id: Number(m.message_id),
         trade_id: Number(m.trade_id),
@@ -388,8 +435,10 @@ tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
     })
     .filter((p): p is NonNullable<typeof p> => p !== null)
     .sort((a, b) => String(b.date ?? '').localeCompare(String(a.date ?? '')));
+}
 
-  res.json({ proposals });
+tradeRoutes.get('/trade-proposals/:orgId', (req, res) => {
+  res.json({ proposals: computeTradeProposals(Number(req.params.orgId)) });
 });
 
 /** A player's contract value as a talk card or the trading block shows it: most likely and its range, or why it is not known. */
@@ -410,9 +459,21 @@ export function valueGlance(p: TradePlayerValue | undefined, unit: TradeUnit | n
   return { status: 'known', unit, ...p.contract, reason: null };
 }
 
-tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
-  const orgId = Number(req.params.orgId);
-  if (!tableExists('messages') || !tableExists('players')) return res.json({ items: [] });
+/** A target the staff raised in the inbox, read as the analyser reads a player coming in (`/api/trade-talk/:orgId`). */
+export interface TradeTalkItem {
+  message_id: number;
+  subject: string;
+  date: string;
+  otherTeam: { orgId: number; label: string };
+  player: {
+    player_id: number; name: string; age: number | null; positionName: string; levelName: string;
+    value: ValueGlance; control: string; salaryNow: { season: number; amount: number } | null;
+  };
+}
+
+/** The staff's trade talk for a club, newest first, each player once (the route and the Trade Desk read this one function). */
+export function computeTradeTalk(orgId: number, options: { winValues?: boolean } = {}): TradeTalkItem[] {
+  if (!tableExists('messages') || !tableExists('players')) return [];
   const rows = db
     .prepare(
       `SELECT m.message_id, m.subject, m.date, m.team_id_0 AS other_team, m.player_id_0 AS player_id,
@@ -435,8 +496,8 @@ tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
     .filter((r) => !seen.has(r.player_id as number) && seen.add(r.player_id as number));
   const ids = fresh.map((r) => r.player_id as number);
   // Each target read as the analyser reads a player coming in
-  const analysis = analyzeTrade([], ids, { orgId, philosophy: null });
-  const items = fresh.map((r) => {
+  const analysis = analyzeTrade([], ids, { orgId, philosophy: null }, undefined, options);
+  return fresh.map((r) => {
     const id = r.player_id as number;
     const row = analysis.received.find((x) => x.playerId === id)!;
     return {
@@ -456,7 +517,10 @@ tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
       },
     };
   });
-  res.json({ items });
+}
+
+tradeRoutes.get('/trade-talk/:orgId', (req, res) => {
+  res.json({ items: computeTradeTalk(Number(req.params.orgId)) });
 });
 
 /**
@@ -676,13 +740,13 @@ function differenceForDesk(d: TradeDifference) {
  * displace, plus where the club is weakest; the deal itself is Player Value's reading, both sides and the difference as a
  * band with its parts (the same figures the page shows), which the desk explains and never replaces (D-001).
  */
-export function tradeContext(orgId: number, giveIds: number[], getIds: number[]) {
+export function tradeContext(orgId: number, giveIds: number[], getIds: number[], options: { winValues?: boolean } = {}) {
   const statYear = hasColumns('players_career_batting_stats', 'year')
     ? ((db.prepare(`SELECT MAX(year) AS y FROM players_career_batting_stats`).get() as { y: number | null }).y ?? null)
     : null;
 
   const viewer = viewerFor(orgId || undefined);
-  const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy });
+  const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy }, undefined, options);
   const cue = analysis.freshness;
   const readingOf = (id: number) => ({
     row: [...analysis.sent, ...analysis.received].find((r) => r.playerId === id)!,
@@ -770,7 +834,10 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[])
       basis: analysis.value.basis,
     },
     salaryThisSeason: analysis.salary,
-    clubValueOfAWin: analysis.winValues.map((w) => ({ club: w.club, status: w.status, text: w.text, reason: w.reason })),
+    // The Mac app's desk is never handed the club's value of a win (D-060: odds belong to the standings), not even as a key
+    ...(options.winValues === false
+      ? {}
+      : { clubValueOfAWin: analysis.winValues.map((w) => ({ club: w.club, status: w.status, text: w.text, reason: w.reason })) }),
     whoTheyWouldDisplace: incumbents,
     /** Named here are the men their own clubs have listed for trade. */
     onTheBlock,

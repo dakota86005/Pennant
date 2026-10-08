@@ -158,6 +158,14 @@ struct ThemeTests {
             // The system's white words on an action's tint
             let action = contrast(.white, on: .readableActionTint, in: name)
             #expect(action >= needed, "action \(name.rawValue): \(action)")
+            // A range chart's mark on the page and the window, a graphic (3:1; 4.5:1 with Increase Contrast), and the
+            // range behind it at a quarter strength still told from the page (review L10: it was the system accent)
+            for fill in [NSColor.readablePage, .windowBackgroundColor] {
+                let mark = contrast(.readableRangeMark, on: fill, in: name)
+                #expect(mark >= (needed > 4.5 ? 4.5 : 3), "range mark \(name.rawValue): \(mark)")
+                let wash = contrast(NSColor.readableRangeMark.withAlphaComponent(0.25), on: fill, in: name)
+                #expect(wash >= 1.2, "range wash \(name.rawValue): \(wash)")
+            }
             // A season chart's marks as graphics, and the hollow mark's outline (N12 Track B review, M7): 3:1 on the page
             // and the window's background, 4.5:1 with Increase Contrast; the playoff blue and the title gold apart from each
             // other and from the grey, never the system accent

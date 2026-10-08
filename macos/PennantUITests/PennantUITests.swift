@@ -2022,6 +2022,142 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    /// Trades and Philosophy & Staff in a 900 × 700 window with the inspector open (N12 Track C): the Trade Desk (an offer
+    /// put on the builder, the difference drawn, the deal cleared), the philosophy editor (a preference changed, what it
+    /// did said, and ⌘Z undoing it) and Coaching Staff (a coach chosen, his ratings beneath), round after round, each inside
+    /// the window; every view audited on its first visit.
+    @MainActor
+    func testTradesNarrowWindow() throws {
+        let app = launch(arguments: ["-PennantDebugWindowSize", "900x700", "-PennantDebugInspector", "YES"])
+        waitForShell(app)
+        app.typeKey("5", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.trades.tradeDesk").waitForExistence(timeout: 30), "⌘5 did not open the Trade Desk")
+        let window = app.windows.firstMatch
+        let narrow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in window.frame.width <= 905 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [narrow], timeout: 15), .completed, "the window did not take the narrow size")
+        XCTAssertTrue(element(app, "inspector").waitForExistence(timeout: 10), "the inspector is not open")
+        let up = { (step: String) in
+            XCTAssertTrue([.runningForeground, .runningBackground].contains(app.state), "the app stopped at \(step)")
+            let front = NSWorkspace.shared.frontmostApplication
+            if let front, !["com.dakotawise.pennant", "com.dakotawise.pennant.dev"].contains(front.bundleIdentifier ?? "") {
+                let note = "[narrow] \(front.localizedName ?? front.bundleIdentifier ?? "another process") was frontmost at \(step); Pennant brought back"
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
+                app.activate()
+                _ = app.wait(for: .runningForeground, timeout: 5)
+            }
+        }
+        let inside = { (target: XCUIElement, step: String) in
+            let frame = target.frame, bounds = window.frame
+            XCTAssertGreaterThanOrEqual(frame.minX, bounds.minX - 1, "\(step) starts left of the window")
+            XCTAssertLessThanOrEqual(frame.maxX, bounds.maxX + 1, "\(step) runs past the window's right edge")
+            XCTAssertGreaterThan(frame.width, 0, "\(step) has no width")
+        }
+        let leading = { (target: XCUIElement) in target.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).click() }
+        for round in 1...3 {
+            // The Trade Desk: an offer from the inbox onto the builder, weighed, its difference drawn
+            up("⌘5, round \(round)")
+            app.typeKey("5", modifierFlags: .command)
+            let sent = element(app, "trades.side.sent")
+            XCTAssertTrue(sent.waitForExistence(timeout: 30), "round \(round): the Trade Desk did not draw its builder")
+            inside(sent, "round \(round): the side sent")
+            inside(element(app, "trades.side.received"), "round \(round): the side received")
+            let review = element(app, "trades.offer.review")
+            // Scrolled into view over the content (between the sidebar and the inspector), a step at a time
+            let content = window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.6))
+            let reviewShown = { review.exists && review.frame.minY > window.frame.minY + 80 && review.frame.maxY < window.frame.maxY - 30 }
+            for _ in 0..<20 where !reviewShown() {
+                // Up when it has passed above the window's top, else down
+                content.scroll(byDeltaX: 0, deltaY: review.exists && review.frame.minY <= window.frame.minY + 80 ? 150 : -150)
+                _ = review.waitForExistence(timeout: 1)
+            }
+            XCTAssertTrue(review.exists, "round \(round): the inbox's offer is not on the desk")
+            review.click()
+            let headline = element(app, "trades.difference.headline")
+            if !headline.waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12c-narrow-900-missing-difference") }
+            XCTAssertTrue(headline.exists, "round \(round): the offer put on the builder was not weighed")
+            inside(element(app, "trades.difference"), "round \(round): the difference")
+            XCTAssertTrue(element(app, "trades.chart").exists, "round \(round): the difference has no chart")
+            XCTAssertTrue(element(app, "trades.ai.off").exists, "round \(round): AI is off, and the desk doesn't say so")
+            if round == 1 {
+                keep(window.screenshot(), named: "n12c-narrow-900-trade-desk")
+                try audit(app, named: "accessibility-audit-trade-desk")
+            }
+            let clear = element(app, "trades.clear")
+            if clear.waitForExistence(timeout: 5) { clear.click() }
+            up("the Trade Desk, round \(round)")
+
+            // Organizational Philosophy: a preference moved, what it did said; ⌘Z puts it back
+            up("⌘9, round \(round)")
+            app.typeKey("9", modifierFlags: .command)
+            let form = element(app, "detail.philosophy.organizationalPhilosophy")
+            XCTAssertTrue(form.waitForExistence(timeout: 30), "round \(round): ⌘9 did not open the philosophy editor")
+            if !element(app, "philosophy.identity").waitForExistence(timeout: 30) { keep(window.screenshot(), named: "n12c-narrow-900-missing-philosophy") }
+            XCTAssertTrue(element(app, "philosophy.identity").exists, "round \(round): the philosophy editor did not draw")
+            inside(form, "round \(round): the philosophy editor")
+            let slider = app.sliders["philosophy.dimension.competitiveWindow"]
+            // Into view over the form, a step at a time (the editor opens at its top); the slider's
+            // own value is then what is set
+            let over = window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.6))
+            XCTAssertTrue(slider.waitForExistence(timeout: 10), "round \(round): the competitive window has no slider")
+            for _ in 0..<8 where slider.frame.maxY > window.frame.maxY - 60 {
+                over.scroll(byDeltaX: 0, deltaY: -150)
+                _ = slider.waitForExistence(timeout: 0.5)
+            }
+            XCTAssertLessThan(slider.frame.maxY, window.frame.maxY - 30, "round \(round): the competitive window's slider is not in view")
+            // What the preference weighs is on the page, under its label and clear of the slider (review L6)
+            let line = element(app, "philosophy.dimension.competitiveWindow.line")
+            XCTAssertTrue(line.exists, "round \(round): the competitive window's line is not shown")
+            XCTAssertLessThanOrEqual(line.frame.maxY + 8, slider.frame.minY, "round \(round): the competitive window's line crowds its slider")
+            // Moved up the scale as an assistive app moves it (the slider's own value), sent once it settles; the app
+            // brought back first if another process took the front (logged)
+            up("the slider, round \(round)")
+            slider.adjust(toNormalizedSliderPosition: 0.72)
+            let said = element(app, "philosophy.said")
+            // Static text reads its words as its value on macOS, a combined element as its label
+            let saying = { said.label.isEmpty ? (said.value as? String ?? "") : said.label }
+            let set = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                said.exists && saying().contains("Competitive window set to") && !saying().contains("set to 50:")
+            }, object: nil)
+            if XCTWaiter.wait(for: [set], timeout: 15) != .completed { keep(window.screenshot(), named: "n12c-narrow-900-missing-said") }
+            XCTAssertTrue(said.exists && saying().contains("Competitive window set to") && !saying().contains("set to 50:"),
+                          "round \(round): the change did not say what it did")
+            up("the undo, round \(round)")
+            app.typeKey("z", modifierFlags: .command)
+            let undone = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in said.exists && saying().contains("set to 50:") }, object: nil)
+            let undid = XCTWaiter.wait(for: [undone], timeout: 15)
+            if undid != .completed {
+                keep(window.screenshot(), named: "n12c-narrow-900-missing-undo")
+                print("[narrow] after ⌘Z the status reads: \(said.exists ? saying() : "nothing")")
+            }
+            XCTAssertEqual(undid, .completed, "round \(round): ⌘Z did not put the preference back")
+            if round == 1 {
+                keep(window.screenshot(), named: "n12c-narrow-900-philosophy")
+                try audit(app, named: "accessibility-audit-philosophy")
+            }
+            up("the philosophy, round \(round)")
+
+            // Coaching Staff: a coach chosen, his ratings beneath
+            up("Coaching Staff, round \(round), before")
+            element(app, "sidebar.philosophy.coachingStaff").click()
+            let table = element(app, "table.staff.major")
+            XCTAssertTrue(table.waitForExistence(timeout: 30), "round \(round): Coaching Staff did not draw its table")
+            inside(table, "round \(round): the staff table")
+            let row = firstRow(of: table)
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "round \(round): the staff table has no row")
+            leading(row)
+            let detail = element(app, "staff.detail")
+            XCTAssertTrue(detail.waitForExistence(timeout: 10), "round \(round): the chosen coach drew nothing beneath")
+            inside(detail, "round \(round): the coach's ratings")
+            if round == 1 {
+                keep(window.screenshot(), named: "n12c-narrow-900-coaching-staff")
+                try audit(app, named: "accessibility-audit-coaching-staff")
+            }
+            up("Coaching Staff, round \(round)")
+        }
+        quitCleanly(app)
+    }
+
     /// Farm & Development in dark: the views the GM reads longest, audited.
     @MainActor
     func testFarmViewsDark() throws {

@@ -55,6 +55,10 @@ import type {
   MlbDepthChartView, MlbFortyManView, MlbGamePlanView, MlbLineupView, MlbPitchingAvailabilityView, MlbRostersView, MlbScheduleView,
   MlbSeasonTrendsView,
 } from './presentation/clubhouse/types.js';
+import { TradesRefusal, tradeAnalysisNow, tradeDeskNow } from './tradeDeskService.js';
+import { PhilosophyRefusal, coachingStaffNow, philosophyNow, resetPhilosophyNow, setPhilosophyNow } from './philosophyViewService.js';
+import type { CoachingStaffView, PhilosophyChange, PhilosophyView } from './presentation/philosophy/types.js';
+import type { TradeAnalysisView, TradeDeskView } from './presentation/trades/types.js';
 
 import {
   leagueFranchiseNow, leagueLeadersNow, leagueOrgComparisonNow, leagueStandingsNow, leagueUsVsThemNow, scoutingDraftBoardNow,
@@ -94,6 +98,7 @@ function frontOffice<T>(answer: (req: Request) => Promise<T>) {
   return (req: Request, res: Response<T | ApiError>, next: NextFunction): void => {
     Promise.resolve().then(() => answer(req)).then((payload) => send(res, payload)).catch((err: unknown) => {
       if (err instanceof FrontOfficeRefusal || err instanceof DeskRefusal || err instanceof LeagueRefusal) res.status(err.status).json({ error: err.message });
+      else if (err instanceof TradesRefusal || err instanceof PhilosophyRefusal) res.status(err.status).json({ error: err.message });
       else next(err);
     });
   };
@@ -237,6 +242,27 @@ v2Routes.get('/views/:org/majorLeague/rosters', frontOffice<MlbRostersView>((req
   clubhouseRostersNow(String(req.params.org), req.query.team)));
 v2Routes.get('/views/:org/majorLeague/seasonTrends', frontOffice<MlbSeasonTrendsView>((req) =>
   clubhouseTrendsNow(String(req.params.org))));
+
+/**
+ * Trades (N12 Track C, D-073): the Trade Desk (the offers in the inbox, the staff's trade talk, the league's fits, whether
+ * the AI desk is on), built after every import for our club and kept; a deal weighed on Player Value (`?sent=&received=`,
+ * player ids), kept on the club's inputs. The optional AI desk (`POST …/trades/ask`), which explains the figures and decides
+ * nothing, is on the AI router (`ai.ts`), so no module here reaches an AI module (D-001).
+ */
+v2Routes.get('/views/:org/trades/tradeDesk', frontOffice<TradeDeskView>((req) => tradeDeskNow(String(req.params.org))));
+v2Routes.get('/views/:org/trades/analysis', frontOffice<TradeAnalysisView>((req) =>
+  tradeAnalysisNow(String(req.params.org), req.query as Record<string, unknown>)));
+
+/**
+ * Philosophy & Staff (N12 Track C, D-073): the Organizational Philosophy editor (its identity worded on the server), a
+ * change checked whole and answered with what it did and its undo, the reset to neutral, and Coaching Staff.
+ */
+v2Routes.get('/views/:org/philosophy/organizationalPhilosophy', frontOffice<PhilosophyView>(async (req) => philosophyNow(String(req.params.org))));
+v2Routes.put('/views/:org/philosophy/organizationalPhilosophy', frontOffice<PhilosophyChange>(async (req) =>
+  setPhilosophyNow(String(req.params.org), req.body)));
+v2Routes.delete('/views/:org/philosophy/organizationalPhilosophy', frontOffice<PhilosophyChange>(async (req) =>
+  resetPhilosophyNow(String(req.params.org))));
+v2Routes.get('/views/:org/philosophy/coachingStaff', frontOffice<CoachingStaffView>(async (req) => coachingStaffNow(String(req.params.org))));
 
 /**
  * Finance's and Medical's views (N12, D-071): each a payload of its own, built in the worker after every import and

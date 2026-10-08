@@ -1452,6 +1452,69 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   stand-ins (deleted at the cutover); `OfficeKit` and Major League Ops' and the farm's table components are three copies
   of one design, to fold together once N12's tracks have merged.
 
+**As built at N12, Track C (2026-10-06): Trades and Philosophy & Staff (server and Mac).** Branch
+`feature/swiftui-n12-trades`; D-073 (BEHAVIOR_CASES.md "Pennant for Mac", the `tradeDesk.test.ts`, `philosophyViews.test.ts`,
+`TradesFeatureTests` and `PhilosophyFeatureTests` rows).
+- **Server.** The routes the React pages read compute in callable functions, each old route answering as before
+  (`computeTradeFits`, `computeTradeProposals`, `computeTradeTalk`, `computeStaff`, `savePhilosophyForOrg`), with one
+  change: the proposals' and the staff's readers were made schema tolerant on the way, so on a smaller export that lacks a
+  column they read (a proposal's later `player_id_N`, a coach's seat rating) `/api/trade-proposals/:org` and
+  `/api/staff/:org` now answer 200 with what the export has, where they used to fail with a 500. `GET /api/v2/views/:org/trades/tradeDesk` (`TradeDeskView`: the
+  inbox's offers with the analyser's reading, the staff's trade talk, the league's fits, whether the AI desk is on, the
+  builder's words), `GET …/trades/analysis?sent=&received=` (`TradeAnalysisView`: each side's players with contract value,
+  range, control, production, keeping him and our view, the side totals, the difference with its range chart's served
+  scale and its parts, our view, the salary moving), `POST …/trades/ask` (the AI desk; a 409 in words with no key),
+  `GET|PUT|DELETE …/philosophy/organizationalPhilosophy` (`PhilosophyView`, `PhilosophyChange` with what it did and its
+  undo) and `GET …/philosophy/coachingStaff` (`CoachingStaffView`, three served sections). The adapters are
+  `server/presentation/trades/` and `server/presentation/philosophy/`; the desk is built in the Front Office's worker
+  (`tradeDesk` job) after each kept build for our club, another club's on its first open; a deal is weighed on the click and
+  kept on the inputs key with its players. The club's value of a win is not read for the desk (D-060).
+- **Mac.** `TradesStore` and `PhilosophyStore` (PennantKit). The Trade Desk is one page: the builder's two sides (side by
+  side where each gets a readable column, else one above the other), each a drop target for a `PlayerRef` and a field that
+  finds a player by name through the server's search as native text suggestions; a player's row opens his window, compares
+  and follows from his name, and moves or comes off from its menu; the toolbar compares everyone on the deal and clears it.
+  The difference is Swift Charts (the range, the most likely as a point or a stretch, zero dashed, on the served scale), one
+  image element with its `AXChartDescriptor`; its parts a grid in a disclosure. The AI desk says it is off, or asks with a
+  button and takes follow-ups, each answer marked as the AI's. Offers, trade talk and fits are cards; "Review" puts the deal
+  on the builder and scrolls to it. Organizational Philosophy is grouped sections laid out as System Settings lays out a
+  pane, each group's rows in the design's card (SwiftUI's grouped `Form` draws its rows vibrant on a system background,
+  which the contrast audit failed): AppKit's own slider for each preference (sent when a drag ends, its own mouse tracking
+  telling a drag from the keyboard or VoiceOver, or a moment after any other change settles; SwiftUI's slider with its
+  label hidden left its thumb with no description), what each preference weighs in its one line under its label (wrapping,
+  12 points clear of the slider) and in its label's help tag and the slider's served VoiceOver help, a pop-up for each
+  policy, the reset behind a confirmation; ⌘Z undoes through the served request (its redo
+  registered while undoing), and what a change did is said in a status strip under the editor, named for VoiceOver and
+  announced. Coaching Staff is a `TablePane` with the served sections as a
+  segmented control and the chosen coach's ratings beneath (a gauge against OOTP's 1–200 where the rating is known).
+- **Measured** (in process over HTTP, M-series Mac, under tsx, with other tracks' tests running beside it). The owner's export
+  (a scratch copy): the desk built in 2.8 s on the server's thread on a cold start, 1.1 s through the worker; warm GETs p50 /
+  p95: Trade Desk 4.3 / 8.6 ms (12 kB), a deal of two for three 1.5 / 3.1 ms (36 kB, 76 ms on first ask), Organizational
+  Philosophy 3.0 / 4.2 ms, Coaching Staff 2.5 / 7.9 ms (80 kB); another club's desk 1.9 s on first open, then 8.3 / 18 ms.
+  USBL (a scratch copy): the desk 1.3 s cold, 1.0 s through the worker; warm p95 at most 6.7 ms; another club's 1.0 s first.
+  The synthetic save: the desk 0.4 s through the worker, warm p95 at most 2.5 ms.
+- **The audits.** `testTradesNarrowWindow` runs three rounds at 900 × 700 with the inspector open: an offer from the inbox
+  put on the builder and weighed (its difference and chart drawn, AI said off, the deal cleared), a preference moved by the
+  slider's own value and put back with ⌘Z through the served undo, and a coach chosen with his ratings beneath; each view is
+  audited on its first visit at 0 findings with no new set-aside, and it passed five runs in a row (2026-10-06, about 134 s
+  each, the display to itself). Found and fixed on the way: a borderless menu with no action (the row's move and remove are
+  two buttons), SwiftUI's slider thumb with no description (AppKit's slider), `Form`'s vibrant rows on a system background,
+  the status strip read as nothing, a summary line in the secondary colour read as too faint. A preference's description
+  that wrapped failed the contrast audit at 14:1 whatever its colour or wording; it had been taken off the page for it, and
+  the review (L6) put it back. The cause is not the wrapping: the group footers wrap at this width in the same font and
+  pass, and so does the same wrapped description placed under the slider's ends, or above the slider 12 points clear of it
+  (two runs, 2026-10-06). What differed was the slider: the failing line sat 4 points above AppKit's slider. So the line is
+  on the page again, wrapped, 12 points clear of the slider, and the narrow test checks it is shown and clear. Track A's
+  "wrapped mid-phrase fails" (a byline inside a date) may have the same kind of cause, a neighbour, rather than the wrap.
+- **After the review** (2026-10-06): the Mac app's AI desk is the React page's (one `deskAnswer` in `ai.ts`) and never
+  handed the club's value of a win; a range across zero is said first ("Can't tell apart from an even deal", Compare's
+  words); Coaching Staff measures nobody against a blank or zero rating; the builder's prompts, "take him off the deal",
+  "weighing the deal", "select a coach" and each slider's VoiceOver help are served; the desk reads whether AI is on again
+  when the server's keys may have changed (`AppModel.keysRevision`); the philosophy's changes are written one at a time,
+  in order; at most 64 deals are kept weighed, as on the server; the difference chart draws in a fixed, checked colour
+  (`readableRangeMark`), never the system accent.
+- *Left for later:* a staff window (a coach opens nothing of his own); the philosophy's staff-driven and hybrid modes (the
+  editor serves "Set by you"); keys in the Keychain (N13).
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2673,6 +2736,9 @@ N11"; D-070), with the OSA mark drawn wherever a grade is shown and PennantKit's
 there, Leaders, Org Comparison, Franchise History, Us vs Them) and Scouting (Draft Board, Player Search), server and
 Mac (section 3.5, "As built at N12 (Track B)"; D-072), and the palette test's intermittent audit finding made
 deterministic.
+
+**N12, Track C (2026-10-06)** on `feature/swiftui-n12-trades`: Trades and Philosophy & Staff, server and Mac (section 3.5,
+"As built at N12, Track C"; D-073). Left open: a staff window, and the philosophy's staff-driven modes.
 
 Read first: AGENTS.md, this document, D-001, D-008, D-018, D-020, D-043, D-046, D-049, D-052 (with its
 amendments), D-054 and D-055 to D-060.

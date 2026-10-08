@@ -78,6 +78,18 @@ public extension NSColor {
         }
     }
 
+    /// A range chart's mark (the Trade Desk's difference: the most likely point or stretch, and at a quarter strength the
+    /// range behind it), never the system accent, whose graphite or yellow washes out on the page: a fixed blue, checked
+    /// at 3:1 or better against the page and the window (4.5:1 with Increase Contrast; `ThemeTests`).
+    nonisolated static let readableRangeMark = NSColor(name: "PennantReadableRangeMark") { appearance in
+        switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
+        case .accessibilityHighContrastAqua?: NSColor(srgbRed: 0.05, green: 0.24, blue: 0.52, alpha: 1)
+        case .accessibilityHighContrastDarkAqua?: NSColor(srgbRed: 0.62, green: 0.80, blue: 1.0, alpha: 1)
+        case .darkAqua?: NSColor(srgbRed: 0.50, green: 0.70, blue: 0.95, alpha: 1)
+        default: NSColor(srgbRed: 0.12, green: 0.36, blue: 0.69, alpha: 1)
+        }
+    }
+
     /// A control's tint where the system draws white words on it (a swipe action): a dark grey in both appearances.
     nonisolated static let readableActionTint = NSColor(name: "PennantReadableActionTint") { appearance in
         switch appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua]) {
@@ -144,4 +156,6 @@ public extension ShapeStyle where Self == Color {
     static var readableCaution: Color { Color(nsColor: .readableCautionText) }
     /// A tint under the system's white words (`NSColor.readableActionTint`).
     static var readableActionTint: Color { Color(nsColor: .readableActionTint) }
+    /// A range chart's mark, and its range at a quarter strength (`NSColor.readableRangeMark`).
+    static var readableRangeMark: Color { Color(nsColor: .readableRangeMark) }
 }
