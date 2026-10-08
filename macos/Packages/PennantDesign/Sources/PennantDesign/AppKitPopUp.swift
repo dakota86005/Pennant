@@ -24,6 +24,8 @@ struct AppKitPopUp: NSViewRepresentable {
     let act: (Int) -> Void
 
     static let widest: CGFloat = 280
+    /// The bezel and arrows of an empty pop-up button.
+    static let narrowest: CGFloat = 44
 
     final class Coordinator: NSObject {
         var act: (Int) -> Void = { _ in }
@@ -70,7 +72,8 @@ struct AppKitPopUp: NSViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, nsView button: NSPopUpButton, context: Context) -> CGSize? {
         let ideal = button.intrinsicContentSize
         let width = min(ideal.width, Self.widest, proposal.width ?? ideal.width)
-        return CGSize(width: max(width, 0), height: ideal.height)
+        // Never narrower than its bezel and arrows with no words, however little room it is offered
+        return CGSize(width: max(width, min(Self.narrowest, ideal.width)), height: ideal.height)
     }
 
     /// The menu: a pull-down's words first (its title item), then each item, a section's under its header and the
