@@ -46,7 +46,12 @@ struct FreeAgentsView: View {
                         }
                         .accessibilityIdentifier("freeAgents.needs")
                     }
-                    ListChoice(lists: view.lists, current: current.id) { list = $0; chosen = [:] }
+                    ListChoice(lists: view.lists, current: current.id) {
+                        // Choosing the list already shown keeps its filters
+                        guard $0 != current.id else { return }
+                        list = $0
+                        chosen = [:]
+                    }
                     OfficeFilterChoices(groups: current.filters, chosen: $chosen, id: "freeAgents.filter")
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         ClaimText(current.explain, edge: .bottom) {

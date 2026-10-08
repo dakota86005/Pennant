@@ -27,13 +27,14 @@ struct AppKitPopUp: NSViewRepresentable {
 
     final class Coordinator: NSObject {
         var act: (Int) -> Void = { _ in }
-        var selected: Int?
         var built: [Item]?
         var builtHeading: String?
 
+        /// Every choice the GM makes is forwarded, the current one too: the marked choice can be stale while the chosen
+        /// one loads, so comparing against it would swallow a re-choice. Each caller is idempotent.
         @objc func chose(_ sender: NSPopUpButton) {
             guard let tag = sender.selectedItem?.tag, tag >= 0 else { return }
-            if tag != selected { act(tag) }
+            act(tag)
         }
     }
 
@@ -51,13 +52,12 @@ struct AppKitPopUp: NSViewRepresentable {
     func updateNSView(_ button: NSPopUpButton, context: Context) {
         let coordinator = context.coordinator
         coordinator.act = act
-        // A pull-down chooses nothing: every item acts, so none is ever the current one
-        coordinator.selected = pullsDown ? nil : selected
         if coordinator.built != items || coordinator.builtHeading != heading {
             build(button.menu ?? NSMenu())
             coordinator.built = items
             coordinator.builtHeading = heading
         }
+        // A pull-down chooses nothing: every item acts, so none is ever the current one
         if !pullsDown {
             if let selected { button.selectItem(withTag: selected) } else { button.select(nil) }
         }
