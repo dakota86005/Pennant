@@ -1,0 +1,51 @@
+{
+  "about": "The XCUITests' parallel shards on CI (DEVELOPMENT.md, \"The Mac app's UI tests on CI\"): each shard's tests with the seconds each took on the runner. Shard catchAll also runs every test no shard lists. Rebalance with: node macos/scripts/ui-test-shards.mjs balance <xcodebuild-test.log> [count] [source]",
+  "measured": "PR #61's green run 37698959295 on 8f5704f (macos-26 runner, all 37 tests in one job): each test's seconds from xcodebuild-test.log",
+  "setupMinutes": 4,
+  "catchAll": 2,
+  "shards": [
+    {
+      "PennantUITests/testPlayerSearchFullPageAudit": 1015,
+      "PennantUITests/testFarmViewsDark": 197,
+      "PennantUITests/testDesignPaletteBasisAndInspector": 119,
+      "PennantUITests/testGlassShellClubColorsDark": 84,
+      "PennantUITests/testDesignArtPackLight": 55,
+      "PennantUITests/testPlayerNoteKeptOnLeaving": 45,
+      "PennantUITests/testClubOwedAfterSetupCloses": 19,
+      "PennantUITests/testSetupFlowOnAScratchFolder": 16,
+      "PennantUITests/testLaunchWithKeptPayload": 12
+    },
+    {
+      "PennantUITests/testClubhouseNarrowWindow": 971,
+      "PennantUITests/testMajorLeagueNarrowWindow": 202,
+      "PennantUITests/testTradesNarrowWindow": 189,
+      "PennantUITests/testGlassShellExamplePackDark": 79,
+      "PennantUITests/testGlassShellExamplePackLight": 53,
+      "PennantUITests/testClubhouseWideWindow": 45,
+      "PennantUITests/testPlayerWindowRestored": 16,
+      "ScrollClipTests": 0
+    },
+    {
+      "PennantUITests/testLeagueOfficeNarrowWindow": 701,
+      "PennantUITests/testFarmDeskToDecision": 262,
+      "PennantUITests/testFarmNarrowWindow": 227,
+      "PennantUITests/testPlayerNarrowWindow": 131,
+      "PennantUITests/testDesignArtPackDark": 87,
+      "PennantUITests/testDeskMarkAndUndo": 57,
+      "PennantUITests/testCompareByMenuAndDrag": 47,
+      "PennantUITests/testFollowByDrag": 42,
+      "PennantUITests/testStartsTheServerAndQuitsCleanly": 7
+    },
+    {
+      "PennantUITests/testFinanceNarrowWindow": 519,
+      "PennantUITests/testMajorLeagueViews": 438,
+      "PennantUITests/testDepartmentsInspectorAndSettings": 260,
+      "PennantUITests/testGlassShellClubColorsLight": 95,
+      "PennantUITests/testPlayerWindows": 89,
+      "PennantUITests/testClubWindow": 66,
+      "PennantUITests/testClubhouseWideWindowDark": 45,
+      "PennantUITests/testSearchToClubWindow": 40,
+      "PennantUITests/testZeroQuestionFirstRun": 11
+    }
+  ]
+}

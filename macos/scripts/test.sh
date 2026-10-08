@@ -24,6 +24,14 @@
 #   PENNANT_TEST_NO_PACKAGES  1 skips step 3 (to iterate on the UI tests)
 #   PENNANT_TEST_ONLY      UI tests to run, as xcodebuild's -only-testing names them (PennantUITests/PennantUITests/testX),
 #                          separated by spaces: run in the suite's order, to reproduce one test's effect on the next
+#   PENNANT_TEST_SHARD     run one CI shard's UI tests (macos/scripts/ui-test-shards.json; the catch-all shard also runs
+#                          every test no shard lists); PENNANT_TEST_ONLY wins over it
+#   PENNANT_TEST_BUILD_ONLY  1 builds the app and its UI tests (xcodebuild build-for-testing) after steps 1 and 2 and runs
+#                          none: CI's build job, whose products (build/macos-test/DerivedData/Build/Products/) and
+#                          synthetic league (the scratch folder's league/) its shard jobs download
+#   PENNANT_TEST_PREBUILT  1 runs the UI tests on what a PENNANT_TEST_BUILD_ONLY run left, with test-without-building: the
+#                          products in build/macos-test/DerivedData/Build/Products/ and the league in the scratch folder;
+#                          nothing is generated, staged or built (CI's shard jobs)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -51,11 +59,20 @@ run() {
 }
 
 cd "$ROOT"
-step "Synthetic league in $SCRATCH/league"
-run synthetic-league "synthetic-league" npm run synthetic:league -- "$SCRATCH/league" || failed=1
+if [ "${PENNANT_TEST_PREBUILT:-0}" = "1" ]; then
+  # The build job's league and products: nothing to generate or stage (the server is inside the built app)
+  if [ ! -f "$LEAGUE" ] || [ -z "$(ls "$OUT/DerivedData/Build/Products/"*.xctestrun 2>/dev/null)" ]; then
+    echo "FAILED: PENNANT_TEST_PREBUILT=1 needs the synthetic league in $SCRATCH/league and the built products in"
+    echo "$OUT/DerivedData/Build/Products/ (an .xctestrun file): run with PENNANT_TEST_BUILD_ONLY=1 first."
+    exit 1
+  fi
+else
+  step "Synthetic league in $SCRATCH/league"
+  run synthetic-league "synthetic-league" npm run synthetic:league -- "$SCRATCH/league" || failed=1
 
-step "Staging the server (npm run mac:stage)"
-run stage "\[stage\] staged" npm run mac:stage || failed=1
+  step "Staging the server (npm run mac:stage)"
+  run stage "\[stage\] staged" npm run mac:stage || failed=1
+fi
 
 packages=(PennantAPI PennantKit PennantDesign PennantFeatures)
 if [ "${PENNANT_TEST_NO_PACKAGES:-0}" = "1" ]; then packages=(); fi
@@ -66,7 +83,15 @@ for package in ${packages[@]+"${packages[@]}"}; do
       env PENNANT_TEST_SCRATCH="$SCRATCH/swift" PENNANT_TEST_LEAGUE="$LEAGUE" swift test) || failed=1
 done
 
-if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
+signing=()
+if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
+if [ "${PENNANT_TEST_BUILD_ONLY:-0}" = "1" ]; then
+  step "xcodebuild build-for-testing: the Pennant scheme (app, server, XCUITests), for the shard jobs"
+  run xcodebuild-build "\*\* TEST BUILD" \
+    xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS' \
+      -derivedDataPath "$OUT/DerivedData" -skipPackagePluginValidation ${signing[@]+"${signing[@]}"} \
+      build-for-testing || failed=1
+elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   step "xcodebuild test: the Pennant scheme (app, server, XCUITests)"
   UI_SCRATCH="$SCRATCH/ui"
   rm -rf "$UI_SCRATCH" "$OUT/Pennant.xcresult" "$OUT/screenshots"
@@ -167,16 +192,28 @@ if [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testPlayerSearchFullPageAudit configured '{"theme":"light"}'
   # N12 Track C: Trades and Philosophy & Staff at 900 × 700 with the inspector open
   prepare_ui_test testTradesNarrowWindow configured '{"theme":"light"}'
-  signing=()
-  if [ "${PENNANT_TEST_UNSIGNED:-0}" = "1" ]; then signing=(CODE_SIGNING_ALLOWED=NO); fi
-  for only in ${PENNANT_TEST_ONLY:-}; do signing+=("-only-testing:$only"); done
+  # Which tests: PENNANT_TEST_ONLY's, else one CI shard's (its own, or for the catch-all every test the other shards
+  # do not run), else all of them
+  selection=()
+  if [ -n "${PENNANT_TEST_ONLY:-}" ]; then
+    for only in $PENNANT_TEST_ONLY; do selection+=("-only-testing:$only"); done
+  elif [ -n "${PENNANT_TEST_SHARD:-}" ]; then
+    shard_args="$(node "$ROOT/macos/scripts/ui-test-shards.mjs" args "$PENNANT_TEST_SHARD")" || exit 1
+    while IFS= read -r arg; do if [ -n "$arg" ]; then selection+=("$arg"); fi; done <<< "$shard_args"
+    echo "Shard $PENNANT_TEST_SHARD: ${#selection[@]} xcodebuild selection argument(s) (macos/scripts/ui-test-shards.json)"
+  fi
+  if [ "${PENNANT_TEST_PREBUILT:-0}" = "1" ]; then
+    xctestrun="$(ls "$OUT/DerivedData/Build/Products/"*.xctestrun | head -1)"
+    xcode=(xcodebuild -xctestrun "$xctestrun" -destination 'platform=macOS' -resultBundlePath "$OUT/Pennant.xcresult"
+      ${selection[@]+"${selection[@]}"} test-without-building)
+  else
+    xcode=(xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS'
+      -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" -skipPackagePluginValidation
+      ${signing[@]+"${signing[@]}"} ${selection[@]+"${selection[@]}"} test)
+  fi
   # TEST_RUNNER_ variables reach the test runner without the prefix: each UI test finds its prepared folder under the
   # scratch root and launches the app on it
-  run xcodebuild-test "Executed|\*\* TEST" \
-    env TEST_RUNNER_PENNANT_UI_SCRATCH="$UI_SCRATCH" \
-    xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS' \
-      -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" \
-      -skipPackagePluginValidation ${signing[@]+"${signing[@]}"} test || failed=1
+  run xcodebuild-test "Executed|\*\* TEST" env TEST_RUNNER_PENNANT_UI_SCRATCH="$UI_SCRATCH" "${xcode[@]}" || failed=1
   # The restoration test's saved windows, if a failure left them (the runner may not reach the folder itself)
   rm -rf "$HOME/Library/Saved Application State/com.dakotawise.pennant.dev.savedState"
   # What each accessibility audit set aside, and why, and any finding, and a quit that needed help or did not finish:
