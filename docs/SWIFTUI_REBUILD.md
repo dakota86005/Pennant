@@ -1202,8 +1202,8 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
   (`FarmFacts`); a fold's title opens it too, as Get Info's sections do; the Decision's stakes and labelled lines wrap
   (M4). Run under the accessibility audit for the first time, the farm's tables take N8's `table.…` identifiers and
   their view's served name and drop the system's alternating rows, a neutral cell is plain text, the pages sit on
-  `readablePage`, the toolbar filters are a button and a popover of choices (N8's what-if pattern: a toolbar `Picker`
-  or `Menu` had no action to press), and the chosen affiliate is drawn in a fixed fill, not the system's grey
+  `readablePage`, the toolbar filters are the shared pop-up button (`PopUpChoice`, D-073; first a button and a popover
+  of choices, as N8's what-if was then), and the chosen affiliate is drawn in a fixed fill, not the system's grey
   selection. N8's `TablePane` anchors a head too wide for it at the leading edge (with the farm in the synthetic league,
   a decision's candidates' head was centred half under the sidebar). `testFarmNarrowWindow` cycles every farm view, a
   Decision with its results fold and its cascade, and the Decision list at 900 × 700 with the inspector open.
@@ -1248,7 +1248,7 @@ for Mac", the `farmViews.test.ts` and `FarmFeatureTests` rows).
 - **Mac.** `ClubhouseStore` (PennantKit, `AppModel.clubhouse`) reads each tool once per key and ask, never another club's.
   Lineup, Pitching Availability, 40-Man & Options and Rosters are N8's `TablePane` with the served sections as a segmented
   control; Lineup's choices ask the server again exactly as served (the card shown stays, drawn as updating; in the
-  toolbar since the review, below); Rosters' club is a popover of choices and its other season lines are shown from the table
+  toolbar since the review, below); Rosters' club is the shared pop-up button (`PopUpChoice`) and its other season lines are shown from the table
   header's menu (`defaultVisibility`, remembered in scene storage). The schedule opens on the games still to play (or on
   the filter holding the game it was opened on, Played latest first), the chosen game's plan beneath in its own pane,
   its sections as short grids. Depth Chart is one club at a time on the roster diagram's flat field (`FieldGeometry`,
@@ -1305,7 +1305,7 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   Free Agents, Payroll's every contract and the Injury Report are native `Table`s in a `TablePane` (served columns, sort
   keys, unknown last, several rows chosen, Compare, the player window on Return or a double-click, Follow, Copy Name, a
   player's row dragged as the player, the OSA mark beside a filled player's name), the chosen row's facts, claims and
-  seasons beneath; the served filters are choices in the head (`ChoicePopover`), a name the window's search field scoped to
+  seasons beneath; the served filters are choices in the head (`PopUpChoice`), a name the window's search field scoped to
   the view (`WindowSearch`, since the merge with Track B). Payroll's seasons are a page: the figures, the price and cost lines, Swift Charts with
   committed money as bars, the projected range a hatched bar beside each (never stacked) and each season's served budget
   a rule across its own column (today's for this season, the one the GM expects across the following seasons only),
@@ -1325,8 +1325,7 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   made AppKit's layout loop and the app stop (an exception in `_layoutSubtreeWithOldSize`) on opening Contracts: the
   name search is a field in the view's head (`OfficeFindField`). Payroll's Seasons / Every Contract choice was crowded out
   of the toolbar there (XCTest found no hit point for it) and is a segmented control in the head; Free Agents' lists fall
-  back from a segmented control to a button and a popover of choices (a pop-up `Picker` had no action to press, the
-  audit's "Action is missing"). The byline is served in parts too (`bylineParts`) and set on one line, or each part on a
+  back from a segmented control to the shared pop-up button (`PopUpChoice`, D-073). The byline is served in parts too (`bylineParts`) and set on one line, or each part on a
   line of its own: wrapped inside its date ("… Through May" over "6, 2040") it failed the contrast audit in every colour
   tried (14.9:1 by its pixels in the label colour) and wherever it sat, while on one line it passed. The test brings the
   sidebar to rest before each click and audit (a long reveal left it scrolling, the club card half under the title bar).
@@ -1384,7 +1383,7 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   each kind; the league-wide suggestions stand aside; leaving the view returns the field to the league), batters or
   pitchers segmented, asked again a quarter second after the typing stops. A second `.searchable` of its own looped
   AppKit's layout at 900 points (the app stopped), so the window keeps one field. The choice pop-ups are PennantDesign's one
-  `ChoicePopover` (below); a cell in the secondary style draws in the row's own colour on a chosen row.
+  `PopUpChoice` (below); a cell in the secondary style draws in the row's own colour on a chosen row.
 - **Measured** (in process over HTTP, M4, under tsx). The owner's export (a read-only scratch copy; checksums matched
   the save's before and after the copy): the build 2.9 s on the server's thread (Org Comparison 2.2 s, Draft Board
   0.17 s, the rest under 0.15 s each; 2.2 s through the worker), warm GETs p50 / p95: Standings 0.8 / 2.0 ms (38 kB),
@@ -1429,14 +1428,22 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   Scouting's). Measured on the owner's export (scratch copy): the Draft Board 1,626 kB and p95 14.1 ms before, 157 kB
   and 2.3 ms after (a position 551 kB, every prospect 1,081 kB, a prospect's reasons 0.5 kB in 0.3 ms); Player Search
   541 → 401 kB, a whole-league sort by OPS first 241 ms then p95 11 ms, the next page first 38 ms then 5.8 ms.
-- **One choice pop-up, project-wide** (the review's fourth copy). The native control was tried first: a `Picker` in the
-  `.menu` style with its label hidden and an accessible name still failed the audit on macOS 27 ("Action is missing",
-  `standings.division`, the League Office narrow test of 2026-10-06), so it was not tried on 26. PennantDesign's
-  `ChoicePopover` is now the one implementation: a named button with its current choice as its value and a trailing
-  chevron, opening a popover whose list the arrow keys and the pointer highlight (a fixed, checked fill under its own
-  words, never the accent), Return choosing and Escape closing, the chosen one checked, each choice `id.index` or its
-  own identifier. N8's what-if, the farm's `FilterMenu` (a typed adapter over it), the clubhouse's clubs and positions
-  and League Office's and Scouting's choices all use it.
+- **One choice pop-up, project-wide** (the review's fourth copy; native since 2026-10-07, D-073's amendment). One choice
+  among a few is AppKit's own pop-up button, `NSPopUpButton`, as Finder, Mail and System Settings offer one:
+  PennantDesign's `PopUpChoice` (an `NSViewRepresentable`, `AppKitPopUp`). Its accessible name is the title ("Division"),
+  not shown; the button shows the current choice and its menu checks it; a choice's served hint is its menu item's
+  subtitle (the system's quieter line, which VoiceOver reads after the choice); a sub-league's divisions are listed
+  under its section header; each item is `id.index`. Its width is its widest item's, at most 280 points and narrower
+  where the window is, AppKit truncating the words at the tail. A toolbar filter (the farm's `FilterMenu`) shows its
+  symbol before the current choice. N8's what-if is not a choice (nothing is current; choosing opens a decision): it is
+  AppKit's pull-down button, `PullDownMenu`, its words the served prompt. Why AppKit and not SwiftUI's `Picker` in the
+  `.menu` style: on macOS 26 and 27 SwiftUI draws that picker itself, and its accessibility element offers only the
+  press action, not "show menu" (an `NSPopUpButton` offers both, read with the accessibility API from a probe), and the
+  audit reports "Action is missing" on it wherever it is on the screen (`standings.division` in the League Office
+  narrow test, 2026-10-07, with the picker named by its own label view exactly as D-073 describes; SwiftUI's `Menu` is
+  the same). The earlier custom control (a named button and a popover list with its own highlight) is gone; the
+  philosophy editor's policies, a decision's choices past four and the player window's record choice use `PopUpChoice`
+  too.
 - **The Office kit is shared** (for N12 Track A's merge, which makes one kit of both). Server: the Office shapes and
   helpers live in their own file, `server/presentation/league/office.ts` (`OfficeClub`, `OfficeColumn` with `sortable`
   and `byWords`, `OfficeRow`, `OfficeTable` with `serverSorts`, `OfficeSection`, `OfficeChoice`, `OfficeChoiceGroup`,

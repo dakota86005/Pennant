@@ -3000,8 +3000,9 @@ head both departments share), `server/presentation/finance/` and `server/present
 outside Major League Ops: `server/presentation/officeTable.ts` (B's `OfficeColumn`, `OfficeTable` and query choices,
 `OfficeRow` as N8's row with a club, ours, Finance's facts, claims and short table and the keyed filters;
 `presentation/league/office.ts` re-exports it) and FeatureCore's `OfficeKit.swift` (B's table, sort, pane and detail,
-Track A's head, figures, state and keyed filters, B's `ChoicePopover` for every choice and the window's one search
-field, `WindowSearch`, scoped to the view for finding a name); `OfficeViews.swift` and `OfficePlayer` are gone.
+Track A's head, figures, state and keyed filters, B's choice pop-up for every choice (now the native `PopUpChoice`,
+D-073) and the window's one search field, `WindowSearch`, scoped to the view for finding a name); `OfficeViews.swift`
+and `OfficePlayer` are gone.
 
 ## D-072 — League Office and Scouting on the Mac: D-065 for the routes the React pages read; the odds only in Standings
 
@@ -3078,6 +3079,12 @@ the club as a seller"); no read once the regular season is decided; Us vs Them's
 season totals; a zero historical payroll or attendance read as not known; Player Value's production stamp as the
 certainty of the org comparison's figures (the farm's figure the ratings model's, which it rests on); Leaders' season named only when the league's own data names it.
 
+**Amendment (2026-10-07):** League Office's and Scouting's choices (the division, the category, the opponent, the
+Draft Board's filters) are AppKit's pop-up button, `PopUpChoice`, as every choice of one among a few is (D-073's
+amendment of 2026-10-07). The pop-up `Picker` this record's builder found failing the audit ("Action is missing",
+`standings.division`) fails however it is named: SwiftUI draws it without the "show menu" action. The divisions are
+listed under each sub-league's name as a section of the menu, no longer as a hint beside each.
+
 ## D-073 — Trades and Philosophy & Staff on the Mac: the Trade Desk weighs a dropped deal; the philosophy's identity is the server's
 
 **Status:** Proposed (N12 Track C builder, 2026-10-06; the supervisor renumbers on a collision; Track A holds D-071, Track B
@@ -3128,19 +3135,12 @@ built at N12 (Track C)".
   record, odds or a posture; its lines are stated (policy). The visible words keep Player Value's method words off the
   screen ("value for the money", "pay for ability"). The comparable clubs are shown closest first with how near in words,
   without the React page's "#1" rank.
-- **Each policy is the native pop-up, and it passes the audit** (for reconsidering `ChoicePopover` project-wide). The
-  editor's policies use SwiftUI's own `Picker` in the `.menu` style, and the accessibility audit finds nothing on it, on
-  macOS 27.2 locally: in each of the narrow test's runs it is in the audited hierarchy with no "Action is missing", and
-  nothing about it is set aside. Exactly what it is: `Picker(selection:content:label:)` whose **label is a view inside
-  the picker** carrying the served words (`Text(verbatim: policy.label.display)`), hidden on screen by `.labelsHidden()`
-  (the same words stand visibly beside it in the row); a selection bound to the served value, each choice a `Text` with
-  a `.tag`; `.pickerStyle(.menu)`, `.fixedSize()` and an identifier; no `Menu`, no `menuStyle`, and no
-  `.accessibilityLabel`/`.accessibilityValue` modifier. What failed for Track B (League Office, `standings.division`) was
-  first a `Menu` with a button style and its name and value given by those modifiers, and then, by its notes, a pop-up
-  `Picker` with its label hidden "and an accessible name"; the attempt is not in the branch history, so whether its name
-  came from the picker's own label view, as here, is not known. That difference (the name from the picker's label view,
-  not a modifier) is the one to try first, and the audit on CI's macOS 26 runner is the test. Coaching Staff's section
-  control is now the shared kit's `OfficeSectionPicker` (the same segmented picker it had).
+- **Each policy is the native pop-up** (amended 2026-10-07; see the amendment below). The editor's policies were
+  SwiftUI's `Picker` in the `.menu` style, named by its own label view and hidden by `.labelsHidden()`, and this record
+  said the audit found nothing on it. That held only where the audit never had it on the screen: the narrow test audits
+  the editor scrolled to the competitive window's slider. Put on the screen (League Office's `standings.division`, the
+  same pattern exactly), it fails with "Action is missing". The policies are now the shared `PopUpChoice` (below).
+  Coaching Staff's section control is the shared kit's `OfficeSectionPicker` (the same segmented picker it had).
 - **The editor orders, never permits** (D-003, D-019, D-045). Its lede says the settings order the choices the staff
   already finds sound and never make a move allowed or rule one out; "Promotion aggression" reads "among the moves Player
   Development finds sound, how much the club prefers the quicker one".
@@ -3159,3 +3159,17 @@ built at N12 (Track C)".
   is left off its list, never measured as 0 (D-018; review M4, 2026-10-06). An age or experience the export leaves blank
   is "Not known". A coach opens nothing of his own
   until a staff window exists; an affiliate's row opens its club.
+
+**Amendment (one choice among a few is AppKit's pop-up button, 2026-10-07):** every choice of one among a few, in
+every department, is PennantDesign's `PopUpChoice`: AppKit's own `NSPopUpButton` (an `NSViewRepresentable`), as Finder,
+Mail and System Settings offer one, named by its title (its accessible name, not shown), showing the current choice,
+each served hint its menu item's subtitle and each sub-league's divisions under a section header; at most 280 points
+wide and narrower where the window is, truncated at the tail. A menu of actions with nothing current (N8's what-if) is
+AppKit's pull-down button, `PullDownMenu`. Why not SwiftUI's `Picker` in the `.menu` style, which D-073 recorded as
+passing: on macOS 26 and 27 SwiftUI draws that control itself, and its accessibility element offers only the press
+action, where an `NSPopUpButton` offers press and "show menu" (both read with the accessibility API); the audit reports
+"Action is missing" on it whenever it is on the screen, however it is named (the League Office narrow test,
+`standings.division`, 2026-10-07, built exactly as this record described the policies). SwiftUI's `Menu` is the same.
+The custom `ChoicePopover` (a named button opening a popover list with its own highlight) is gone, as are the player
+window's own copy of it and the policies' and the decision's menu-style pickers. An item's identifier is `id.index`
+and reaches the system's menu item, so a UI test chooses by it.
