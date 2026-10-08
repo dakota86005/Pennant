@@ -281,23 +281,19 @@ func openServed(_ target: Components.Schemas.Target?, with opener: (any RouteOpe
     opener?.open(r)
 }
 
-/// A toolbar filter: the shared choice pop-up (`ChoicePopover`, PennantDesign) over typed choices, its title the
-/// popover's heading and its help tag, a symbol leading its current choice.
+/// A toolbar filter: the shared pop-up button (`PopUpChoice`, PennantDesign) over typed choices, its title the button's
+/// name and help tag, its symbol before the current choice.
 struct FilterMenu<ID: Hashable>: View {
     let title: LocalizedStringResource
     let systemImage: String
-    let choices: [(id: ID, text: Text)]
-    let current: Text
+    let choices: [(id: ID, text: String)]
     @Binding var selection: ID
     var id: String
 
     var body: some View {
-        ChoicePopover(
-            Text(title),
-            current: current,
-            help: Text(title),
+        PopUpChoice(
+            title: title,
             systemImage: systemImage,
-            heading: true,
             choices: choices.map { .init($0.text, selected: $0.id == selection) },
             id: id
         ) { selection = choices[$0].id }
@@ -309,12 +305,13 @@ struct LevelPicker: View {
     let levels: [Components.Schemas.FarmLevelChoice]
     @Binding var selection: String?
 
+    private static let all: LocalizedStringResource = "All Levels"
+
     var body: some View {
         FilterMenu(
             title: "Level",
             systemImage: "square.stack.3d.up",
-            choices: [(id: String?.none, text: Text("All Levels"))] + levels.map { (id: String?.some($0.id), text: Text(verbatim: $0.name)) },
-            current: selection.flatMap { id in levels.first { $0.id == id } }.map { Text(verbatim: $0.name) } ?? Text("All Levels"),
+            choices: [(id: String?.none, text: String(localized: Self.all))] + levels.map { (id: String?.some($0.id), text: $0.name) },
             selection: $selection,
             id: "farm.filter.level"
         )

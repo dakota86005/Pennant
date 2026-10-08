@@ -967,6 +967,38 @@ final class PennantUITests: XCTestCase {
         return found ?? app.menuItems["no open menu item titled \(title)"]
     }
 
+    /// Opens a pop-up button or a pull-down menu (`PopUpChoice`, `PullDownMenu`) and chooses the first of its open items
+    /// whose title passes `match`. Only the open menu's enabled, named items count (a section's header is a disabled
+    /// item, and a pull-down's own words are not an item). With no such item it closes the menu with Escape and fails.
+    /// Returns the chosen title.
+    @MainActor
+    @discardableResult
+    private func chooseMenuItem(_ app: XCUIApplication, in control: XCUIElement, _ what: String, where match: @escaping (String) -> Bool) -> String? {
+        control.click()
+        // The open menu's items, read from one snapshot of the control (its menu is its child while open): each item
+        // names itself `id.index` (PennantDesign's pop-up), so the one chosen is clicked by its identifier
+        var found: (identifier: String, title: String)?
+        let open = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard let snapshot = try? control.snapshot() else { return false }
+            var items: [XCUIElementSnapshot] = []
+            func walk(_ node: XCUIElementSnapshot) {
+                if node.elementType == .menuItem { items.append(node) }
+                node.children.forEach(walk)
+            }
+            walk(snapshot)
+            found = items.first { $0.frame.width > 0 && $0.isEnabled && !$0.title.isEmpty && !$0.identifier.isEmpty && match($0.title) }
+                .map { (identifier: $0.identifier, title: $0.title) }
+            return found != nil
+        }, object: nil)
+        guard XCTWaiter.wait(for: [open], timeout: 10) == .completed, let found else {
+            app.typeKey(.escape, modifierFlags: [])
+            XCTFail("\(what): the menu offers no such item")
+            return nil
+        }
+        control.menuItems[found.identifier].firstMatch.click()
+        return found.title
+    }
+
     /// The first open item on the desk, as the Morning Report shows it.
     @MainActor
     private func firstDeskItem(_ app: XCUIApplication) -> XCUIElement {
@@ -1101,10 +1133,8 @@ final class PennantUITests: XCTestCase {
         // (the served `selected`), never skipped
         let whatIf = element(app, "whatIf")
         XCTAssertTrue(whatIf.waitForExistence(timeout: 20), "the report offers no what-if")
-        whatIf.click()
-        let player = app.descendants(matching: .button).matching(NSPredicate(format: "identifier BEGINSWITH 'whatIf.player.'")).firstMatch
-        XCTAssertTrue(player.waitForExistence(timeout: 10), "the what-if lists no player")
-        player.click()
+        // A pull-down menu: its first player
+        XCTAssertNotNil(chooseMenuItem(app, in: whatIf, "the what-if") { _ in true }, "the what-if lists no player")
         let duration = element(app, "choices.duration")
         XCTAssertTrue(duration.waitForExistence(timeout: 30), "the what-if's decision serves no durations")
         duration.click()
@@ -1183,12 +1213,9 @@ final class PennantUITests: XCTestCase {
             let whatIf = element(app, "whatIf")
             reveal(whatIf, in: element(app, "detail.majorLeague.decision"))
             XCTAssertTrue(whatIf.waitForExistence(timeout: 10), "round \(round): the decision list offers no what-if")
-            whatIf.click()
             // A reliever's what-if: the synthetic league's relievers have candidates behind them (the others' do not)
-            let players = app.descendants(matching: .button).matching(NSPredicate(format: "identifier BEGINSWITH 'whatIf.player.'"))
-            XCTAssertTrue(players.firstMatch.waitForExistence(timeout: 10), "round \(round): the what-if lists no player")
-            let player = players.allElementsBoundByIndex.first { $0.label.contains("relief") } ?? players.firstMatch
-            player.click()
+            XCTAssertNotNil(chooseMenuItem(app, in: whatIf, "round \(round): the what-if") { $0.contains("relief") },
+                            "round \(round): the what-if lists no reliever")
             XCTAssertTrue(element(app, "decision.header").waitForExistence(timeout: 30), "round \(round): the what-if's decision did not load")
             let show = element(app, "decision.showCandidates")
             reveal(show, in: element(app, "detail.majorLeague.decision"))
@@ -1430,17 +1457,18 @@ final class PennantUITests: XCTestCase {
                     mode.element(boundBy: 0).click()
                     XCTAssertTrue(element(app, "payroll.chart").waitForExistence(timeout: 10), "round \(round): the seasons did not come back")
                 case "freeAgents":
-                    // Another list, drawn
-                    // Another list, drawn: from the segmented control, or on a narrow column from the button's popover
+                    // Another list, drawn: from the segmented control, or on a narrow column from the pop-up button's
+                    // menu (its items in the segments' order), the button then naming the list chosen
                     let lists = element(app, "freeAgents.list")
                     let choose = { (index: Int) in
                         if lists.radioButtons.count > 1 {
                             lists.radioButtons.element(boundBy: index).click()
                         } else {
-                            lists.click()
-                            let choice = self.element(app, "freeAgents.list.\(index)")
-                            XCTAssertTrue(choice.waitForExistence(timeout: 10), "round \(round): the lists' popover did not open")
-                            choice.click()
+                            var seen = -1
+                            let title = self.chooseMenuItem(app, in: lists, "round \(round): the lists") { _ in seen += 1; return seen == index }
+                            let named = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in (lists.value as? String) == title }, object: nil)
+                            XCTAssertEqual(XCTWaiter.wait(for: [named], timeout: 10), .completed,
+                                           "round \(round): the lists' button reads \(String(describing: lists.value)), not \(title ?? "-")")
                         }
                         XCTAssertTrue(any("table.freeAgents.").waitForExistence(timeout: 10) || any("table.freeAgents.").exists,
                                       "round \(round): list \(index) did not draw")
@@ -1555,9 +1583,17 @@ final class PennantUITests: XCTestCase {
                     // Another club, asked of the server and drawn
                     let menu = element(app, "usVsThem.opponent")
                     if menu.waitForExistence(timeout: 5) {
-                        menu.click()
-                        let other = element(app, "usVsThem.opponent.1")
-                        if other.waitForExistence(timeout: 5) { other.click() } else { app.typeKey(.escape, modifierFlags: []) }
+                        // The pop-up button reads the opponent shown (with the served hint, its menu item's subtitle,
+                        // after a comma): another one chosen, the button reads him
+                        let before = menu.value as? String ?? ""
+                        let reads = { (value: String, title: String) in value == title || value.hasPrefix(title + ", ") }
+                        let title = chooseMenuItem(app, in: menu, "round \(round): the opponents") { !before.isEmpty && !reads(before, $0) }
+                        let named = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                            guard let now = menu.value as? String, let title else { return false }
+                            return reads(now, title)
+                        }, object: nil)
+                        XCTAssertEqual(XCTWaiter.wait(for: [named], timeout: 20), .completed,
+                                       "round \(round): the opponent shown is \(String(describing: menu.value)), not \(title ?? "-")")
                         XCTAssertTrue(starting("table.usVsThem.").waitForExistence(timeout: 20), "round \(round): another opponent did not draw")
                     }
                 case "standings":
@@ -1940,11 +1976,8 @@ final class PennantUITests: XCTestCase {
                     if view.view == "prospects", !row.waitForExistence(timeout: 5) {
                         let filter = element(app, "farm.filter.prospects")
                         XCTAssertTrue(filter.exists, "round \(round): Prospects' filter is not in the toolbar")
-                        filter.click()
                         // The served label carries its count ("All · 6")
-                        let all = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'All ·'")).firstMatch
-                        XCTAssertTrue(all.waitForExistence(timeout: 5), "round \(round): Prospects' filter offers no All")
-                        all.click()
+                        chooseMenuItem(app, in: filter, "round \(round): Prospects' filter") { $0.hasPrefix("All ·") }
                     }
                     // Development tracking lists the players with a history in this save, which a new synthetic save
                     // may not have yet: then its served sentence, and nothing to choose
@@ -2180,10 +2213,7 @@ final class PennantUITests: XCTestCase {
                     if view == "assignments" {
                         element(app, "farm.filter.inQuestion").click()
                     } else {
-                        element(app, "farm.filter.prospects").click()
-                        let all = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'All ·'")).firstMatch
-                        XCTAssertTrue(all.waitForExistence(timeout: 5), "Prospects' filter offers no All")
-                        all.click()
+                        chooseMenuItem(app, in: element(app, "farm.filter.prospects"), "Prospects' filter") { $0.hasPrefix("All ·") }
                     }
                 }
                 XCTAssertTrue(row.waitForExistence(timeout: 10), "Farm ▸ \(view) lists no player")

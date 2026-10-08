@@ -64,13 +64,12 @@ struct PlayerHistoryTab: View {
     }
 }
 
-/// Which record the table shows: the served tables' titles, a segmented control for up to four and a button with the
-/// choices past that (a pop-up picker was found by the audit with no action to press, N10).
+/// Which record the table shows: the served tables' titles, a segmented control for up to four and the shared pop-up
+/// button past that (`PopUpChoice`, D-073).
 struct RecordChoice: View {
     let tables: [Components.Schemas.PlayerTable]
     let chosen: String
     let choose: (String) -> Void
-    @State private var open = false
 
     var body: some View {
         if tables.count <= 4 {
@@ -84,39 +83,11 @@ struct RecordChoice: View {
             .fixedSize()
             .accessibilityIdentifier("player.history.record")
         } else {
-            Button {
-                open.toggle()
-            } label: {
-                HStack(spacing: 4) {
-                    Text(verbatim: tables.first { $0.id == chosen }?.title.display ?? "")
-                    Image(systemName: "chevron.down").font(.caption2).accessibilityHidden(true)
-                }
-            }
-            .accessibilityLabel(Text("Record"))
-            .accessibilityValue(Text(verbatim: tables.first { $0.id == chosen }?.title.display ?? ""))
-            .accessibilityIdentifier("player.history.record")
-            .popover(isPresented: $open, arrowEdge: .bottom) {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(tables, id: \.id) { t in
-                        Button {
-                            choose(t.id)
-                            open = false
-                        } label: {
-                            HStack {
-                                Image(systemName: "checkmark").opacity(t.id == chosen ? 1 : 0).accessibilityHidden(true)
-                                Text(verbatim: t.title.display)
-                                Spacer(minLength: 0)
-                            }
-                            .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.vertical, 3)
-                        .accessibilityAddTraits(t.id == chosen ? .isSelected : [])
-                    }
-                }
-                .padding(10)
-                .frame(minWidth: 180)
-            }
+            PopUpChoice(
+                title: "Record",
+                choices: tables.map { .init($0.title.display, selected: $0.id == chosen) },
+                id: "player.history.record"
+            ) { choose(tables[$0].id) }
         }
     }
 }

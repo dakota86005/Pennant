@@ -215,7 +215,8 @@ struct DecisionContent: View {
     }
 }
 
-/// The served choices: a segmented control when there are a few, a menu when there are more; the served one selected.
+/// The served choices: a segmented control when there are a few, the shared pop-up button when there are more; the served
+/// one selected.
 struct ChoicesView: View {
     let choices: Components.Schemas.MlbChoices
     let choose: (Components.Schemas.MlbChoice) -> Void
@@ -224,31 +225,34 @@ struct ChoicesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(verbatim: choices.title.display).font(.headline)
-            let selected = choices.choices.firstIndex { $0.selected }
-            Picker(selection: Binding(get: { selected ?? -1 }, set: { index in
-                if choices.choices.indices.contains(index) { choose(choices.choices[index]) }
-            })) {
-                ForEach(Array(choices.choices.enumerated()), id: \.offset) { index, choice in
-                    Text(verbatim: choice.text.display).tag(index)
+            if choices.choices.count <= 4 {
+                let selected = choices.choices.firstIndex { $0.selected }
+                Picker(selection: Binding(get: { selected ?? -1 }, set: { index in
+                    if choices.choices.indices.contains(index) { choose(choices.choices[index]) }
+                })) {
+                    ForEach(Array(choices.choices.enumerated()), id: \.offset) { index, choice in
+                        Text(verbatim: choice.text.display).tag(index)
+                    }
+                } label: {
+                    Text(verbatim: choices.title.display)
                 }
-            } label: {
-                Text(verbatim: choices.title.display)
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .fixedSize()
+                .accessibilityIdentifier("choices.\(id)")
+            } else {
+                // More than a few: the shared pop-up button (PennantDesign, D-073)
+                PopUpChoice(
+                    verbatim: choices.title.display,
+                    choices: choices.choices.map { .init($0.text.display, selected: $0.selected) },
+                    id: "choices.\(id)"
+                ) { choose(choices.choices[$0]) }
+                .fixedSize()
             }
-            .labelsHidden()
-            .modifier(ChoiceStyle(count: choices.choices.count))
-            .fixedSize()
-            .accessibilityIdentifier("choices.\(id)")
             if let note = choices.note {
                 Text(verbatim: note.display).font(.callout).foregroundStyle(.readableSecondary).fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-}
-
-private struct ChoiceStyle: ViewModifier {
-    let count: Int
-    func body(content: Content) -> some View {
-        if count <= 4 { content.pickerStyle(.segmented) } else { content.pickerStyle(.menu) }
     }
 }
 

@@ -135,8 +135,8 @@ struct LineupHead: View {
 }
 
 /// The GM's choices in the window's toolbar: the opposing hand as a segmented control, the other groups behind the
-/// "Card" button, each a labelled radio group in its popover (a toolbar pull-down was found by the audit with no action
-/// to press; N8's choice popover pattern). Choosing one asks the server for that card.
+/// "Card" button, each a labelled radio group in its popover (several groups behind one toolbar button). Choosing one
+/// asks the server for that card.
 struct LineupChoices: ToolbarContent {
     let view: Components.Schemas.MlbLineupView
     let choose: (Components.Schemas.MlbLineupQuery) -> Void
@@ -346,15 +346,15 @@ struct RostersView: View {
         ViewState(payload: store.roster(team) ?? store.roster(nil), problem: store.problems[name]) { view in
             let index = min(section, max(view.sections.count - 1, 0))
             let clubs = view.clubs
-            let current = clubs.first(where: \.selected)?.text.display ?? clubs.first?.text.display ?? ""
+            // The served club, or the first (the roster shown when none is marked)
+            let shownClub = clubs.firstIndex(where: \.selected) ?? 0
             let head = VStack(alignment: .leading, spacing: 12) {
                 ViewHead(title: Text(verbatim: view.title.display), lede: view.lede, yardsticks: nil, refreshing: model.clubhouseUpdating(name) || store.roster(team) == nil)
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     if clubs.count > 1 {
-                        ChoicePopover(
-                            Text("Club"),
-                            current: Text(verbatim: current),
-                            choices: clubs.map { .init(verbatim: $0.text.display, hint: $0.text.hint, selected: $0.selected) },
+                        PopUpChoice(
+                            title: "Club",
+                            choices: clubs.enumerated().map { .init($0.element.text.display, hint: $0.element.text.hint, selected: $0.offset == shownClub) },
                             id: "rosters.club"
                         ) { team = clubs[$0].query.team }
                     }

@@ -84,7 +84,13 @@ struct OrganizationalPhilosophyView: View {
                                         CellWords(policy.description).font(.callout)
                                     }
                                     Spacer(minLength: 8)
-                                    Picker(selection: Binding(get: { policy.selected }, set: { chosen in
+                                    // The shared pop-up button (PennantDesign, D-073), named by the policy's words beside it
+                                    PopUpChoice(
+                                        verbatim: policy.label.display,
+                                        choices: policy.options.map { .init($0.label.display, selected: $0.value == policy.selected) },
+                                        id: "philosophy.policy.\(policy.id)"
+                                    ) { index in
+                                        let chosen = policy.options[index].value
                                         guard chosen != policy.selected else { return }
                                         Task {
                                             await model.changePhilosophy(
@@ -92,15 +98,8 @@ struct OrganizationalPhilosophyView: View {
                                                 undoManager: undoManager
                                             )
                                         }
-                                    })) {
-                                        ForEach(policy.options, id: \.value) { option in Text(verbatim: option.label.display).tag(option.value) }
-                                    } label: {
-                                        Text(verbatim: policy.label.display)
                                     }
-                                    .pickerStyle(.menu)
-                                    .labelsHidden()
                                     .fixedSize()
-                                    .accessibilityIdentifier("philosophy.policy.\(policy.id)")
                                 }
                             }
                         } footer: {

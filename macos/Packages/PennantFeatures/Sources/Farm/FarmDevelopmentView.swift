@@ -119,8 +119,7 @@ struct DevelopmentBoard: View {
                 FilterMenu(
                     title: "Show",
                     systemImage: "line.3.horizontal.decrease.circle",
-                    choices: view.tabs.map { (id: $0.id, text: Text(verbatim: $0.label)) },
-                    current: Text(verbatim: tab?.label ?? ""),
+                    choices: view.tabs.map { (id: $0.id, text: $0.label) },
                     selection: Binding(get: { tab?.id ?? view.initialTab }, set: { tabStored = $0; order = [] }),
                     id: "farm.filter.development"
                 )

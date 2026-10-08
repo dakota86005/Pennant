@@ -70,10 +70,9 @@ public struct StandingsView: View {
             if let shown = sections.first(where: { $0.division.id == shownId })?.division ?? sections.first?.division {
                 OfficeTablePane(shown.table, id: "standings.\(shown.id)", name: shown.title.display, detailShare: 0.42) {
                     HeadStack(title: view.title, lede: view.lede, refreshing: model.leagueOfficeUpdating("standings")) {
-                        ChoicePopover(
-                            Text("Division"),
-                            current: Text(verbatim: shown.title.display),
-                            choices: sections.map { .init(verbatim: $0.division.title.display, hint: $0.group, selected: $0.division.id == shown.id) },
+                        PopUpChoice(
+                            title: "Division",
+                            choices: sections.map { .init($0.division.title.display, section: $0.group, selected: $0.division.id == shown.id) },
                             id: "standings.division"
                         ) { chosen = sections[$0].division.id }
                         if let summary = shown.summary {
@@ -155,10 +154,9 @@ public struct LeadersView: View {
                         if view.groups.count > 1 {
                             OfficeSectionPicker(titles: view.groups.map(\.title.display), selection: $group, id: "leaders.groups")
                         }
-                        ChoicePopover(
-                            Text("Category"),
-                            current: Text(verbatim: shown.title.display),
-                            choices: sections.enumerated().map { .init(verbatim: $0.element.title.display, hint: $0.element.title.hint, selected: $0.offset == index) },
+                        PopUpChoice(
+                            title: "Category",
+                            choices: sections.enumerated().map { .init($0.element.title.display, hint: $0.element.title.hint, selected: $0.offset == index) },
                             id: "leaders.category"
                         ) { category[groupIndex] = $0 }
                     } extra: {
@@ -442,10 +440,9 @@ public struct UsVsThemView: View {
                     HeadStack(title: view.title, lede: view.lede, refreshing: refreshing) {
                         let choices = view.opponents.choices
                         if !choices.isEmpty {
-                            ChoicePopover(
-                                Text(verbatim: view.opponents.title.display),
-                                current: Text(verbatim: choices.first(where: \.selected)?.text.display ?? choices[0].text.display),
-                                choices: choices.map { .init(verbatim: $0.text.display, hint: $0.text.hint, selected: $0.selected) },
+                            PopUpChoice(
+                                verbatim: view.opponents.title.display,
+                                choices: choices.enumerated().map { .init($0.element.text.display, hint: $0.element.text.hint, selected: $0.offset == (choices.firstIndex(where: \.selected) ?? 0)) },
                                 id: "usVsThem.opponent"
                             ) {
                                 team = Int(choices[$0].value)

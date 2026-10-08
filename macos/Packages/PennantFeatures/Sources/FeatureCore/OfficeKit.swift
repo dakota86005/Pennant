@@ -336,7 +336,7 @@ public func officeRowsKept(
 }
 
 /// The served filters (Contracts' groups, Free Agents' positions and ages), each one choice among a few: the one way
-/// Pennant offers that (`ChoicePopover`), side by side where there is room, else one under another.
+/// Pennant offers that (`PopUpChoice`), side by side where there is room, else one under another.
 public struct OfficeFilterChoices: View {
     let groups: [Components.Schemas.OfficeFilterGroup]
     @Binding var chosen: [String: String]
@@ -359,13 +359,11 @@ public struct OfficeFilterChoices: View {
 
     private var choices: some View {
         ForEach(groups, id: \.id) { group in
-            let current = chosen[group.id] ?? group.choices.first?.id
-            let shown = group.choices.first { $0.id == current } ?? group.choices.first
-            ChoicePopover(
-                Text(verbatim: group.title.display),
-                current: Text(verbatim: shown?.title.display ?? group.title.display),
-                help: Text(verbatim: group.title.display),
-                choices: group.choices.map { .init(verbatim: $0.title.display, hint: $0.title.hint, selected: $0.id == current) },
+            // The chosen one, or the first where none is (or the chosen one is no longer served)
+            let current = chosen[group.id].flatMap { id in group.choices.first { $0.id == id }?.id } ?? group.choices.first?.id
+            PopUpChoice(
+                verbatim: group.title.display,
+                choices: group.choices.map { .init($0.title.display, hint: $0.title.hint, selected: $0.id == current) },
                 id: "\(id).\(group.id)"
             ) { index in
                 chosen[group.id] = group.choices[index].id

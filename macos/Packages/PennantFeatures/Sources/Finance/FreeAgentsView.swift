@@ -73,7 +73,7 @@ struct FreeAgentsView: View {
 }
 
 /// The three lists as a segmented control where there is room; where there is not, the one way Pennant offers one choice
-/// among a few (`ChoicePopover`): a button naming the list shown that opens the three. Each list's count beside its
+/// among a few (`PopUpChoice`): the pop-up button naming the list shown, its menu the three. Each list's count beside its
 /// served title.
 struct ListChoice: View {
     let lists: [Components.Schemas.FinanceFreeAgentList]
@@ -93,13 +93,9 @@ struct ListChoice: View {
             .pickerStyle(.segmented)
             .fixedSize()
             .accessibilityIdentifier("freeAgents.list")
-            let shown = lists.first { $0.id == current }
-            let title = shown?.title.display ?? ""
-            let count = shown?.count ?? 0
-            ChoicePopover(
-                Text("Which players"),
-                current: Text("\(title) (\(count))"),
-                choices: lists.map { .init(Text("\($0.title.display) (\($0.count))"), selected: $0.id == current) },
+            PopUpChoice(
+                title: "Which players",
+                choices: lists.map { .init(String(localized: "\($0.title.display) (\($0.count))"), selected: $0.id == current) },
                 id: "freeAgents.list"
             ) { index in
                 choose(lists[index].id)
