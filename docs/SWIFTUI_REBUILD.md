@@ -2400,6 +2400,16 @@ The rebuild is one big rewrite, but it is built so that *any* point can be aband
   dark greys, while the same colours on other words, and the same words at another size or weight, passed (run
   36910001280); its findings in the app read 6.5:1 to 19.9:1 by their pixels. A Retina screen keeps every contrast
   finding a failure. `workflow_dispatch` takes `only` (one test, as `-only-testing` names it) for a run by hand.
+- *As built in the CI shards pass (after N12, 2026-10-07):* run one after another the 37 tests took about 1 h 50 min
+  on the runner (PR #61), so CI builds the app and its UI tests once (`pennant-mac-ui-build`, `xcodebuild
+  build-for-testing`) and runs them in four parallel shard jobs on those products (`pennant-mac-ui-shard`,
+  `test-without-building`), each test still on a fresh folder of its own. The assignment, with each test's measured
+  seconds, is one file, `macos/scripts/ui-test-shards.json` (greedy, longest first; `ScrollClipTests` whole in one
+  shard); each shard's timeout is about double its expected time; the catch-all shard also runs any test no shard
+  lists, so a new test is never left out (`tests/uiTestShards.test.ts`). Each shard keeps its screenshots, audits and
+  logs as `xcuitest-shard-<n>`, and the gate keeps its name, "Mac app (XCUITests on the runner)": it needs every shard
+  and fails if any failed or was cancelled. `only` runs its tests in a single shard. DEVELOPMENT.md, "The Mac app's UI
+  tests on CI", has the details.
 - **Manual matrix per milestone:**
   - light and dark; Reduce Transparency; Increase Contrast; Reduce Motion; VoiceOver spot check;
   - window widths 900, 1280 and 1728+;

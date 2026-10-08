@@ -375,14 +375,35 @@ tests' named shots), with the accessibility audit's findings in `accessibility-a
 skips the package tests and `PENNANT_TEST_ONLY=PennantUITests/PennantUITests/<test>` runs one UI test.
 `PENNANT_TEST_NO_UI=1` skips the XCUITests; `PENNANT_TEST_UNSIGNED=1` builds unsigned. The XCUITests need UI automation,
 which the Mac's owner enables once (running the scheme's tests from Xcode asks for it); while they run they drive the
-app on screen. **Running them locally is optional** since N6, Stage B1: CI runs them on GitHub's macOS runner
-(`pennant-mac-ui` in `ci.yml`, its own job, for pull requests into `feature/swiftui` and by hand from the Actions tab),
-where a logged-in session no one is using takes the driving, on the synthetic league, with the same script
-(`PENNANT_TEST_NO_PACKAGES=1 PENNANT_TEST_UNSIGNED=1 macos/scripts/test.sh`); the window screenshots, the
-accessibility audits, the launch timing and the logs come back as the `xcuitest-screenshots` artifact. That job is a
-hard gate since the UI-test health pass (a failing XCUITest fails the run; making it a required check is a repository
-setting), and changes nothing on the runner: if its UI automation refuses, the log says so. By hand, the Actions tab's
-`only` input runs one test (`PennantUITests/PennantUITests/testX`). `pennant-mac` runs the PennantKit, PennantDesign and PennantFeatures tests and builds the app and its UI tests
+app on screen. **Running them locally is optional** since N6, Stage B1: CI runs them on GitHub's macOS runner, where a
+logged-in session no one is using takes the driving, on the synthetic league, with the same script (below).
+`PENNANT_TEST_SHARD=<n>` runs one CI shard's tests locally, to reproduce a shard's run. An unsigned build's UI-test runner
+(`PENNANT_TEST_UNSIGNED=1`) does not launch on a Mac (the system kills it and says the test file is damaged); only
+CI's runner runs it, so build signed to run UI tests locally.
+
+**The Mac app's UI tests on CI.** For pull requests into `feature/swiftui` and by hand from the Actions tab, in parallel
+shards (run one after another the suite took about 1 h 50 min). `pennant-mac-ui-build` ("Mac app (XCUITests build)")
+writes the synthetic league, stages the server and builds the app with its UI tests once, unsigned
+(`PENNANT_TEST_BUILD_ONLY=1`: `xcodebuild build-for-testing`), and hands the products (`Build/Products/` with its
+`.xctestrun`, the server inside the app) and the league to the shard jobs as tarballs (the `xcuitest-build` artifact,
+kept a day). Each `pennant-mac-ui-shard` job ("Mac app (XCUITests, shard n of N)") unpacks them and runs its share
+(`PENNANT_TEST_PREBUILT=1 PENNANT_TEST_SHARD=<n>`: `xcodebuild test-without-building`), each test on its own fresh
+folder as locally. Which tests each shard runs, with the seconds each took on the runner, is one file,
+`macos/scripts/ui-test-shards.json`; each shard's timeout is about double its expected time (its tests plus
+`setupMinutes`). One shard, `catchAll`, also runs every test no shard lists, so a new UI test runs before anyone
+assigns it (the build job's log notes it); `tests/uiTestShards.test.ts` checks that every test runs in exactly one shard.
+To rebalance after the times change, download a run's logs and run
+`node macos/scripts/ui-test-shards.mjs balance <xcodebuild-test.log> [shards] [source]` (longest first, each to the
+shard with the least so far; a class of unit tests such as `ScrollClipTests` stays whole). Four shards: a free
+account runs at most five macOS jobs at once. Each shard's window screenshots, accessibility audits (the
+`[audit]`/`[quit]`/`[palette]`/`[focus]` lines in its log), the launch timing (in the shard that runs
+`testLaunchWithKeptPayload`) and its logs, `hang-*.log` included, come back as its own artifact, `xcuitest-shard-<n>`,
+laid out as the single job's `xcuitest-screenshots` was; a failed build keeps its logs as `xcuitest-build-logs`. The
+gate is the job still named **Mac app (XCUITests on the runner)** (`pennant-mac-ui`), which needs the build and every
+shard and fails if any failed, was cancelled or timed out. It is a hard gate since the UI-test health pass (a failing
+XCUITest fails the run; making it a required check is a repository setting), and changes nothing on the runner: if its
+UI automation refuses, the log says so. By hand, the Actions tab's `only` input runs those tests
+(`PennantUITests/PennantUITests/testX`) in a single shard. `pennant-mac` runs the PennantKit, PennantDesign and PennantFeatures tests and builds the app and its UI tests
 unsigned, without the server, on every pull request.
 
 **Snapshots.** PennantFeatures' tests also draw the shell (the sidebar with the club card, the main window, each server
