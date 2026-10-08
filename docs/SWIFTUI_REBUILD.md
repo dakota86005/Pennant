@@ -1429,15 +1429,14 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   Scouting's). Measured on the owner's export (scratch copy): the Draft Board 1,626 kB and p95 14.1 ms before, 157 kB
   and 2.3 ms after (a position 551 kB, every prospect 1,081 kB, a prospect's reasons 0.5 kB in 0.3 ms); Player Search
   541 → 401 kB, a whole-league sort by OPS first 241 ms then p95 11 ms, the next page first 38 ms then 5.8 ms.
-- **One choice pop-up, project-wide** (the review's fourth copy). PennantDesign's `ChoicePopover` uses the native
-  `Picker` in the `.menu` style (D-073): its label (the served words) is inside the picker and hidden with
-  `.labelsHidden()`, giving it an accessible name that passes the audit. Where a choice is selected, it shows the native
-  menu; where `current` is a prompt (e.g., "Choose a player" in what-if) and nothing is selected, it falls back to a named
-  button with a trailing chevron opening a popover whose list the arrow keys and the pointer highlight (a fixed, checked
-  fill under its own words, never the accent), Return choosing and Escape closing, the chosen one checked, each choice
-  `id.index` or its own identifier (D-073 guidance: a "none" entry would not read naturally). N8's what-if, the farm's
-  `FilterMenu` (a typed adapter over it), the clubhouse's clubs and positions, League Office's, Finance's and Scouting's
-  choices all use it. Passes the XCUITest audits on macOS 26 and 27.
+- **One choice pop-up, project-wide** (the review's fourth copy). The native control was tried first: a `Picker` in the
+  `.menu` style with its label hidden and an accessible name still failed the audit on macOS 27 ("Action is missing",
+  `standings.division`, the League Office narrow test of 2026-10-06), so it was not tried on 26. PennantDesign's
+  `ChoicePopover` is now the one implementation: a named button with its current choice as its value and a trailing
+  chevron, opening a popover whose list the arrow keys and the pointer highlight (a fixed, checked fill under its own
+  words, never the accent), Return choosing and Escape closing, the chosen one checked, each choice `id.index` or its
+  own identifier. N8's what-if, the farm's `FilterMenu` (a typed adapter over it), the clubhouse's clubs and positions
+  and League Office's and Scouting's choices all use it.
 - **The Office kit is shared** (for N12 Track A's merge, which makes one kit of both). Server: the Office shapes and
   helpers live in their own file, `server/presentation/league/office.ts` (`OfficeClub`, `OfficeColumn` with `sortable`
   and `byWords`, `OfficeRow`, `OfficeTable` with `serverSorts`, `OfficeSection`, `OfficeChoice`, `OfficeChoiceGroup`,

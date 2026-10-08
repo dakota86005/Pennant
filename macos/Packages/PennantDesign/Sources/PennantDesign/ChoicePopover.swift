@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// One choice among a few (a division, a level, an opponent, a player to ask a what-if of), using macOS's native
-/// pop-up menu (`Picker` with `.menu` style) where one is currently selected. This passes the XCUITest accessibility
-/// audit (D-073): the picker's label carries the served words and is hidden with `.labelsHidden()`, providing an
-/// accessible name without needing modifier attributes. Where `current` is a prompt and no choice is selected,
-/// the old custom popover is used instead, as adding a "none" entry would not read naturally (D-073 guidance).
+/// One choice among a few (a division, a level, an opponent, a player to ask a what-if of), the one way Pennant offers
+/// it (N12 Track B review: N8's what-if, the farm's filters, the clubhouse's clubs and the league office's choices had
+/// four copies of this). A button naming the current choice with a trailing chevron opens the choices in a popover;
+/// there the arrow keys move a highlight (the pointer moves it too), Return chooses, Escape closes, and the chosen one is
+/// checked. It is a named button with its current choice as its value, as the accessibility audit needs (a pull-down
+/// `Menu` and a pop-up `Picker` were found with no action to press). The highlight is a fixed, checked fill under its
+/// own words, never the system accent (`readableHeadingFill`, `readableHeadingText`).
 public struct ChoicePopover: View {
     /// A choice: its words, an optional quieter hint beside them, whether it is the current one, and its identifier.
     public struct Choice {
@@ -37,10 +39,10 @@ public struct ChoicePopover: View {
     @State private var open = false
 
     /// - Parameters:
-    ///   - title: what is chosen ("Division"): the picker's accessible name via its label.
-    ///   - current: the picker's button words (the current choice, or a prompt).
-    ///   - systemImage: a leading symbol in the label, where the control has one (a toolbar filter).
-    ///   - id: the picker's identifier; each choice is `id.index` unless it names its own.
+    ///   - title: what is chosen ("Division"): the button's accessible name, and the popover's heading when `heading`.
+    ///   - current: the button's words (the current choice, or a prompt); its value to VoiceOver.
+    ///   - systemImage: a leading symbol, where the control has one (a toolbar filter).
+    ///   - id: the button's identifier; each choice is `id.index` unless it names its own.
     public init(
         _ title: Text,
         current: Text,
@@ -62,65 +64,27 @@ public struct ChoicePopover: View {
     }
 
     public var body: some View {
-        // Use native Picker if a choice is selected; otherwise use the custom popover (D-073 guidance)
-        let selectedIndex = choices.firstIndex { $0.selected }
-
-        if let selectedIndex {
-            // Native picker: passes the accessibility audit
-            Picker(selection: .init(get: { selectedIndex }, set: { choose($0) })) {
-                ForEach(Array(choices.enumerated()), id: \.offset) { index, choice in
-                    menuItem(choice, index: index).tag(index)
-                }
-            } label: {
-                if let systemImage {
-                    Label(title: { labelText }, icon: { Image(systemName: systemImage) })
-                } else {
-                    labelText
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-            .help(help ?? current)
-            .accessibilityIdentifier(id)
-        } else {
-            // Custom popover for prompt case (no selection)
-            Button {
-                open = true
-            } label: {
-                HStack(spacing: 5) {
-                    if let systemImage { Image(systemName: systemImage).accessibilityHidden(true) }
-                    current.lineLimit(1).truncationMode(.tail)
-                    Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).accessibilityHidden(true)
-                }
-            }
-            .frame(maxWidth: 280, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .help(help ?? current)
-            .accessibilityLabel(title)
-            .accessibilityValue(current)
-            .accessibilityIdentifier(id)
-            .popover(isPresented: $open, arrowEdge: .bottom) {
-                ChoiceList(title: heading ? title : nil, choices: choices, id: id) { index in
-                    open = false
-                    if let index { choose(index) }
-                }
+        Button {
+            open = true
+        } label: {
+            HStack(spacing: 5) {
+                if let systemImage { Image(systemName: systemImage).accessibilityHidden(true) }
+                current.lineLimit(1).truncationMode(.tail)
+                Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).accessibilityHidden(true)
             }
         }
-    }
-
-    private var labelText: some View {
-        current.lineLimit(1).truncationMode(.tail)
-    }
-
-    private func menuItem(_ choice: Choice, index: Int) -> some View {
-        HStack(spacing: 6) {
-            choice.text
-            if let hint = choice.hint {
-                hint.foregroundStyle(.readableSecondary)
+        .frame(maxWidth: 280, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .help(help ?? current)
+        .accessibilityLabel(title)
+        .accessibilityValue(current)
+        .accessibilityIdentifier(id)
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            ChoiceList(title: heading ? title : nil, choices: choices, id: id) { index in
+                open = false
+                if let index { choose(index) }
             }
         }
-        .accessibilityIdentifier(choice.identifier ?? "\(id).\(index)")
     }
 }
 
