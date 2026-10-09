@@ -974,28 +974,59 @@ final class PennantUITests: XCTestCase {
     @MainActor
     @discardableResult
     private func chooseMenuItem(_ app: XCUIApplication, in control: XCUIElement, _ what: String, where match: @escaping (String) -> Bool) -> String? {
+        chooseMenuItem(app, in: control, what) { _, title in match(title) }
+    }
+
+    /// The one way both choose: the first open item, by its identifier and title, that passes `match`.
+    @MainActor
+    @discardableResult
+    private func chooseMenuItem(
+        _ app: XCUIApplication,
+        in control: XCUIElement,
+        _ what: String,
+        matching match: @escaping (_ identifier: String, _ title: String) -> Bool
+    ) -> String? {
+        // Each item names itself `id.index` after its button, so the button's own items are known wherever the open
+        // menu sits in the element tree
+        let prefix = control.identifier + "."
+        let own = { (identifier: String) in
+            identifier.hasPrefix(prefix) && Int(identifier.dropFirst(prefix.count)) != nil
+        }
         control.click()
-        // The open menu's items, read from one snapshot of the control (its menu is its child while open): each item
-        // names itself `id.index` (PennantDesign's pop-up), so the one chosen is clicked by its identifier
+        // The open menu's items, read from one snapshot of the control (its menu is its child while open), or, where
+        // the open menu is not under it, from the application's menus: only items on screen (an open menu's)
         var found: (identifier: String, title: String)?
         let open = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guard let snapshot = try? control.snapshot() else { return false }
-            var items: [XCUIElementSnapshot] = []
-            func walk(_ node: XCUIElementSnapshot) {
-                if node.elementType == .menuItem { items.append(node) }
-                node.children.forEach(walk)
+            MainActor.assumeIsolated {
+                var items: [(identifier: String, title: String)] = []
+                @MainActor func walk(_ node: XCUIElementSnapshot) {
+                    if node.elementType == .menuItem, node.frame.width > 0, node.isEnabled, !node.title.isEmpty, own(node.identifier) {
+                        items.append((node.identifier, node.title))
+                    }
+                    node.children.forEach(walk)
+                }
+                if let snapshot = try? control.snapshot() { walk(snapshot) }
+                if items.isEmpty {
+                    for item in app.menus.menuItems.matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
+                    where item.frame.width > 0 && item.isEnabled && !item.title.isEmpty && own(item.identifier) {
+                        items.append((item.identifier, item.title))
+                    }
+                }
+                found = items.first { match($0.identifier, $0.title) }
+                return found != nil
             }
-            walk(snapshot)
-            found = items.first { $0.frame.width > 0 && $0.isEnabled && !$0.title.isEmpty && !$0.identifier.isEmpty && match($0.title) }
-                .map { (identifier: $0.identifier, title: $0.title) }
-            return found != nil
         }, object: nil)
-        guard XCTWaiter.wait(for: [open], timeout: 10) == .completed, let found else {
+        guard XCTWaiter.wait(for: [open], timeout: 10) == .completed, let found,
+              let item = app.menuItems.matching(identifier: found.identifier).allElementsBoundByIndex.first(where: { $0.frame.width > 0 })
+        else {
             app.typeKey(.escape, modifierFlags: [])
             XCTFail("\(what): the menu offers no such item")
             return nil
         }
-        control.menuItems[found.identifier].firstMatch.click()
+        item.click()
+        // The pointer back over the content: the open menu may have lain over the toolbar or the title bar, and the
+        // pointer is never left resting there
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).hover()
         return found.title
     }
 
