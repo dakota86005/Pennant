@@ -3082,7 +3082,8 @@ certainty of the org comparison's figures (the farm's figure the ratings model's
 **Amendment (2026-10-07):** League Office's and Scouting's choices (the division, the category, the opponent, the
 Draft Board's filters) are AppKit's pop-up button, `PopUpChoice`, as every choice of one among a few is (D-073's
 amendment of 2026-10-07). The pop-up `Picker` this record's builder found failing the audit ("Action is missing",
-`standings.division`) fails however it is named: SwiftUI draws it without the "show menu" action. The divisions are
+`standings.division`) failed again on macOS 27.2 when named by its own label view, offering no "show menu" action
+there (D-073's amendment says what was measured). The divisions are
 listed under each sub-league's name as a section of the menu, no longer as a hint beside each.
 
 ## D-073 — Trades and Philosophy & Staff on the Mac: the Trade Desk weighs a dropped deal; the philosophy's identity is the server's
@@ -3166,12 +3167,14 @@ Mail and System Settings offer one, named by its title (its accessible name, not
 each served hint its menu item's subtitle and each sub-league's divisions under a section header; at most 280 points
 wide and narrower where the window is, truncated at the tail. A menu of actions with nothing current (N8's what-if) is
 AppKit's pull-down button, `PullDownMenu`. Why not SwiftUI's `Picker` in the `.menu` style, which D-073 recorded as
-passing: on macOS 26 and 27 SwiftUI draws that control itself, and its accessibility element offers only the press
-action, where an `NSPopUpButton` offers press and "show menu" (both read with the accessibility API); the audit reports
-"Action is missing" on it whenever it is on the screen, however it is named (the League Office narrow test,
-`standings.division`, 2026-10-07, built exactly as this record described the policies). SwiftUI's `Menu` is the same.
-The custom `ChoicePopover` (a named button opening a popover list with its own highlight) is gone, as are the player
-window's own copy of it and the policies' and the decision's menu-style pickers. An item's identifier is `id.index`
-and reaches the system's menu item, so a UI test chooses by it. The one exception to "never the system accent" (the fixed,
-checked `readable*` colours of SWIFTUI_REBUILD.md §3.4): the open menu's highlight is the system's own, in the accent, as in every context menu; macOS draws
-the menu and its highlighted item's text, and Pennant puts none of its own text on the accent.
+passing: on macOS 27.2 the League Office narrow test's `standings.division`, built exactly as this record described the
+policies, failed the audit with "Action is missing" (2026-10-07), and a probe with the accessibility API on the same
+macOS found that picker's element offering only the press action, where an `NSPopUpButton` offers press and "show menu".
+That is one site on one macOS; the picker was not measured on macOS 26, nor SwiftUI's `Menu` on either. On macOS 26
+(26.6.2, CI run 37861562726) with the AppKit pop-up, the run's 72 audits found 0 findings and set aside "Action is
+missing" only on the system's Touch Bar keys. The custom `ChoicePopover` (a named button opening a popover list with its
+own highlight) is gone, as are the player window's own copy of it and the policies' and the decision's menu-style
+pickers. An item's identifier is `id.index` and reaches the system's menu item, so a UI test chooses by it. The one
+exception to "never the system accent" (the fixed, checked `readable*` colours of SWIFTUI_REBUILD.md §3.4): the open
+menu's highlight is the system's own, in the accent, as in every context menu; macOS draws the menu and its highlighted
+item's text, and Pennant puts none of its own text on the accent.

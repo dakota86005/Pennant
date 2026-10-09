@@ -6,7 +6,8 @@ import SwiftUI
 /// `title` ("Division"), not shown; the button shows the current choice and its menu checks it; a choice's hint is its
 /// menu item's subtitle, the quieter line the system draws under it; a section's choices are listed under its header.
 /// AppKit's pop-up offers VoiceOver both of its actions (press and show menu); SwiftUI's own `Picker` in the `.menu`
-/// style offers only press, and the accessibility audit finds "Action is missing" on it wherever it is on the screen.
+/// style offered only press on macOS 27.2, where the accessibility audit found "Action is missing" on it (D-073's
+/// amendment).
 /// The button is as wide as its widest choice, at most 280 points and narrower where the window is, the system
 /// truncating its words at the tail, so a long choice never widens a narrow window.
 public struct PopUpChoice: View {

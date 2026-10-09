@@ -1437,11 +1437,11 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   where the window is, AppKit truncating the words at the tail. A toolbar filter (the farm's `FilterMenu`) shows its
   symbol before the current choice. N8's what-if is not a choice (nothing is current; choosing opens a decision): it is
   AppKit's pull-down button, `PullDownMenu`, its words the served prompt. Why AppKit and not SwiftUI's `Picker` in the
-  `.menu` style: on macOS 26 and 27 SwiftUI draws that picker itself, and its accessibility element offers only the
-  press action, not "show menu" (an `NSPopUpButton` offers both, read with the accessibility API from a probe), and the
-  audit reports "Action is missing" on it wherever it is on the screen (`standings.division` in the League Office
-  narrow test, 2026-10-07, with the picker named by its own label view exactly as D-073 describes; SwiftUI's `Menu` is
-  the same). The earlier custom control (a named button and a popover list with its own highlight) is gone; the
+  `.menu` style: on macOS 27.2 the audit reported "Action is missing" on it (`standings.division` in the League Office
+  narrow test, 2026-10-07, the picker named by its own label view exactly as D-073 describes), and a probe with the
+  accessibility API there found its element offering only the press action, not "show menu", which an `NSPopUpButton`
+  offers too. One site, one macOS: the picker was not measured on macOS 26. There (26.6.2, CI run 37861562726), with the
+  AppKit pop-up, the run's 72 audits found 0 findings. The earlier custom control (a named button and a popover list with its own highlight) is gone; the
   philosophy editor's policies, a decision's choices past four and the player window's record choice use `PopUpChoice`
   too.
 - **The Office kit is shared** (for N12 Track A's merge, which makes one kit of both). Server: the Office shapes and
