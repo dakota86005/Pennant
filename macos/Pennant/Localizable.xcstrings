@@ -1242,6 +1242,12 @@
     },
     "You send": {
       "extractionState": "manual"
+    },
+    "Reading": {
+      "extractionState": "manual"
+    },
+    "Coming in less going out": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"
