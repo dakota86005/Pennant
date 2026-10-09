@@ -3172,4 +3172,6 @@ action, where an `NSPopUpButton` offers press and "show menu" (both read with th
 `standings.division`, 2026-10-07, built exactly as this record described the policies). SwiftUI's `Menu` is the same.
 The custom `ChoicePopover` (a named button opening a popover list with its own highlight) is gone, as are the player
 window's own copy of it and the policies' and the decision's menu-style pickers. An item's identifier is `id.index`
-and reaches the system's menu item, so a UI test chooses by it.
+and reaches the system's menu item, so a UI test chooses by it. The one exception to "never the system accent" (the fixed,
+checked `readable*` colours of SWIFTUI_REBUILD.md §3.4): the open menu's highlight is the system's own, in the accent, as in every context menu; macOS draws
+the menu and its highlighted item's text, and Pennant puts none of its own text on the accent.
