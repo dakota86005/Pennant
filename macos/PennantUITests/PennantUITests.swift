@@ -977,6 +977,13 @@ final class PennantUITests: XCTestCase {
         chooseMenuItem(app, in: control, what) { _, title in match(title) }
     }
 
+    /// Chooses the open menu's item at `index` (the item named `id.index`, PennantDesign's pop-up), whatever its title.
+    @MainActor
+    @discardableResult
+    private func chooseMenuItem(_ app: XCUIApplication, in control: XCUIElement, _ what: String, at index: Int) -> String? {
+        chooseMenuItem(app, in: control, what) { identifier, _ in identifier.hasSuffix(".\(index)") }
+    }
+
     /// The one way both choose: the first open item, by its identifier and title, that passes `match`.
     @MainActor
     @discardableResult
@@ -1495,8 +1502,7 @@ final class PennantUITests: XCTestCase {
                         if lists.radioButtons.count > 1 {
                             lists.radioButtons.element(boundBy: index).click()
                         } else {
-                            var seen = -1
-                            let title = self.chooseMenuItem(app, in: lists, "round \(round): the lists") { _ in seen += 1; return seen == index }
+                            let title = self.chooseMenuItem(app, in: lists, "round \(round): the lists", at: index)
                             let named = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in (lists.value as? String) == title }, object: nil)
                             XCTAssertEqual(XCTWaiter.wait(for: [named], timeout: 10), .completed,
                                            "round \(round): the lists' button reads \(String(describing: lists.value)), not \(title ?? "-")")
