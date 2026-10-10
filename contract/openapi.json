@@ -20210,7 +20210,7 @@
           "messageId",
           "delta"
         ],
-        "description": "More of the answer, in the markdown subset at the start of each line; links arrive with `answered`."
+        "description": "More of the answer, in the markdown subset: the deltas add up exactly to `answered`'s text without its links (a line break arrives with the next line's words). Links arrive only with `answered`."
       },
       "StaffRoomView": {
         "type": "object",

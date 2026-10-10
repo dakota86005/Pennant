@@ -6,7 +6,9 @@
  * syntax (`.inlineOnlyPreservingWhitespace`), with the links in it listed beside it. The subset: `**bold**`, `*italic*`,
  * `` `code` `` and `[words](pennant://player/<id>)` or `[words](pennant://club/<teamId>)` links; lines end with "\n" and
  * paragraphs are separated by a blank line; a list item begins "• "; a heading is a line in bold. Nothing else (no `#`
- * headings, no `-` bullets, no tables, no images) reaches the app.
+ * headings, no `-` bullets, no tables, no images) reaches the app. A backslash before a character means it is read as
+ * written (`\[`, `\]`, `\<`, `\:`, `` \` ``): the model's own links and addresses arrive that way, as words. Every link in
+ * the text is the server's and is listed in `links`; the app opens only a URL listed there.
  */
 import type { Cell, Claim, Target } from '../../contract/presentation.js';
 import type { Integer } from '../../contract/primitives.js';
@@ -143,7 +145,8 @@ export interface StaffRoomCleared {
 //
 // Each event is `event: <type>` with `data: <JSON>` whose `type` is the same. In order: `started`; then for each person
 // answering, `speaker`, any `looking-up` and `text` events, and `answered` with the final text and its links; a `notice`
-// may come at any point; the last event is exactly one of `done` or `failed`.
+// may come at any point; the last event is exactly one of `done` or `failed`. A stream that ends without either (the
+// connection dropped) is a failure: what was asked, and what had arrived, are kept, and the conversation says so.
 
 /** The question was taken: the GM's message as kept, and who will answer. */
 export interface StaffRoomStartedEvent {
@@ -167,7 +170,10 @@ export interface StaffRoomLookingUpEvent {
   step: Cell;
 }
 
-/** More of the answer, in the markdown subset at the start of each line; links arrive with `answered`. */
+/**
+ * More of the answer, in the markdown subset: the deltas add up exactly to `answered`'s text without its links (a line
+ * break arrives with the next line's words). Links arrive only with `answered`.
+ */
 export interface StaffRoomTextEvent {
   type: 'text';
   messageId: string;

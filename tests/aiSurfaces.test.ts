@@ -469,6 +469,119 @@ describe('the served markdown subset and its links (D-074)', () => {
     }
   });
 
+  it('streams exactly the final text for ordinary output, split anywhere (review M3)', async () => {
+    const { StreamedSubset, inSubset } = await import('../server/presentation/ai/markdown.js');
+    // The review's counterexamples, each with the final text it must stream
+    const cases: Array<[string, string]> = [
+      ['A\n\n\n\nB', 'A\n\nB'],
+      ['### Title ##', '**Title**'],
+      ['## A *b* c', '**A *b* c**'],
+      ['Trailing   \nspaces  ', 'Trailing\nspaces'],
+      ['Above\n* * *\nBelow', 'Above\nBelow'],
+      ['> ## Quoted', '**Quoted**'],
+      ['\n\n\nLead and trail\n\n\n', 'Lead and trail'],
+      ['## **Bold** title #**', '**Bold title**'],
+      ['## \nx', '##\nx'],
+    ];
+    for (const [input, final] of cases) expect(inSubset(input), JSON.stringify(input)).toBe(final);
+    // Random splits of those, and of random text over the characters that decide a line or a link
+    let seed = 7;
+    const rnd = (n: number) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+    const alphabet = ['#', '#', ' ', ' ', '\n', '\n', '-', '*', '*', '>', '_', '+', 'a', 'b', 'Z', '1', '.', '`', '[', ']', '(', ')', '<', ':', '/', '!', '\\', '\t', '\r'];
+    const inputs = [...cases.map(([i]) => i)];
+    for (let n = 0; n < 400; n++) inputs.push(Array.from({ length: 1 + rnd(40) }, () => alphabet[rnd(alphabet.length)]).join(''));
+    for (const input of inputs) {
+      const final = inSubset(input);
+      for (let t = 0; t < 4; t++) {
+        const s = new StreamedSubset();
+        let out = '';
+        for (let i = 0; i < input.length;) {
+          const step = 1 + rnd(5);
+          out += s.push(input.slice(i, i + step));
+          i += step;
+        }
+        out += s.end();
+        expect(out, JSON.stringify(input)).toBe(final);
+      }
+    }
+  });
+
+  it('keeps the line rules the subset had: the streamer agrees with the whole-text reading line by line', async () => {
+    const { subsetBlocks } = await import('../server/presentation/ai/markdown.js');
+    // The reading the subset was defined by (before N13's review): each whole line, then blank runs folded and the ends trimmed
+    const HEADING = /^#{1,6}\s+/; const BULLET = /^[-*+]\s+/; const QUOTE = /^>\s?/; const RULE = /^\s*([-*_])(\s*\1){2,}\s*$/;
+    const line = (raw: string): string | null => {
+      const text = raw.replace(/\s+$/, '');
+      if (RULE.test(text)) return null;
+      const indent = /^\s*/.exec(text)![0];
+      let body = text.slice(indent.length).replace(QUOTE, '');
+      if (HEADING.test(body)) {
+        const words = body.replace(HEADING, '').replace(/\*\*/g, '').replace(/\s*#+\s*$/, '').trim();
+        return words ? `**${words}**` : null;
+      }
+      if (BULLET.test(body)) body = `• ${body.replace(BULLET, '')}`;
+      return `${indent.length >= 2 ? '  ' : ''}${body}`;
+    };
+    const reference = (md: string): string => {
+      const out: string[] = [];
+      for (const raw of md.replace(/\r\n?/g, '\n').split('\n')) {
+        const l = line(raw);
+        if (l === null) continue;
+        if (l.trim() === '' && (out.length === 0 || out[out.length - 1].trim() === '')) continue;
+        out.push(l.trim() === '' ? '' : l);
+      }
+      while (out.length > 0 && out[out.length - 1].trim() === '') out.pop();
+      return out.join('\n');
+    };
+    let seed = 11;
+    const rnd = (n: number) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+    const alphabet = ['#', '#', '#', ' ', ' ', '\n', '\n', '-', '*', '*', '>', '_', '+', 'a', 'b', '\t', '\r'];
+    for (let n = 0; n < 2000; n++) {
+      const input = Array.from({ length: 1 + rnd(30) }, () => alphabet[rnd(alphabet.length)]).join('');
+      expect(subsetBlocks(input), JSON.stringify(input)).toBe(reference(input));
+    }
+  });
+
+  it('serves only the server\'s links: a link, autolink or address the model wrote is never one (review H1)', async () => {
+    const { linked, StreamedSubset } = await import('../server/presentation/ai/markdown.js');
+    const index = { players: [{ id: 1, name: 'Sam Ryan', ours: true, teamId: 10 }], clubs: [] };
+    const model = [
+      'Ask [him](pennant://player/999) or [x](javascript:alert(1)) or ![pic](https://evil.example/p.png).',
+      'See <https://evil.example> and <pennant://club/3>, or pennant://player/5 and javascript:alert(1).',
+      '[Sam Ryan](https://x) is ours; [ref]: https://evil.example',
+      'Escaped \\\\<https://evil.example> stays text; `code [x](y)` stays code.',
+    ].join('\n');
+    const out = linked(model, index);
+    // Every link the text can still form (outside code) is the server's, and listed
+    const outsideCode = out.markdown.replace(/`[^`]*`/g, '');
+    const formed = [...outsideCode.matchAll(/(?<!\\)\[([^\]]*)\]\(([^)]*)\)/g)].map((m) => m[2]);
+    expect(formed).toEqual(['pennant://player/1']);
+    for (const url of formed) expect(out.links.map((l) => l.url)).toContain(url);
+    expect(out.links.map((l) => l.url)).toEqual(['pennant://player/1']);
+    // A '<' or '[' the reader would take as markup: one with an even number of backslashes before it
+    const live = (text: string, ch: string): number[] => [...text].flatMap((c, i) => {
+      if (c !== ch) return [];
+      let n = 0;
+      while (i - n - 1 >= 0 && text[i - n - 1] === '\\') n += 1;
+      return n % 2 === 0 ? [i] : [];
+    });
+    expect(live(outsideCode, '<')).toEqual([]);
+    expect(live(outsideCode, '[').map((i) => outsideCode.slice(i, i + 39))).toEqual(['[Sam Ryan](pennant://player/1) is ours;']);
+    // No address the model wrote is left to follow: outside the server's own links, no scheme is read as one
+    expect(outsideCode.replace(/\[Sam Ryan\]\(pennant:\/\/player\/1\)/g, '')).not.toMatch(/(pennant|javascript|https):/i);
+    // The words stay: only the link goes
+    expect(out.markdown).toContain('Ask him or x or pic.');
+    expect(out.markdown).toContain('`code [x](y)`');
+    // Deltas carry no link either
+    const s = new StreamedSubset();
+    let streamed = '';
+    for (const ch of model) streamed += s.push(ch);
+    streamed += s.end();
+    const streamedText = streamed.replace(/`[^`]*`/g, '');
+    expect([...live(streamedText, '['), ...live(streamedText, '<')]).toEqual([]);
+    expect(streamedText).not.toMatch(/(pennant|javascript):/i);
+  });
+
   it('links a full name the league knows, never a shared one unless exactly one man is ours, and never inside a link or code', async () => {
     const { linked } = await import('../server/presentation/ai/markdown.js');
     const index = {
@@ -483,8 +596,9 @@ describe('the served markdown subset and its links (D-074)', () => {
       clubs: [{ teamId: 10, name: 'Arizona Diamondbacks', nickname: 'Diamondbacks' }],
     };
     const out = linked('Sam Ryan and Joe Dee and Al Bo; Cher; the Diamondbacks; `Sam Ryan`; [Sam Ryan](https://x).', index);
+    // A link the model wrote is reduced to its words, and the server links the name in them (review H1)
     expect(out.markdown).toBe(
-      '[Sam Ryan](pennant://player/1) and Joe Dee and [Al Bo](pennant://player/4); Cher; the [Diamondbacks](pennant://club/10); `Sam Ryan`; [Sam Ryan](https://x).');
+      '[Sam Ryan](pennant://player/1) and Joe Dee and [Al Bo](pennant://player/4); Cher; the [Diamondbacks](pennant://club/10); `Sam Ryan`; [Sam Ryan](pennant://player/1).');
     expect(out.links.map((l) => l.url)).toEqual(['pennant://player/1', 'pennant://player/4', 'pennant://club/10']);
     expect(out.links[0].target).toEqual({ kind: 'player', playerId: 1, teamId: 10 });
   });

@@ -8,13 +8,13 @@ event: looking-up
 data: {"type":"looking-up","messageId":"t18pzrev","step":{"display":"Reading a player card"}}
 
 event: text
-data: {"type":"text","messageId":"t18pzrev","delta":"**The read**\n"}
+data: {"type":"text","messageId":"t18pzrev","delta":"**The read**"}
 
 event: text
-data: {"type":"text","messageId":"t18pzrev","delta":"• **P 1000** is hitting.\n"}
+data: {"type":"text","messageId":"t18pzrev","delta":"\n• **P 1000** is hitting."}
 
 event: text
-data: {"type":"text","messageId":"t18pzrev","delta":"• Nothing to change yet."}
+data: {"type":"text","messageId":"t18pzrev","delta":"\n• Nothing to change yet."}
 
 event: answered
 data: {"type":"answered","message":{"id":"t18pzrev","from":"staff","speaker":{"display":"Peter · Analyst"},"typed":null,"answer":{"markdown":"**The read**\n• **[P 1000](pennant://player/1000)** is hitting.\n• Nothing to change yet.","links":[{"url":"pennant://player/1000","text":"P 1000","target":{"kind":"player","playerId":1000,"teamId":1}}]},"lookedUp":[{"display":"Reading a player card"}],"at":"2040-07-01T12:00:00.000Z","clock":{"display":"12:00 PM"},"calendarDay":{"display":"Jul 1, 2040"}}}
