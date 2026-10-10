@@ -24,8 +24,21 @@ struct AppKitPopUp: NSViewRepresentable {
     let act: (Int) -> Void
 
     static let widest: CGFloat = 280
-    /// The bezel and arrows of an empty pop-up button.
-    static let narrowest: CGFloat = 44
+
+    /// The bezel and arrows of an empty pop-up button, as AppKit measures one of this kind and size (its cell's
+    /// `cellSize` with no item and no title), never an estimate: 57.5 points at the regular size on macOS 27, 49.5 small
+    /// and 41.5 mini, pop-up and pull-down alike. Measured once for each, as the system's metrics differ by release.
+    @MainActor static func narrowest(pullsDown: Bool, controlSize: NSControl.ControlSize) -> CGFloat {
+        let key = "\(pullsDown) \(controlSize.rawValue)"
+        if let known = measuredNarrowest[key] { return known }
+        let empty = NSPopUpButton(frame: .zero, pullsDown: pullsDown)
+        empty.controlSize = controlSize
+        let width = (empty.cell?.cellSize.width).map { ceil($0) } ?? 0
+        measuredNarrowest[key] = width
+        return width
+    }
+
+    @MainActor private static var measuredNarrowest: [String: CGFloat] = [:]
 
     final class Coordinator: NSObject {
         var act: (Int) -> Void = { _ in }
@@ -73,7 +86,8 @@ struct AppKitPopUp: NSViewRepresentable {
         let ideal = button.intrinsicContentSize
         let width = min(ideal.width, Self.widest, proposal.width ?? ideal.width)
         // Never narrower than its bezel and arrows with no words, however little room it is offered
-        return CGSize(width: max(width, min(Self.narrowest, ideal.width)), height: ideal.height)
+        let narrowest = Self.narrowest(pullsDown: pullsDown, controlSize: button.controlSize)
+        return CGSize(width: max(width, min(narrowest, ideal.width)), height: ideal.height)
     }
 
     /// The menu: a pull-down's words first (its title item), then each item, a section's under its header and the
