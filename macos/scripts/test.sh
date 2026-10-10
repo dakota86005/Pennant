@@ -222,7 +222,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   rm -f "$fake_port"
   node "$ROOT/macos/scripts/fake-ai-provider.mjs" "$fake_port" >"$LOGS/fake-ai-provider.log" 2>&1 &
   fake_pid=$!
-  for _ in $(seq 1 50); do [ -s "$fake_port" ] && break; sleep 0.1; done
+  for _ in $(seq 1 150); do [ -s "$fake_port" ] && break; sleep 0.1; done
   if [ -s "$fake_port" ]; then
     fake_ai=(TEST_RUNNER_PENNANT_UI_LOCAL_AI="http://127.0.0.1:$(cat "$fake_port")")
   else
