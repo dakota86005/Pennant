@@ -93,11 +93,15 @@ export const noKeyMessage = (provider = activeProvider()): string => {
 /**
  * A missing key is ours to explain. Everything else has already been put into
  * words (`describeError`), so it is passed along as it stands. Shared by the
- * AI routes in `ai.ts` and the Mac app's Staff room (N13).
+ * AI routes in `ai.ts` and the Mac app's Staff room (N13). Read against the
+ * provider the asking feature uses, and a 403 is a refused key as a 401 is,
+ * as `describeError` reads them (N13 review L4).
  */
-export function aiErrorStatus(e: Error & { status?: number }): { status: number; message: string } {
-  if (!providerCredential()) return { status: 401, message: noKeyMessage() };
-  return { status: e.status === 401 ? 401 : 500, message: e.message };
+export function aiErrorStatus(
+  e: Error & { status?: number }, provider: ProviderId = activeProvider(),
+): { status: number; message: string } {
+  if (!providerCredential(provider)) return { status: 401, message: noKeyMessage(provider) };
+  return { status: e.status === 401 || e.status === 403 ? 401 : 500, message: e.message };
 }
 
 const NO_KEY_MESSAGE =
@@ -1254,7 +1258,7 @@ chatRoutes.post('/v2/staff-room/:org/ask', async (req, res, next) => {
       else if (event === 'notice') emit(kept.notice(d.message));
       else if (event === 'error') {
         const declined = !failure && d.message === 'The model declined to answer that.';
-        const status = failure ? aiErrorStatus(failure).status : 0;
+        const status = failure ? aiErrorStatus(failure, provider).status : 0;
         const label = PROVIDERS.find((p) => p.id === provider)?.label ?? 'The AI provider';
         emit(status === 401 && !declined
           ? kept.failed('keyRefused', `${label} turned down the key. Check it in Settings: it may have been revoked or copied incompletely.`)

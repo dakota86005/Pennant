@@ -447,7 +447,7 @@ async function askForTheMac(q: TradeDeskQuestion): Promise<TradeDeskReply> {
     );
     return { text, voice: { name: voice.name, role: voice.role }, notice: notice ? { message: notice.message } : null };
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-desk] failed:', message);
     throw new TradesRefusal(status === 401 ? message : message || TRADE_DESK_FAILED, status === 401 ? 401 : 502);
   }
@@ -467,7 +467,7 @@ aiRoutes.post('/trade/ai-eval', async (req, res) => {
     const { text: verdict, voice, notice } = await deskAnswer({ ...body, message: undefined });
     res.json({ verdict, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-eval] failed:', err);
     res.status(status).json({ error: message });
   }
@@ -489,7 +489,7 @@ aiRoutes.post('/trade/ai-reply', async (req, res) => {
     const { text: reply, voice, notice } = await deskAnswer(body);
     res.json({ reply, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-reply] failed:', err);
     res.status(status).json({ error: message });
   }

@@ -242,6 +242,24 @@ describe('the Staff room\'s stream (N13; D-001, D-074)', () => {
     expect(JSON.stringify(events)).not.toContain('sk-other-looking-key');
   });
 
+  it('reads a refused key against the chat\'s own provider, a 403 included (review L4)', async () => {
+    const settingsFile = path.join(DATA_DIR, 'settings.json');
+    const before = fs.existsSync(settingsFile) ? fs.readFileSync(settingsFile, 'utf8') : null;
+    // The chat asks Anthropic (its key set) while the provider chosen for everything else, OpenAI, has none
+    fs.writeFileSync(settingsFile, JSON.stringify({ ...(before ? JSON.parse(before) : {}), provider: 'openai', aiFeatures: { chat: { provider: 'anthropic' } } }));
+    try {
+      script = async () => { throw Object.assign(new Error('overloaded'), { status: 500 }); };
+      const busy = (await ask(save.org, { with: 'analyst', question: 'Who is hurt?' })).events.at(-1)!.data;
+      expect(busy).toMatchObject({ type: 'failed', reason: 'failed' });
+      script = async () => { throw Object.assign(new Error('forbidden'), { status: 403 }); };
+      const forbidden = (await ask(save.org, { with: 'analyst', question: 'Who is hurt?' })).events.at(-1)!.data;
+      expect(forbidden).toMatchObject({ type: 'failed', reason: 'keyRefused' });
+    } finally {
+      if (before === null) fs.rmSync(settingsFile, { force: true });
+      else fs.writeFileSync(settingsFile, before);
+    }
+  });
+
   it('in the room, each person answers in turn, each a message of his own; one asked by name answers alone', async () => {
     const room = (await get(`/api/v2/staff-room/${save.org}`)).json;
     const people = room.staff.filter((p: { room: boolean }) => !p.room).map((p: { id: string }) => p.id);
