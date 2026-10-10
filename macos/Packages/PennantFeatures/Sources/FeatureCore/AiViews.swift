@@ -84,21 +84,33 @@ public struct AiMarking: View {
 public struct AiClaimLine: View {
     let claim: Components.Schemas.Claim
     let font: Font
+    /// Whether the line takes the height its wrapping needs (on a page); false keeps it to two lines, for a bar whose
+    /// height must not grow with a narrow proposal (the Staff room's compose bar).
+    let wraps: Bool
 
-    public init(_ claim: Components.Schemas.Claim, font: Font = .callout) {
+    public init(_ claim: Components.Schemas.Claim, font: Font = .callout, wraps: Bool = true) {
         self.claim = claim
         self.font = font
+        self.wraps = wraps
     }
 
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             ToneSymbol(tone: claim.tone)
             ClaimText(claim, edge: .trailing) {
-                Text(verbatim: claim.text)
-                    .font(font)
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                if wraps {
+                    Text(verbatim: claim.text)
+                        .font(font)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(verbatim: claim.text)
+                        .font(font)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                }
             }
         }
     }

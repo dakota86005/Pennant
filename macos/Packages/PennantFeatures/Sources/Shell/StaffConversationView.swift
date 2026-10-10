@@ -36,6 +36,11 @@ struct StaffConversationView: View {
                     .padding(20)
                     .frame(maxWidth: 760)
                     .frame(maxWidth: .infinity)
+                    // The conversation, named for VoiceOver by who it is with (the served words): the audit found its
+                    // selectable text's container a group with no description (CI run 38090920866)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(Text(verbatim: conversation?.speaker.display ?? member.name.display))
+                    .accessibilityIdentifier("staffRoom.conversation")
                 }
                 // A conversation reads from the bottom, as Messages does; the opening, before one, from the top
                 .defaultScrollAnchor(kept.isEmpty && answer == nil ? .top : .bottom)
@@ -98,6 +103,7 @@ struct StaffConversationView: View {
                 .font(.title3)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("staffRoom.opening")
             if view.ai.available {
                 ForEach(Array(member.starters.enumerated()), id: \.offset) { _, starter in
                     Button { send(starter.display) } label: {
@@ -108,9 +114,7 @@ struct StaffConversationView: View {
                 }
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(verbatim: member.name.display))
-        .accessibilityIdentifier("staffRoom.opening")
+
     }
 
     /// How it stands after the last answer: the served failure (its partial answer above, kept), why a question was
@@ -138,7 +142,9 @@ struct StaffConversationView: View {
     private var compose: some View {
         if let off = view.ai.off {
             // AI off: one calm served line; everything else in Pennant works without it
-            AiClaimLine(off)
+            // Never sized by its own wrapping: in the window's safe area a text that sizes itself tall at a narrow
+            // proposal made the window's content taller than the window (CI run 38090920866)
+            AiClaimLine(off, wraps: false)
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("staffRoom.aiOff")
