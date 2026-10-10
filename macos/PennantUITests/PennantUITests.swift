@@ -2241,6 +2241,15 @@ final class PennantUITests: XCTestCase {
         app.menuBars.menuItems["Staff Room"].click()
     }
 
+    /// Closes the main window with ⌘W (it is key after launch), so the Staff room is audited alone: the audit measures
+    /// each element against the screen, and a main window under the room had its masthead read against the room's pixels.
+    @MainActor
+    private func closeMainWindow(_ app: XCUIApplication) {
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(main.waitForNonExistence(timeout: 10), "⌘W did not close the main window")
+    }
+
     /// The window holding an element (the Staff room's, the main one's).
     @MainActor
     private func window(of app: XCUIApplication, holding identifier: String) -> XCUIElement {
@@ -2257,6 +2266,7 @@ final class PennantUITests: XCTestCase {
         let ask = element(app, "toolbar.askStaff")
         XCTAssertTrue(ask.waitForExistence(timeout: 10), "the toolbar has no Ask Staff")
         XCTAssertTrue(ask.isEnabled, "Ask Staff is still disabled")
+        closeMainWindow(app)
         openStaffRoom(app, until: "staffRoom.aiOff")
         let off = element(app, "staffRoom.aiOff")
         XCTAssertTrue(off.waitForExistence(timeout: 30), "the Staff room did not open, or does not say AI is off")
@@ -2306,6 +2316,7 @@ final class PennantUITests: XCTestCase {
         }
         let app = launch(arguments: ["-PennantTestKeys", "memory"], environment: ["PENNANT_DEV_LOCAL_AI_URL": local])
         waitForShell(app)
+        closeMainWindow(app)
         openStaffRoom(app, until: "staffRoom.compose")
         let compose = element(app, "staffRoom.compose")
         XCTAssertTrue(compose.waitForExistence(timeout: 30), "the Staff room has no compose field with the local provider on")

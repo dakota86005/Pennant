@@ -109,6 +109,7 @@ struct StaffConversationView: View {
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(verbatim: member.name.display))
         .accessibilityIdentifier("staffRoom.opening")
     }
 
@@ -149,6 +150,7 @@ struct StaffConversationView: View {
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(1...6)
                 .focused($composing)
+                .accessibilityLabel(Text("Message"))
                 .onSubmit { send(draft) }
                 .accessibilityIdentifier("staffRoom.compose")
                 Button { send(draft) } label: { Label("Send", systemImage: "arrow.up.circle.fill") }
@@ -238,7 +240,6 @@ private struct MessageView: View {
                 )
             }
         }
-        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("staffRoom.message.\(message.id)")
     }
 }
@@ -306,7 +307,6 @@ private struct LiveAnswerView: View {
                         AiStreamedText(live.streamed)
                     }
                 }
-                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("staffRoom.live.\(live.id)")
             }
             if answer.outcome.isRunning, answer.messages.last?.streamed.isEmpty ?? true, answer.messages.last?.final == nil {
