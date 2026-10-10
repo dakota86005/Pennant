@@ -402,7 +402,8 @@ describe('AI off (D-001): every surface says so calmly, and nothing else changes
       expect(status, url).toBe(200);
       expect(json.ai.available, url).toBe(false);
       expect(json.ai.off.text, url).toBe('AI is off. Everything else in Pennant works without it.');
-      expect(json.ai.off.basis.because[0].value, url).toMatch(/No Anthropic \(Claude\) key set|No API credential/);
+      // The reason in plain words, the same on every surface (review L7)
+      expect(json.ai.off.basis.because[0].value, url).toMatch(/^No Anthropic \(Claude\) key set\. Open Settings/);
       expect(bannedInPayload(json), url).toEqual([]);
     }
     expect((await get(`/api/v2/storylines/${save.org}`)).json.canWrite).toBe(false);
@@ -552,6 +553,8 @@ describe('the AI keys (D-006, D-055): never served, logged or echoed; only to th
     expect(ollama).toMatchObject({ needsKey: false, check: null, getOne: null });
     expect(JSON.stringify(json)).not.toContain(KEY);
     expect(json.off).toBeNull();
+    // Only an environment key is set, so that is where keys come from (review L7)
+    expect(json.where.text).toBe('Keys come from the environment.');
     expect(bannedInPayload(json)).toEqual([]);
   });
 

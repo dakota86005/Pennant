@@ -754,8 +754,13 @@ export function keyShapeProblem(provider: ProviderId, key: string): string | nul
   return shape.test.test(key.trim()) ? null : shape.hint;
 }
 
-/** Where keys are kept on this server: handed over from the Keychain (the Mac app's sidecar), else the data folder. */
-export function keyStorageKind(): 'keychain' | 'stored' {
+/**
+ * Where keys are kept on this server: the environment when every key set comes from it (an environment variable wins,
+ * `getApiKey`), else handed over from the Keychain (the Mac app's sidecar), else the data folder (N13 review L7).
+ */
+export function keyStorageKind(): 'keychain' | 'stored' | 'env' {
+  const sources = PROVIDERS.filter((p) => p.requiresKey).map((p) => statusOf(p.id).source).filter((s) => s !== null);
+  if (sources.length > 0 && sources.every((s) => s === 'env')) return 'env';
   return injected ? 'keychain' : 'stored';
 }
 

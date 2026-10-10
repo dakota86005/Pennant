@@ -77,6 +77,10 @@ export function aiKeysView(
       basis: basis({
         because: [
           { label: 'Where', value: WHERE[keptIn] },
+          // A key from the environment wins over one kept elsewhere: said where some do and the rest don't
+          ...(keptIn !== 'env' && providers.some((p) => p.requiresKey && p.configured && p.source === 'env')
+            ? [{ label: 'From the environment', value: listed(providers.filter((p) => p.requiresKey && p.configured && p.source === 'env').map((p) => p.label)) }]
+            : []),
           { label: 'Where a key goes', value: 'Only to its own provider, with the question or the figures being written about. It is never shown in full, logged or sent anywhere else.' },
         ],
         source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: [], lean: null, certainty: AI_STATE_CERTAINTY,

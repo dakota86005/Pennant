@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { db, tableExists } from './db.js';
 import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, providerFor, type FallbackNotice } from './providers.js';
+import { noKeyMessage } from './chat.js';
 import { computeProspects } from './org.js';
 import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
@@ -375,8 +376,10 @@ export function startStorylineJob(orgId: number): void {
 
 /** Whether Storylines can be written: a key for the provider chosen for them (read on every request). */
 export function storylinesAiState(): { available: boolean; offReason: string | null } {
-  const available = providerCredential(featureProvider('storylines')) !== null;
-  return { available, offReason: available ? null : 'No API credential is configured for the Storylines provider.' };
+  const provider = featureProvider('storylines');
+  const available = providerCredential(provider) !== null;
+  // The same plain words as the Staff room's and the briefing's (review L7)
+  return { available, offReason: available ? null : noKeyMessage(provider) };
 }
 
 export const STORYLINES_AI_OFF = 'AI is off. Add a key in Settings to have storylines written.';

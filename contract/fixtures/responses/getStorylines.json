@@ -46,7 +46,7 @@
         "because": [
           {
             "label": "Why",
-            "value": "No API credential is configured for the Storylines provider."
+            "value": "No Anthropic (Claude) key set. Open Settings and add your key — you can get one at console.claude.com."
           },
           {
             "label": "What still works",
