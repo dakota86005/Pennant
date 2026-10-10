@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
-import { databaseGeneration, db, tableExists } from './db.js';
+import { databaseGeneration, db, tableColumns, tableExists } from './db.js';
 import { jobStatus } from './jobs.js';
 import { resolveOrg } from './orgParam.js';
 import { importedAt } from './playerStateRoutes.js';
@@ -118,8 +118,10 @@ export function linkIndexFor(orgId: number): LinkIndex | null {
      WHERE p.retired = 0 AND p.first_name IS NOT NULL AND p.last_name IS NOT NULL AND (t.level = 1 OR p.organization_id = ?)`,
   ).all(orgId, orgId) as Array<{ id: number; name: string; org: number | null; ours: number }>)
     .map((p) => ({ id: p.id, name: p.name, ours: p.ours === 1, teamId: typeof p.org === 'number' && p.org > 0 ? p.org : null }));
+  // Schema-tolerant: an export without the all-star flag has no all-star clubs to leave out
+  const allStar = tableColumns('teams').includes('allstar_team') ? ' AND COALESCE(allstar_team, 0) = 0' : '';
   const clubs = (db.prepare(
-    `SELECT team_id AS teamId, name, nickname FROM teams WHERE level = 1 AND COALESCE(allstar_team, 0) = 0`,
+    `SELECT team_id AS teamId, name, nickname FROM teams WHERE level = 1${allStar}`,
   ).all() as Array<{ teamId: number; name: string | null; nickname: string | null }>)
     .map((c) => ({ teamId: c.teamId, name: `${c.name ?? ''} ${c.nickname ?? ''}`.trim(), nickname: String(c.nickname ?? '').trim() }))
     .filter((c) => c.name.length > 0);
