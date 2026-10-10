@@ -292,5 +292,36 @@
     },
     "links": [],
     "hint": "Add a key to ask your staff, or to have storylines written"
+  },
+  "reenter": {
+    "text": "Pennant couldn't read the key saved for this provider. Enter it again.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "What happened",
+          "value": "A key is saved in your Keychain, but this copy of Pennant was not allowed to read it without asking you (it may have been saved by another build)."
+        },
+        {
+          "label": "What to do",
+          "value": "Enter the key again and save it: Pennant replaces the old item with one it can read."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "The key entered again."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "hint": "The key is kept anew in your Keychain when you save it"
   }
 }

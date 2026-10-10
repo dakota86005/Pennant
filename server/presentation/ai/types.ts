@@ -300,6 +300,11 @@ export interface AiKeysView {
   where: Claim;
   /** Said when no AI surface has a key: everything else in Pennant works without one; null otherwise. */
   off: Claim | null;
+  /**
+   * Said beside a provider whose key the Mac app could not read back from its Keychain (the item is there, but this
+   * build may not read it without asking): enter the key again, and the app keeps it anew. The app shows it only then.
+   */
+  reenter: Claim;
 }
 
 /** `POST /api/v2/ai/keys/check`: a key to test with its provider (never kept, logged or served back). */

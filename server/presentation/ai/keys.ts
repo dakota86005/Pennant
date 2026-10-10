@@ -89,6 +89,17 @@ export function aiKeysView(
         source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['An AI key in Settings.'], lean: null, certainty: 'fact',
       }),
     }),
+    reenter: claim({
+      text: 'Pennant couldn\'t read the key saved for this provider. Enter it again.',
+      tone: 'caution', hint: 'The key is kept anew in your Keychain when you save it', links: [],
+      basis: basis({
+        because: [
+          { label: 'What happened', value: 'A key is saved in your Keychain, but this copy of Pennant was not allowed to read it without asking you (it may have been saved by another build).' },
+          { label: 'What to do', value: 'Enter the key again and save it: Pennant replaces the old item with one it can read.' },
+        ],
+        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['The key entered again.'], lean: null, certainty: 'fact',
+      }),
+    }),
   };
 }
 
