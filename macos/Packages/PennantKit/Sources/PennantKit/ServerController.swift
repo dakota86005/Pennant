@@ -159,7 +159,7 @@ public actor ServerController {
     public init(
         configuration: ServerConfiguration,
         launcher: any SidecarLauncher = FoundationSidecarLauncher(),
-        keySource: any KeySource = KeychainKeyStore(),
+        keySource: any KeySource = KeychainKeyStore(service: KeychainKeyStore.service(forBundleID: Bundle.main.bundleIdentifier)),
         probe: @escaping StatusProbe = liveStatusProbe,
         timing: ServerTiming = ServerTiming(),
         log: ServerLog? = nil

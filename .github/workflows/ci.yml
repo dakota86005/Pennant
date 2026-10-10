@@ -96,6 +96,25 @@ jobs:
           -onlyUsePackageVersionsFromResolvedFile -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO PENNANT_SKIP_SERVER=YES build-for-testing
 
+  # The Keychain without a dialog (N13, D-074): the app's Keychain code, compiled into two differently signed copies,
+  # reads and replaces the other copy's item in a throwaway keychain without the system asking anyone anything, and a
+  # control step shows the runner would have shown a dialog otherwise. CI only (macos/scripts/keychain-no-prompt.sh
+  # refuses to run elsewhere); the runner's own keychain list is put back afterwards. No secrets.
+  keychain-no-prompt:
+    name: Mac app (the Keychain never asks)
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: macos/scripts/keychain-no-prompt.sh
+      - name: Keep the probe's log and the control's screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keychain-probe
+          path: build/keychain-probe
+          if-no-files-found: ignore
+
   # The XCUITests (SWIFTUI_REBUILD.md section 8) on GitHub's macOS runner, which has a logged-in GUI session no one is
   # using, so no one's screen is taken over: the app with its bundled server on the synthetic league (never a real
   # save), each test on a scratch folder of its own, as macos/scripts/test.sh runs them locally. Only for pull requests
