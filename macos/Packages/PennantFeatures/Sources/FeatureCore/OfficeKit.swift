@@ -634,6 +634,7 @@ public struct OfficeTable: View {
             }
             CompareMenuItem(chosen)
             FollowMenuItem(kind: "player", id: player.playerId)
+            AskStaffMenuItem(PlayerRef(id: player.playerId))
             Button("Copy Name", systemImage: "doc.on.doc") { copy(player.name) }
         } else if let named = row.players, !named.isEmpty {
             if named.count == 1, let only = named.first {

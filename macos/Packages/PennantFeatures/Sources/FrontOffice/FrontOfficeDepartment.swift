@@ -3,7 +3,7 @@ import PennantKit
 import SwiftUI
 
 /// Front Office (SWIFTUI_REBUILD.md section 3.5). The Morning Report shows the served desk and department cards (N4);
-/// the other views are structural placeholders until their milestones build them.
+/// Storylines and the GM Briefing are the AI's writing (N13).
 public enum FrontOfficeDepartment: DepartmentModule {
     public static let id: DeptID = "frontOffice"
     public static let title: LocalizedStringResource = "Front Office"
@@ -17,7 +17,12 @@ public enum FrontOfficeDepartment: DepartmentModule {
         DepartmentViewDescriptor(id: "report", title: "Report", symbol: "list.bullet.clipboard", keywords: ["desk", "all items"]) {
             DepartmentReportView(department: id)
         },
-        .placeholder(id: "storylines", title: "Storylines", symbol: "text.book.closed", keywords: ["stories", "ai"]),
-        .placeholder(id: "briefing", title: "GM Briefing", symbol: "doc.richtext", keywords: ["briefing", "ai"]),
+        // N13: the AI's writing, marked as the AI's (D-074)
+        DepartmentViewDescriptor(id: "storylines", title: "Storylines", symbol: "text.book.closed", keywords: ["stories", "ai"]) {
+            StorylinesView()
+        },
+        DepartmentViewDescriptor(id: "briefing", title: "GM Briefing", symbol: "doc.richtext", keywords: ["briefing", "ai"]) {
+            BriefingView()
+        },
     ]
 }

@@ -196,6 +196,7 @@ struct ServedTable: View {
             }
             CompareMenuItem(chosen)
             FollowMenuItem(kind: "player", id: player.playerId)
+            AskStaffMenuItem(PlayerRef(id: player.playerId))
             Button("Copy Name", systemImage: "doc.on.doc") { copy(player.name) }
         }
         let actions = row.actions.compactMap { action in route(action.open).map { (action, $0) } }.filter { opener?.canOpen($0.1) == true }

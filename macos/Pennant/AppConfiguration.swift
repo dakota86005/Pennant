@@ -25,4 +25,14 @@ enum AppConfiguration {
         return .bundled(in: bundle)
         #endif
     }
+
+    /// Where the AI keys are kept (N13, D-074): this app's own Keychain items (`<bundle id>.apikeys`). A Debug build
+    /// launched by the UI tests with `-PennantTestKeys memory` keeps them in memory, so a test never reads or writes the
+    /// Keychain of the Mac it runs on.
+    static func keyStore(bundle: Bundle = .main, defaults: UserDefaults = .standard) -> any KeyStore {
+        #if DEBUG
+        if defaults.string(forKey: "PennantTestKeys") == "memory" { return MemoryKeyStore() }
+        #endif
+        return KeychainKeyStore(service: KeychainKeyStore.service(forBundleID: bundle.bundleIdentifier))
+    }
 }

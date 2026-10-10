@@ -31,9 +31,6 @@
     "AI": {
       "extractionState": "manual"
     },
-    "Adding or changing a key arrives in a later build": {
-      "extractionState": "manual"
-    },
     "Affiliates": {
       "extractionState": "manual"
     },
@@ -58,7 +55,7 @@
     "Ask Staff": {
       "extractionState": "manual"
     },
-    "Ask Staff arrives in a later build": {
+    "Ask Staff About Him": {
       "extractionState": "manual"
     },
     "Assignments": {
@@ -156,6 +153,9 @@
       "extractionState": "manual"
     },
     "Committed Salary": {
+      "extractionState": "manual"
+    },
+    "Conversation": {
       "extractionState": "manual"
     },
     "Could Come on Top": {
@@ -367,6 +367,9 @@
     "Inspector": {
       "extractionState": "manual"
     },
+    "Key": {
+      "extractionState": "manual"
+    },
     "Key Figures": {
       "extractionState": "manual"
     },
@@ -407,6 +410,9 @@
       "extractionState": "manual"
     },
     "Medical": {
+      "extractionState": "manual"
+    },
+    "Message": {
       "extractionState": "manual"
     },
     "Morning Report": {
@@ -679,6 +685,9 @@
       "extractionState": "manual"
     },
     "Spots": {
+      "extractionState": "manual"
+    },
+    "Staff Room": {
       "extractionState": "manual"
     },
     "Staff's Options": {

@@ -34,8 +34,8 @@ public final class AiWritingStore {
     /// The piece's status as served (whichever piece), for the views that draw either.
     public func status(_ piece: Piece) -> Components.Schemas.AiWritingStatus? {
         switch piece {
-        case .storylines: storylines.map(Self.status)
-        case .briefing: briefing.map(Self.status)
+        case .storylines: storylines.map(Self.writingStatus)
+        case .briefing: briefing.map(Self.writingStatus)
         }
     }
 
@@ -145,14 +145,14 @@ public final class AiWritingStore {
     }
 
     /// The status fields every piece of writing carries.
-    static func status(_ view: Components.Schemas.StorylinesView) -> Components.Schemas.AiWritingStatus {
+    public static func writingStatus(_ view: Components.Schemas.StorylinesView) -> Components.Schemas.AiWritingStatus {
         .init(
             state: view.state, status: view.status, older: view.older, write: view.write, canWrite: view.canWrite,
             notice: view.notice, written: view.written, ai: view.ai, writingStamp: view.writingStamp
         )
     }
 
-    static func status(_ view: Components.Schemas.BriefingView) -> Components.Schemas.AiWritingStatus {
+    public static func writingStatus(_ view: Components.Schemas.BriefingView) -> Components.Schemas.AiWritingStatus {
         .init(
             state: view.state, status: view.status, older: view.older, write: view.write, canWrite: view.canWrite,
             notice: view.notice, written: view.written, ai: view.ai, writingStamp: view.writingStamp

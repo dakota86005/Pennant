@@ -47,7 +47,6 @@ describe('the Mac app\'s String Catalogs', () => {
  */
 const LABEL_WORDS_MAX = 8;
 const APP_SENTENCES = new Set([
-  'Adding or changing a key arrives in a later build',
   'An import is running. Choose a save when it has finished.',
   'Automatic follows the club you manage in the save.',
   'Pennant reads the save\'s export each time it imports.',

@@ -253,6 +253,7 @@ struct FarmPlayerMenu: View {
         OpenPlayerMenuItem(PlayerRef(id: id))
         CompareMenuItem([PlayerRef(id: id)])
         FollowMenuItem(kind: "player", id: id)
+        AskStaffMenuItem(PlayerRef(id: id))
         Divider()
         Button("Copy Name", systemImage: "doc.on.doc") {
             NSPasteboard.general.clearContents()

@@ -376,6 +376,8 @@ public struct MorningReportPage: View {
         VStack(alignment: .leading, spacing: 36) {
             if designed { desk(compact: true) }
             departments
+            // Item 8 (section 3.4): the GM Briefing, collapsed (N13)
+            BriefingDisclosure()
         }
     }
 

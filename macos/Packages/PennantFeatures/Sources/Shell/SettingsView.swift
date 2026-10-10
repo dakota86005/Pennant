@@ -653,34 +653,36 @@ struct ThemePreview: View {
 
 // MARK: AI
 
-/// Each AI provider and its key's status, as served (`/api/settings/providers`). Read only: adding or changing a key
-/// arrives with the staff room (N13).
+/// Each AI provider and its key, as served (`GET /api/v2/ai/keys`, N13): whether a key is set and where from, what it
+/// is used for and where to get one, in the server's words. A key is typed into a secure field, checked with its own
+/// provider (`POST /api/v2/ai/keys/check`, the outcome in words), kept in this app's own Keychain item and handed to the
+/// running server on stdin with no restart; after that it is never shown again (the served status says it is set, with
+/// at most its last four characters). Removing it deletes the item and hands the set over again. A kept key this copy
+/// of the app may not read without asking shows the served "enter it again" line. Never logged, never in an error.
 struct AISettings: View {
     @Environment(AppModel.self) private var model
-    @State private var providers: Components.Schemas.ProvidersResponse?
+    @State private var keys: Components.Schemas.AiKeysView?
     @State private var problem: RequestProblem?
+    @State private var unreadable: Set<String> = []
     @State private var attempt = 0
-    private let preloaded: Components.Schemas.ProvidersResponse?
+    private let preloaded: Components.Schemas.AiKeysView?
 
-    init(preloaded: Components.Schemas.ProvidersResponse? = nil) {
+    init(preloaded: Components.Schemas.AiKeysView? = nil) {
         self.preloaded = preloaded
     }
 
     var body: some View {
         Form {
-            if let answer = providers ?? preloaded {
-                Section("Providers") {
-                    ForEach(answer.providers, id: \.label) { provider in
-                        ProviderRow(
-                            provider: provider,
-                            key: answer.keys.status(for: provider.id),
-                            inUse: model.settings?.settings.provider == provider.id
-                        )
-                    }
-                }
+            if let answer = keys ?? preloaded {
                 Section {
-                    Text("Adding or changing a key arrives in a later build")
-                        .foregroundStyle(.readableSecondary)
+                    Text(verbatim: answer.lede.display).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
+                    if let off = answer.off { AiClaimLine(off).accessibilityIdentifier("settings.ai.off") }
+                    AiClaimLine(answer._where)
+                }
+                ForEach(answer.providers, id: \.id) { row in
+                    ProviderKeyRow(row: row, reenter: unreadable.contains(row.id) ? answer.reenter : nil) {
+                        attempt += 1
+                    }
                 }
             } else if let problem {
                 Section("Providers") {
@@ -692,81 +694,134 @@ struct AISettings: View {
             }
         }
         .formStyle(.grouped)
-        .task(id: TaskKey(store: model.storeKey, attempt: attempt)) { await load() }
+        .task(id: TaskKey(store: model.storeKey, keysRevision: model.keysRevision, attempt: attempt)) { await load() }
         .accessibilityIdentifier("settings.ai")
     }
 
     private struct TaskKey: Hashable {
         var store: AppModel.StoreKey?
+        var keysRevision: Int
         var attempt: Int
     }
 
     private func load() async {
         guard preloaded == nil else { return }
+        unreadable = await model.keyStore.unreadable()
         guard let client = model.client else {
             problem = .notRunning
             return
         }
         do {
-            providers = try await client.getProviders().ok.body.json
-            problem = nil
+            switch try await client.getAiKeys() {
+            case .ok(let answer):
+                keys = try answer.body.json
+                problem = nil
+            case .undocumented(let code, let payload):
+                problem = await .undocumented(code, body: payload.body, operation: "getAiKeys", fromV2: true)
+            }
         } catch {
             let failure = RequestProblem.from(error)
-            if let detail = failure.detail { model.logProblem("could not read the AI providers: \(detail)") }
+            if let detail = failure.detail { model.logProblem("could not read the AI keys: \(detail)") }
             problem = failure
         }
     }
 }
 
-private struct ProviderRow: View {
-    let provider: Components.Schemas.ProviderChoice
-    let key: Components.Schemas.KeyStatus?
-    let inUse: Bool
+/// One provider: its served name and status, what it is used for and where to get a key; for a provider that needs
+/// one, a secure field, Check (its served words), Save and Remove.
+private struct ProviderKeyRow: View {
+    let row: Components.Schemas.AiProviderRow
+    /// The served "enter it again" line, when this provider's kept key could not be read back.
+    let reenter: Components.Schemas.Claim?
+    let changed: () -> Void
+    @Environment(AppModel.self) private var model
+    @State private var entry = ""
+    @State private var checked: Components.Schemas.AiKeyCheckAnswer?
+    @State private var problem: RequestProblem?
+    @State private var working = false
 
     var body: some View {
-        LabeledContent {
-            VStack(alignment: .trailing, spacing: 2) {
-                keyLine
-                Text(verbatim: provider.model).font(.caption).foregroundStyle(.readableSecondary)
+        Section {
+            AiClaimLine(row.status, font: .body).accessibilityIdentifier("settings.ai.\(row.id).status")
+            if let usedFor = row.usedFor {
+                Text(verbatim: usedFor.display).font(.callout).foregroundStyle(.readableSecondary)
             }
-        } label: {
-            HStack(spacing: 6) {
-                Text(verbatim: provider.label)
-                if inUse {
-                    Label("In use", systemImage: "checkmark.circle.fill")
-                        .labelStyle(.titleAndIcon)
-                        .font(.caption)
-                        .foregroundStyle(.readableSecondary)
+            if let reenter { AiClaimLine(reenter).accessibilityIdentifier("settings.ai.\(row.id).reenter") }
+            if row.needsKey {
+                SecureField(text: $entry, prompt: Text(verbatim: row.getOne?.display ?? "")) { Text("Key") }
+                    .accessibilityIdentifier("settings.ai.\(row.id).key")
+                HStack {
+                    if let check = row.check {
+                        Button { Task { await runCheck() } } label: { Text(verbatim: check.display) }
+                            .disabled(working || (entry.isEmpty && !row.configured))
+                            .accessibilityIdentifier("settings.ai.\(row.id).check")
+                    }
+                    Spacer()
+                    if row.source?.value1 == .keychain {
+                        Button("Remove", role: .destructive) { Task { await remove() } }
+                            .disabled(working)
+                            .accessibilityIdentifier("settings.ai.\(row.id).remove")
+                    }
+                    Button("Save") { Task { await save() } }
+                        .disabled(working || entry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .keyboardShortcut(.defaultAction)
+                        .accessibilityIdentifier("settings.ai.\(row.id).save")
                 }
+                if let checked { AiClaimLine(checked.result).accessibilityIdentifier("settings.ai.\(row.id).checked") }
+                if let problem { ProblemLine(problem) }
             }
+        } header: {
+            Text(verbatim: row.name.display)
         }
     }
 
-    @ViewBuilder
-    private var keyLine: some View {
-        if !provider.requiresKey {
-            Text("No key needed")
-        } else if let key, key.configured {
-            HStack(spacing: 4) {
-                if let hint = key.hint { Text(verbatim: hint).monospaced() }
-                if let source = key.sourceText { Text(verbatim: source).foregroundStyle(.readableSecondary) }
+    private func runCheck() async {
+        guard let client = model.client else { problem = .notRunning; return }
+        working = true
+        defer { working = false }
+        let typed = entry.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            switch try await client.checkAiKey(body: .json(.init(provider: row.id, key: typed.isEmpty ? nil : typed))) {
+            case .ok(let answer):
+                checked = try answer.body.json
+                problem = nil
+            case .badRequest(let refused):
+                checked = nil
+                problem = .served(try refused.body.json.error)
+            case .undocumented(let code, let payload):
+                problem = await .undocumented(code, body: payload.body, operation: "checkAiKey", fromV2: true)
             }
-        } else {
-            Text("No key")
+        } catch {
+            // `logLine` keeps the operation, the status and the error's domain and code: never the request, so never the key
+            problem = RequestProblem.from(error)
         }
     }
-}
 
-extension Components.Schemas.ProvidersResponse.KeysPayload {
-    /// The key status for a provider id, or nil for a provider this build's contract does not list.
-    func status(for id: Components.Schemas.ProviderId) -> Components.Schemas.KeyStatus? {
-        switch id.value1 {
-        case .anthropic: anthropic
-        case .openai: openai
-        case .gemini: gemini
-        case .opencode: opencode
-        case .ollama: ollama
-        case nil: nil
+    private func save() async {
+        working = true
+        defer { working = false }
+        do {
+            try await model.saveKey(entry, for: row.id)
+            // Never shown again: the served status now says it is set
+            entry = ""
+            checked = nil
+            problem = nil
+            changed()
+        } catch {
+            problem = .failed(detail: error.description)
+        }
+    }
+
+    private func remove() async {
+        working = true
+        defer { working = false }
+        do {
+            try await model.removeKey(row.id)
+            checked = nil
+            problem = nil
+            changed()
+        } catch {
+            problem = .failed(detail: error.description)
         }
     }
 }

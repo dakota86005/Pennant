@@ -5,6 +5,8 @@ import SwiftUI
 public enum SceneID {
     public static let main = "main"
     public static let setup = "setup"
+    /// The Staff room (N13): `Window(id: "staff")`.
+    public static let staff = "staff"
 }
 
 extension RequestProblem {

@@ -116,6 +116,33 @@ nonisolated public enum PreviewFixtures {
         decode(Components.Schemas.ProvidersResponse.self, "getProviders")
     }
 
+    /// The fixtures captured with something written (`-written`), or none.
+    private static func suffix(_ written: Bool) -> String { written ? writtenSuffix : String() }
+    private static let writtenSuffix = "-written"
+
+    /// The AI keys in words (N13): every provider, where keys are kept, AI off.
+    public static var aiKeys: Components.Schemas.AiKeysView? {
+        decode(Components.Schemas.AiKeysView.self, "getAiKeys")
+    }
+
+    /// The Staff room with AI off, and with a conversation kept (N13).
+    public static var staffRoom: Components.Schemas.StaffRoomView? {
+        decode(Components.Schemas.StaffRoomView.self, "getStaffRoom")
+    }
+
+    public static func staffConversation(written: Bool) -> Components.Schemas.StaffRoomConversation? {
+        decode(Components.Schemas.StaffRoomConversation.self, "getStaffConversation" + suffix(written))
+    }
+
+    /// Storylines and the GM Briefing, never written (AI off) or written (N13).
+    public static func storylines(written: Bool) -> Components.Schemas.StorylinesView? {
+        decode(Components.Schemas.StorylinesView.self, "getStorylines" + suffix(written))
+    }
+
+    public static func briefing(written: Bool) -> Components.Schemas.BriefingView? {
+        decode(Components.Schemas.BriefingView.self, "getBriefing" + suffix(written))
+    }
+
     /// The departments whose reports were captured (`getDepartmentReport-<id>`).
     public static let reportedDepartments = [
         "frontOffice", "majorLeague", "farm", "scouting", "trades", "finance", "medical", "league", "philosophy",
@@ -374,7 +401,9 @@ nonisolated public enum PreviewFixtures {
         players: PlayerStore? = nil,
         scouting: ScoutingStore? = nil,
         trades: TradesStore? = nil,
-        philosophy: PhilosophyStore? = nil
+        philosophy: PhilosophyStore? = nil,
+        staffRoom: StaffRoomStore? = nil,
+        writing: AiWritingStore? = nil
     ) -> AppModel {
         var status = status(configured: configured)
         if let clubOwed { status?.clubOwed = clubOwed }
@@ -418,7 +447,9 @@ nonisolated public enum PreviewFixtures {
             leagueOffice: configured ? leagueOffice : nil,
             scouting: configured ? (scouting ?? Self.scouting) : nil,
             trades: configured ? (trades ?? Self.trades) : nil,
-            philosophy: configured ? (philosophy ?? Self.philosophy) : nil
+            philosophy: configured ? (philosophy ?? Self.philosophy) : nil,
+            staffRoom: configured ? (staffRoom ?? StaffRoomStore.preview(view: Self.staffRoom, conversations: [Self.staffConversation(written: false)].compactMap { $0 })) : nil,
+            writing: configured ? (writing ?? AiWritingStore.preview(storylines: Self.storylines(written: false), briefing: Self.briefing(written: false))) : nil
         )
     }
 

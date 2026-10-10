@@ -201,18 +201,29 @@ struct InspectorColumnName: NSViewRepresentable {
 /// "Content", "Content and Inspector", then "Main Window". Only labels change, never children or roles.
 struct WindowContainerNames: NSViewRepresentable {
     static let names: [LocalizedStringResource] = ["Content", "Content and Inspector", "Main Window"]
+    /// The names, innermost first (another window's: the Staff room's, N13).
+    var names: [LocalizedStringResource] = WindowContainerNames.names
 
-    func makeNSView(context: Context) -> Finder { Finder() }
+    func makeNSView(context: Context) -> Finder { Finder(names: names) }
     func updateNSView(_ view: Finder, context: Context) { view.nameContainers() }
 
     final class Finder: NSView {
+        let given: [LocalizedStringResource]
+
+        init(names: [LocalizedStringResource]) {
+            given = names
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { nil }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             nameContainers()
         }
 
         func nameContainers() {
-            var names = WindowContainerNames.names
+            var names = given
             var view = superview
             while let current = view, !names.isEmpty {
                 if current.isAccessibilityElement(), current.accessibilityRole() == .group {

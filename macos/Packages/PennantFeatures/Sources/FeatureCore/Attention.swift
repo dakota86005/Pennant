@@ -304,6 +304,7 @@ struct PlayerNameModifier: ViewModifier {
                 }
                 CompareMenuItem([player])
                 FollowMenuItem(kind: "player", id: id)
+                AskStaffMenuItem(player)
                 if let name {
                     Divider()
                     Button("Copy Name", systemImage: "doc.on.doc") { copy(name) }

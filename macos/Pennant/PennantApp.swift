@@ -64,6 +64,14 @@ struct PennantApp: App {
         .defaultSize(width: 980, height: 760)
         .commandsRemoved()
 
+        // The Staff room (N13): the people the club can ask, a conversation each, an answer streaming in
+        Window("Staff Room", id: SceneID.staff) {
+            StaffRoomScene()
+                .environment(appDelegate.model)
+                .environment(appDelegate.routing)
+        }
+        .defaultSize(width: 920, height: 700)
+
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()
                 .environment(appDelegate.model)
@@ -120,7 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         #endif
-        let model = AppModel(configuration: AppConfiguration.server())
+        let model = AppModel(configuration: AppConfiguration.server(), keys: AppConfiguration.keyStore())
         let controller = model.serverController
         self.model = model
         outside = OutsideTheWindow(model: model)

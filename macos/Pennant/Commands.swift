@@ -130,6 +130,11 @@ struct PennantCommands: Commands {
             }
             .keyboardShortcut("c", modifiers: [.command, .option])
             .disabled(chosenPlayers == nil && player == nil)
+            // N13: the Staff room asked about him, in the server's words
+            Button("Ask Staff About Him") {
+                if let player { StaffRoomRouter.shared.ask(about: player) { openWindow(id: SceneID.staff) } }
+            }
+            .disabled(player == nil)
         }
 
         CommandMenu("Club") {
@@ -150,6 +155,13 @@ struct PennantCommands: Commands {
                 openSettings()
             }
             .disabled(!can.dataStatus)
+        }
+
+        // N13: the Staff room, from any window (also the toolbar's Ask Staff)
+        CommandGroup(before: .windowList) {
+            Button("Staff Room") { openWindow(id: SceneID.staff) }
+                .keyboardShortcut("0", modifiers: [.command, .shift])
+            Divider()
         }
 
         CommandGroup(after: .help) {
