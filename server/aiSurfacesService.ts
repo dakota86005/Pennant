@@ -179,23 +179,8 @@ export function linkIndexFor(orgId: number): LinkIndex | null {
 /** Who this club can put on the phone (the save's staff, `staff.ts`). */
 export const staffFor = (orgId: number): StaffPerson[] => personasFor(orgId).map((p) => ({ id: p.id, name: p.name, role: p.role }));
 
-/**
- * Who a message in the room is aimed at, when it is aimed at anybody (moved from the React chat): a name at the start
- * of the message, or anywhere with an @ in front of it; null when none or more than one person matches.
- */
-export function addressedIn(text: string, people: StaffPerson[]): StaffPerson | null {
-  const hit = new Set<string>();
-  for (const p of people) {
-    if (p.id === ROOM_ID) continue;
-    const parts = p.name.split(/\s+/);
-    for (const form of [p.name, parts[0], parts[parts.length - 1]]) {
-      if (!form || form.length < 2) continue;
-      const safe = form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      if (new RegExp(`^\\s*@?${safe}\\b`, 'i').test(text) || new RegExp(`@${safe}\\b`, 'i').test(text)) hit.add(p.id);
-    }
-  }
-  return hit.size === 1 ? people.find((p) => p.id === [...hit][0]) ?? null : null;
-}
+/** Who a message in the room is aimed at: the one rule both apps read (`staffWords.ts`, review L1). */
+export { addressedIn } from './presentation/ai/staffWords.js';
 
 /** "Ask about him": the question a player dragged into the Staff room puts; null when the save has no such player. */
 export function aboutQuestionFor(orgId: number, playerId: number): string | null {

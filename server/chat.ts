@@ -1073,6 +1073,12 @@ chatRoutes.post('/chat', async (req, res) => {
   if (!key) return res.status(401).json({ error: NO_KEY_MESSAGE });
 
   const team = Number.isFinite(Number(orgId)) ? Number(orgId) : defaultOrgId();
+  // The page names who a room message is aimed at; when it names nobody the server applies the same rule to the question
+  // (`addressedIn`, the one both apps read; N13 review L1), so a client that leaves it out is answered the same way
+  const question = Array.isArray(history) ? history[history.length - 1] : undefined;
+  const aimed = addressed ?? (String(personaId) === 'room' && question?.role === 'user' && typeof question.content === 'string'
+    ? addressedIn(question.content.trim(), staffFor(team))?.id
+    : undefined);
 
   // Server-sent events: the answer streams in, and tool calls are announced as
   // they happen so the user sees the assistant working rather than a spinner.
@@ -1091,7 +1097,7 @@ chatRoutes.post('/chat', async (req, res) => {
     if (!answered) stop.abort();
   });
   try {
-    await answerStaff({ history, team, personaId, memberIds, addressed, provider, model, key, signal: stop.signal }, send);
+    await answerStaff({ history, team, personaId, memberIds, addressed: aimed, provider, model, key, signal: stop.signal }, send);
   } finally {
     answered = true;
     res.end();

@@ -280,6 +280,22 @@ describe('the Staff room\'s stream (N13; D-001, D-074)', () => {
     expect(aimed.events[0].data.answering).toEqual([two[1]]);
   });
 
+  it('one rule of address for both apps: the React chat reads it from the server\'s module, and its route applies it when the page names nobody (review L1)', async () => {
+    const chat = fs.readFileSync(path.join(process.cwd(), 'src', 'Chat.tsx'), 'utf8');
+    expect(chat).toMatch(/from '\.\.\/server\/presentation\/ai\/staffWords'/);
+    expect(chat).not.toMatch(/function addressedMember|const ROLE_LABEL|const roleLabel|@\?\$\{safe\}/);
+    const room = (await get(`/api/v2/staff-room/${save.org}`)).json;
+    const two = room.staff.filter((p: { room: boolean }) => !p.room).map((p: { id: string }) => p.id).slice(0, 2);
+    const first = room.staff.find((p: { id: string }) => p.id === two[1]).name.display.split(' ')[0];
+    const res = await fetch(`${base}/api/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orgId: save.org, persona: 'room', members: two, messages: [{ role: 'user', content: `${first}, what do you think?` }] }),
+    });
+    const text = await res.text();
+    const speakers = [...text.matchAll(/^event: speaker\ndata: (.*)$/gm)].map((m) => JSON.parse(m[1]).id);
+    expect(speakers).toEqual([two[1]]);
+  });
+
   it('"Ask about him": a player dragged in is asked about in the server\'s words', async () => {
     const { events } = await ask(save.org, { with: 'analyst', about: { playerId: save.regular } });
     const typed: string = events[0].data.question.typed;

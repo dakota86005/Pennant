@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGet, apiPost, apiPut } from './api';
 import { PlayerNames, nameIndex, type Entry } from './PlayerNames';
 import { FallbackNotice, type FallbackNoticeData } from './FallbackNotice';
+import { ROOM_ID, addressedIn, roleLabel } from '../server/presentation/ai/staffWords';
 
 /**
  * Ask-the-save chat. The server streams the answer over SSE and announces each
@@ -54,63 +55,11 @@ const TOOL_LABELS: Record<string, string> = {
 
 interface StaffMember { id: string; name: string; role: string }
 
-/**
- * Short titles for the tabs. The full role reads well in a sentence but not in
- * a strip of five, and a name on its own is no help at all to anyone who does
- * not already know who Drew Toussaint is.
+/*
+ * Short titles for the tabs, and who a room message is aimed at (a name at its start, or after an @): one rule for both
+ * apps, read from the server's module (`staffWords.ts`, N13 review L1) so this page and the Mac's Staff room agree.
  */
-const ROOM_ID = 'room';
-
-/**
- * Who a message is aimed at, when it is aimed at anybody.
- *
- * Typing "Hal what do you think about Austin Riley?" into a room of three got
- * three answers, two of which were "I'm not Hal" — the room had no idea a name
- * at the front of a sentence meant anything. A name at the start of the
- * message, or anywhere with an @ in front of it, now sends the question to
- * that man alone.
- *
- * Only those two positions count. Matching a name anywhere would catch every
- * mention of a colleague inside an ordinary question, which is common in a
- * room where they are told to refer to each other by name.
- */
-function addressedMember(text: string, staff: StaffMember[]): StaffMember | null {
-  const hit = new Set<string>();
-  for (const p of staff) {
-    if (p.id === ROOM_ID) continue;
-    const parts = p.name.split(/\s+/);
-    for (const form of [p.name, parts[0], parts[parts.length - 1]]) {
-      if (!form || form.length < 2) continue;
-      const safe = form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      if (new RegExp(`^\\s*@?${safe}\\b`, 'i').test(text) || new RegExp(`@${safe}\\b`, 'i').test(text)) {
-        hit.add(p.id);
-      }
-    }
-  }
-  return hit.size === 1 ? (staff.find((p) => p.id === [...hit][0]) ?? null) : null;
-}
-
-const ROLE_LABEL: Record<string, string> = {
-  room: 'Group chat',
-  analyst: 'Analyst',
-  manager: 'Manager',
-  pitching: 'Pitching Coach',
-  hitting: 'Hitting Coach',
-  trainer: 'Trainer',
-  scout: 'Scout',
-  owner: 'Owner',
-};
-
-/**
- * The label under a name.
- *
- * The general manager is deliberately not in the map above: his title depends
- * on the save, since a club where you hold that chair yourself is represented
- * by the assistant instead. So anything the map does not name falls back to
- * what the server called it, capitalised to sit beside the rest.
- */
-const roleLabel = (p: { id: string; role: string }): string =>
-  ROLE_LABEL[p.id] ?? p.role.replace(/\b\w/g, (c) => c.toUpperCase());
+const addressedMember = addressedIn;
 
 /** Peter is always available; the rest depend on who the club has hired. */
 const FALLBACK_STAFF: StaffMember[] = [{ id: 'analyst', name: 'Peter', role: 'front-office analyst' }];
