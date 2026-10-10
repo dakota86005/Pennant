@@ -193,7 +193,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   # N12 Track C: Trades and Philosophy & Staff at 900 × 700 with the inspector open
   prepare_ui_test testTradesNarrowWindow configured '{"theme":"light"}'
   # N13: the AI surfaces with AI off (no key: the app's keys in memory), and the Staff room answering through the
-  # stand-in provider on this Mac (the chat set to the local provider, pointed at macos/scripts/fake-ai-provider.py)
+  # stand-in provider on this Mac (the chat set to the local provider, pointed at macos/scripts/fake-ai-provider.mjs)
   prepare_ui_test testStaffRoomAiOff configured '{"theme":"light"}'
   prepare_ui_test testStorylinesAndBriefingAiOff configured '{"theme":"dark"}'
   prepare_ui_test testStaffRoomAnswer configured '{"theme":"light","aiFeatures":{"chat":{"provider":"ollama","model":"stub"}}}'
@@ -220,7 +220,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   fake_ai=()
   fake_port="$SCRATCH/fake-ai.port"
   rm -f "$fake_port"
-  python3 -I "$ROOT/macos/scripts/fake-ai-provider.py" "$fake_port" >"$LOGS/fake-ai-provider.log" 2>&1 &
+  node "$ROOT/macos/scripts/fake-ai-provider.mjs" "$fake_port" >"$LOGS/fake-ai-provider.log" 2>&1 &
   fake_pid=$!
   for _ in $(seq 1 50); do [ -s "$fake_port" ] && break; sleep 0.1; done
   if [ -s "$fake_port" ]; then

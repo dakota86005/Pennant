@@ -152,7 +152,7 @@ extension ServerConfiguration {
                 ?? dataFolder.appending(path: "logs", directoryHint: .isDirectory)
             var extra: [String: String] = [:]
             if let readOnly = environment["OOTP_FO_DB_READONLY"] { extra["OOTP_FO_DB_READONLY"] = readOnly }
-            // A stand-in AI provider on this Mac for the UI tests (N13: `macos/scripts/fake-ai-provider.py`, an
+            // A stand-in AI provider on this Mac for the UI tests (N13: `macos/scripts/fake-ai-provider.mjs`, an
             // OpenAI-compatible server the local provider is pointed at); never a real provider, never a key
             if let fake = text("PENNANT_DEV_LOCAL_AI_URL", "PennantDevLocalAIURL") { extra["OLLAMA_BASE_URL"] = fake }
             // A pretend home for the server to find saves in (the UI tests' and the captures' pretend OOTP saves)

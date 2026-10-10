@@ -1593,7 +1593,7 @@ Stage B amendment (the keys). Every word is the server's; Swift lays it out and 
   "about him" sent as an id, links, the Keychain items under a test service, keys handed over), PennantAPI's stream
   reading, `AiSurfacesFeatureTests`, `AiSurfacesSnapshotTests` (local only), and the UI tests `testStaffRoomAiOff`,
   `testStorylinesAndBriefingAiOff` and `testStaffRoomAnswer`, the last through a stand-in OpenAI-compatible provider
-  that `test.sh` runs on 127.0.0.1 (`macos/scripts/fake-ai-provider.py`; the chat set to the local provider, pointed at
+  that `test.sh` runs on 127.0.0.1 (`macos/scripts/fake-ai-provider.mjs`; the chat set to the local provider, pointed at
   it with `PENNANT_DEV_LOCAL_AI_URL`), never a real provider or key. The UI tests keep their keys in memory
   (`-PennantTestKeys memory`).
 

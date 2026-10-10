@@ -30,7 +30,10 @@ public struct StaffRoomScene: View {
         } detail: {
             detail
         }
+        // Kept as the window's title (VoiceOver, the Window menu) but not drawn in the toolbar, as the main window does:
+        // the system's title grey over the content failed the contrast audit there
         .navigationTitle(Text(verbatim: store.view?.title.display ?? ""))
+        .toolbar(removing: .title)
         .toolbar { toolbar }
         .dropDestination(for: PlayerRef.self) { players, _ in
             guard let player = players.first else { return false }
@@ -69,12 +72,15 @@ public struct StaffRoomScene: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(verbatim: member.name.display).font(.body.weight(.semibold))
                             .accessibilityIdentifier("staffRoom.member.\(member.id)")
-                        Text(verbatim: member.role.display).font(.caption).foregroundStyle(.readableSecondary)
+                        // On the selected row the system's selection colour: primary there, so it reads as the name does
+                        Text(verbatim: member.role.display).font(.caption)
+                            .foregroundStyle(member.id == with ? AnyShapeStyle(.primary) : AnyShapeStyle(.readableSecondary))
                     }
                     .help(detail: member.role.hint)
                     .tag(member.id)
                 }
             }
+            .listStyle(.sidebar)
             .accessibilityIdentifier("staffRoom.people")
             .background(SidebarColumnName())
         } else if let problem = store.viewProblem {

@@ -70,7 +70,8 @@ struct PennantApp: App {
                 .environment(appDelegate.model)
                 .environment(appDelegate.routing)
         }
-        .defaultSize(width: 920, height: 700)
+        // Fits GitHub's runner's 1024 × 768 screen whole
+        .defaultSize(width: 860, height: 600)
 
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()

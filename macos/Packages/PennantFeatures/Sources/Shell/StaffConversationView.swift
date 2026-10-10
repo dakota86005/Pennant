@@ -24,9 +24,7 @@ struct StaffConversationView: View {
     private var answer: StaffRoomAnswer? { store.answers[with] }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let members, let room = view.room { RoomMembers(view: view, room: room, chosen: members) }
-            ScrollViewReader { proxy in
+        ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
                         if (conversation?.messages.isEmpty ?? true) && answer == nil { opening }
@@ -39,18 +37,34 @@ struct StaffConversationView: View {
                     .frame(maxWidth: 760)
                     .frame(maxWidth: .infinity)
                 }
-                .defaultScrollAnchor(.bottom)
+                // A conversation reads from the bottom, as Messages does; the opening, before one, from the top
+                .defaultScrollAnchor(kept.isEmpty && answer == nil ? .top : .bottom)
                 .onScrollGeometryChange(for: Bool.self) { geometry in
                     geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 48
                 } action: { _, bottom in atBottom = bottom }
                 .onChange(of: answer?.messages.last?.streamed.count) { _, _ in follow(proxy) }
                 .onChange(of: answer?.messages.count) { _, _ in follow(proxy) }
                 .onChange(of: conversation?.conversationStamp) { _, _ in follow(proxy) }
-            }
-            .background(Color.readablePage)
-            Divider()
-            compose.background(Color.readablePage)
+                // Who is in the room above the conversation, the compose field below it, each in the safe area (under
+                // the toolbar, never beneath it), on the page's opaque colour
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if let members, let room = view.room {
+                        VStack(spacing: 0) {
+                            RoomMembers(view: view, room: room, chosen: members)
+                            Divider()
+                        }
+                        .background(Color.readablePage)
+                    }
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    VStack(spacing: 0) {
+                        Divider()
+                        compose
+                    }
+                    .background(Color.readablePage)
+                }
         }
+        .background(Color.readablePage)
         .onChange(of: answer?.answeredCount) { _, count in
             guard let count, count > 0, let last = answer?.lastAnswered, let markdown = last.answer?.markdown else { return }
             let speaker = last.speaker?.display ?? ""

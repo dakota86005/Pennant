@@ -2302,7 +2302,7 @@ final class PennantUITests: XCTestCase {
     @MainActor
     func testStaffRoomAnswer() throws {
         guard let local = environment["PENNANT_UI_LOCAL_AI"] else {
-            throw XCTSkip("PENNANT_UI_LOCAL_AI is not set: test.sh runs the stand-in provider (macos/scripts/fake-ai-provider.py)")
+            throw XCTSkip("PENNANT_UI_LOCAL_AI is not set: test.sh runs the stand-in provider (macos/scripts/fake-ai-provider.mjs)")
         }
         let app = launch(arguments: ["-PennantTestKeys", "memory"], environment: ["PENNANT_DEV_LOCAL_AI_URL": local])
         waitForShell(app)
