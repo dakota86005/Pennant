@@ -8,7 +8,15 @@ import Foundation
 /// its own pings the main queue each half second; after 5 s without an answer it writes the main thread's stack twice:
 /// at once, from a signal the main thread itself takes (`backtrace_symbols_fd`), and from `/usr/bin/sample`, into
 /// `hang-*.log` beside the app's log (kept with each UI test's logs by `test.sh`). Once per process. A shorter stall of
-/// 2 s or more keeps the stacks taken from 1.5 s on, as `hang-stall-<n>.log` (`captureStall`). Nonisolated: its
+/// 2 s or more keeps the stacks taken from 1.5 s on, as `hang-stall-<n>.log` (`captureStall`).
+///
+/// Whose time the 2 to 4 s stalls are (PR #63's run, read again with these stacks on run 38079051437): the test's, not
+/// the GM's. In Player Search's full-page audit every stall holds XCTest's own work on the app's main thread: its
+/// in-process queries (`XCTPerformOnMainRunLoop`, `XCElementSnapshot children`) or the accessibility hierarchy it copies
+/// (`_XCopyHierarchy`), with the table's row views made and put away for them (`NSTableRowData`); they line up with
+/// the test's "Get number of matches" and audit steps. The launch stalls (Compare, the club owed after Setup) are the
+/// first Morning Report's first frame on a fresh runner: Metal compiling its render pipelines with no shader cache, then
+/// SwiftUI's first layout. No stack holds a frame of Pennant's own code. Nonisolated: its
 /// timer runs on a queue of its own (the app target's default isolation is the main actor, whose check would stop it).
 nonisolated final class MainThreadWatchdog: @unchecked Sendable {
     private let log: @Sendable (String) -> Void

@@ -1458,6 +1458,20 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
 - *Left for later:* the per-view sidebar counts; the React `/api/draft` route's own partial-tool averages and zero
   stand-ins (deleted at the cutover); `OfficeKit` and Major League Ops' and the farm's table components are three copies
   of one design, to fold together once N12's tracks have merged.
+- *After N12 (2026-10-10):* every table drawn with a detail pane serves the sentence beneath it while no row is chosen
+  (`choose`, through `choosable` in `officeTable.ts`; League Office's and Scouting's tables lacked it and OfficeKit
+  wrote its own), checked from the contract fixtures by `officePaneChoose.test.ts`. The UI tests' watchdog saw the main
+  thread answer 2 to 3.4 s late in Player Search's full-page audit (four times), the club owed after Setup and Compare
+  (PR #63). It now keeps the main thread's stacks from any stall of 2 s (`hang-stall-<n>.log`), and on run 38079051437
+  they showed whose time it is: in the audit, XCTest's own queries and accessibility snapshots run on the app's main
+  thread (`XCTPerformOnMainRunLoop`, `_XCopyHierarchy`, the table's row views made and put away for them), at the test's
+  "Get number of matches" and audit steps; at launch, the first Morning Report's first frame on a fresh runner (Metal
+  compiling render pipelines with no shader cache, then SwiftUI's first layout). No stack held Pennant's own code, so no
+  GM's click is behind them; the stacks stay kept for the next run that finds one. Go's departments (⌘1 to ⌘9) work
+  from a player's window (section 3.6's palette note). A UI test's fresh launch removes the saved windows where macOS 26
+  keeps a non-sandboxed app's (`FreshTestState`: a daemon's container, by the app's signing identifier), as the old
+  `Saved Application State` folder was empty at every launch; the pop-up's narrowest is an empty `NSPopUpButton`'s
+  measured width (`AppKitPopUp.narrowest`).
 
 **As built at N12, Track C (2026-10-06): Trades and Philosophy & Staff (server and Mac).** Branch
 `feature/swiftui-n12-trades`; D-073 (BEHAVIOR_CASES.md "Pennant for Mac", the `tradeDesk.test.ts`, `philosophyViews.test.ts`,
