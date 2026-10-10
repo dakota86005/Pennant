@@ -231,7 +231,10 @@ export interface AiWritingStatus {
   state: AiWritingState;
   /** "Written Oct 10, 2026, 3:04 PM, from the export of May 9, 2040", "Writing now", "Not written yet", or the failure. */
   status: Claim;
-  /** Said when what is shown was written from an earlier export than the one imported now; null otherwise. */
+  /**
+   * Said when what is shown was written from another export than the one imported now ("Written from an earlier
+   * export", or "a different export" when it is dated after it); null when it is the same day's, or a date is unknown.
+   */
   older: Claim | null;
   /** "Write storylines" or "Write fresh storylines". */
   write: Cell;

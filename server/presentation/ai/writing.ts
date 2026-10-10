@@ -3,6 +3,7 @@
  * new one (never written, writing, written, failed), and the marking beside it. The React pages' words, moved.
  */
 import { basis, cell, claim } from '../claim.js';
+import { parseGameDate } from '../../dataFreshness.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { timestampWords } from '../../timeWords.js';
 import { linked, sectionsOf, type LinkIndex } from './markdown.js';
@@ -51,9 +52,13 @@ function status(ctx: AiContext, kind: Kind, job: JobReading, written: Written | 
     { label: 'What it reads', value: w.from },
   ];
   const nowDay = gameDateDisplay(ctx.gameDate);
-  const older = written && exportDay && nowDay && written.gameDate !== ctx.gameDate
+  // Compared as dates (OOTP writes them unpadded, so as strings "2040-5-9" sorts after "2040-5-10"; review L5): an export
+  // of the same day is the one imported now, and one dated after it is only different, never earlier
+  const writtenOn = parseGameDate(written?.gameDate);
+  const nowOn = parseGameDate(ctx.gameDate);
+  const older = written && exportDay && nowDay && writtenOn && nowOn && writtenOn !== nowOn
     ? claim({
-      text: `Written from an earlier export (${exportDay}); the export now is ${nowDay}.`,
+      text: `Written from ${writtenOn < nowOn ? 'an earlier' : 'a different'} export (${exportDay}); the export now is ${nowDay}.`,
       tone: 'caution', links: [],
       basis: basis({
         because: [{ label: 'Written from', value: exportDay }, { label: 'Imported now', value: nowDay }],

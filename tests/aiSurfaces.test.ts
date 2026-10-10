@@ -452,6 +452,27 @@ describe('Storylines and the GM Briefing (N13; D-074)', () => {
     expect(never.status.text).toBe('No briefing written yet.');
   });
 
+  it('orders export dates as dates: the same day written another way is not older, and a later one is only different (review L5)', async () => {
+    const now = (db.prepare('SELECT "current_date" AS d FROM leagues LIMIT 1').get() as { d: string }).d;
+    const [y, m, d] = now.split('-').map(Number);
+    const padded = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const write = (gameDate: string) => fs.writeFileSync(storylinesPath(save.org), JSON.stringify({
+      generatedAt: '2040-07-01T12:00:00.000Z', gameDate, storylines: [{ category: 'The Club', headline: 'A story', body: 'Words.' }],
+    }));
+    try {
+      expect(padded).not.toBe(now);
+      write(padded);
+      expect((await get(`/api/v2/storylines/${save.org}`)).json.older).toBeNull();
+      write(`${y + 1}-1-2`);
+      const later = (await get(`/api/v2/storylines/${save.org}`)).json;
+      expect(later.older.text).toMatch(/^Written from a different export \(/);
+      write(`${y - 1}-12-30`);
+      expect((await get(`/api/v2/storylines/${save.org}`)).json.older.text).toMatch(/^Written from an earlier export \(/);
+    } finally {
+      fs.rmSync(storylinesPath(save.org), { force: true });
+    }
+  });
+
   it('writes in the background on request: writing at once, then written, through the React routes\' own job', async () => {
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => { release = resolve; });
