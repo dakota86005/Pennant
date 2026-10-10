@@ -1,0 +1,173 @@
+{
+  "title": {
+    "display": "Club 1 N Storylines"
+  },
+  "lede": {
+    "display": "Stories about your organization, written by AI from your save's figures."
+  },
+  "state": "written",
+  "status": {
+    "text": "Written Jul 1, 2040, 12:00 PM, from the export of May 6, 2040.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Written",
+          "value": "Jul 1, 2040, 12:00 PM"
+        },
+        {
+          "label": "From the export of",
+          "value": "May 6, 2040"
+        },
+        {
+          "label": "What it reads",
+          "value": "The standings, recent results, the club's leaders, the farm, contracts, finances and the league's rules."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "The front office",
+        "asOf": null,
+        "gameDate": "2040-5-6"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "older": null,
+  "write": {
+    "display": "Write fresh storylines"
+  },
+  "canWrite": false,
+  "notice": null,
+  "written": {
+    "text": "Written by AI from Pennant's figures. It decides nothing.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "What it was given",
+          "value": "The club's standings, recent results, leaders, the farm as Minor League Operations describes it, contracts, finances and the league's rules, from Pennant's own reports."
+        },
+        {
+          "label": "What it is",
+          "value": "Writing about Pennant's figures, for reading. It decides nothing, and the decision is yours."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "The front office",
+        "asOf": null,
+        "gameDate": "2040-5-6"
+      },
+      "unknown": [
+        "An AI can be wrong about what it reads; the figures in Pennant's reports are Pennant's own."
+      ],
+      "wouldChange": [
+        "Write fresh storylines, after a newer export."
+      ],
+      "lean": null,
+      "certainty": "unknown",
+      "called": "Not known"
+    },
+    "links": []
+  },
+  "ai": {
+    "available": false,
+    "off": {
+      "text": "AI is off. Everything else in Pennant works without it.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Why",
+            "value": "No API credential is configured for the Storylines provider."
+          },
+          {
+            "label": "What still works",
+            "value": "Every report, view, figure and finding is worked out by Pennant itself. Storylines are only written about them by an AI."
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "Settings",
+          "asOf": null,
+          "gameDate": "2040-5-6"
+        },
+        "unknown": [],
+        "wouldChange": [
+          "An AI key in Settings."
+        ],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "Add a key in Settings to have storylines written"
+    },
+    "note": {
+      "text": "Written by AI from Pennant's figures. It decides nothing.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "What it is given",
+            "value": "The club's standings, recent results, leaders, the farm as Minor League Operations describes it, contracts, finances and the league's rules, from Pennant's own reports."
+          },
+          {
+            "label": "What it is not",
+            "value": "Pennant's answer: its reports are. It explains them in words and makes no decision: the decision is yours."
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "The front office",
+          "asOf": null,
+          "gameDate": "2040-5-6"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "How AI is used: stated, not fitted"
+      },
+      "links": []
+    }
+  },
+  "writingStamp": "wstamp",
+  "stories": [
+    {
+      "category": {
+        "display": "Player Spotlight"
+      },
+      "headline": "P 1000 keeps hitting",
+      "body": {
+        "markdown": "[P 1000](pennant://player/1000) has carried the lineup, and the [Club 2 N](pennant://club/2) are next.",
+        "links": [
+          {
+            "url": "pennant://player/1000",
+            "text": "P 1000",
+            "target": {
+              "kind": "player",
+              "playerId": 1000,
+              "teamId": 1
+            }
+          },
+          {
+            "url": "pennant://club/2",
+            "text": "Club 2 N",
+            "target": {
+              "kind": "club",
+              "teamId": 2
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

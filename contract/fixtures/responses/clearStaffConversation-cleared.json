@@ -1,0 +1,109 @@
+{
+  "conversation": {
+    "with": "analyst",
+    "speaker": {
+      "display": "Peter · Analyst"
+    },
+    "messages": [],
+    "count": null,
+    "written": {
+      "text": "Answers are written by AI from Pennant's figures, in a staff member's voice.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "What it was given",
+            "value": "Your question, the conversation so far, and Pennant's own reports and figures, which it looks up as it answers."
+          },
+          {
+            "label": "What it is",
+            "value": "An explanation of Pennant's figures in a staff member's voice. It decides nothing, and the decision is yours."
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "The front office",
+          "asOf": null,
+          "gameDate": "2040-5-6"
+        },
+        "unknown": [
+          "An AI can be wrong about what it reads; the figures in Pennant's reports are Pennant's own."
+        ],
+        "wouldChange": [
+          "Another question, or a newer export."
+        ],
+        "lean": null,
+        "certainty": "unknown",
+        "called": "Not known"
+      },
+      "links": []
+    },
+    "ai": {
+      "available": false,
+      "off": {
+        "text": "AI is off. Everything else in Pennant works without it.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Why",
+              "value": "No Anthropic (Claude) key set. Open Settings and add your key — you can get one at console.claude.com."
+            },
+            {
+              "label": "What still works",
+              "value": "Every report, view, figure and finding is worked out by Pennant itself. The staff room only puts questions about them to an AI."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Settings",
+            "asOf": null,
+            "gameDate": "2040-5-6"
+          },
+          "unknown": [],
+          "wouldChange": [
+            "An AI key in Settings."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": [],
+        "hint": "Add a key in Settings to ask your staff questions"
+      },
+      "note": {
+        "text": "Written by AI from Pennant's figures. It decides nothing.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "What it is given",
+              "value": "Your question, the conversation so far, and Pennant's own reports and figures, which it looks up as it answers."
+            },
+            {
+              "label": "What it is not",
+              "value": "Pennant's answer: its reports are. It explains them in words and makes no decision: the decision is yours."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "The front office",
+            "asOf": null,
+            "gameDate": "2040-5-6"
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "policy",
+          "called": "A line chosen and stated",
+          "stamp": "How AI is used: stated, not fitted"
+        },
+        "links": []
+      }
+    },
+    "conversationStamp": "cstamp"
+  },
+  "done": {
+    "display": "Started over with Peter."
+  }
+}

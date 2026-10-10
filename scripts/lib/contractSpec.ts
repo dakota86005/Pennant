@@ -37,7 +37,7 @@ export const SHAPES_SPEC_PATH = path.join(ROOT, 'macos', 'Packages', 'PennantAPI
 export const buildShapesSpec = (): Schema => buildSpec({ index: SHAPES_INDEX, operations: [], openUnions: {} });
 
 /** Unions a newer server may extend with a new member, and the catch-all an older client decodes such a member as. */
-export const OPEN_UNIONS: Record<string, string> = { ServerEvent: 'UnknownServerEvent' };
+export const OPEN_UNIONS: Record<string, string> = { ServerEvent: 'UnknownServerEvent', StaffRoomEvent: 'UnknownStaffRoomEvent' };
 
 const COMPONENT_NAME = /^[A-Za-z0-9._-]+$/;
 const METHOD_ORDER = ['get', 'put', 'post', 'delete'];

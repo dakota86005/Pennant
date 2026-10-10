@@ -181,6 +181,10 @@ describe('the presentation boundary', () => {
    * The service reads each department's specialist through its public module (V2 plan section 4.4), and nothing else
    * reaches into a department: no rating module, no scouted evidence, no odds or posture of its own.
    */
+  it('orgParam.ts (N13) resolves the club a request names from the club question, the save\'s clubs and the club followed, and reads nothing else', () => {
+    expect(valueImports('orgParam.ts').map(moduleName).sort()).toEqual(['clubOwed', 'db', 'org', 'viewingOrganization']);
+  });
+
   it.each(['frontOfficeService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts'])('%s reads the specialists only through their public modules', (file) => {
     // `morningReport` is the Morning Report's own reader (N6): the masthead's and the profile's facts, and the roster map
     // through Player Value, Player State and the farm's door (`mlbEvidence`); its own imports are held below
@@ -199,6 +203,8 @@ describe('the presentation boundary', () => {
       'tradeDeskBuild',
       'mlbOperations', 'morningReport', 'org', 'payroll', 'playerStateRoutes', 'rosterops', 'saveCalibration', 'serverEvents', 'valuation',
       'viewingOrganization',
+      // N13: the club a request names and its refusals, moved out of the service unchanged (held to its own imports below)
+      'orgParam',
     ]);
     const outside = valueImports(file)
       .filter((s) => s.startsWith('./') && !s.startsWith('./presentation/'))
@@ -431,7 +437,9 @@ describe('the presentation boundary', () => {
       // N12 Track C: the Trade Desk, read in its build, kept by its service, and its AI desk's answer worded there
       'tradeDeskBuild.ts', 'tradeDeskService.ts',
       // N12 Track C: Philosophy & Staff's views, worded and served by their service
-      'philosophyViewService.ts']);
+      'philosophyViewService.ts',
+      // N13: the AI surfaces' words, read and kept by their service (which reaches no AI module; the AI modules route to it)
+      'aiSurfacesService.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

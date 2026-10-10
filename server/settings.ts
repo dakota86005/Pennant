@@ -747,6 +747,18 @@ const KEY_SHAPE: Partial<Record<ProviderId, { test: RegExp; hint: string }>> = {
   opencode: { test: /^.{16,}$/, hint: 'That looks too short for an OpenCode Zen key.' },
 };
 
+/** Why a pasted key cannot be one for this provider, in a sentence; null when its shape is right (N13: the key check). */
+export function keyShapeProblem(provider: ProviderId, key: string): string | null {
+  const shape = KEY_SHAPE[provider];
+  if (!shape) return null;
+  return shape.test.test(key.trim()) ? null : shape.hint;
+}
+
+/** Where keys are kept on this server: handed over from the Keychain (the Mac app's sidecar), else the data folder. */
+export function keyStorageKind(): 'keychain' | 'stored' {
+  return injected ? 'keychain' : 'stored';
+}
+
 /** Verifies a key against the API before saving, so a typo is caught here. */
 settingsRoutes.post('/settings/api-key', async (req, res) => {
   const { key, provider: raw } = req.body as { key?: string; provider?: string };

@@ -179,3 +179,17 @@ export type {
   PhilosophyViewHead, PhilosophyDimensionView, PhilosophyGroupView, PhilosophyPolicyOption, PhilosophyPolicyView, PhilosophyComparable,
   PhilosophyIdentity, PhilosophyView, PhilosophySetting, PhilosophyUpdate, PhilosophyChange, StaffSection, CoachingStaffView,
 } from '../presentation/philosophy/types.js';
+// The AI surfaces (N13 Stage A, D-074): the Staff room and its stream, Storylines, the GM Briefing, the AI keys
+export type {
+  AiSurfaceState, AiLink, AiText, StaffMemberView, StaffRoomPicker, StaffRoomView, StaffRoomMessage, StaffRoomConversation, StaffRoomAsk,
+  StaffRoomCleared, StaffRoomEvent, StaffRoomStartedEvent, StaffRoomSpeakerEvent, StaffRoomLookingUpEvent, StaffRoomTextEvent,
+  StaffRoomNoticeEvent, StaffRoomAnsweredEvent, StaffRoomDoneEvent, StaffRoomFailedEvent, AiWritingState, AiWritingStatus, AiStory,
+  StorylinesView, BriefingSection, BriefingView, AiProviderRow, AiKeysView, AiKeyCheck, AiKeyCheckAnswer,
+} from '../presentation/ai/types.js';
+/**
+ * A Staff room event this build of the contract does not name, sent by a newer server: listed last among
+ * `StaffRoomEvent`'s shapes, so an older app decodes it (and ignores it) instead of failing the stream.
+ */
+export interface UnknownStaffRoomEvent {
+  type: string;
+}

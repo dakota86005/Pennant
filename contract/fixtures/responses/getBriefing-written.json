@@ -1,0 +1,169 @@
+{
+  "title": {
+    "display": "GM Briefing"
+  },
+  "lede": {
+    "display": "A written digest of the standings, injuries, the farm and the decisions ahead, built from the organization's own reports."
+  },
+  "state": "written",
+  "status": {
+    "text": "Written Jul 1, 2040, 12:00 PM, from the export of May 6, 2040.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Written",
+          "value": "Jul 1, 2040, 12:00 PM"
+        },
+        {
+          "label": "From the export of",
+          "value": "May 6, 2040"
+        },
+        {
+          "label": "What it reads",
+          "value": "The standings, injuries, the farm, contracts, the trading block, finances, key dates and how current the data is."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "The front office",
+        "asOf": null,
+        "gameDate": "2040-5-6"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "older": null,
+  "write": {
+    "display": "Write a new briefing"
+  },
+  "canWrite": false,
+  "notice": null,
+  "written": {
+    "text": "Written by AI from Pennant's figures. It decides nothing.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "What it was given",
+          "value": "The standings, injuries, the farm as Minor League Operations describes it, contracts, the trading block, finances, key dates and how current the data is, from Pennant's own reports."
+        },
+        {
+          "label": "What it is",
+          "value": "Writing about Pennant's figures, for reading. It decides nothing, and the decision is yours."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "The front office",
+        "asOf": null,
+        "gameDate": "2040-5-6"
+      },
+      "unknown": [
+        "An AI can be wrong about what it reads; the figures in Pennant's reports are Pennant's own."
+      ],
+      "wouldChange": [
+        "Write a new briefing, after a newer export."
+      ],
+      "lean": null,
+      "certainty": "unknown",
+      "called": "Not known"
+    },
+    "links": []
+  },
+  "ai": {
+    "available": false,
+    "off": {
+      "text": "AI is off. Everything else in Pennant works without it.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Why",
+            "value": "No Anthropic (Claude) key set. Open Settings and add your key — you can get one at console.claude.com."
+          },
+          {
+            "label": "What still works",
+            "value": "The Morning Report, the desk and every department's report are worked out by Pennant itself. The briefing is only written from them by an AI."
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "Settings",
+          "asOf": null,
+          "gameDate": "2040-5-6"
+        },
+        "unknown": [],
+        "wouldChange": [
+          "An AI key in Settings."
+        ],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [],
+      "hint": "Add a key in Settings to have a briefing written"
+    },
+    "note": {
+      "text": "Written by AI from Pennant's figures. It decides nothing.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "What it is given",
+            "value": "The standings, injuries, the farm as Minor League Operations describes it, contracts, the trading block, finances, key dates and how current the data is, from Pennant's own reports."
+          },
+          {
+            "label": "What it is not",
+            "value": "Pennant's answer: its reports are. It explains them in words and makes no decision: the decision is yours."
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "The front office",
+          "asOf": null,
+          "gameDate": "2040-5-6"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "How AI is used: stated, not fitted"
+      },
+      "links": []
+    }
+  },
+  "writingStamp": "wstamp",
+  "sections": [
+    {
+      "heading": "Status",
+      "body": {
+        "markdown": "The club is playing well.",
+        "links": []
+      }
+    },
+    {
+      "heading": "Watch List",
+      "body": {
+        "markdown": "• **[P 1000](pennant://player/1000)**: his line has held up.",
+        "links": [
+          {
+            "url": "pennant://player/1000",
+            "text": "P 1000",
+            "target": {
+              "kind": "player",
+              "playerId": 1000,
+              "teamId": 1
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

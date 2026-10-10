@@ -1,0 +1,296 @@
+{
+  "title": {
+    "display": "AI providers"
+  },
+  "lede": {
+    "display": "AI is optional. It writes and explains; every figure and finding in Pennant is the same without it."
+  },
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": {
+        "display": "Anthropic (Claude)"
+      },
+      "status": {
+        "text": "No key.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Key",
+              "value": "Not set"
+            },
+            {
+              "label": "Used for",
+              "value": "the GM Briefing, the Trade Desk, Storylines and the Staff room"
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Settings",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [
+            "Adding a key in Settings."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "configured": false,
+      "needsKey": true,
+      "source": null,
+      "sourceText": null,
+      "getOne": {
+        "display": "Get a key at console.claude.com"
+      },
+      "usedFor": {
+        "display": "Used for the GM Briefing, the Trade Desk, Storylines and the Staff room"
+      },
+      "check": {
+        "display": "Check key"
+      }
+    },
+    {
+      "id": "openai",
+      "name": {
+        "display": "OpenAI"
+      },
+      "status": {
+        "text": "No key.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Key",
+              "value": "Not set"
+            },
+            {
+              "label": "Used for",
+              "value": "Nothing yet: no AI feature is set to use it."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Settings",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [
+            "Adding a key in Settings."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "configured": false,
+      "needsKey": true,
+      "source": null,
+      "sourceText": null,
+      "getOne": {
+        "display": "Get a key at platform.openai.com"
+      },
+      "usedFor": null,
+      "check": {
+        "display": "Check key"
+      }
+    },
+    {
+      "id": "gemini",
+      "name": {
+        "display": "Google Gemini"
+      },
+      "status": {
+        "text": "No key.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Key",
+              "value": "Not set"
+            },
+            {
+              "label": "Used for",
+              "value": "Nothing yet: no AI feature is set to use it."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Settings",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [
+            "Adding a key in Settings."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "configured": false,
+      "needsKey": true,
+      "source": null,
+      "sourceText": null,
+      "getOne": {
+        "display": "Get a key at aistudio.google.com"
+      },
+      "usedFor": null,
+      "check": {
+        "display": "Check key"
+      }
+    },
+    {
+      "id": "opencode",
+      "name": {
+        "display": "OpenCode Zen"
+      },
+      "status": {
+        "text": "No key.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Key",
+              "value": "Not set"
+            },
+            {
+              "label": "Used for",
+              "value": "Nothing yet: no AI feature is set to use it."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Settings",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [
+            "Adding a key in Settings."
+          ],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "configured": false,
+      "needsKey": true,
+      "source": null,
+      "sourceText": null,
+      "getOne": {
+        "display": "Get a key at opencode.ai/auth"
+      },
+      "usedFor": null,
+      "check": {
+        "display": "Check key"
+      }
+    },
+    {
+      "id": "ollama",
+      "name": {
+        "display": "Ollama (local)"
+      },
+      "status": {
+        "text": "No key needed: it runs on this Mac.",
+        "tone": "neutral",
+        "basis": {
+          "because": [
+            {
+              "label": "Key",
+              "value": "Not needed"
+            },
+            {
+              "label": "Used for",
+              "value": "Nothing yet: no AI feature is set to use it."
+            }
+          ],
+          "source": {
+            "department": "frontOffice",
+            "specialist": "Settings",
+            "asOf": null,
+            "gameDate": null
+          },
+          "unknown": [],
+          "wouldChange": [],
+          "lean": null,
+          "certainty": "fact",
+          "called": "A fact from the export"
+        },
+        "links": []
+      },
+      "configured": true,
+      "needsKey": false,
+      "source": null,
+      "sourceText": null,
+      "getOne": null,
+      "usedFor": null,
+      "check": null
+    }
+  ],
+  "where": {
+    "text": "Keys are kept in the data folder.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Where",
+          "value": "In the data folder, encrypted where the system allows."
+        },
+        {
+          "label": "Where a key goes",
+          "value": "Only to its own provider, with the question or the figures being written about. It is never shown in full, logged or sent anywhere else."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": []
+  },
+  "off": {
+    "text": "AI is off. Everything else in Pennant works without it.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Why",
+          "value": "No AI feature has a key for the provider it is set to use."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "An AI key in Settings."
+      ],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [],
+    "hint": "Add a key to ask your staff, or to have storylines written"
+  }
+}
