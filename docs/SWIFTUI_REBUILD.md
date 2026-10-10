@@ -1601,7 +1601,8 @@ Stage B amendment (the keys). Every word is the server's; Swift lays it out and 
   `testStorylinesAndBriefingAiOff` and `testStaffRoomAnswer`, the last through a stand-in OpenAI-compatible provider
   that `test.sh` runs on 127.0.0.1 (`macos/scripts/fake-ai-provider.mjs`; the chat set to the local provider, pointed at
   it with `PENNANT_DEV_LOCAL_AI_URL`), never a real provider or key. The UI tests keep their keys in memory
-  (`-PennantTestKeys memory`).
+  (`-PennantTestKeys memory`). CI run 38093716278 passed every job: the three N13 UI tests with their audits at 0
+  findings (no new set-aside rule), the Keychain probe and all four shards.
 
 ### 3.6 Signature interactions
 
