@@ -3242,3 +3242,31 @@ answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at 
   is as it was); the landing folders still reach none; the service is added to the list of modules that import
   `presentation/`, as each milestone's service is, and `orgParam.ts` to the Front Office service's public modules,
   with a new rule pinning its own imports.
+
+**Amendment (N13 Stage B builder, 2026-10-10): the keys on the Mac, settled with evidence.** Implementation:
+`macos/Packages/PennantKit/Sources/PennantKit/KeychainItems.swift`, `KeySource.swift`; the CI job `keychain-no-prompt`
+(`macos/scripts/keychain-no-prompt.sh`).
+- **The login keychain, one service per bundle id.** Keys are generic passwords under `<bundle id>.apikeys`: the release
+  app's is `com.dakotawise.pennant.apikeys` (the name N3 read, so it needs no migration) and a development build's
+  `com.dakotawise.pennant.dev.apikeys`, so neither reads the other's items. The development build does not copy
+  anything from N3's name: N3 only read, so nothing the app wrote is there, and an item put there by hand is the
+  release app's to read. A developer enters a key once in the development build's Settings. The data-protection keychain
+  stays unused: it needs an application-identifier entitlement and so a provisioning profile (an owner step).
+- **No dialog, by the switch that applies to this keychain.** `kSecUseAuthenticationUI(Fail)` (deprecated since macOS 11)
+  and `LAContext.interactionNotAllowed` govern only the data-protection keychain, as Security's own header says; for
+  the login keychain the switch is the process-wide `SecKeychainSetUserInteractionAllowed(false)` (still exported, no
+  longer in the SDK's headers, so found at run time), held off for exactly each call and put back. CI run 38083908362
+  proved it with two differently signed copies of the same code on a throwaway keychain: the second copy's read of the
+  first's item came back unreadable at once, and the same read with dialogs allowed waited on the system's "wants to use
+  your confidential information" dialog until stopped (its screenshot is the job's artifact).
+- **Another copy's item cannot be replaced, so a key is kept beside it.** The same run showed a copy may not delete an
+  item another copy made (`errSecInvalidOwnerEdit`), so "delete, then add" cannot re-own it. A provider's key is kept
+  under its id, or under `<id>.2`, `<id>.3`… when an item there is another copy's; reading takes the newest item this
+  copy can read, a provider with items but none readable shows the served `AiKeysView.reenter` line ("Pennant couldn't
+  read the key saved for this provider. Enter it again."), and removing deletes what this copy may and leaves the rest.
+  A Developer ID release keeps one designated requirement across updates, so this arises only for ad hoc or differently
+  signed builds.
+- **Saving hands the set over at once; tests never touch the Mac's Keychain.** A saved key goes to the running server on
+  stdin (`{"keys":{…}}`) with no restart, and the field empties: the key is never shown again, logged or put in an error
+  (a failure is its step and `OSStatus`). The UI tests launch with `-PennantTestKeys memory`; the package tests use
+  `NoKeys`, `FixedKeys`, `MemoryKeyStore` or a service of their own, removed after.
