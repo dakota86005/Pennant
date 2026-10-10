@@ -19,6 +19,7 @@ import { tableRow } from '../majorLeague/common.js';
 import type { MlbPlayer } from '../majorLeague/types.js';
 import { money } from '../player/words.js';
 import { column, officeClub, ordinal, pctText } from './common.js';
+import { choosable } from './office.js';
 import type { LeagueFranchiseView, LeagueSeasonChart, LeagueSeasonPoint, LeagueTenure, OfficeRow, OfficeSection } from './types.js';
 
 const RECORD = 'The franchise\'s record books';
@@ -176,7 +177,7 @@ function seasonsSection(v: ClubhouseContext, seasons: FranchiseSeason[], carry: 
     id: 'seasons',
     title: cell('Season by season'),
     summary: cell(`${plural(seasons.length, 'season')}, the latest first`),
-    table: { columns, rows, empty: cell('This export carries no completed seasons for the club.') },
+    table: choosable({ columns, rows, empty: cell('This export carries no completed seasons for the club.') }),
     note: factClaim(v, 'What the columns mean', {
       specialist: RECORD,
       because: [
@@ -321,7 +322,7 @@ function tenureOf(v: ClubhouseContext, tenure: Tenure | null): LeagueTenure | nu
       id: 'tenure',
       title: cell('Your seasons'),
       summary: null,
-      table: {
+      table: choosable({
         columns: [
           column('year', 'Year', true),
           column('club', 'Club', false, { hint: 'The club you ran that season' }),
@@ -333,7 +334,7 @@ function tenureOf(v: ClubhouseContext, tenure: Tenure | null): LeagueTenure | nu
         ],
         rows,
         empty: cell('No season as manager is in the export yet.'),
-      },
+      }),
       note: null,
     },
   };

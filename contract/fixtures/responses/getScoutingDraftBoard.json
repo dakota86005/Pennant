@@ -400,6 +400,9 @@
     "rows": [],
     "empty": {
       "display": "Nobody is in this year's class."
+    },
+    "choose": {
+      "display": "Select a row to see more."
     }
   },
   "empty": null

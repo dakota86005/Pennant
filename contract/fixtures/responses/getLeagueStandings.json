@@ -482,6 +482,9 @@
       ],
       "empty": {
         "display": "No major league clubs in this league's standings."
+      },
+      "choose": {
+        "display": "Select a row to see more."
       }
     },
     "note": null
@@ -918,6 +921,9 @@
             ],
             "empty": {
               "display": "No clubs in this division."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null

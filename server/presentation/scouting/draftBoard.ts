@@ -14,7 +14,7 @@ import { cell } from '../claim.js';
 import { ageCell, dayOrder, dayWords, factClaim, head, plural, player, type ClubhouseContext } from '../clubhouse/common.js';
 import { fillHint, fillMark, withFill, type RatingFill } from '../clubhouse/fill.js';
 import { column } from '../league/common.js';
-import { keysServed } from '../league/office.js';
+import { choosable, keysServed } from '../league/office.js';
 import type { OfficeChoiceGroup, OfficeRow, OfficeTable } from '../league/types.js';
 import { block, line, tableRow } from '../majorLeague/common.js';
 import type { MlbBlock, MlbLine } from '../majorLeague/types.js';
@@ -337,7 +337,7 @@ export function draftBoardView(v: ClubhouseContext, input: DraftBoardInput): Sco
     query: { ...DEFAULT_BOARD },
     count: null,
     more: null,
-    board: { columns: BOARD_COLUMNS, rows, empty: cell(none) },
+    board: choosable({ columns: BOARD_COLUMNS, rows, empty: cell(none) }),
     empty: null,
   };
 }

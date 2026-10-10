@@ -799,12 +799,9 @@ public struct OfficeTablePane<Head: View, Notes: View>: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let row = chosenRow {
                     OfficeRowDetail(detailOf(row))
-                } else if !table.rows.isEmpty {
-                    if let choose = table.choose {
-                        Text(verbatim: choose.display).font(.callout).foregroundStyle(.readableSecondary)
-                    } else {
-                        Text("Select a row to see more.").font(.callout).foregroundStyle(.readableSecondary)
-                    }
+                } else if !table.rows.isEmpty, let choose = table.choose {
+                    // The server's sentence while no row is chosen (`choose`); the app writes none of its own
+                    Text(verbatim: choose.display).font(.callout).foregroundStyle(.readableSecondary)
                 }
                 notes
             }

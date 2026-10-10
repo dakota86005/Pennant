@@ -456,6 +456,9 @@
       ],
       "empty": {
         "display": "This export carries no completed seasons for the club."
+      },
+      "choose": {
+        "display": "Select a row to see more."
       }
     },
     "note": {

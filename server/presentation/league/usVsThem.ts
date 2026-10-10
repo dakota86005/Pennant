@@ -14,6 +14,7 @@ import { dayWords, factClaim, head, hintIf, plural, type ClubhouseContext } from
 import { block, line, tableRow } from '../majorLeague/common.js';
 import type { MlbRow } from '../majorLeague/types.js';
 import { column, officeClub, ordinal, pctText, signed } from './common.js';
+import { choosable } from './office.js';
 import type { StatedPlace } from './standings.js';
 import { gamesText } from './standings.js';
 import type { LeagueUsVsThemView, OfficeChoiceGroup, OfficeClub, OfficeSection } from './types.js';
@@ -163,7 +164,7 @@ function sectionOf(id: Measure['section'], title: string, us: OfficeClub, them: 
     id: `usVsThem-${id}`,
     title: cell(title),
     summary: cell(`Each figure with its place among the league's ${plural(clubs, 'club')}`),
-    table: {
+    table: choosable({
       columns: [
         column('measure', 'Line'),
         // Each row is a different figure in its own unit, so neither club's column sorts (N12 Track B review, M6)
@@ -172,7 +173,7 @@ function sectionOf(id: Measure['section'], title: string, us: OfficeClub, them: 
       ],
       rows,
       empty: cell('No figures for these clubs in the export.'),
-    },
+    }),
     note: null,
   };
 }

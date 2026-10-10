@@ -9246,7 +9246,10 @@
     "empty": {
       "display": "No batters match those tokens."
     },
-    "serverSorts": true
+    "serverSorts": true,
+    "choose": {
+      "display": "Select a row to see more."
+    }
   },
   "more": null,
   "empty": null
