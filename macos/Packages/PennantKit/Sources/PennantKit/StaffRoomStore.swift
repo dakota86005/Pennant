@@ -187,12 +187,12 @@ public final class StaffRoomStore {
         } catch {
             guard followedKey == key else { return }
             let stopped = RequestProblem.isCancellation(error) || Task.isCancelled
-            end(with, key: key, stopped: stopped)
             if !stopped {
                 let problem = RequestProblem.from(error)
                 askProblems[with] = problem
                 if let detail = problem.detail { log("the Staff room's answer stopped: \(detail)") }
             }
+            end(with, key: key, stopped: stopped)
             await loadConversation(with, client: client, key: key, force: true)
         }
     }
@@ -200,7 +200,16 @@ public final class StaffRoomStore {
     private func end(_ with: String, key: AppModel.StoreKey, stopped: Bool) {
         guard followedKey == key else { return }
         answers[with]?.end(stopped: stopped)
-        if case .failed(let failed)? = answers[with]?.outcome { failures[with] = failed }
+        switch answers[with]?.outcome {
+        case .failed(let failed)?:
+            failures[with] = failed
+        case .dropped?:
+            // Ended with neither `done` nor `failed` (the connection dropped, the server stopped): a failure, said as one,
+            // with what had arrived kept on screen until the conversation is read again
+            if askProblems[with] == nil { askProblems[with] = .unreachable(detail: "the answer stream ended before its last event") }
+        default:
+            break
+        }
         tasks[with] = nil
     }
 
