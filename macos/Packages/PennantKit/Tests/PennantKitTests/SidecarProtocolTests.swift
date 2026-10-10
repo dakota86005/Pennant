@@ -156,13 +156,9 @@ struct LineSplitterTests {
 @Suite("A development build's data folder")
 struct DevelopmentFolderTests {
     private let bundle = Bundle(for: BundleMarker.self)
-    private func defaults(_ values: [String: Any] = [:]) -> UserDefaults {
-        let name = "pennant-tests-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: name)!
-        defaults.removePersistentDomain(forName: name)
-        for (key, value) in values { defaults.set(value, forKey: key) }
-        return defaults
-    }
+    /// Settings held in memory: a defaults domain on disk left a `pennant-tests-*.plist` in ~/Library/Preferences per
+    /// test (removing the domain still leaves an empty file behind)
+    private func defaults(_ values: [String: Any] = [:]) -> UserDefaults { InMemoryDefaults(values) }
 
     @Test("with neither a scratch folder nor the opt-in, no folder is chosen")
     func unchosen() {
@@ -230,4 +226,18 @@ struct ExitStateTests {
         state.finish(ProcessExit(status: 0))
         #expect(await state.wait() == ProcessExit(status: 0))
     }
+}
+
+/// A `UserDefaults` that reads only the values it was given and writes nothing to disk.
+private final class InMemoryDefaults: UserDefaults, @unchecked Sendable {
+    private let values: [String: Any]
+
+    init(_ values: [String: Any]) {
+        self.values = values
+        super.init(suiteName: nil)!
+    }
+
+    override func object(forKey defaultName: String) -> Any? { values[defaultName] }
+    override func string(forKey defaultName: String) -> String? { values[defaultName] as? String }
+    override func bool(forKey defaultName: String) -> Bool { values[defaultName] as? Bool ?? false }
 }
