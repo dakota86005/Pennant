@@ -5,7 +5,9 @@ import Shell
 import SwiftUI
 
 /// The menu bar's commands (SWIFTUI_REBUILD.md section 3.6). Go and View act on the key main window
-/// (`FocusedValues.mainWindow`), except Find Anything, which works from every window; Club acts on the app. What can act comes from `CommandAvailability`.
+/// (`FocusedValues.mainWindow`), except Find Anything and Go's departments, which work from every window (the main
+/// window used last comes forward); Back, Forward and the inspector are the main window's own, so they need it key.
+/// Club acts on the app. What can act comes from `CommandAvailability`.
 struct PennantCommands: Commands {
     let model: AppModel
     let routing: AppRouting
@@ -51,6 +53,29 @@ struct PennantCommands: Commands {
         }
     }
 
+    /// Go ▸ a department (⌘1 to ⌘9) from any Pennant window, as Find Anything: the key main window goes there; else,
+    /// from a player's, a club's or Compare's window or with no window key, the main window used last comes forward and
+    /// goes there; with every main window closed, a new one opens on it. Said in the app's log.
+    private func go(toShortcut number: Int) {
+        if let window {
+            window.go(toShortcut: number)
+            return
+        }
+        let log = model.serverController.log
+        let key = NSApp.keyWindow?.identifier?.rawValue ?? "none"
+        if let last = MainWindows.shared.last() {
+            if last.window.isMiniaturized { last.window.deminiaturize(nil) }
+            last.window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+            last.model.go(toShortcut: number)
+            log.write("go: ⌘\(number) with no main window key (key window: \(key)); the main window used last (\(last.window.identifier?.rawValue ?? "unnamed")) came forward on \(last.model.route.department.rawValue)", source: "app")
+        } else {
+            log.write("go: ⌘\(number) with no main window open (key window: \(key)); a new one opens on it", source: "app")
+            routing.requestShortcut(number)
+            openWindow(id: SceneID.main)
+        }
+    }
+
     var body: some Commands {
         SidebarCommands()
 
@@ -70,7 +95,7 @@ struct PennantCommands: Commands {
         CommandMenu("Go") {
             ForEach(registry.shortcutDepartments, id: \.department.id) { entry in
                 Button {
-                    window?.go(toShortcut: entry.number)
+                    go(toShortcut: entry.number)
                 } label: {
                     Text(entry.department.title)
                 }
