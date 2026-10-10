@@ -142,9 +142,7 @@
   "writingStamp": "wstamp",
   "stories": [
     {
-      "category": {
-        "display": "Player Spotlight"
-      },
+      "category": "Player Spotlight",
       "headline": "P 1000 keeps hitting",
       "body": {
         "markdown": "[P 1000](pennant://player/1000) has carried the lineup, and the [Club 2 N](pennant://club/2) are next.",

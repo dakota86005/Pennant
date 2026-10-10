@@ -185,6 +185,14 @@ describe('the presentation boundary', () => {
     expect(valueImports('orgParam.ts').map(moduleName).sort()).toEqual(['clubOwed', 'db', 'org', 'viewingOrganization']);
   });
 
+  it('aiSurfacesService.ts (N13) reads the kept files, the save\'s names, staff and dates, and words them; it reaches no AI module and no specialist', () => {
+    // Held exactly (N13 review L8): its words come from presentation/, whether AI is on is handed in by the AI modules
+    expect(valueImports('aiSurfacesService.ts').map(moduleName).sort()).toEqual([
+      'claim', 'claim', 'config', 'db', 'jobs', 'keys', 'markdown', 'node:fs', 'node:path', 'orgParam', 'playerStateRoutes',
+      'staff', 'staffRoom', 'valuation', 'writing',
+    ]);
+  });
+
   it.each(['frontOfficeService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts'])('%s reads the specialists only through their public modules', (file) => {
     // `morningReport` is the Morning Report's own reader (N6): the masthead's and the profile's facts, and the roster map
     // through Player Value, Player State and the farm's door (`mlbEvidence`); its own imports are held below

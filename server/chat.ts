@@ -11,8 +11,8 @@ import { calendarBriefing, currentGameDate, orgBriefing, seasonYear } from './va
 import { tradingBlock } from './tradingblock.js';
 import { personaBrief, personaById, personasFor, type Persona } from './staff.js';
 import {
-  StaffRoomAnswer, aboutQuestionFor, addressedIn, contextPath, conversationNow, historyPath, personOn, personaId, readConversation,
-  staffFor, staffRoomCleared, staffRoomNow, writeConversation,
+  StaffRoomAnswer, aboutQuestionFor, addressedIn, contextPath, conversationNow, historyPath, keepAside, personOn, personaId,
+  readConversation, staffFor, staffRoomCleared, staffRoomNow, writeConversation, writeJsonAtomic,
 } from './aiSurfacesService.js';
 import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 
@@ -61,23 +61,29 @@ chatRoutes.get('/chat-staff/:orgId', (req, res) => {
 const personaParam = (req: { query: Record<string, unknown> }): string => personaId(req.query.persona);
 
 chatRoutes.get('/chat-history/:orgId', (req, res) => {
+  const file = historyPath(Number(req.params.orgId), personaParam(req));
+  let raw: string;
   try {
-    const raw = fs.readFileSync(historyPath(Number(req.params.orgId), personaParam(req)), 'utf8');
-    const parsed: unknown = JSON.parse(raw);
-    res.json(Array.isArray(parsed) ? parsed : []);
+    raw = fs.readFileSync(file, 'utf8');
   } catch {
-    res.json([]);
+    return res.json([]);
   }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return res.json(parsed);
+  } catch {
+    // Unreadable: answered as empty, as before, and kept aside so the page's next save can't wipe it (N13 review L8)
+  }
+  keepAside(file);
+  res.json([]);
 });
 
 chatRoutes.put('/chat-history/:orgId', (req, res) => {
   const body = req.body as unknown;
   if (!Array.isArray(body)) return res.status(400).json({ error: 'Expected an array of messages' });
   try {
-    fs.writeFileSync(
-      historyPath(Number(req.params.orgId), personaParam(req)),
-      JSON.stringify(body.slice(-KEEP_TURNS))
-    );
+    // Whole or not at all, the same bytes as before (N13 review L8)
+    writeJsonAtomic(historyPath(Number(req.params.orgId), personaParam(req)), body.slice(-KEEP_TURNS));
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

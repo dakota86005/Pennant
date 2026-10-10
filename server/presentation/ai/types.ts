@@ -250,8 +250,11 @@ export interface AiWritingStatus {
 }
 
 export interface AiStory {
-  /** "The Club", "Player Spotlight", "Down on the Farm", "Front Office", "Looking Ahead". */
-  category: Cell;
+  /**
+   * The AI's own category, as written (plain text, not markdown): "The Club", "Player Spotlight", "Down on the Farm",
+   * "Front Office", "Looking Ahead" as a rule; "The Club" when it gave none. AI text, so not a server `Cell` (review L8).
+   */
+  category: string;
   /** The AI's own headline, as written (plain text, not markdown). */
   headline: string;
   body: AiText;

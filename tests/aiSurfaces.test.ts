@@ -6,7 +6,7 @@ import { DATA_DIR } from '../server/config.js';
 import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { STAFF_ANSWER_LIMIT } from '../server/chat.js';
 import {
-  aiSurfaceStats, briefingPath, historyPath, readConversation, resetAiSurfaces, storylinesPath, writeConversation,
+  aiSurfaceStats, briefingPath, historyPath, linkIndexFor, readConversation, resetAiSurfaces, storylinesPath, writeConversation,
 } from '../server/aiSurfacesService.js';
 import { bannedInPayload } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
@@ -464,6 +464,8 @@ describe('Storylines and the GM Briefing (N13; D-074)', () => {
       expect(stories.status.text).toMatch(/^Written .+, from the export of April 2, 2040\.$|^Written .+, from the export of Apr 2, 2040\.$/);
       expect(stories.older.text).toMatch(/^Written from an earlier export/);
       expect(stories.notice.display).toBe('Answered by another model.');
+      // The category is the AI's own, plain text as written, never a server Cell (review L8)
+      expect(stories.stories[0].category).toBe('Player Spotlight');
       expect(stories.written.text).toBe('Written by AI from Pennant\'s figures. It decides nothing.');
       expect(stories.stories[0].body.markdown).toBe(`**Hot**\n[${manName}](pennant://player/${save.regular}) has carried the lineup.`);
       expect(stories.canWrite).toBe(true);
@@ -783,6 +785,56 @@ describe('the served markdown subset and its links (D-074)', () => {
       '[Sam Ryan](pennant://player/1) and Joe Dee and [Al Bo](pennant://player/4); Cher; the [Diamondbacks](pennant://club/10); `Sam Ryan`; [Sam Ryan](pennant://player/1).');
     expect(out.links.map((l) => l.url)).toEqual(['pennant://player/1', 'pennant://player/4', 'pennant://club/10']);
     expect(out.links[0].target).toEqual({ kind: 'player', playerId: 1, teamId: 10 });
+  });
+});
+
+describe('the kept files and the league\'s names (review L8)', () => {
+  it('writes the conversation whole or not at all, and keeps an unreadable file aside rather than overwrite it', async () => {
+    const file = historyPath(save.org, 'manager');
+    const first = [{ role: 'user' as const, content: 'Kept?', at: '2040-07-01T12:00:00.000Z' }];
+    writeConversation(save.org, 'manager', first);
+    // A write that dies part-way leaves the file as it was
+    const real = fs.writeFileSync;
+    const spy = vi.spyOn(fs, 'writeFileSync').mockImplementation((target, data, options) => {
+      real(target, String(data).slice(0, 10), options);
+      throw new Error('disk full');
+    });
+    try {
+      expect(() => writeConversation(save.org, 'manager', [...first, { role: 'user', content: 'Lost?', at: '2040-07-01T12:01:00.000Z' }])).toThrow('disk full');
+    } finally {
+      spy.mockRestore();
+    }
+    expect(readConversation(save.org, 'manager')).toEqual(first);
+    expect(fs.readdirSync(DATA_DIR).filter((f) => f.startsWith(path.basename(file)) && f !== path.basename(file))).toEqual([]);
+    // An unreadable file is read as empty and kept aside, so the next write cannot wipe what it held
+    fs.writeFileSync(file, '[{"role":"user","content":"half a convers');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(readConversation(save.org, 'manager')).toEqual([]);
+    } finally {
+      warn.mockRestore();
+    }
+    writeConversation(save.org, 'manager', first);
+    const aside = fs.readdirSync(DATA_DIR).filter((f) => f.startsWith(`${path.basename(file)}.unreadable-`));
+    expect(aside).toHaveLength(1);
+    expect(fs.readFileSync(path.join(DATA_DIR, aside[0]), 'utf8')).toBe('[{"role":"user","content":"half a convers');
+    fs.rmSync(path.join(DATA_DIR, aside[0]));
+  });
+
+  it('keeps the league\'s names per club, so asking for another club does not drop ours', () => {
+    const other = (db.prepare('SELECT team_id AS id FROM teams WHERE level = 1 AND team_id <> ? LIMIT 1').get(save.org) as { id: number }).id;
+    const ours = linkIndexFor(save.org);
+    expect(linkIndexFor(other)).not.toBe(ours);
+    expect(linkIndexFor(save.org)).toBe(ours);
+  });
+
+  it('links a name with a markdown character in it as written', async () => {
+    const { linked } = await import('../server/presentation/ai/markdown.js');
+    const out = linked('Mike O*Neil and Ed Star_ are hot.', {
+      players: [{ id: 7, name: 'Mike O*Neil', ours: true, teamId: 1 }, { id: 8, name: 'Ed Star_', ours: true, teamId: 1 }], clubs: [],
+    });
+    expect(out.markdown).toBe('[Mike O\\*Neil](pennant://player/7) and [Ed Star\\_](pennant://player/8) are hot.');
+    expect(out.links.map((l) => l.text)).toEqual(['Mike O*Neil', 'Ed Star_']);
   });
 });
 

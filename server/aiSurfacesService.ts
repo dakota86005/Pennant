@@ -57,18 +57,57 @@ const validMessages = (parsed: unknown): KeptMessage[] => (Array.isArray(parsed)
   ? parsed.filter((m): m is KeptMessage => !!m && typeof m === 'object' && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
   : []);
 
-/** The conversation as kept; empty when there is none or it cannot be read. */
-export function readConversation(orgId: number, persona: string): KeptMessage[] {
+let writes = 0;
+
+/**
+ * Writes a kept file whole or not at all (N13 review L8): to a file beside it, then renamed over it, so a write that dies
+ * part-way leaves the file as it was. Throws when it can't, with nothing left behind.
+ */
+export function writeJsonAtomic(file: string, value: unknown): void {
+  writes += 1;
+  const temporary = `${file}.${process.pid}-${writes}.tmp`;
   try {
-    return validMessages(JSON.parse(fs.readFileSync(historyPath(orgId, persona), 'utf8')));
-  } catch {
-    return [];
+    fs.writeFileSync(temporary, JSON.stringify(value));
+    fs.renameSync(temporary, file);
+  } catch (err) {
+    fs.rmSync(temporary, { force: true });
+    throw err;
   }
 }
 
-/** Writes the conversation, its last `KEEP_MESSAGES` messages, as the React chat writes it. */
+/** A conversation file that can't be read is kept aside, renamed, so the next write can't wipe what it held (review L8). */
+export function keepAside(file: string): void {
+  try {
+    const aside = `${file}.unreadable-${Date.now()}`;
+    fs.renameSync(file, aside);
+    console.warn(`[staff-room] a conversation file couldn't be read; it was kept aside as ${path.basename(aside)}`);
+  } catch {
+    // Gone already, or not ours to move: nothing to keep
+  }
+}
+
+/** The conversation as kept; empty when there is none, or when it can't be read (and then the file is kept aside). */
+export function readConversation(orgId: number, persona: string): KeptMessage[] {
+  const file = historyPath(orgId, persona);
+  let raw: string;
+  try {
+    raw = fs.readFileSync(file, 'utf8');
+  } catch {
+    return [];
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return validMessages(parsed);
+  } catch {
+    // Unreadable: kept aside below
+  }
+  keepAside(file);
+  return [];
+}
+
+/** Writes the conversation, its last `KEEP_MESSAGES` messages, as the React chat writes it (whole or not at all). */
 export function writeConversation(orgId: number, persona: string, messages: KeptMessage[]): void {
-  fs.writeFileSync(historyPath(orgId, persona), JSON.stringify(messages.slice(-KEEP_MESSAGES)));
+  writeJsonAtomic(historyPath(orgId, persona), messages.slice(-KEEP_MESSAGES));
 }
 
 const fileStamp = (file: string): string => {
@@ -101,16 +140,21 @@ export function aiContextFor(orgId: number): AiContext {
   return { importStamp: importedAt.value, gameDate: team ? currentGameDate(team.league_id) : null, club };
 }
 
-let names: { generation: number; orgId: number; index: LinkIndex } | null = null;
+/** The names kept per club (review L8: one club's asking no longer drops another's), a few clubs at most. */
+const names = new Map<number, { generation: number; index: LinkIndex }>();
+const NAMES_KEPT = 8;
 
 /**
  * Who can be linked in AI-written text: the major leagues' players and this organization's own (the React app's name
- * index), each with his organization's club, and the major-league clubs. Kept on the served database's generation.
+ * index), each with his organization's club, and the major-league clubs. Kept per club on the served database's
+ * generation: the index differs by club (whose players are "ours" settles a shared name), and the GM may follow
+ * another club's Staff room or writing beside his own.
  */
 export function linkIndexFor(orgId: number): LinkIndex | null {
   if (!tableExists('players') || !tableExists('teams')) return null;
   const generation = databaseGeneration();
-  if (names && names.generation === generation && names.orgId === orgId) return names.index;
+  const hit = names.get(orgId);
+  if (hit && hit.generation === generation) return hit.index;
   const players = (db.prepare(
     `SELECT p.player_id AS id, p.first_name || ' ' || p.last_name AS name, p.organization_id AS org,
             CASE WHEN p.organization_id = ? THEN 1 ELSE 0 END AS ours
@@ -126,7 +170,9 @@ export function linkIndexFor(orgId: number): LinkIndex | null {
     .map((c) => ({ teamId: c.teamId, name: `${c.name ?? ''} ${c.nickname ?? ''}`.trim(), nickname: String(c.nickname ?? '').trim() }))
     .filter((c) => c.name.length > 0);
   const index: LinkIndex = { players, clubs };
-  names = { generation, orgId, index };
+  names.delete(orgId);
+  names.set(orgId, { generation, index });
+  while (names.size > NAMES_KEPT) names.delete(names.keys().next().value!);
   return index;
 }
 
@@ -177,7 +223,7 @@ export function aiSurfaceStats(): Readonly<typeof stats & { kept: number }> {
 /** For the tests: an empty cache and zero counts. */
 export function resetAiSurfaces(): void {
   kept.clear();
-  names = null;
+  names.clear();
   Object.assign(stats, { builds: 0, hits: 0 });
 }
 

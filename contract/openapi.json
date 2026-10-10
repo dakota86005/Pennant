@@ -4290,8 +4290,8 @@
         "type": "object",
         "properties": {
           "category": {
-            "$ref": "#/components/schemas/Cell",
-            "description": "\"The Club\", \"Player Spotlight\", \"Down on the Farm\", \"Front Office\", \"Looking Ahead\"."
+            "type": "string",
+            "description": "The AI's own category, as written (plain text, not markdown): \"The Club\", \"Player Spotlight\", \"Down on the Farm\", \"Front Office\", \"Looking Ahead\" as a rule; \"The Club\" when it gave none. AI text, so not a server `Cell` (review L8)."
           },
           "headline": {
             "type": "string",

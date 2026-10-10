@@ -98,7 +98,7 @@ export function storylinesView(
     ...status(ctx, 'storylines', job, written, ai, stamp),
     stories: (written?.storylines ?? [])
       .filter((s) => s.headline?.trim() && s.body?.trim())
-      .map((s) => ({ category: cell(s.category?.trim() || 'The Club'), headline: s.headline.trim(), body: linked(s.body, index) })),
+      .map((s) => ({ category: (typeof s.category === 'string' && s.category.trim()) || 'The Club', headline: s.headline.trim(), body: linked(s.body, index) })),
   };
 }
 
