@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import OpenAPIRuntime
 import PennantAPI
 import Testing
@@ -175,6 +176,18 @@ struct StaffRoomTests {
         #expect(items.contents() == .init())
         // Removing what is not there is not a failure
         try items.remove(account: "anthropic")
+    }
+
+    @Test("a provider's key is kept under its id, or a later generation beside another copy's item")
+    func generations() {
+        #expect(KeychainItems.parse("anthropic") == ("anthropic", 1))
+        #expect(KeychainItems.parse("anthropic.2") == ("anthropic", 2))
+        #expect(KeychainItems.parse("anthropic.x") == ("anthropic.x", 1))
+        #expect(KeychainItems.account("openai", generation: 1) == "openai")
+        #expect(KeychainItems.account("openai", generation: 3) == "openai.3")
+        #expect(KeychainItems.belongsToAnother(errSecInvalidOwnerEdit))
+        #expect(KeychainItems.belongsToAnother(errSecInteractionNotAllowed))
+        #expect(!KeychainItems.belongsToAnother(errSecParam))
     }
 
     @Test("a service per bundle id: the release app keeps N3's name, a development build its own")

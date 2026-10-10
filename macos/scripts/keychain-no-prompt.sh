@@ -88,16 +88,23 @@ else
 fi
 wait
 
-step "the second copy saves the key again (delete, then add)" 30 "$work/probe-b" save "$service" anthropic sk-probe-second
+step "the second copy saves the key again" 30 "$work/probe-b" save "$service" anthropic sk-probe-second
 [ "$LAST_STATUS" = 142 ] && say "FAIL: saving again hung (a dialog)" && failures=$((failures + 1))
-say "RESULT: saving over another copy's item: $(printf '%s' "$LAST" | tail -1)"
+expect "the second copy keeps the key again beside the first copy's item, which it may not delete" '^saved$' "$LAST"
 step "the second copy reads it now" 30 "$work/probe-b" read "$service"
-say "RESULT: the second copy after saving again: $(printf '%s' "$LAST" | tr '\n' ' ')"
-step "the first copy reads it now (no dialog allowed)" 30 "$work/probe-a" read "$service"
+expect "the second copy reads its own key" 'readable: anthropic' "$LAST"
+step "the first copy reads (no dialog allowed)" 30 "$work/probe-a" read "$service"
 [ "$LAST_STATUS" = 142 ] && say "FAIL: the first copy's read hung (a dialog)" && failures=$((failures + 1))
-step "the second copy removes it" 30 "$work/probe-b" remove "$service" anthropic
+expect "the first copy still reads its own item, never asking about the second's" 'readable: anthropic' "$LAST"
+step "the second copy removes its key" 30 "$work/probe-b" remove "$service" anthropic
 [ "$LAST_STATUS" = 142 ] && say "FAIL: removing hung (a dialog)" && failures=$((failures + 1))
-say "RESULT: removing: $(printf '%s' "$LAST" | tail -1)"
+expect "the second copy removes what it may, leaving the first copy's item alone" '^removed$' "$LAST"
+step "the second copy reads after removing" 30 "$work/probe-b" read "$service"
+expect "only the first copy's item is left, unreadable to the second" 'unreadable: anthropic' "$LAST"
+step "the first copy removes its own" 30 "$work/probe-a" remove "$service" anthropic
+expect "the first copy removes its own item" '^removed$' "$LAST"
+step "nothing is left" 30 "$work/probe-a" read "$service"
+expect "nothing is left" 'unreadable: $' "$LAST"
 
 say "== $failures failure(s)"
 [ "$failures" = 0 ]

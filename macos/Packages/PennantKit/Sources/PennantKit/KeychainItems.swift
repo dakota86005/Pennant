@@ -6,19 +6,25 @@ import Security
 // Self-contained on purpose (Foundation, Security, LocalAuthentication only): `macos/scripts/keychain-no-prompt.sh`
 // compiles this file with a small probe on CI to prove, with re-signed copies, that nothing here shows a dialog.
 
-/// The generic passwords of one Keychain service, one per account (a provider id), read and written without ever
-/// asking the person at the Mac anything (N13, D-074).
+/// The generic passwords of one Keychain service, kept per provider, read and written without ever asking the person at
+/// the Mac anything (N13, D-074).
 ///
 /// The items live in the login keychain (file-based): the data-protection keychain needs an application-identifier
 /// entitlement, so a provisioning profile, which a Developer ID app does not have by default. On a file-based keychain
-/// an item's access list trusts the app that created it; another app (a rebuilt development copy, a differently signed
-/// one) reading it would make the system ask the person to allow it. `kSecUseAuthenticationUI` and
+/// an item's access list trusts the app that created it; another copy (a development build signed ad hoc, rebuilt)
+/// reading it would make the system ask the person to allow it. `kSecUseAuthenticationUI` and
 /// `LAContext.interactionNotAllowed` do not stop that dialog: Security's own header says they apply only to the
 /// data-protection keychain ("legacy keychain items will still activate UI if needed"). The switch that does is the
 /// process-wide `SecKeychainSetUserInteractionAllowed(false)`, held off for exactly the length of each call here
-/// (`withoutInteraction`), so a read the access list would ask about fails at once with `errSecInteractionNotAllowed`
-/// instead; that item is reported `unreadable`, and saving the key again replaces it (delete, then add) with one this
-/// copy of the app owns. The context is passed as well, for the data-protection keychain's sake.
+/// (`withoutInteraction`), so a read the access list would ask about fails at once instead (CI run 38083908362, with a
+/// control that did show the dialog).
+///
+/// Nor may one copy delete another copy's item (`errSecInvalidOwnerEdit`, the same run), so an item cannot be replaced
+/// in place. A provider's key is therefore kept under its id as the account, or, when an item there belongs to another
+/// copy, under `<id>.2`, `<id>.3`…: reading takes the newest item this copy can read; a provider with items but none
+/// readable is `unreadable` (the app shows the server's "enter it again"); saving deletes what it may and adds the key
+/// under the first free name; removing deletes what it may and leaves another copy's item alone. The context is passed
+/// as well, for the data-protection keychain's sake.
 public struct KeychainItems: Sendable {
     public let service: String
 
@@ -26,8 +32,8 @@ public struct KeychainItems: Sendable {
         self.service = service
     }
 
-    /// What the service holds: each account's secret that could be read without a dialog, and the accounts whose item
-    /// is there but could not be.
+    /// What the service holds, by provider: the key this copy can read without a dialog, and the providers with items
+    /// that it cannot.
     public struct Contents: Sendable, Equatable {
         public var readable: [String: String] = [:]
         public var unreadable: Set<String> = []
@@ -40,18 +46,24 @@ public struct KeychainItems: Sendable {
         public var description: String { "keychain \(step): OSStatus \(status)" }
     }
 
+    /// The provider an account keeps a key for, and its generation (1 for the bare id).
+    static func parse(_ account: String) -> (provider: String, generation: Int) {
+        let parts = account.split(separator: ".", maxSplits: 1).map(String.init)
+        if parts.count == 2, let generation = Int(parts[1]), generation >= 2 { return (parts[0], generation) }
+        return (account, 1)
+    }
+
+    static func account(_ provider: String, generation: Int) -> String {
+        generation == 1 ? provider : "\(provider).\(generation)"
+    }
+
     /// Every item of the service, read without a dialog.
     public func contents() -> Contents {
         Self.withoutInteraction {
             var contents = Contents()
-            var found: CFTypeRef?
-            let list = query(nil).merging([
-                kSecMatchLimit as String: kSecMatchLimitAll,
-                kSecReturnAttributes as String: true,
-            ]) { $1 }
-            guard SecItemCopyMatching(list as CFDictionary, &found) == errSecSuccess,
-                  let items = found as? [[String: Any]] else { return contents }
-            for account in Set(items.compactMap({ $0[kSecAttrAccount as String] as? String })) {
+            var newest: [String: Int] = [:]
+            for account in accounts() {
+                let (provider, generation) = Self.parse(account)
                 var data: CFTypeRef?
                 let one = query(account).merging([
                     kSecMatchLimit as String: kSecMatchLimitOne,
@@ -61,22 +73,32 @@ public struct KeychainItems: Sendable {
                 if status == errSecSuccess, let data = data as? Data,
                    let secret = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !secret.isEmpty {
-                    contents.readable[account] = secret
+                    if generation > newest[provider, default: 0] {
+                        newest[provider] = generation
+                        contents.readable[provider] = secret
+                    }
                 } else if status != errSecItemNotFound {
-                    contents.unreadable.insert(account)
+                    contents.unreadable.insert(provider)
                 }
             }
+            contents.unreadable.subtract(contents.readable.keys)
             return contents
         }
     }
 
-    /// Keeps a secret for an account: any item already there is deleted first (one this copy cannot read is replaced
-    /// by one it owns), then the new one added.
-    public func save(_ secret: String, account: String) throws(Failure) {
+    /// Keeps a provider's key: deletes the items this copy may delete, then adds the key under the first free name
+    /// (another copy's item, which cannot be deleted, is left where it is).
+    public func save(_ secret: String, account provider: String) throws(Failure) {
         let status: (step: String, code: OSStatus) = Self.withoutInteraction {
-            let deleted = SecItemDelete(query(account) as CFDictionary)
-            guard deleted == errSecSuccess || deleted == errSecItemNotFound else { return ("delete", deleted) }
-            var add = query(account)
+            var held = Set<Int>()
+            for account in accounts() where Self.parse(account).provider == provider {
+                let deleted = SecItemDelete(query(account) as CFDictionary)
+                if deleted == errSecSuccess || deleted == errSecItemNotFound { continue }
+                guard Self.belongsToAnother(deleted) else { return ("delete", deleted) }
+                held.insert(Self.parse(account).generation)
+            }
+            let generation = (1...).first { !held.contains($0) } ?? 1
+            var add = query(Self.account(provider, generation: generation))
             add[kSecValueData as String] = Data(secret.utf8)
             add[kSecAttrLabel as String] = service
             add.removeValue(forKey: kSecUseAuthenticationContext as String)
@@ -85,10 +107,34 @@ public struct KeychainItems: Sendable {
         guard status.code == errSecSuccess else { throw Failure(step: status.step, status: status.code) }
     }
 
-    /// Deletes an account's item; none there is not a failure.
-    public func remove(account: String) throws(Failure) {
-        let status = Self.withoutInteraction { SecItemDelete(query(account) as CFDictionary) }
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw Failure(step: "delete", status: status) }
+    /// Deletes a provider's items this copy may delete; none there, or only another copy's, is not a failure.
+    public func remove(account provider: String) throws(Failure) {
+        let status: OSStatus = Self.withoutInteraction {
+            for account in accounts() where Self.parse(account).provider == provider {
+                let deleted = SecItemDelete(query(account) as CFDictionary)
+                if deleted == errSecSuccess || deleted == errSecItemNotFound || Self.belongsToAnother(deleted) { continue }
+                return deleted
+            }
+            return errSecSuccess
+        }
+        guard status == errSecSuccess else { throw Failure(step: "delete", status: status) }
+    }
+
+    /// A delete refused because the item is another copy's (its owner, or a dialog that is not allowed).
+    static func belongsToAnother(_ status: OSStatus) -> Bool {
+        status == errSecInvalidOwnerEdit || status == errSecInteractionNotAllowed || status == errSecAuthFailed
+    }
+
+    /// The accounts the service has items for (their attributes only: listing never needs the access list).
+    private func accounts() -> Set<String> {
+        var found: CFTypeRef?
+        let list = query(nil).merging([
+            kSecMatchLimit as String: kSecMatchLimitAll,
+            kSecReturnAttributes as String: true,
+        ]) { $1 }
+        guard SecItemCopyMatching(list as CFDictionary, &found) == errSecSuccess,
+              let items = found as? [[String: Any]] else { return [] }
+        return Set(items.compactMap { $0[kSecAttrAccount as String] as? String })
     }
 
     private func query(_ account: String?) -> [String: Any] {
