@@ -2264,12 +2264,6 @@ final class PennantUITests: XCTestCase {
 
     // MARK: The player window and Compare (N11)
 
-    /// The player windows open, as the identifier of his window says, and no more than one per player.
-    @MainActor
-    private func playerWindows(_ app: XCUIApplication) -> XCUIElementQuery {
-        app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'player.window.' OR identifier BEGINSWITH 'Player'"))
-    }
-
     /// Brings a window to the front with ⌘` (the app's own window cycling), until it is the front window.
     @MainActor
     private func bringForward(_ app: XCUIApplication, _ window: XCUIElement) {
@@ -2400,6 +2394,12 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(app.windows.firstMatch.identifier.hasPrefix("main"), "⌘K in his window left \(app.windows.firstMatch.identifier) in front")
         palette.typeKey(.escape, modifierFlags: [])
         XCTAssertTrue(element(app, "palette").waitForNonExistence(timeout: 5), "Escape did not put the palette away")
+        // ⌘3 in his window: the main window comes forward on Farm & Development (Go works from any window, as ⌘K does)
+        // His window found by the identifier on its content (a WindowGroup(for:) window's own identifier is AppKit's, not ours)
+        bringForward(app, app.windows.containing(.any, identifier: "player.window.\(namedId)").firstMatch)
+        app.typeKey("3", modifierFlags: .command)
+        XCTAssertTrue(element(app, "detail.farm.report").waitForExistence(timeout: 30), "⌘3 in his window did not open Farm & Development")
+        XCTAssertTrue(app.windows.firstMatch.identifier.hasPrefix("main"), "⌘3 in his window left \(app.windows.firstMatch.identifier) in front")
         // Audited alone (the main window closed, as a club's window is)
         try auditAlone(app, named: "accessibility-audit-n11-player-window")
         quitCleanly(app)

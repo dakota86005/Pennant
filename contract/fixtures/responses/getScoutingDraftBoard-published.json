@@ -1881,6 +1881,9 @@
     ],
     "empty": {
       "display": "Nobody in the class has a full scouted ceiling yet."
+    },
+    "choose": {
+      "display": "Select a row to see more."
     }
   },
   "empty": null

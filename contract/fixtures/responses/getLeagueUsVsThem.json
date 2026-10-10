@@ -515,6 +515,9 @@
         ],
         "empty": {
           "display": "No figures for these clubs in the export."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       },
       "note": null
@@ -745,6 +748,9 @@
         ],
         "empty": {
           "display": "No figures for these clubs in the export."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       },
       "note": null
@@ -950,6 +956,9 @@
         ],
         "empty": {
           "display": "No figures for these clubs in the export."
+        },
+        "choose": {
+          "display": "Select a row to see more."
         }
       },
       "note": null

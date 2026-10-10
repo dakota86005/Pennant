@@ -18,6 +18,7 @@ import { block, line } from '../majorLeague/common.js';
 import type { MlbBlock } from '../majorLeague/types.js';
 import { money, rangeText, signedMoney, signedTenths, winsText } from '../player/words.js';
 import { clubRow, column, officeClub } from './common.js';
+import { choosable } from './office.js';
 import type { LeagueOrgComparisonView, OfficeRow } from './types.js';
 
 const VALUE = 'Player Value';
@@ -331,7 +332,7 @@ export function orgComparisonView(v: ClubhouseContext, input: OrgComparisonInput
     ...base,
     freshness: freshnessOf(v, data),
     figures: figuresOf(v, input, data),
-    clubs: { columns: columnsOf(data.season, data.nextSeason), rows: data.clubs.map((c) => clubRowOf(v, input, data, c)), empty: cell(none) },
+    clubs: choosable({ columns: columnsOf(data.season, data.nextSeason), rows: data.clubs.map((c) => clubRowOf(v, input, data, c)), empty: cell(none) }),
     note: noteOf(v, data.season, data.nextSeason),
     empty: data.clubs.length === 0 ? cell(none) : null,
   };

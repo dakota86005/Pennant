@@ -23,10 +23,12 @@ struct CommandAvailabilityTests {
         #expect(CommandAvailability(serverReady: false, configured: false, importing: false, window: nil).dataStatus)
     }
 
-    @Test("Go, Back, Forward and the inspector act on a key main window, the server ready or not")
+    @Test("Back, Forward and the inspector act on a key main window, the server ready or not; Go's departments on any")
     func window() {
+        // A player's window key (no main window key): ⌘1 to ⌘9 bring the main window used last forward on the
+        // department; Back, Forward and the inspector are that window's own, so they wait for it to be key (as Safari's)
         let none = CommandAvailability(serverReady: true, configured: true, importing: false, window: nil)
-        #expect(!none.goToDepartment && !none.back && !none.forward && !none.inspector)
+        #expect(none.goToDepartment && !none.back && !none.forward && !none.inspector)
         let fresh = CommandAvailability(serverReady: true, configured: true, importing: false, window: (false, false))
         #expect(fresh.goToDepartment && fresh.inspector && !fresh.back && !fresh.forward)
         let moved = CommandAvailability(serverReady: true, configured: true, importing: false, window: (true, true))
@@ -65,6 +67,16 @@ struct CommandAvailabilityTests {
         routing.requestPalette()
         #expect(routing.takePaletteRequest())
         #expect(!routing.takePaletteRequest())
+    }
+
+    @MainActor
+    @Test("a department asked with every main window closed is taken once, by the next main window")
+    func shortcutRequest() {
+        let routing = AppRouting()
+        #expect(routing.takeShortcutRequest() == nil)
+        routing.requestShortcut(3)
+        #expect(routing.takeShortcutRequest() == 3)
+        #expect(routing.takeShortcutRequest() == nil)
     }
 
     @MainActor

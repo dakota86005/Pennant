@@ -481,6 +481,9 @@
             ],
             "empty": {
               "display": "Nobody qualifies yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -890,6 +893,9 @@
             ],
             "empty": {
               "display": "Nobody qualifies yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -1321,6 +1327,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -1752,6 +1761,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -2183,6 +2195,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -2570,6 +2585,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -2967,6 +2985,9 @@
             ],
             "empty": {
               "display": "Nobody qualifies yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -3365,6 +3386,9 @@
             ],
             "empty": {
               "display": "Nobody qualifies yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -3796,6 +3820,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -4192,6 +4219,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -4582,6 +4612,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null
@@ -4975,6 +5008,9 @@
             ],
             "empty": {
               "display": "No lines this season yet."
+            },
+            "choose": {
+              "display": "Select a row to see more."
             }
           },
           "note": null

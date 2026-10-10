@@ -634,9 +634,6 @@
     "Select a player to see his assignment.": {
       "extractionState": "manual"
     },
-    "Select a row to see more.": {
-      "extractionState": "manual"
-    },
     "Select a row to see the staff's read.": {
       "extractionState": "manual"
     },

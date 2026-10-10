@@ -1545,6 +1545,9 @@
     ],
     "empty": {
       "display": "No clubs to compare: the export has no major-league clubs in your league."
+    },
+    "choose": {
+      "display": "Select a row to see more."
     }
   },
   "note": {
