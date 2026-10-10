@@ -2,6 +2,7 @@
  * Storylines and the GM Briefing in words (N13, D-074): what was written, when and from which export, the state of a
  * new one (never written, writing, written, failed), and the marking beside it. The React pages' words, moved.
  */
+import { AI_STATE_CERTAINTY } from '../aiMarking.js';
 import { basis, cell, claim } from '../claim.js';
 import { parseGameDate } from '../../dataFreshness.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
@@ -62,7 +63,7 @@ function status(ctx: AiContext, kind: Kind, job: JobReading, written: Written | 
       tone: 'caution', links: [],
       basis: basis({
         because: [{ label: 'Written from', value: exportDay }, { label: 'Imported now', value: nowDay }],
-        source: sourceOf(ctx, 'Data status'), unknown: [], wouldChange: [`${w.again}.`], lean: null, certainty: 'fact',
+        source: sourceOf(ctx, 'Data status'), unknown: [], wouldChange: [`${w.again}.`], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     })
     : null;
@@ -73,7 +74,7 @@ function status(ctx: AiContext, kind: Kind, job: JobReading, written: Written | 
       basis: basis({
         because, source: sourceOf(ctx, 'The front office'),
         unknown: written && !exportDay ? ['Which export it was written from was not recorded.'] : [],
-        wouldChange: [], lean: null, certainty: 'fact',
+        wouldChange: [], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     }),
     older,

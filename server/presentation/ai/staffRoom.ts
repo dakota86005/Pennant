@@ -3,6 +3,7 @@
  * answer takes, the question "Ask about him" puts, and a failure in a sentence. Moved from the React chat
  * (`src/Chat.tsx`: the role labels, the openers, the intros, the tool labels), so the two clients say the same.
  */
+import { AI_STATE_CERTAINTY } from '../aiMarking.js';
 import { basis, cell, claim } from '../claim.js';
 import { clockWords, dayWords, timestampWords } from '../../timeWords.js';
 import { linked, type LinkIndex } from './markdown.js';
@@ -188,7 +189,7 @@ export function failureClaim(ctx: AiContext, reason: 'keyRefused' | 'declined' |
       source: sourceOf(ctx, 'The staff room'),
       unknown: [],
       wouldChange: reason === 'keyRefused' ? ['A working key in Settings.'] : reason === 'declined' ? ['Asking it another way.'] : ['Asking again.'],
-      lean: null, certainty: 'fact',
+      lean: null, certainty: AI_STATE_CERTAINTY,
     }),
   });
 }

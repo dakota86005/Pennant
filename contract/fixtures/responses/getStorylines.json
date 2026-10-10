@@ -25,8 +25,8 @@
       "unknown": [],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": []
   },
@@ -64,8 +64,8 @@
           "An AI key in Settings."
         ],
         "lean": null,
-        "certainty": "fact",
-        "called": "A fact from the export"
+        "certainty": "recorded",
+        "called": "From Pennant's own record"
       },
       "links": [],
       "hint": "Add a key in Settings to have storylines written"

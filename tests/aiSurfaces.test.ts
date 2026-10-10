@@ -418,6 +418,35 @@ describe('AI off (D-001): every surface says so calmly, and nothing else changes
   });
 });
 
+describe('how a line about AI itself is called (review L6)', () => {
+  /** Every basis in a payload, with where it is. */
+  const bases = (value: unknown, at = '$'): Array<{ at: string; certainty: string; called: string }> => {
+    if (!value || typeof value !== 'object') return [];
+    if (Array.isArray(value)) return value.flatMap((v, i) => bases(v, `${at}[${i}]`));
+    const o = value as Record<string, unknown>;
+    const own = typeof o.certainty === 'string' && typeof o.called === 'string' ? [{ at, certainty: o.certainty, called: o.called }] : [];
+    return [...own, ...Object.entries(o).flatMap(([k, v]) => bases(v, `${at}.${k}`))];
+  };
+
+  it('never calls AI off, a key\'s state, a key check or a failed answer a fact from the export', async () => {
+    script = async () => { throw Object.assign(new Error('rejected'), { status: 401 }); };
+    const failed = (await ask(save.org, { with: 'analyst', question: 'Who is hurt?' })).events.at(-1)!.data;
+    const keys = (await get('/api/v2/ai/keys')).json;
+    validate = async () => {};
+    const check = (await post('/api/v2/ai/keys/check', { provider: 'anthropic', key: 'sk-ant-good-key-0000-1111-2222' })).json;
+    delete process.env.ANTHROPIC_API_KEY;
+    const room = (await get(`/api/v2/staff-room/${save.org}`)).json;
+    const desk = (await get(`/api/v2/views/${save.org}/trades/tradeDesk`)).json;
+    const offKeys = (await get('/api/v2/ai/keys')).json;
+    for (const [name, payload] of Object.entries({ failed: failed.failure, keys, check, roomOff: room.ai.off, deskOff: desk.ai?.off ?? desk.off, offKeys })) {
+      const found = bases(payload);
+      expect(found.length, name).toBeGreaterThan(0);
+      for (const b of found) expect(b.certainty, `${name} ${b.at}`).not.toBe('fact');
+    }
+    expect(room.ai.off.basis.called).toBe('From Pennant\'s own record');
+  });
+});
+
 describe('Storylines and the GM Briefing (N13; D-074)', () => {
   it('serves what was written, when and from which export, marked as AI; says when it was written from an earlier export', async () => {
     const gameDate = (db.prepare('SELECT "current_date" AS d FROM leagues LIMIT 1').get() as { d: string }).d;
