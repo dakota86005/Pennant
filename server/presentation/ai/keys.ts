@@ -2,6 +2,7 @@
  * The AI providers and their keys in words (N13, D-074): whether each key is set and where it comes from, never the key
  * (at most its last four characters, as `KeyStatus.hint` already serves), and a key check's outcome without repeating it.
  */
+import { AI_STATE_CERTAINTY } from '../aiMarking.js';
 import { basis, cell, claim } from '../claim.js';
 import { sourceOf, type AiContext } from './surface.js';
 import type { AiKeyCheckAnswer, AiKeysView, AiProviderRow } from './types.js';
@@ -48,7 +49,7 @@ function rowOf(ctx: AiContext, p: ProviderReading, usedFor: string[]): AiProvide
         ],
         source: sourceOf(ctx, 'Settings'), unknown: [],
         wouldChange: p.requiresKey ? [p.configured ? 'Removing the key in Settings.' : 'Adding a key in Settings.'] : [],
-        lean: null, certainty: 'fact',
+        lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     }),
     configured: p.requiresKey ? p.configured : true,
@@ -76,9 +77,13 @@ export function aiKeysView(
       basis: basis({
         because: [
           { label: 'Where', value: WHERE[keptIn] },
+          // A key from the environment wins over one kept elsewhere: said where some do and the rest don't
+          ...(keptIn !== 'env' && providers.some((p) => p.requiresKey && p.configured && p.source === 'env')
+            ? [{ label: 'From the environment', value: listed(providers.filter((p) => p.requiresKey && p.configured && p.source === 'env').map((p) => p.label)) }]
+            : []),
           { label: 'Where a key goes', value: 'Only to its own provider, with the question or the figures being written about. It is never shown in full, logged or sent anywhere else.' },
         ],
-        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: [], lean: null, certainty: 'fact',
+        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: [], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     }),
     off: anyOn ? null : claim({
@@ -86,7 +91,7 @@ export function aiKeysView(
       tone: 'neutral', hint: 'Add a key to ask your staff, or to have storylines written', links: [],
       basis: basis({
         because: [{ label: 'Why', value: 'No AI feature has a key for the provider it is set to use.' }],
-        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['An AI key in Settings.'], lean: null, certainty: 'fact',
+        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['An AI key in Settings.'], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     }),
     reenter: claim({
@@ -97,7 +102,7 @@ export function aiKeysView(
           { label: 'What happened', value: 'A key is saved in your Keychain, but this copy of Pennant was not allowed to read it without asking you (it may have been saved by another build).' },
           { label: 'What to do', value: 'Enter the key again and save it: Pennant replaces the old item with one it can read.' },
         ],
-        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['The key entered again.'], lean: null, certainty: 'fact',
+        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['The key entered again.'], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     }),
   };
@@ -122,7 +127,9 @@ export function keyCheckAnswer(ctx: AiContext, provider: ProviderReading, outcom
       basis: basis({
         because: [{ label: 'Provider', value: provider.label }, { label: 'What the check found', value: why }],
         source: sourceOf(ctx, 'Settings'), unknown: outcome === 'unchecked' ? ['Whether the key works: the provider could not be asked.'] : [],
-        wouldChange: outcome === 'works' ? [] : ['Another key, copied whole.'], lean: null, certainty: 'fact',
+        wouldChange: outcome === 'works' ? [] : ['Another key, copied whole.'], lean: null,
+        // What the provider answered just now is Pennant's own record; one it couldn't ask is not known
+        certainty: outcome === 'unchecked' ? 'unknown' : AI_STATE_CERTAINTY,
       }),
     }),
   };

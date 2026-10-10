@@ -23,10 +23,9 @@ public struct StorylinesView: View {
                 WritingHead(title: view.title, lede: view.lede, status: AiWritingStore.writingStatus(view), piece: .storylines)
                 ForEach(Array(view.stories.enumerated()), id: \.offset) { _, story in
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(verbatim: story.category.display.uppercased())
+                        Text(verbatim: story.category.uppercased())
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.readableSecondary)
-                            .help(detail: story.category.hint)
                         Text(verbatim: story.headline)
                             .font(.system(size: 22, weight: .semibold, design: .serif))
                             .fixedSize(horizontal: false, vertical: true)

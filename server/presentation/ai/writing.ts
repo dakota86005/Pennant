@@ -2,7 +2,9 @@
  * Storylines and the GM Briefing in words (N13, D-074): what was written, when and from which export, the state of a
  * new one (never written, writing, written, failed), and the marking beside it. The React pages' words, moved.
  */
+import { AI_STATE_CERTAINTY } from '../aiMarking.js';
 import { basis, cell, claim } from '../claim.js';
+import { parseGameDate } from '../../dataFreshness.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { timestampWords } from '../../timeWords.js';
 import { linked, sectionsOf, type LinkIndex } from './markdown.js';
@@ -51,13 +53,17 @@ function status(ctx: AiContext, kind: Kind, job: JobReading, written: Written | 
     { label: 'What it reads', value: w.from },
   ];
   const nowDay = gameDateDisplay(ctx.gameDate);
-  const older = written && exportDay && nowDay && written.gameDate !== ctx.gameDate
+  // Compared as dates (OOTP writes them unpadded, so as strings "2040-5-9" sorts after "2040-5-10"; review L5): an export
+  // of the same day is the one imported now, and one dated after it is only different, never earlier
+  const writtenOn = parseGameDate(written?.gameDate);
+  const nowOn = parseGameDate(ctx.gameDate);
+  const older = written && exportDay && nowDay && writtenOn && nowOn && writtenOn !== nowOn
     ? claim({
-      text: `Written from an earlier export (${exportDay}); the export now is ${nowDay}.`,
+      text: `Written from ${writtenOn < nowOn ? 'an earlier' : 'a different'} export (${exportDay}); the export now is ${nowDay}.`,
       tone: 'caution', links: [],
       basis: basis({
         because: [{ label: 'Written from', value: exportDay }, { label: 'Imported now', value: nowDay }],
-        source: sourceOf(ctx, 'Data status'), unknown: [], wouldChange: [`${w.again}.`], lean: null, certainty: 'fact',
+        source: sourceOf(ctx, 'Data status'), unknown: [], wouldChange: [`${w.again}.`], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     })
     : null;
@@ -68,7 +74,7 @@ function status(ctx: AiContext, kind: Kind, job: JobReading, written: Written | 
       basis: basis({
         because, source: sourceOf(ctx, 'The front office'),
         unknown: written && !exportDay ? ['Which export it was written from was not recorded.'] : [],
-        wouldChange: [], lean: null, certainty: 'fact',
+        wouldChange: [], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     }),
     older,
@@ -92,7 +98,7 @@ export function storylinesView(
     ...status(ctx, 'storylines', job, written, ai, stamp),
     stories: (written?.storylines ?? [])
       .filter((s) => s.headline?.trim() && s.body?.trim())
-      .map((s) => ({ category: cell(s.category?.trim() || 'The Club'), headline: s.headline.trim(), body: linked(s.body, index) })),
+      .map((s) => ({ category: (typeof s.category === 'string' && s.category.trim()) || 'The Club', headline: s.headline.trim(), body: linked(s.body, index) })),
   };
 }
 

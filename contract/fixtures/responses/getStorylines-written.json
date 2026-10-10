@@ -33,8 +33,8 @@
       "unknown": [],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": []
   },
@@ -85,7 +85,7 @@
         "because": [
           {
             "label": "Why",
-            "value": "No API credential is configured for the Storylines provider."
+            "value": "No Anthropic (Claude) key set. Open Settings and add your key — you can get one at console.claude.com."
           },
           {
             "label": "What still works",
@@ -103,8 +103,8 @@
           "An AI key in Settings."
         ],
         "lean": null,
-        "certainty": "fact",
-        "called": "A fact from the export"
+        "certainty": "recorded",
+        "called": "From Pennant's own record"
       },
       "links": [],
       "hint": "Add a key in Settings to have storylines written"
@@ -142,9 +142,7 @@
   "writingStamp": "wstamp",
   "stories": [
     {
-      "category": {
-        "display": "Player Spotlight"
-      },
+      "category": "Player Spotlight",
       "headline": "P 1000 keeps hitting",
       "body": {
         "markdown": "[P 1000](pennant://player/1000) has carried the lineup, and the [Club 2 N](pennant://club/2) are next.",

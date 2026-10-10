@@ -3,9 +3,11 @@
  * answer takes, the question "Ask about him" puts, and a failure in a sentence. Moved from the React chat
  * (`src/Chat.tsx`: the role labels, the openers, the intros, the tool labels), so the two clients say the same.
  */
+import { AI_STATE_CERTAINTY } from '../aiMarking.js';
 import { basis, cell, claim } from '../claim.js';
 import { clockWords, dayWords, timestampWords } from '../../timeWords.js';
 import { linked, type LinkIndex } from './markdown.js';
+import { ROOM_ID, roleLabel } from './staffWords.js';
 import { aiSurface, aiWritten, sourceOf, type AiContext, type AiOnOff } from './surface.js';
 import type { StaffMemberView, StaffRoomConversation, StaffRoomMessage, StaffRoomView } from './types.js';
 
@@ -22,18 +24,15 @@ export interface KeptMessage {
   at?: string;
 }
 
-export const ROOM_ID = 'room';
+export { ROOM_ID, roleLabel };
 export const ROOM_LIMIT = 4;
 /** Who is in the room until the GM chooses (the React chat's default). */
 export const ROOM_DEFAULT = ['trainer', 'pitching', 'manager'];
 
-const ROLE_LABEL: Record<string, string> = {
-  analyst: 'Analyst', manager: 'Manager', pitching: 'Pitching Coach', hitting: 'Hitting Coach', trainer: 'Trainer', scout: 'Scout', owner: 'Owner',
-};
-
-/** The short title under a name; the general manager's depends on the save, so anything unnamed is its role, capitalised. */
-export const roleLabel = (p: StaffPerson): string => ROLE_LABEL[p.id] ?? p.role.replace(/\b\w/g, (c) => c.toUpperCase());
-
+/**
+ * Openers worth asking each of them. Not the React chat's list: these are worded as questions, never as an order to
+ * the GM ("Who are you thinking of starting tonight?", not "Who should I start tonight?"; D-001), so the Mac's own.
+ */
 const STARTERS: Record<string, string[]> = {
   analyst: ['How is my team actually playing so far?', 'Who in the minors is closest to helping us?', 'Which contracts are a concern?'],
   manager: ['Who are you thinking of starting tonight?', 'Who needs a day off?', 'How do you want to use the bullpen this week?'],
@@ -188,7 +187,7 @@ export function failureClaim(ctx: AiContext, reason: 'keyRefused' | 'declined' |
       source: sourceOf(ctx, 'The staff room'),
       unknown: [],
       wouldChange: reason === 'keyRefused' ? ['A working key in Settings.'] : reason === 'declined' ? ['Asking it another way.'] : ['Asking again.'],
-      lean: null, certainty: 'fact',
+      lean: null, certainty: AI_STATE_CERTAINTY,
     }),
   });
 }

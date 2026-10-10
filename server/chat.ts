@@ -5,14 +5,14 @@ import fs from 'node:fs';
 import { db, tableExists } from './db.js';
 import { ownApiHeaders, ownApiUrl } from './apiToken.js';
 import { activeProvider, featureModel, featureProvider, providerCredential } from './settings.js';
-import { PROVIDERS, describeError, stripProviderExtras, toolLoopFor, type ProviderId } from './providers.js';
+import { PROVIDERS, describeError, stripProviderExtras, toolLoopFor, withoutKey, type ProviderId } from './providers.js';
 import { supportsAdaptiveThinking } from './models.js';
 import { calendarBriefing, currentGameDate, orgBriefing, seasonYear } from './valuation.js';
 import { tradingBlock } from './tradingblock.js';
 import { personaBrief, personaById, personasFor, type Persona } from './staff.js';
 import {
-  StaffRoomAnswer, aboutQuestionFor, addressedIn, contextPath, conversationNow, historyPath, personOn, personaId, readConversation,
-  staffFor, staffRoomCleared, staffRoomNow, writeConversation,
+  StaffRoomAnswer, aboutQuestionFor, addressedIn, contextPath, conversationNow, historyPath, keepAside, personOn, personaId,
+  readConversation, staffFor, staffRoomCleared, staffRoomNow, writeConversation, writeJsonAtomic,
 } from './aiSurfacesService.js';
 import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 
@@ -61,23 +61,29 @@ chatRoutes.get('/chat-staff/:orgId', (req, res) => {
 const personaParam = (req: { query: Record<string, unknown> }): string => personaId(req.query.persona);
 
 chatRoutes.get('/chat-history/:orgId', (req, res) => {
+  const file = historyPath(Number(req.params.orgId), personaParam(req));
+  let raw: string;
   try {
-    const raw = fs.readFileSync(historyPath(Number(req.params.orgId), personaParam(req)), 'utf8');
-    const parsed: unknown = JSON.parse(raw);
-    res.json(Array.isArray(parsed) ? parsed : []);
+    raw = fs.readFileSync(file, 'utf8');
   } catch {
-    res.json([]);
+    return res.json([]);
   }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return res.json(parsed);
+  } catch {
+    // Unreadable: answered as empty, as before, and kept aside so the page's next save can't wipe it (N13 review L8)
+  }
+  keepAside(file);
+  res.json([]);
 });
 
 chatRoutes.put('/chat-history/:orgId', (req, res) => {
   const body = req.body as unknown;
   if (!Array.isArray(body)) return res.status(400).json({ error: 'Expected an array of messages' });
   try {
-    fs.writeFileSync(
-      historyPath(Number(req.params.orgId), personaParam(req)),
-      JSON.stringify(body.slice(-KEEP_TURNS))
-    );
+    // Whole or not at all, the same bytes as before (N13 review L8)
+    writeJsonAtomic(historyPath(Number(req.params.orgId), personaParam(req)), body.slice(-KEEP_TURNS));
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
@@ -93,11 +99,15 @@ export const noKeyMessage = (provider = activeProvider()): string => {
 /**
  * A missing key is ours to explain. Everything else has already been put into
  * words (`describeError`), so it is passed along as it stands. Shared by the
- * AI routes in `ai.ts` and the Mac app's Staff room (N13).
+ * AI routes in `ai.ts` and the Mac app's Staff room (N13). Read against the
+ * provider the asking feature uses, and a 403 is a refused key as a 401 is,
+ * as `describeError` reads them (N13 review L4).
  */
-export function aiErrorStatus(e: Error & { status?: number }): { status: number; message: string } {
-  if (!providerCredential()) return { status: 401, message: noKeyMessage() };
-  return { status: e.status === 401 ? 401 : 500, message: e.message };
+export function aiErrorStatus(
+  e: Error & { status?: number }, provider: ProviderId = activeProvider(),
+): { status: number; message: string } {
+  if (!providerCredential(provider)) return { status: 401, message: noKeyMessage(provider) };
+  return { status: e.status === 401 || e.status === 403 ? 401 : 500, message: e.message };
 }
 
 const NO_KEY_MESSAGE =
@@ -792,8 +802,9 @@ async function runToolLoop(opts: {
   system: Anthropic.TextBlockParam[];
   messages: Anthropic.MessageParam[];
   send: (event: string, data: unknown) => void;
+  signal?: AbortSignal;
 }): Promise<{ answer: string; refused: boolean }> {
-  const { client, provider, key, model, thinking, system, messages, send } = opts;
+  const { client, provider, key, model, thinking, system, messages, send, signal } = opts;
 
   /*
    * Another service answers through the adapter in providers.ts, which speaks
@@ -816,6 +827,7 @@ async function runToolLoop(opts: {
       runTool: (name, input) => runTool(name, input),
       onFallback: (notice) => send('notice', notice),
       maxTurns: 12,
+      signal,
     });
   }
 
@@ -828,6 +840,7 @@ async function runToolLoop(opts: {
   stripProviderExtras(messages);
   let answer = '';
   for (let turn = 0; turn < 12; turn++) {
+    signal?.throwIfAborted();
     markCachePoint(messages);
     const stream = client.messages.stream({
       model,
@@ -836,7 +849,7 @@ async function runToolLoop(opts: {
       system,
       tools: TOOLS,
       messages,
-    });
+    }, { signal });
 
     stream.on('text', (delta) => {
       answer += delta;
@@ -858,6 +871,7 @@ async function runToolLoop(opts: {
 
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const use of toolUses) {
+      signal?.throwIfAborted();
       send('tool', { name: use.name });
       try {
         const output = await runTool(use.name, (use.input ?? {}) as Record<string, unknown>);
@@ -893,6 +907,11 @@ export interface StaffQuestion {
   key: string;
   /** Told of a failure before its `error` event, with the error itself (the Mac app's Staff room reads its status). */
   onFailure?: (err: Error & { status?: number }) => void;
+  /**
+   * Stops the answer: the model's request, the tools and the turns (N13 review M1). Once aborted nothing more is sent
+   * and nothing is stored, as the asker has gone.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -925,7 +944,8 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
   // take it is a 400, and the model is now the user's choice rather than ours.
   const thinking: Anthropic.ThinkingConfigParam | undefined =
     (await supportsAdaptiveThinking(model, provider)) ? { type: 'adaptive' } : undefined;
-  const loop = { client, provider, key, model, thinking, send };
+  const { signal } = q;
+  const loop = { client, provider, key, model, thinking, send, signal };
 
   try {
     if (!isRoom) {
@@ -943,6 +963,7 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
         { type: 'text', text: systemPrompt(team, persona), cache_control: { type: 'ephemeral' } },
       ];
       const { answer } = await runToolLoop({ ...loop, system, messages });
+      if (signal?.aborted) return;
 
       // Only a completed answer is stored. A transcript left ending on a tool
       // call whose result never arrived is one the API refuses outright, so a
@@ -1015,11 +1036,13 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
       ];
 
       const { answer, refused } = await runToolLoop({ ...loop, system, messages });
+      if (signal?.aborted) return;
       saidThisTurn.push({ name: person.name, role: person.role, text: answer });
       if (refused) break;
     }
     send('done', {});
   } catch (err) {
+    if (signal?.aborted) return;
     const e = err as Error & { status?: number };
     const message = key ? describeError(provider, e) : NO_KEY_MESSAGE;
     q.onFailure?.(e);
@@ -1050,6 +1073,12 @@ chatRoutes.post('/chat', async (req, res) => {
   if (!key) return res.status(401).json({ error: NO_KEY_MESSAGE });
 
   const team = Number.isFinite(Number(orgId)) ? Number(orgId) : defaultOrgId();
+  // The page names who a room message is aimed at; when it names nobody the server applies the same rule to the question
+  // (`addressedIn`, the one both apps read; N13 review L1), so a client that leaves it out is answered the same way
+  const question = Array.isArray(history) ? history[history.length - 1] : undefined;
+  const aimed = addressed ?? (String(personaId) === 'room' && question?.role === 'user' && typeof question.content === 'string'
+    ? addressedIn(question.content.trim(), staffFor(team))?.id
+    : undefined);
 
   // Server-sent events: the answer streams in, and tool calls are announced as
   // they happen so the user sees the assistant working rather than a spinner.
@@ -1061,9 +1090,16 @@ chatRoutes.post('/chat', async (req, res) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
+  // A page that stops listening (Stop, a closed window) stops the model too (N13 review M1): nothing more is sent or stored
+  const stop = new AbortController();
+  let answered = false;
+  res.on('close', () => {
+    if (!answered) stop.abort();
+  });
   try {
-    await answerStaff({ history, team, personaId, memberIds, addressed, provider, model, key }, send);
+    await answerStaff({ history, team, personaId, memberIds, addressed: aimed, provider, model, key, signal: stop.signal }, send);
   } finally {
+    answered = true;
     res.end();
   }
 });
@@ -1082,11 +1118,18 @@ export const STAFF_NO_QUESTION = 'Ask a question first.';
 export const STAFF_TOO_LONG = 'That question is too long to send. Shorten it a little.';
 export const STAFF_NO_PLAYER = 'Pennant doesn\'t know that player in this save.';
 export const STAFF_BUSY = 'Still answering the last question. Wait for it, or stop it first.';
+export const STAFF_NOT_TAKEN = 'Pennant couldn\'t take that question just now. Try again.';
+export const STAFF_TOO_SLOW = 'The answer took too long, so it was stopped. Ask again, perhaps a narrower question.';
 export const STAFF_ROOM_LIMIT = 4;
 const LONGEST_QUESTION = 4000;
+/** The longest one answer may take, everyone in a room included, before it is stopped and said so (N13 review M1). */
+export const STAFF_ANSWER_LIMIT = { ms: 10 * 60_000 };
 
-/** Conversations being answered now, by club and person: one at a time each, so two answers never write one file. */
-const answeringNow = new Set<string>();
+/**
+ * Conversations being answered now, by club and person, each with the answer holding it: one at a time each, so two
+ * answers never write one file. An answer releases only its own hold, so one stopped never frees the next.
+ */
+const answeringNow = new Map<string, object>();
 
 /** A refusal in words: a club the save doesn't know is a 404, the rest are passed on. */
 function refused(res: import('express').Response, err: unknown, next: (err: unknown) => void): void {
@@ -1165,54 +1208,93 @@ chatRoutes.post('/v2/staff-room/:org/ask', async (req, res, next) => {
   const answering = !isRoom ? [person]
     : aimedAt ? [aimedAt] : members.length > 0 ? members.map((id) => people.find((p) => p.id === id)!) : [people[0]];
 
-  answeringNow.add(busy);
-  const answer = new StaffRoomAnswer(orgId, withId, isRoom ? null : person, readConversation(orgId, withId), question, answering);
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
+  // From the hold on, everything is inside the try: the hold is always released, and a failure is said, never thrown
+  // (review M2: a write that fails here used to leave the conversation held and the request unanswered)
+  const hold = {};
+  answeringNow.set(busy, hold);
+  const release = (): void => {
+    if (answeringNow.get(busy) === hold) answeringNow.delete(busy);
+  };
+  const stop = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let answer: StaffRoomAnswer | null = null;
   let listening = true;
   const emit = (events: Array<{ type: string }> | { type: string } | null): void => {
     for (const event of Array.isArray(events) ? events : events ? [events] : []) {
       if (listening) res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
     }
   };
-  res.on('close', () => {
-    // The app stopped listening (Stop, or the window closed): what had arrived is kept
-    listening = false;
-    answer.keep();
-  });
-  emit(answer.started());
-  if (!isRoom) emit(answer.speaker(person));
-  let failure: Error & { status?: number } | null = null;
+  /** The last word when the answer itself could not give one; never throws. */
+  const fail = (sentence: string): void => {
+    try {
+      if (answer && !answer.finished) emit(answer.failed('failed', sentence));
+    } catch (err) {
+      console.error('[staff-room] failed:', err instanceof Error ? err.message : 'unknown');
+    }
+  };
   try {
-    await answerStaff({
-      history: answer.history, team: orgId, personaId: withId, memberIds: members, addressed: aimedAt?.id, provider, model, key,
-      onFailure: (err) => { failure = err; },
+    answer = new StaffRoomAnswer(orgId, withId, isRoom ? null : person, readConversation(orgId, withId), question, answering);
+    const kept = answer;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+    res.on('close', () => {
+      if (kept.finished) return;
+      // The app stopped listening (Stop, or the window closed): what had arrived is kept, the model is stopped, and the
+      // conversation is free again at once (review M1)
+      listening = false;
+      kept.keep();
+      stop.abort();
+      release();
+    });
+    emit(kept.started());
+    if (!isRoom) emit(kept.speaker(person));
+    let failure: Error & { status?: number } | null = null;
+    let thrown = false;
+    let timedOut = false;
+    const stopped = new Promise<void>((resolve) => stop.signal.addEventListener('abort', () => resolve(), { once: true }));
+    timer = setTimeout(() => {
+      timedOut = true;
+      stop.abort();
+    }, STAFF_ANSWER_LIMIT.ms);
+    const asking = answerStaff({
+      history: kept.history, team: orgId, personaId: withId, memberIds: members, addressed: aimedAt?.id, provider, model, key,
+      signal: stop.signal, onFailure: (err) => { failure = err; },
     }, (event, data) => {
-      if (answer.finished) return;
+      if (kept.finished) return;
       const d = data as Record<string, string>;
-      if (event === 'speaker') emit(answer.speaker({ name: d.name, role: d.role }));
-      else if (event === 'text') emit(answer.text(d.delta));
-      else if (event === 'tool') emit(answer.tool(d.name));
-      else if (event === 'notice') emit(answer.notice(d.message));
+      if (event === 'speaker') emit(kept.speaker({ name: d.name, role: d.role }));
+      else if (event === 'text') emit(kept.text(d.delta));
+      else if (event === 'tool') emit(kept.tool(d.name));
+      else if (event === 'notice') emit(kept.notice(d.message));
       else if (event === 'error') {
         const declined = !failure && d.message === 'The model declined to answer that.';
-        const status = failure ? aiErrorStatus(failure).status : 0;
+        const status = failure ? aiErrorStatus(failure, provider).status : 0;
         const label = PROVIDERS.find((p) => p.id === provider)?.label ?? 'The AI provider';
         emit(status === 401 && !declined
-          ? answer.failed('keyRefused', `${label} turned down the key. Check it in Settings: it may have been revoked or copied incompletely.`)
-          : answer.failed(declined ? 'declined' : 'failed', d.message));
-      } else if (event === 'done') emit(answer.done());
+          ? kept.failed('keyRefused', `${label} turned down the key. Check it in Settings: it may have been revoked or copied incompletely.`)
+          // The provider's own sentence, with any key taken out of it (review L2)
+          : kept.failed(declined ? 'declined' : 'failed', withoutKey(d.message, key)));
+      } else if (event === 'done') emit(kept.done());
+    }).catch((err: unknown) => {
+      // Thrown before the answer's own handling (loading the provider's library): kept, and said in words below
+      thrown = true;
+      console.error('[staff-room] failed:', err instanceof Error ? err.message : 'unknown');
     });
+    // The answer, or Stop, or the time limit: whichever comes first ends the stream
+    await Promise.race([asking, stopped]);
+    if (timedOut) fail(STAFF_TOO_SLOW);
+    else if (thrown) fail('The answer couldn\'t be finished.');
     // An answer that ended without saying so (it never should) is kept as it stands
-    if (!answer.finished) emit(answer.done());
+    else if (!kept.finished) emit(kept.done());
   } catch (err) {
-    // Never thrown by the answer itself; kept and said in words all the same
     console.error('[staff-room] failed:', err instanceof Error ? err.message : 'unknown');
-    if (!answer.finished) emit(answer.failed('failed', 'The answer couldn\'t be finished.'));
+    if (!res.headersSent) res.status(500).json({ error: STAFF_NOT_TAKEN });
+    else fail('The answer couldn\'t be finished.');
   } finally {
-    answeringNow.delete(busy);
-    res.end();
+    clearTimeout(timer);
+    release();
+    if (res.headersSent && !res.writableEnded) res.end();
   }
 });

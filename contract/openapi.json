@@ -4295,8 +4295,8 @@
         "type": "object",
         "properties": {
           "category": {
-            "$ref": "#/components/schemas/Cell",
-            "description": "\"The Club\", \"Player Spotlight\", \"Down on the Farm\", \"Front Office\", \"Looking Ahead\"."
+            "type": "string",
+            "description": "The AI's own category, as written (plain text, not markdown): \"The Club\", \"Player Spotlight\", \"Down on the Farm\", \"Front Office\", \"Looking Ahead\" as a rule; \"The Club\" when it gave none. AI text, so not a server `Cell` (review L8)."
           },
           "headline": {
             "type": "string",
@@ -4381,7 +4381,7 @@
           },
           "older": {
             "$ref": "#/components/schemas/Claim",
-            "description": "Said when what is shown was written from an earlier export than the one imported now; null otherwise."
+            "description": "Said when what is shown was written from another export than the one imported now (\"Written from an earlier export\", or \"a different export\" when it is dated after it); null when it is the same day's, or a date is unknown."
           },
           "write": {
             "$ref": "#/components/schemas/Cell",
@@ -4685,7 +4685,7 @@
           },
           "older": {
             "$ref": "#/components/schemas/Claim",
-            "description": "Said when what is shown was written from an earlier export than the one imported now; null otherwise."
+            "description": "Said when what is shown was written from another export than the one imported now (\"Written from an earlier export\", or \"a different export\" when it is dated after it); null when it is the same day's, or a date is unknown."
           },
           "write": {
             "$ref": "#/components/schemas/Cell",
@@ -20215,7 +20215,7 @@
           "messageId",
           "delta"
         ],
-        "description": "More of the answer, in the markdown subset at the start of each line; links arrive with `answered`."
+        "description": "More of the answer, in the markdown subset: the deltas add up exactly to `answered`'s text without its links (a line break arrives with the next line's words). Links arrive only with `answered`."
       },
       "StaffRoomView": {
         "type": "object",
@@ -20420,7 +20420,7 @@
           },
           "older": {
             "$ref": "#/components/schemas/Claim",
-            "description": "Said when what is shown was written from an earlier export than the one imported now; null otherwise."
+            "description": "Said when what is shown was written from another export than the one imported now (\"Written from an earlier export\", or \"a different export\" when it is dated after it); null when it is the same day's, or a date is unknown."
           },
           "write": {
             "$ref": "#/components/schemas/Cell",

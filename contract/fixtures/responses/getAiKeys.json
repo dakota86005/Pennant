@@ -36,8 +36,8 @@
             "Adding a key in Settings."
           ],
           "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
         },
         "links": []
       },
@@ -85,8 +85,8 @@
             "Adding a key in Settings."
           ],
           "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
         },
         "links": []
       },
@@ -132,8 +132,8 @@
             "Adding a key in Settings."
           ],
           "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
         },
         "links": []
       },
@@ -179,8 +179,8 @@
             "Adding a key in Settings."
           ],
           "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
         },
         "links": []
       },
@@ -224,8 +224,8 @@
           "unknown": [],
           "wouldChange": [],
           "lean": null,
-          "certainty": "fact",
-          "called": "A fact from the export"
+          "certainty": "recorded",
+          "called": "From Pennant's own record"
         },
         "links": []
       },
@@ -261,8 +261,8 @@
       "unknown": [],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": []
   },
@@ -287,8 +287,8 @@
         "An AI key in Settings."
       ],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": [],
     "hint": "Add a key to ask your staff, or to have storylines written"
@@ -318,8 +318,8 @@
         "The key entered again."
       ],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": [],
     "hint": "The key is kept anew in your Keychain when you save it"

@@ -3,18 +3,26 @@
  *
  * Three claims, one shape each, used by the Trade Desk's AI desk, the Staff room, Storylines and the GM Briefing alike,
  * so the marking is never written twice:
- * - **AI is off**: one calm line that the surface works without it, the reason in its basis (a fact: no key is set).
+ * - **AI is off**: one calm line that the surface works without it, the reason in its basis (Pennant's own record: no
+ *   key is set for the provider).
  * - **The note**: what the AI is and is not, a stated line (policy): it explains Pennant's figures and decides nothing.
  * - **Written by AI**: beside each answer, story or briefing: who wrote it and from what, that it can be wrong, and that the
  *   decision is the GM's (its certainty is unknown: no one can say how right an AI's words are).
  *
  * Pure: the words only. Whether AI is on is the AI modules' answer, handed in (this folder reaches no AI module).
  */
-import type { BasisLine, BasisSource, Tone } from '../contract/presentation.js';
+import type { BasisLine, BasisSource, Certainty, Tone } from '../contract/presentation.js';
 import { basis, claim } from './claim.js';
 
 const lines = (pairs: ReadonlyArray<readonly [string, string]>): BasisLine[] =>
   pairs.map(([label, value]) => ({ label, value }));
+
+/**
+ * How a line about AI itself is called (N13 review L6): whether AI is on, a key's state and where it comes from, what a key
+ * check or an answer did. None is a fact from the export; each is Pennant's own record of its settings and of what it
+ * saw happen, so `recorded` ("From Pennant's own record"). Shared by the Trade Desk and the N13 surfaces.
+ */
+export const AI_STATE_CERTAINTY: Certainty = 'recorded';
 
 /** What an AI can and cannot be trusted with, said once (the "not known" of every AI-written claim). */
 export const AI_CAN_BE_WRONG = 'An AI can be wrong about what it reads; the figures in Pennant\'s reports are Pennant\'s own.';
@@ -30,7 +38,7 @@ export interface AiOffWords {
   stillWorks: string;
 }
 
-/** AI is off: said calmly, with the rest of the app working (D-001). A fact: no key is set for the provider. */
+/** AI is off: said calmly, with the rest of the app working (D-001). Pennant's own record: no key is set for the provider. */
 export function aiOffClaim(w: AiOffWords) {
   return claim({
     text: w.text,
@@ -39,7 +47,7 @@ export function aiOffClaim(w: AiOffWords) {
     links: [],
     basis: basis({
       because: lines([['Why', w.reason], ['What still works', w.stillWorks]]),
-      source: w.source, unknown: [], wouldChange: ['An AI key in Settings.'], lean: null, certainty: 'fact',
+      source: w.source, unknown: [], wouldChange: ['An AI key in Settings.'], lean: null, certainty: AI_STATE_CERTAINTY,
     }),
   });
 }

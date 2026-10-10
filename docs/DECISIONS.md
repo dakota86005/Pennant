@@ -3201,12 +3201,13 @@ answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at 
   `done` or `failed`. `failed` says why in a claim (`keyRefused` where the provider refused the key, read through
   `aiErrorStatus`; `declined`; `failed`) and carries the answer as far as it got. Refusals come before the stream as JSON
   in words: no question (400), an unknown club or player (404), AI off or an answer already running for that
-  conversation (409). One answer at a time per club and person, so two never write one file.
+  conversation (409). One answer at a time per club and person, so two never write one file. A stream that ends with
+  neither `done` nor `failed` is a failure to the app.
 - **The markdown subset is the server's.** AI text travels as `AiText` (`markdown` plus `links`), for Swift's
   `AttributedString(markdown:)` with inline-only syntax: bold, italic, code and links; lines and blank-line paragraphs; a
-  list item "• "; a heading a bold line. The models' block markers (`#`, `-`, `>`, rules) are rewritten on the server, in
-  the stream at each line's start (only a line's first characters are held back) and whole in `answered`, which replaces
-  what streamed; a test holds the two equal however the deltas fall.
+  list item "• "; a heading a bold line. The models' block markers (`#`, `-`, `>`, rules) are rewritten on the server by
+  one character-by-character reader, so the deltas add up exactly to `answered`'s text without its links, however they
+  fall (a property test over random splits).
 - **Links are structured, and come with the final text.** Why not links in the stream: a name is only known to be a name
   once it is whole, and a link split across deltas would flash as raw markdown. So the streamed text has none, and
   `answered` (and every kept message, story and briefing section) carries the text with `[name](pennant://player/<id>)`
@@ -3214,7 +3215,10 @@ answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at 
   `PlayerRef` or `ClubRef` by the served target and never parses prose. Names are matched as the React app matches them
   (full names on the league's index: the major leagues and our organization), now with the club's full name and "the
   <nickname>" where one club has it; a full name two players share is linked only where exactly one of them is ours,
-  otherwise left plain rather than open the wrong man.
+  otherwise left plain rather than open the wrong man. Only the server makes links: a link or image the model wrote
+  keeps its words and loses its address, and any other `[`, `]`, `<` or `javascript:`, `pennant:` or `scheme://` colon
+  is escaped (outside code spans; a run of backticks left open is escaped too, so every reader agrees where code is). The
+  app opens only a URL listed in `links`.
 - **"Ask about him" is the server's sentence.** A `PlayerRef` dropped on the Staff room is `about: { playerId }`; the
   server words the question ("What do you make of …, our shortstop?") and keeps it as the GM's.
 - **AI off is the most important case (D-001).** Every surface serves `ai: { available, off, note }`: with no key for the
@@ -3242,6 +3246,22 @@ answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at 
   is as it was); the landing folders still reach none; the service is added to the list of modules that import
   `presentation/`, as each milestone's service is, and `orgParam.ts` to the Front Office service's public modules,
   with a new rule pinning its own imports.
+- **Amended after the independent review (2026-10-10).** Links the model wrote no longer survive (H1, above). Stop stops
+  the answer: an `AbortSignal` runs from the route through `answerStaff` and the tool loop to each provider's request,
+  closing the stream releases the conversation at once, a whole answer is capped at ten minutes and then fails in words,
+  and the React chat aborts too when its page stops listening (M1). Everything from the conversation's hold on is inside
+  `try`/`finally`, so a write that fails is a 500 in words, never a crash (M2). The stream's deltas equal the final text
+  (M3). The rule of address and the short titles are one module both apps read (`presentation/ai/staffWords.ts`): the
+  React page still finds the man itself, to bring him into its room tabs, and `POST /api/chat` applies the same rule
+  when the page names nobody; the Mac's openers are its own, the React ones reworded as questions, never an order (L1).
+  A failed sentence and a malformed body never carry a key or a stack (L2, L3: `requestBody.ts` answers an unreadable
+  body in words on every route, the React app's included). `aiErrorStatus` reads the asking feature's provider and
+  counts a 403 as a refused key (L4). "Written from an earlier export" orders dates with `parseGameDate`, and a later
+  one is "a different export" (L5). A line about AI itself (off, a key's state, a check, a failure, when something was
+  written) is `recorded`, Pennant's own record, never a fact from the export, the Trade Desk's AI-off line included (L6).
+  Keys set only in the environment are said to come from there, and Storylines' off reason is `noKeyMessage` (L7). The
+  conversation file is written whole or not at all, an unreadable one is kept aside, names are kept per club, a story's
+  category is the AI's own text (`AiStory.category: string`), and the service's own imports are pinned (L8).
 
 **Amendment (N13 Stage B builder, 2026-10-10): the keys on the Mac, settled with evidence.** Implementation:
 `macos/Packages/PennantKit/Sources/PennantKit/KeychainItems.swift`, `KeySource.swift`; the CI job `keychain-no-prompt`
@@ -3265,7 +3285,8 @@ answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at 
   copy can read, a provider with items but none readable shows the served `AiKeysView.reenter` line ("Pennant couldn't
   read the key saved for this provider. Enter it again."), and removing deletes what this copy may and leaves the rest.
   A Developer ID release keeps one designated requirement across updates, so this arises only for ad hoc or differently
-  signed builds.
+  signed builds. CI run 38085037441 proved the whole round: the second copy keeps its key beside the first's
+  item and reads its own, the first still reads its own, each removes only its own, and nothing ever asks.
 - **Saving hands the set over at once; tests never touch the Mac's Keychain.** A saved key goes to the running server on
   stdin (`{"keys":{…}}`) with no restart, and the field empties: the key is never shown again, logged or put in an error
   (a failure is its step and `OSStatus`). The UI tests launch with `-PennantTestKeys memory`; the package tests use

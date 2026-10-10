@@ -6,7 +6,9 @@ import { orgInjuries } from './dashboard.js';
 import {
   AI_FEATURES, allKeyStatus, featureModel, featureProvider, getApiKey, keyShapeProblem, keyStorageKind, providerCredential,
 } from './settings.js';
-import { PROVIDERS, authRejected, describeError, isProviderId, providerFor, toolLoop, type FallbackNotice } from './providers.js';
+import {
+  PROVIDERS, authRejected, describeError, isProviderId, providerFor, toolLoop, withoutKey, type FallbackNotice,
+} from './providers.js';
 import { TOOLS, VALUE_FIGURES_NOTE, aiErrorStatus, noKeyMessage, runTool } from './chat.js';
 import { computeProspects } from './org.js';
 import { farmBriefing } from './farmOperations.js';
@@ -445,7 +447,7 @@ async function askForTheMac(q: TradeDeskQuestion): Promise<TradeDeskReply> {
     );
     return { text, voice: { name: voice.name, role: voice.role }, notice: notice ? { message: notice.message } : null };
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-desk] failed:', message);
     throw new TradesRefusal(status === 401 ? message : message || TRADE_DESK_FAILED, status === 401 ? 401 : 502);
   }
@@ -465,7 +467,7 @@ aiRoutes.post('/trade/ai-eval', async (req, res) => {
     const { text: verdict, voice, notice } = await deskAnswer({ ...body, message: undefined });
     res.json({ verdict, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-eval] failed:', err);
     res.status(status).json({ error: message });
   }
@@ -487,7 +489,7 @@ aiRoutes.post('/trade/ai-reply', async (req, res) => {
     const { text: reply, voice, notice } = await deskAnswer(body);
     res.json({ reply, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-reply] failed:', err);
     res.status(status).json({ error: message });
   }
@@ -562,13 +564,6 @@ export const KEY_CHECK_NONE_NEEDED = 'That provider needs no key: it runs on thi
 export const KEY_CHECK_NOTHING = 'There is no key to check. Enter one first.';
 /** How long a check waits for the provider before saying it couldn't be checked. */
 const KEY_CHECK_WAIT_MS = 15_000;
-
-/** Takes the key, and anything shaped like one, out of a sentence a provider wrote, before it is served. */
-export function withoutKey(text: string, key: string): string {
-  let out = text;
-  if (key) out = out.split(key).join('[the key]');
-  return out.replace(/\b(?:sk|AIza|key)[-_A-Za-z0-9]{8,}/g, '[the key]');
-}
 
 /**
  * Checks a key with its own provider, without keeping it (`POST /api/v2/ai/keys/check`). The key is sent only to that

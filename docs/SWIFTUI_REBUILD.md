@@ -1534,17 +1534,23 @@ jobs and files as the React app.
   time and day in words, the count, and the "written by AI" marking. `DELETE …/conversation?with=` starts over.
   `POST …/ask` (`StaffRoomAsk`: `with`, `question` or `about: { playerId }`, the room's `members`) streams
   `StaffRoomEvent`s: `started`, then per person `speaker`, `looking-up`, `text`, `answered`, a `notice` at any point, and
-  last `done` or `failed`. The model is asked through `answerStaff`, the function `POST /api/chat` now calls too; a name at
-  the start of a room message (or after @) sends it to that man alone, as the React chat does, now decided on the server.
+  last `done` or `failed` (a stream that ends with neither is a failure). The model is asked through `answerStaff`, the
+  function `POST /api/chat` now calls too; a name at the start of a room message (or after @) sends it to that man alone,
+  by the one rule both apps read (`presentation/ai/staffWords.ts`): the React page applies it itself and names him, the
+  Mac's Staff room and `POST /api/chat` (when the page names nobody) on the server. Closing the stream (Stop) aborts the
+  model's request and frees the conversation at once; an answer is capped at ten minutes, then fails in words.
 - **The markdown subset and the links** (`server/presentation/ai/markdown.ts`): bold, italic, code and links; "• " items; a
-  heading as a bold line; rewritten at each line's start while streaming and whole in `answered`. Links arrive only with
-  final text: `[name](pennant://player/<id>)` and `pennant://club/<teamId>`, listed beside the text as `AiLink`s with their
-  `Target`. Swift reads it with `AttributedString(markdown:options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))`
-  and opens a link by its served target.
+  heading as a bold line; one character-by-character reader for the deltas and the whole text, so the deltas add up to
+  `answered`'s text exactly, without its links. Links arrive only with final text: `[name](pennant://player/<id>)` and
+  `pennant://club/<teamId>`, listed beside the text as `AiLink`s with their `Target`; a link the model wrote keeps only its
+  words, and anything else that could read as a link is backslash-escaped. Swift reads it with
+  `AttributedString(markdown:options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))` and opens only a URL
+  listed in `links`, by its served target.
 - **Storylines and the GM Briefing.** `GET|POST /api/v2/storylines/:org` (`StorylinesView`: each story's category, the
   AI's headline and its body as `AiText`) and `GET|POST /api/v2/briefing/:org` (`BriefingView`: its sections by heading).
   Both carry the state (`never`, `writing`, `written`, `failed`), a status claim (when it was written and from which
-  export, or why not, the job's failure in its basis), an "older" line when today's export is a later one, the write
+  export, or why not, the job's failure in its basis), an "older" line when today's export is another one (dates ordered
+  with `parseGameDate`), the write
   button's words and whether it can be pressed, a model fallback notice, the marking and whether AI is on. A POST starts
   the React routes' own background job and answers at once, writing; the `job` event on `/api/v2/events` says when it ends.
 - **AI off** on every surface is `ai.off`, one calm line with its reason in the basis; a POST to ask or write is a 409 in

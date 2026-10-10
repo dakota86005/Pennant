@@ -25,8 +25,8 @@
       "unknown": [],
       "wouldChange": [],
       "lean": null,
-      "certainty": "fact",
-      "called": "A fact from the export"
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
     },
     "links": []
   },
@@ -46,7 +46,7 @@
         "because": [
           {
             "label": "Why",
-            "value": "No API credential is configured for the Storylines provider."
+            "value": "No Anthropic (Claude) key set. Open Settings and add your key — you can get one at console.claude.com."
           },
           {
             "label": "What still works",
@@ -64,8 +64,8 @@
           "An AI key in Settings."
         ],
         "lean": null,
-        "certainty": "fact",
-        "called": "A fact from the export"
+        "certainty": "recorded",
+        "called": "From Pennant's own record"
       },
       "links": [],
       "hint": "Add a key in Settings to have storylines written"
