@@ -3178,3 +3178,67 @@ pickers. An item's identifier is `id.index` and reaches the system's menu item, 
 exception to "never the system accent" (the fixed, checked `readable*` colours of SWIFTUI_REBUILD.md §3.4): the open
 menu's highlight is the system's own, in the accent, as in every context menu; macOS draws the menu and its highlighted
 item's text, and Pennant puts none of its own text on the accent.
+
+## D-074 — The AI surfaces on the Mac: a typed answer stream, the server's links, AI off in words, keys never served
+
+**Status:** Proposed (N13 Stage A builder, 2026-10-10). Applies D-056 and D-065 to the Staff room, Storylines and the GM
+Briefing, and refines D-001 (AI explains), D-006 (local data, explicit AI egress) and D-055 (keys on stdin) for the
+presentation layer only: no prompt, tool, model call or stored file changes. **Implementation:** `server/presentation/ai/`
+(the words: `staffRoom.ts`, `writing.ts`, `keys.ts`, `markdown.ts`, `surface.ts`, `types.ts`) and
+`server/presentation/aiMarking.ts` (the marking, shared with the Trade Desk); `server/aiSurfacesService.ts` (reads and
+keeps the views, writes the conversation, reaches no AI module); the routes on the AI routers (`chat.ts`:
+`GET /api/v2/staff-room/:org`, `GET|DELETE …/conversation?with=`, `POST …/ask`; `storylines.ts`: `GET|POST
+/api/v2/storylines/:org`; `ai.ts`: `GET|POST /api/v2/briefing/:org`, `GET /api/v2/ai/keys`, `POST /api/v2/ai/keys/check`);
+the extractions `answerStaff` (`chat.ts`, which `POST /api/chat` and the Staff room both call), `aiErrorStatus` and
+`noKeyMessage` (moved from `ai.ts` to `chat.ts`) and `resolveOrg` (moved to `orgParam.ts`, re-exported), each old route
+answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at N13, Stage A".
+
+- **One stream, typed in the contract.** `POST …/ask` answers server-sent events, each `event: <type>` with JSON data
+  whose `type` is the same (`StaffRoomEvent`, an open union with `UnknownStaffRoomEvent` last): `started` (the GM's
+  question as kept and who will answer), then per person `speaker` (the message id the deltas belong to), `looking-up`
+  (a step in words, "Reading a player card", for every tool the staff can reach, never a tool's code name), `text`
+  (deltas), `answered` (the final message), a `notice` at any point (another model answered), and last exactly one of
+  `done` or `failed`. `failed` says why in a claim (`keyRefused` where the provider refused the key, read through
+  `aiErrorStatus`; `declined`; `failed`) and carries the answer as far as it got. Refusals come before the stream as JSON
+  in words: no question (400), an unknown club or player (404), AI off or an answer already running for that
+  conversation (409). One answer at a time per club and person, so two never write one file.
+- **The markdown subset is the server's.** AI text travels as `AiText` (`markdown` plus `links`), for Swift's
+  `AttributedString(markdown:)` with inline-only syntax: bold, italic, code and links; lines and blank-line paragraphs; a
+  list item "• "; a heading a bold line. The models' block markers (`#`, `-`, `>`, rules) are rewritten on the server, in
+  the stream at each line's start (only a line's first characters are held back) and whole in `answered`, which replaces
+  what streamed; a test holds the two equal however the deltas fall.
+- **Links are structured, and come with the final text.** Why not links in the stream: a name is only known to be a name
+  once it is whole, and a link split across deltas would flash as raw markdown. So the streamed text has none, and
+  `answered` (and every kept message, story and briefing section) carries the text with `[name](pennant://player/<id>)`
+  or `pennant://club/<teamId>` and the same links listed as `AiLink` (url, words, `Target`), so the app opens a
+  `PlayerRef` or `ClubRef` by the served target and never parses prose. Names are matched as the React app matches them
+  (full names on the league's index: the major leagues and our organization), now with the club's full name and "the
+  <nickname>" where one club has it; a full name two players share is linked only where exactly one of them is ours,
+  otherwise left plain rather than open the wrong man.
+- **"Ask about him" is the server's sentence.** A `PlayerRef` dropped on the Staff room is `about: { playerId }`; the
+  server words the question ("What do you make of …, our shortstop?") and keeps it as the GM's.
+- **AI off is the most important case (D-001).** Every surface serves `ai: { available, off, note }`: with no key for the
+  provider that surface uses, `off` is one calm line ("AI is off. Everything else in Pennant works without it.") with
+  the reason in its basis; storylines and a briefing written earlier stay readable. Whether AI is on is read on every
+  request (a key can change at any time) and never moves a deterministic payload: the Morning Report is the same with a
+  key and without one (a test). AI text sits beside the Trade Desk's marking, one builder for both (`aiMarking.ts`): the
+  note (what it is given, what it is not; policy) and "written by AI" (certainty unknown: it can be wrong; it decides
+  nothing).
+- **Kept as the React app keeps it, served per import.** The conversation is the React chat's own file per club and
+  person (the last 40 messages, its number), written with the question at once and each answer as it ends, and kept as
+  far as it got when the app stops listening, as the React page keeps it; either app picks it up. Storylines and the
+  briefing are the React routes' own jobs and files; the views add when they were written, from which export, and an
+  "older" line when the export imported now is a later one. Each view is kept on the served database's generation, the
+  import's time, its file's size and time, the job's state and whether AI is on; never OOTP's live log. Message ids come
+  from when a message was said and who said it, so they hold while streaming and after trimming.
+- **Keys are never served, logged or sent anywhere but their own provider.** `GET /api/v2/ai/keys` lists each provider
+  with whether its key is set, where it comes from (the Keychain, the environment, the data folder) and what it is used
+  for, in words, with at most the last four characters `KeyStatus.hint` already served. `POST /api/v2/ai/keys/check`
+  tests a key (or the one held) with `validateKey`, the call Settings already makes, and answers `works`, `refused`,
+  `unchecked` or `misshapen` in words, never repeating the key (a provider's own message is scrubbed of it), logging it
+  or keeping it. The sidecar rule holds: with keys handed over on stdin the server never writes `credentials.json`; the
+  Mac app stores a key itself and hands the set over again (`{"keys":{…}}`).
+- **The boundaries are unchanged or stricter.** No module outside the AI modules imports one (the evidence boundary's list
+  is as it was); the landing folders still reach none; the service is added to the list of modules that import
+  `presentation/`, as each milestone's service is, and `orgParam.ts` to the Front Office service's public modules,
+  with a new rule pinning its own imports.

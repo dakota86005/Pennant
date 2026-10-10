@@ -1522,6 +1522,49 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
 - *Left for later:* a staff window (a coach opens nothing of his own); the philosophy's staff-driven and hybrid modes (the
   editor serves "Set by you"); keys in the Keychain (N13).
 
+**As built at N13, Stage A (2026-10-10): the AI surfaces, served (server and contract).** Branch
+`feature/swiftui-n13-ai`; D-074. The Staff room, Storylines and the GM Briefing are served under `/api/v2` with every word
+the server's; Stage B (the Mac app) draws them, contract first. Behaviour is unchanged: the same prompts, tools, models,
+jobs and files as the React app.
+- **The Staff room.** `GET /api/v2/staff-room/:org` (`StaffRoomView`): each person the club can put on the phone (the
+  save's staff, `staff.ts`) with a short title, what he is for, the openers worth asking him and the compose field's
+  placeholder, the room (its default members, its limit of four, how it works), whether AI is on, and the labels "Ask
+  about him", "Start over" and "Stop". `GET …/conversation?with=` (`StaffRoomConversation`) is the React chat's own file
+  for that club and person: the GM's words as typed, each answer as `AiText` with its links and what was looked up, the
+  time and day in words, the count, and the "written by AI" marking. `DELETE …/conversation?with=` starts over.
+  `POST …/ask` (`StaffRoomAsk`: `with`, `question` or `about: { playerId }`, the room's `members`) streams
+  `StaffRoomEvent`s: `started`, then per person `speaker`, `looking-up`, `text`, `answered`, a `notice` at any point, and
+  last `done` or `failed`. The model is asked through `answerStaff`, the function `POST /api/chat` now calls too; a name at
+  the start of a room message (or after @) sends it to that man alone, as the React chat does, now decided on the server.
+- **The markdown subset and the links** (`server/presentation/ai/markdown.ts`): bold, italic, code and links; "• " items; a
+  heading as a bold line; rewritten at each line's start while streaming and whole in `answered`. Links arrive only with
+  final text: `[name](pennant://player/<id>)` and `pennant://club/<teamId>`, listed beside the text as `AiLink`s with their
+  `Target`. Swift reads it with `AttributedString(markdown:options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))`
+  and opens a link by its served target.
+- **Storylines and the GM Briefing.** `GET|POST /api/v2/storylines/:org` (`StorylinesView`: each story's category, the
+  AI's headline and its body as `AiText`) and `GET|POST /api/v2/briefing/:org` (`BriefingView`: its sections by heading).
+  Both carry the state (`never`, `writing`, `written`, `failed`), a status claim (when it was written and from which
+  export, or why not, the job's failure in its basis), an "older" line when today's export is a later one, the write
+  button's words and whether it can be pressed, a model fallback notice, the marking and whether AI is on. A POST starts
+  the React routes' own background job and answers at once, writing; the `job` event on `/api/v2/events` says when it ends.
+- **AI off** on every surface is `ai.off`, one calm line with its reason in the basis; a POST to ask or write is a 409 in
+  words. The marking is the Trade Desk's, one builder for all (`server/presentation/aiMarking.ts`).
+- **Keys.** `GET /api/v2/ai/keys` (`AiKeysView`): each provider, whether its key is set and where from, in words, at most
+  its last four characters, what it is used for and where to get one; where keys are kept; AI off when no surface has a
+  key. `POST /api/v2/ai/keys/check` (`AiKeyCheck` → `AiKeyCheckAnswer`) tests a key with its own provider without keeping,
+  logging or repeating it. The sidecar still never writes `credentials.json`; Stage B stores a key in the Keychain and
+  hands the set over on stdin.
+- **Kept per import** (`server/aiSurfacesService.ts`, which reaches no AI module): a view on the served database's
+  generation, the import's time, its file and the job's state; never OOTP's live log. Measured on the synthetic save
+  through the server run directly (`tsx server/index.ts`, 40 requests each, warm, curl's whole time): the staff room median 1.7 ms (p95 2.3 ms, 5.5 kB), a
+  conversation 2.5 ms (3.6 ms), storylines 1.2 ms (1.8 ms), the briefing 1.1 ms (1.5 ms), the keys 1.5 ms (2.1 ms); a
+  conversation of 40 long messages 46 kB, 2.9 ms (4.0 ms).
+- **Fixtures** for Stage B: `contract/fixtures/responses/` (each surface with AI off, and `-written` with a conversation,
+  storylines and a briefing), and `contract/fixtures/staff-room.sse` (an answer and a refused key, from a stubbed
+  provider), validated against the contract.
+- *For Stage B:* the Staff room window and inspector tab, streaming into `AttributedString`, dragging a `PlayerRef` in,
+  Storylines and the GM Briefing (the Morning Report's collapsed item 8), and keys stored in the Keychain from Settings.
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2448,7 +2491,7 @@ sizes, not dates.
 | **N10** | Farm & Development | Server: farm copy, Prospects words and Development movers moved. App: Overview, Organization, Affiliates, Assignments, Decision, Prospects, Development tracking | 5 |
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
 | **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
-| **N13** | AI surfaces, native | Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
+| **N13** | AI surfaces, native | (*Stage A built: section 3.5, "As built at N13, Stage A"*) Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
 | **N14** | macOS integration and release | App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
 
