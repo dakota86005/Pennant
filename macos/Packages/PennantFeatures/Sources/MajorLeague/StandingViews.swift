@@ -131,16 +131,12 @@ struct WhatIfPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             MagazineSection(title: Text(verbatim: whatIf.title.display))
-            // The shared choice pop-up (PennantDesign): the served players, each choosing his scenario; none is current
-            ChoicePopover(
-                Text(verbatim: whatIf.title.display),
-                current: Text(verbatim: whatIf.prompt.display),
-                choices: whatIf.players.map { choice in
-                    .init(
-                        verbatim: choice.role.map { "\(choice.player.name) · \($0.display)" } ?? choice.player.name,
-                        identifier: "whatIf.player.\(choice.player.playerId)"
-                    )
-                },
+            // A pull-down menu, as the Mac offers actions (PennantDesign): the served prompt its words, each served
+            // player opening his scenario. Not a pop-up choice: nothing is current, and choosing one opens a decision
+            PullDownMenu(
+                verbatim: whatIf.prompt.display,
+                help: whatIf.title.display,
+                actions: whatIf.players.map { choice in .init(choice.role.map { "\(choice.player.name) · \($0.display)" } ?? choice.player.name) },
                 id: "whatIf"
             ) { index in
                 if let target = route(whatIf.players[index].open) { opener?.open(target) }

@@ -83,7 +83,7 @@ describe('a structural label is a name, not an explanation (review S5)', () => {
  * The structural labels the Swift sources write, the way SwiftUI looks them up: a string literal given to `Text`,
  * `Button`, `Label`, `Section`, `Menu` and the other labelled views, to `.navigationTitle`, `.navigationSubtitle`,
  * `.help`, `.alert` and `.confirmationDialog`, a `prompt:`, a `title:`, a `LocalizedStringResource` or
- * `LocalizedStringKey`, either side of a ternary, or a `case` returning a label. `Text(verbatim:)` is served text and is
+ * `LocalizedStringKey`, a `String(localized:)`, either side of a ternary, or a `case` returning a label. `Text(verbatim:)` is served text and is
  * not one (see `verbatimLiterals`); SF Symbol names are skipped.
  */
 function structuralLiterals(source: string): string[] {
@@ -98,6 +98,7 @@ function structuralLiterals(source: string): string[] {
     new RegExp(`\\b(?:${views})\\(\\s*${lit}`, 'g'),
     new RegExp(`\\b(?:title|prompt): ${lit}`, 'g'),
     new RegExp(`(?:LocalizedStringResource|LocalizedStringKey) = ${lit}`, 'g'),
+    new RegExp(`\\bString\\(localized: ${lit}`, 'g'),
     new RegExp(`\\? ${lit} : ${lit}`, 'g'),
     new RegExp(`\\bcase [^\\n"]*: ${lit}`, 'g'),
   ];
@@ -134,6 +135,7 @@ describe('finding the Swift sources\' labels', () => {
     ['a prompt', 'TextField(text: $path, prompt: "Folder path")', 'Folder path'],
     ['a LocalizedStringKey', 'let title: LocalizedStringKey = "Starting…"', 'Starting…'],
     ['a LocalizedStringResource', 'static let title: LocalizedStringResource = "Scouting"', 'Scouting'],
+    ['a String(localized:)', 'String(localized: "Set Budget")', 'Set Budget'],
     ['a ternary', 'shown ? "Hide Inspector" : "Show Inspector"', 'Show Inspector'],
     ['a case', 'case .ready: "Ready"', 'Ready'],
   ])('finds %s', (_what, source, label) => {

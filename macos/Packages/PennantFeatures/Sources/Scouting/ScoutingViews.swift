@@ -90,10 +90,9 @@ public struct DraftBoardView: View {
     @ViewBuilder
     private func controls(_ view: Components.Schemas.ScoutingDraftBoardView) -> some View {
         ForEach(view.filters, id: \.id) { filter in
-            ChoicePopover(
-                Text(verbatim: filter.title.display),
-                current: Text(verbatim: filter.choices.first(where: \.selected)?.text.display ?? filter.choices.first?.text.display ?? ""),
-                choices: filter.choices.map { .init(verbatim: $0.text.display, hint: $0.text.hint, selected: $0.selected) },
+            PopUpChoice(
+                verbatim: filter.title.display,
+                choices: filter.choices.enumerated().map { .init($0.element.text.display, hint: $0.element.text.hint, selected: $0.offset == (filter.choices.firstIndex(where: \.selected) ?? 0)) },
                 id: "draftBoard.filter.\(filter.id)"
             ) { index in
                 let value = filter.choices[index].value
