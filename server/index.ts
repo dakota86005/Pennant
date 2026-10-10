@@ -17,6 +17,7 @@ import { ratingScaleMax } from './valuation.js';
 import { warmTransactionLog } from './dataStatus.js';
 import { requireApiToken } from './apiToken.js';
 import { acquireDataLock, releaseDataLock } from './dataLock.js';
+import { readJsonBodies } from './requestBody.js';
 
 /**
  * Rejects requests whose Host header is not a loopback name.
@@ -215,7 +216,8 @@ export function startServer(port = 5178): Promise<number> {
   }
   const app = express();
   app.use(requireLocalHost);
-  app.use(express.json());
+  // A body that isn't JSON is answered in words, never with the parser's message or a stack (N13 review L3)
+  readJsonBodies(app);
   // After the Host check: a request that fails both is told about the Host. No-op unless a token is set (sidecar)
   app.use('/api', requireApiToken);
   // The start-up's own work begins once the app's first answers are out (`startupWork.ts`)

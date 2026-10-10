@@ -113,8 +113,10 @@ beforeAll(async () => {
   resetAiSurfaces();
   const express = (await import('express')).default;
   const { api } = await import('../server/api.js');
+  const { readJsonBodies } = await import('../server/requestBody.js');
   const app = express();
-  app.use(express.json());
+  // As the server reads bodies (`index.ts`)
+  readJsonBodies(app);
   app.use('/api', api);
   const listening = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => listening.once('listening', resolve));
@@ -534,6 +536,25 @@ describe('the AI keys (D-006, D-055): never served, logged or echoed; only to th
       // Checking keeps nothing: no key file is written, and the key in use is the one it was
       expect(fs.existsSync(credentials) ? fs.readFileSync(credentials, 'utf8') : null).toBe(before);
       expect((await get('/api/v2/ai/keys')).json.providers[0].status.text).toContain(KEY.slice(-4));
+    } finally {
+      for (const s of spies) s.mockRestore();
+    }
+  });
+
+  it('a body that isn\'t JSON is refused in words, never echoing the key or a stack (review L3)', async () => {
+    const lines: string[] = [];
+    const spies = (['log', 'warn', 'error', 'info'] as const).map((m) => vi.spyOn(console, m).mockImplementation((...args: unknown[]) => { lines.push(args.map(String).join(' ')); }));
+    try {
+      const secret = 'sk-ant-secret-in-a-broken-body-4242';
+      for (const url of ['/api/v2/ai/keys/check', '/api/settings/api-key']) {
+        const res = await fetch(`${base}${url}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: `{"provider":"anthropic","key":"${secret}` });
+        const text = await res.text();
+        expect(res.status, url).toBe(400);
+        expect(JSON.parse(text), url).toEqual({ error: 'Pennant couldn\'t read that request: its body isn\'t valid JSON.' });
+        expect(text).not.toMatch(/sk-ant|at .*\.(js|ts)|node_modules/);
+      }
+      expect(lines.join('\n')).not.toMatch(/sk-ant|node_modules/);
+      expect(lines).toContain('[api] POST /api/v2/ai/keys/check: the request body couldn\'t be read (entity.parse.failed)');
     } finally {
       for (const s of spies) s.mockRestore();
     }
