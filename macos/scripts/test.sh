@@ -192,6 +192,11 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testPlayerSearchFullPageAudit configured '{"theme":"light"}'
   # N12 Track C: Trades and Philosophy & Staff at 900 × 700 with the inspector open
   prepare_ui_test testTradesNarrowWindow configured '{"theme":"light"}'
+  # N13: the AI surfaces with AI off (no key: the app's keys in memory), and the Staff room answering through the
+  # stand-in provider on this Mac (the chat set to the local provider, pointed at macos/scripts/fake-ai-provider.py)
+  prepare_ui_test testStaffRoomAiOff configured '{"theme":"light"}'
+  prepare_ui_test testStorylinesAndBriefingAiOff configured '{"theme":"dark"}'
+  prepare_ui_test testStaffRoomAnswer configured '{"theme":"light","aiFeatures":{"chat":{"provider":"ollama","model":"stub"}}}'
   # Which tests: PENNANT_TEST_ONLY's, else one CI shard's (its own, or for the catch-all every test the other shards
   # do not run), else all of them
   selection=()
@@ -211,9 +216,22 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
       -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" -skipPackagePluginValidation
       ${signing[@]+"${signing[@]}"} ${selection[@]+"${selection[@]}"} test)
   fi
+  # The stand-in AI provider (N13), on a free port of 127.0.0.1, for the Staff room's answering test; stopped below
+  fake_ai=()
+  fake_port="$SCRATCH/fake-ai.port"
+  rm -f "$fake_port"
+  python3 -I "$ROOT/macos/scripts/fake-ai-provider.py" "$fake_port" >"$LOGS/fake-ai-provider.log" 2>&1 &
+  fake_pid=$!
+  for _ in $(seq 1 50); do [ -s "$fake_port" ] && break; sleep 0.1; done
+  if [ -s "$fake_port" ]; then
+    fake_ai=(TEST_RUNNER_PENNANT_UI_LOCAL_AI="http://127.0.0.1:$(cat "$fake_port")")
+  else
+    echo "The stand-in AI provider did not start (see $LOGS/fake-ai-provider.log): the Staff room's answering test skips"
+  fi
   # TEST_RUNNER_ variables reach the test runner without the prefix: each UI test finds its prepared folder under the
   # scratch root and launches the app on it
-  run xcodebuild-test "Executed|\*\* TEST" env TEST_RUNNER_PENNANT_UI_SCRATCH="$UI_SCRATCH" "${xcode[@]}" || failed=1
+  run xcodebuild-test "Executed|\*\* TEST" env TEST_RUNNER_PENNANT_UI_SCRATCH="$UI_SCRATCH" ${fake_ai[@]+"${fake_ai[@]}"} "${xcode[@]}" || failed=1
+  kill "$fake_pid" 2>/dev/null || true
   # The restoration test's saved windows, if a failure left them (the runner may not reach the folder itself)
   rm -rf "$HOME/Library/Saved Application State/com.dakotawise.pennant.dev.savedState"
   # What each accessibility audit set aside, and why, and any finding, and a quit that needed help or did not finish:
@@ -250,7 +268,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
         const fs = require("fs"), path = require("path");
         const dir = process.argv[1];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
-        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n9-|n10-|n11-|n12-|n12a-|n12b-|n12c-)/;
+        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n9-|n10-|n11-|n12-|n12a-|n12b-|n12c-|n13-)/;
         const kept = new Set();
         for (const test of manifest) for (const a of test.attachments ?? []) {
           const name = a.suggestedHumanReadableName ?? "";
