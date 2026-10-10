@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import fs from 'node:fs';
-import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { jobStatus, startJob } from './jobs.js';
 import { orgInjuries } from './dashboard.js';
-import { DATA_DIR } from './config.js';
 import {
-  activeProvider, featureModel, featureProvider, providerCredential,
+  AI_FEATURES, allKeyStatus, featureModel, featureProvider, getApiKey, keyShapeProblem, keyStorageKind, providerCredential,
 } from './settings.js';
-import { PROVIDERS, describeError, providerFor, toolLoop, type FallbackNotice } from './providers.js';
-import { TOOLS, VALUE_FIGURES_NOTE, runTool } from './chat.js';
+import {
+  PROVIDERS, authRejected, describeError, isProviderId, providerFor, toolLoop, withoutKey, type FallbackNotice,
+} from './providers.js';
+import { TOOLS, VALUE_FIGURES_NOTE, aiErrorStatus, noKeyMessage, runTool } from './chat.js';
 import { computeProspects } from './org.js';
 import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
@@ -20,24 +20,11 @@ import {
 import { tradingBlock } from './tradingblock.js';
 import { tradeVoice, type Persona } from './staff.js';
 import { freshnessCue } from './dataStatus.js';
+import { aiKeysNow, briefingNow, briefingPath, keyCheckNow, type ProviderReading } from './aiSurfacesService.js';
+import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 import { calendarBriefing, currentGameDate, rulesBriefing, seasonYear, teamFinances } from './valuation.js';
 
 export const aiRoutes = Router();
-
-/** Names the provider actually selected, since it may not be Anthropic. */
-const noKeyMessage = (provider = activeProvider()): string => {
-  const p = PROVIDERS.find((x) => x.id === provider);
-  return `No ${p?.label ?? 'API'} key set. Open Settings and add your key — you can get one at ${p?.console ?? 'the provider console'}.`;
-};
-
-/**
- * A missing key is ours to explain. Everything else has already been put into
- * words by callOpusThread, so it is passed along as it stands.
- */
-function aiErrorStatus(e: Error & { status?: number }): { status: number; message: string } {
-  if (!providerCredential()) return { status: 401, message: noKeyMessage() };
-  return { status: e.status === 401 ? 401 : 500, message: e.message };
-}
 
 async function callOpus(
   system: string, user: string, maxTokens = 16000,
@@ -73,7 +60,7 @@ async function callOpusThread(
 
 // ── GM Briefing ─────────────────────────────────────────────────────────
 
-const briefingPath = (orgId: number) => path.join(DATA_DIR, `briefing-${orgId}.json`);
+// The file lives in `aiSurfacesService.ts` (N13), which the Mac app's GM Briefing reads too: the same name as before
 
 export function briefingContext(orgId: number) {
   const team = db
@@ -460,7 +447,7 @@ async function askForTheMac(q: TradeDeskQuestion): Promise<TradeDeskReply> {
     );
     return { text, voice: { name: voice.name, role: voice.role }, notice: notice ? { message: notice.message } : null };
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-desk] failed:', message);
     throw new TradesRefusal(status === 401 ? message : message || TRADE_DESK_FAILED, status === 401 ? 401 : 502);
   }
@@ -480,7 +467,7 @@ aiRoutes.post('/trade/ai-eval', async (req, res) => {
     const { text: verdict, voice, notice } = await deskAnswer({ ...body, message: undefined });
     res.json({ verdict, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-eval] failed:', err);
     res.status(status).json({ error: message });
   }
@@ -502,7 +489,7 @@ aiRoutes.post('/trade/ai-reply', async (req, res) => {
     const { text: reply, voice, notice } = await deskAnswer(body);
     res.json({ reply, voice: { name: voice.name, role: voice.role }, notice });
   } catch (err) {
-    const { status, message } = aiErrorStatus(err as Error);
+    const { status, message } = aiErrorStatus(err as Error, featureProvider('trade'));
     if (status === 500) console.error('[trade-reply] failed:', err);
     res.status(status).json({ error: message });
   }
@@ -518,5 +505,96 @@ aiRoutes.post('/v2/views/:org/trades/ask', async (req, res, next) => {
   } catch (err) {
     if (err instanceof TradesRefusal) res.status(err.status).json({ error: err.message });
     else next(err);
+  }
+});
+
+// ── The Mac app's GM Briefing and AI keys (N13, Stage A; D-074) ─────────────
+
+/** Whether the briefing can be written: a key for the provider chosen for it (read on every request). */
+export function briefingAiState(): { available: boolean; offReason: string | null } {
+  const provider = featureProvider('briefing');
+  const available = providerCredential(provider) !== null;
+  return { available, offReason: available ? null : noKeyMessage(provider) };
+}
+
+export const BRIEFING_AI_OFF = 'AI is off. Add a key in Settings to have a briefing written.';
+
+const refusedIn = (res: import('express').Response, err: unknown, next: (err: unknown) => void): void => {
+  if (err instanceof FrontOfficeRefusal) res.status(err.status).json({ error: err.message });
+  else next(err);
+};
+
+aiRoutes.get('/v2/briefing/:org', (req, res, next) => {
+  try {
+    res.json(briefingNow(String(req.params.org), briefingAiState()));
+  } catch (err) {
+    refusedIn(res, err, next);
+  }
+});
+
+/** Starts a briefing (the React route's job, `generateBriefing`) and answers at once with the view, now writing. */
+aiRoutes.post('/v2/briefing/:org', (req, res, next) => {
+  try {
+    const orgId = resolveOrg(String(req.params.org));
+    if (!briefingAiState().available) return res.status(409).json({ error: BRIEFING_AI_OFF });
+    startJob('briefing', orgId, () => generateBriefing(orgId));
+    res.json(briefingNow(String(orgId), briefingAiState()));
+  } catch (err) {
+    refusedIn(res, err, next);
+  }
+});
+
+/** Each provider as the words need it: never its key, at most the key's last four characters. */
+function providerReadings(): ProviderReading[] {
+  const keys = allKeyStatus();
+  return PROVIDERS.map((p) => ({
+    id: p.id, label: p.label, console: p.console, requiresKey: p.requiresKey,
+    configured: keys[p.id].configured, source: keys[p.id].source, sourceText: keys[p.id].sourceText, hint: keys[p.id].hint,
+  }));
+}
+
+aiRoutes.get('/v2/ai/keys', (_req, res) => {
+  const features = Object.fromEntries(AI_FEATURES.map((f) => [f, featureProvider(f)]));
+  const anyOn = AI_FEATURES.some((f) => providerCredential(featureProvider(f)) !== null);
+  res.json(aiKeysNow(providerReadings(), features, keyStorageKind(), anyOn));
+});
+
+export const KEY_CHECK_UNKNOWN = 'Pennant doesn\'t know that provider.';
+export const KEY_CHECK_NONE_NEEDED = 'That provider needs no key: it runs on this Mac.';
+export const KEY_CHECK_NOTHING = 'There is no key to check. Enter one first.';
+/** How long a check waits for the provider before saying it couldn't be checked. */
+const KEY_CHECK_WAIT_MS = 15_000;
+
+/**
+ * Checks a key with its own provider, without keeping it (`POST /api/v2/ai/keys/check`). The key is sent only to that
+ * provider (`validateKey`, the call Settings already makes before saving one), never served back, never logged, and
+ * never written: the Mac app keeps a key in its Keychain and hands it to the server itself.
+ */
+aiRoutes.post('/v2/ai/keys/check', async (req, res) => {
+  const body = (req.body ?? {}) as { provider?: unknown; key?: unknown };
+  if (!isProviderId(body.provider)) return res.status(400).json({ error: KEY_CHECK_UNKNOWN });
+  const provider = body.provider;
+  const info = providerReadings().find((p) => p.id === provider)!;
+  if (!info.requiresKey) return res.status(400).json({ error: KEY_CHECK_NONE_NEEDED });
+  const key = typeof body.key === 'string' && body.key.trim() ? body.key.trim() : getApiKey(provider);
+  if (!key) return res.status(400).json({ error: KEY_CHECK_NOTHING });
+  const shape = keyShapeProblem(provider, key);
+  if (shape) return res.json(keyCheckNow(info, 'misshapen', shape));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      providerFor(provider).validateKey(key),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error('timeout'), { status: 408 })), KEY_CHECK_WAIT_MS);
+      }),
+    ]);
+    res.json(keyCheckNow(info, 'works', `${info.label} accepted it.`));
+  } catch (err) {
+    if (authRejected(err)) return res.json(keyCheckNow(info, 'refused', `${info.label} turned it down: it may have been revoked or copied incompletely.`));
+    const status = (err as { status?: number }).status;
+    const why = status === 408 ? `${info.label} didn't answer in time.` : withoutKey(describeError(provider, err), key);
+    res.json(keyCheckNow(info, 'unchecked', why));
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 });

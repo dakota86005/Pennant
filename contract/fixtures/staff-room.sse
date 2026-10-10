@@ -1,0 +1,36 @@
+event: started
+data: {"type":"started","question":{"id":"ttd0u2c","from":"gm","speaker":null,"typed":"How is P 1000 doing?","answer":null,"lookedUp":[],"at":"2040-07-01T12:00:00.000Z","clock":{"display":"12:00 PM"},"calendarDay":{"display":"Jul 1, 2040"}},"answering":["analyst"]}
+
+event: speaker
+data: {"type":"speaker","messageId":"t18pzrev","speaker":{"display":"Peter · Analyst"}}
+
+event: looking-up
+data: {"type":"looking-up","messageId":"t18pzrev","step":{"display":"Reading a player card"}}
+
+event: text
+data: {"type":"text","messageId":"t18pzrev","delta":"**The read**"}
+
+event: text
+data: {"type":"text","messageId":"t18pzrev","delta":"\n• **P 1000** is hitting."}
+
+event: text
+data: {"type":"text","messageId":"t18pzrev","delta":"\n• Nothing to change yet."}
+
+event: answered
+data: {"type":"answered","message":{"id":"t18pzrev","from":"staff","speaker":{"display":"Peter · Analyst"},"typed":null,"answer":{"markdown":"**The read**\n• **[P 1000](pennant://player/1000)** is hitting.\n• Nothing to change yet.","links":[{"url":"pennant://player/1000","text":"P 1000","target":{"kind":"player","playerId":1000,"teamId":1}}]},"lookedUp":[{"display":"Reading a player card"}],"at":"2040-07-01T12:00:00.000Z","clock":{"display":"12:00 PM"},"calendarDay":{"display":"Jul 1, 2040"}}}
+
+event: done
+data: {"type":"done","count":{"display":"1 question"},"conversationStamp":"cstamp"}
+
+event: started
+data: {"type":"started","question":{"id":"td4103z","from":"gm","speaker":null,"typed":"And the bullpen?","answer":null,"lookedUp":[],"at":"2040-07-01T12:05:00.000Z","clock":{"display":"12:00 PM"},"calendarDay":{"display":"Jul 1, 2040"}},"answering":["analyst"]}
+
+event: speaker
+data: {"type":"speaker","messageId":"tsgzxgi","speaker":{"display":"Peter · Analyst"}}
+
+event: text
+data: {"type":"text","messageId":"tsgzxgi","delta":"Half an answer"}
+
+event: failed
+data: {"type":"failed","reason":"keyRefused","failure":{"text":"The AI provider refused the key.","tone":"caution","basis":{"because":[{"label":"What happened","value":"Anthropic (Claude) turned down the key. Check it in Settings: it may have been revoked or copied incompletely."},{"label":"What was kept","value":"Your question, and the answer as far as it got."}],"source":{"department":"frontOffice","specialist":"The staff room","asOf":null,"gameDate":"2040-5-6"},"unknown":[],"wouldChange":["A working key in Settings."],"lean":null,"certainty":"recorded","called":"From Pennant's own record"},"links":[]},"partial":{"id":"tsgzxgi","from":"staff","speaker":{"display":"Peter · Analyst"},"typed":null,"answer":{"markdown":"Half an answer","links":[]},"lookedUp":[],"at":"2040-07-01T12:05:00.000Z","clock":{"display":"12:00 PM"},"calendarDay":{"display":"Jul 1, 2040"}},"conversationStamp":"cstamp"}
+

@@ -19,6 +19,7 @@ import type { Basis } from '../server/contract/presentation.js';
 import { api, importState, runImport } from '../server/api.js';
 import { loadConfig, saveConfig } from '../server/config.js';
 import { startJob } from '../server/jobs.js';
+import { briefingPath, historyPath, storylinesPath } from '../server/aiSurfacesService.js';
 import { themePacksFolder } from '../server/themePackStore.js';
 import { db } from '../server/db.js';
 import { historyDb, SNAPSHOT_DATA_COLUMNS, takeSnapshot } from '../server/history.js';
@@ -247,6 +248,10 @@ function stable(value: unknown): unknown {
   const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
   const walk = (node: unknown, key: string): unknown => {
     if (Array.isArray(node)) return node.map((n) => walk(n, key));
+    // N13: a message's time and day in words are the host's zone: the fixture keeps fixed ones
+    if ((key === 'clock' || key === 'calendarDay') && node && typeof node === 'object') {
+      return { ...node, display: key === 'clock' ? '12:00 PM' : 'Jul 1, 2040' };
+    }
     if (node && typeof node === 'object') return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, walk(v, k)]));
     // An import's own time, and its export's fingerprint (the files' times), vary run to run
     if (key === 'durationMs' && typeof node === 'number') return 0;
@@ -261,6 +266,9 @@ function stable(value: unknown): unknown {
     // The desk's and Following's stamps hash the times their changes were made (N7)
     if (key === 'deskStamp') return 'dstamp';
     if (key === 'followStamp') return 'fstamp';
+    // N13: a conversation's and a piece of AI writing's stamps hash their files' times
+    if (key === 'conversationStamp') return 'cstamp';
+    if (key === 'writingStamp') return 'wstamp';
     // A served time in words is written in the host's zone; the fixture keeps a fixed one
     if (key === 'csvLastModifiedText' || key === 'lastPlayedText') return PLAYED_WORDS;
     // A time in words inside a line ("Marked Sep 28, 2026, 9:16 PM", N7) is the host's clock: the fixture keeps a fixed one
@@ -584,6 +592,21 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     // N11: a staff note put back as it was filed (the undo of a removal); the changes below remove it again
     // N12 Track C: the AI desk with no key (none is read here): AI is off, said in words, and nothing else depends on it
     askTradeDesk: [{ name: 'ai-off', body: { sent: [1], received: [2], thread: [] }, status: 409 }],
+    // N13: the AI surfaces with no key (none is read here): refused in words before anything is asked or written (D-001)
+    askStaffRoom: [
+      { name: 'no-question', body: { with: 'analyst' }, status: 400 },
+      { name: 'not-in-this-save', body: { with: 'analyst', about: { playerId: 99_999_999 } }, status: 404 },
+      { name: 'ai-off', body: { with: 'analyst', question: 'Who can pitch tonight?' }, status: 409 },
+    ],
+    writeStorylines: [{ name: 'ai-off', body: undefined, status: 409 }],
+    writeBriefing: [{ name: 'ai-off', body: undefined, status: 409 }],
+    // A key's shape is checked without asking anyone; the key is never in the answer
+    checkAiKey: [
+      { name: 'misshapen', body: { provider: 'anthropic', key: 'not-a-real-key' }, status: 200 },
+      { name: 'unknown-provider', body: { provider: 'nobody' }, status: 400 },
+      { name: 'nothing-to-check', body: { provider: 'openai' }, status: 400 },
+      { name: 'none-needed', body: { provider: 'ollama', key: 'anything' }, status: 400 },
+    ],
     restoreStaffNote: [
       { name: 'restored', body: { source: 'Bench coach', body: 'Keep him off back-to-back day games for two weeks.', gameDate: '2040-5-3' }, status: 200 },
       { name: 'no-body', body: { source: 'Bench coach' }, status: 400 },
@@ -611,6 +634,7 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
         const validate = validator(type!);
         expect(validate(answer) ? [] : validate.errors, `${op.operationId} ${c.name} against ${type}`).toEqual([]);
         fixture(`responses/${op.operationId}-${c.name}.json`, json(answer));
+        if (op.operationId === 'checkAiKey') expect(JSON.stringify(answer)).not.toContain('not-a-real-key');
         if (op.operationId === 'saveSettings' && c.name === 'automatic') expect(answer.settings.defaultOrgId).toBeNull();
         if (op.operationId === 'setSave' && c.name === 'no-export') expect(answer).toMatchObject({ importStarted: false, club: null });
         if (op.operationId === 'setSave' && c.name === 'club-from-save') expect(answer.club).toMatchObject({ decided: false, teamId: null, humanClubs: null });
@@ -630,8 +654,8 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
   it('answers the desk\'s and Following\'s changes in the contract\'s shape, and puts each back (captured for the previews)', async () => {
     const changes = operations.filter((op) => op.method === 'put' || op.method === 'delete').map((op) => op.operationId).sort();
     expect(changes).toEqual([
-      'follow', 'removeStaffNote', 'resetOrganizationalPhilosophy', 'setDeskStatus', 'setFinanceBudget', 'setOrganizationalPhilosophy',
-      'setPlayerNote', 'undoFirstPlayerNote', 'unfollow',
+      'clearStaffConversation', 'follow', 'removeStaffNote', 'resetOrganizationalPhilosophy', 'setDeskStatus', 'setFinanceBudget',
+      'setOrganizationalPhilosophy', 'setPlayerNote', 'undoFirstPlayerNote', 'unfollow',
     ]);
     const call = async (method: 'PUT' | 'DELETE', url: string, body?: unknown) => {
       const res = await fetch(`${base}${url}`, {
@@ -705,6 +729,53 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     check('setOrganizationalPhilosophy', 'off-the-scale', await call('PUT', philosophy, { dimensions: [{ id: 'competitiveWindow', value: 140 }] }), 400);
     check('setOrganizationalPhilosophy', 'not-offered', await call('PUT', philosophy, { policies: [{ id: 'salaryDumps', value: 'always' }] }), 400);
     check('resetOrganizationalPhilosophy', 'reset', await call('DELETE', philosophy), 200);
+    // N13: the Staff room's Start over, on a club's conversation with the analyst (empty here), and on a club not in the save
+    check('clearStaffConversation', 'cleared', await call('DELETE', `/api/v2/staff-room/${save.org}/conversation?with=analyst`), 200);
+    check('clearStaffConversation', 'not-in-this-save', await call('DELETE', '/api/v2/staff-room/99999/conversation'), 404);
+  }, SLOW);
+
+  /**
+   * The AI surfaces with something written (N13, Stage A): a conversation with the analyst, a set of storylines and a
+   * briefing, as the React app keeps them, served with their links and the AI marking, and captured for the Mac stage.
+   * AI is off here (no key), so each also says so beside what was written before.
+   */
+  it('serves a kept conversation, storylines and a briefing in the contract\'s shape, with their links (captured for the previews)', async () => {
+    const man = db.prepare("SELECT first_name || ' ' || last_name AS name FROM players WHERE player_id = ?").get(save.regular) as { name: string };
+    const club = db.prepare('SELECT name, nickname FROM teams WHERE team_id = ?').get(save.clubs[1]) as { name: string; nickname: string };
+    const gameDate = (db.prepare('SELECT "current_date" AS d FROM leagues LIMIT 1').get() as { d: string }).d;
+    const files = [historyPath(save.org, 'analyst'), storylinesPath(save.org), briefingPath(save.org)];
+    fs.writeFileSync(files[0], JSON.stringify([
+      { role: 'user', content: `How is ${man.name} doing?`, at: '2040-07-01T12:00:00.000Z' },
+      { role: 'assistant', content: `## The short of it\n- **${man.name}** is hitting well against the ${club.nickname}.\n- Nothing to change yet.`, tools: ['get_player', 'get_standings'], at: '2040-07-01T12:00:05.000Z' },
+    ]));
+    fs.writeFileSync(files[1], JSON.stringify({
+      generatedAt: '2040-07-01T12:00:00.000Z', gameDate, orgLabel: 'Club', notice: null,
+      storylines: [{ category: 'Player Spotlight', headline: `${man.name} keeps hitting`, body: `${man.name} has carried the lineup, and the ${club.name} ${club.nickname} are next.` }],
+    }));
+    fs.writeFileSync(files[2], JSON.stringify({
+      generatedAt: '2040-07-01T12:00:00.000Z', gameDate, notice: null,
+      markdown: `## Status\nThe club is playing well.\n\n## Watch List\n- **${man.name}**: his line has held up.`,
+    }));
+    try {
+      for (const [operationId, url, type] of [
+        ['getStaffConversation', `/api/v2/staff-room/${save.org}/conversation?with=analyst`, 'StaffRoomConversation'],
+        ['getStorylines', `/api/v2/storylines/${save.org}`, 'StorylinesView'],
+        ['getBriefing', `/api/v2/briefing/${save.org}`, 'BriefingView'],
+      ] as const) {
+        const res = await fetch(`${base}${url}`);
+        expect(res.status, operationId).toBe(200);
+        const body = await res.json();
+        const validate = validator(type);
+        expect(validate(body) ? [] : validate.errors, `${operationId} against ${type}`).toEqual([]);
+        expect(bannedInPayload(body, operationId)).toEqual([]);
+        expect(servedBasisProblems(body)).toEqual([]);
+        // The regular is linked by the server, never left for the app to find in the prose
+        expect(JSON.stringify(body), operationId).toContain(`pennant://player/${save.regular}`);
+        fixture(`responses/${operationId}-written.json`, json(body));
+      }
+    } finally {
+      for (const f of files) fs.rmSync(f, { force: true });
+    }
   }, SLOW);
 
   /**
@@ -923,6 +994,19 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     kept.push(events.filter((e) => e.name === 'job').at(-1)!);
     fixture('events.sse', kept.map((e) => `event: ${e.name}\ndata: ${JSON.stringify(stable(e.data))}\n\n`).join(''));
   }, SLOW);
+
+  it('the committed Staff room stream (staff-room.sse, written by aiSurfaces.test.ts) holds StaffRoomEvents in the strict form (N13)', () => {
+    const sse = fs.readFileSync(path.join(FIXTURES, 'staff-room.sse'), 'utf8');
+    const events = [...sse.matchAll(/^event: (.*)\ndata: (.*)$/gm)].map((m) => ({ name: m[1], data: JSON.parse(m[2]) }));
+    expect(events.map((e) => e.name)).toEqual(expect.arrayContaining(['started', 'speaker', 'looking-up', 'text', 'answered', 'done', 'failed']));
+    const validate = validator('StaffRoomEvent');
+    for (const event of events) {
+      expect(event.data.type, 'the SSE event name is the payload\'s type').toBe(event.name);
+      expect(validate(event.data) ? [] : validate.errors, event.name).toEqual([]);
+      expect(bannedInPayload(event.data)).toEqual([]);
+      expect(servedBasisProblems(event.data)).toEqual([]);
+    }
+  });
 
   it('announces a save played since the chosen one on the event stream, in the strict form (N6, Stage B1)', () => {
     const previous = loadConfig();

@@ -9,6 +9,7 @@ import type { CalibrationStamp } from '../../calibration.js';
 import type { FreshnessCue } from '../../dataStatus.js';
 import type { TradeFigure, TradePlayerValue, TradeSideTotal, TradeUnit } from '../../playerValue.js';
 import type { TradeAnalysis, TradeBrief, TradeFits, TradeProposal, TradeRow, TradeTalkItem, ValueGlance } from '../../trade.js';
+import { aiNoteClaim, aiOffClaim, aiWrittenClaim } from '../aiMarking.js';
 import { basis, cell, claim, row, servedValue, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { plainAll } from '../farm/words.js';
@@ -62,9 +63,10 @@ function factBasis(ctx: TradesContext, specialist: string, because: BasisLine[],
   });
 }
 
+const DESK_STAMP = 'How the desk reads it: stated, not fitted';
 const policyBasis = (ctx: TradesContext, specialist: string, because: BasisLine[]) => basis({
   because, source: source(ctx, specialist), unknown: [], wouldChange: [], lean: null, certainty: 'policy',
-  stamp: 'How the desk reads it: stated, not fitted',
+  stamp: DESK_STAMP,
 });
 
 export function headOf(ctx: TradesContext): TradesViewHead {
@@ -221,27 +223,20 @@ export function tradeDeskAi(ctx: TradesContext, ai: TradeAiState): TradeDeskAI {
     voice: cell(named ? `${ai.voice.name} · ${ai.voice.role}` : 'The front office'),
     ask: cell(named ? `Ask ${ai.voice.name}` : 'Ask the Front Office'),
     followUp: cell(named ? `Ask ${first} a follow-up` : 'Ask a follow-up'),
-    off: ai.available ? null : claim({
+    // The one marking every AI surface shares (`aiMarking.ts`, N13)
+    off: ai.available ? null : aiOffClaim({
+      source: source(ctx, 'Settings'),
       text: 'AI is off. Everything on the desk works without it.',
-      tone: 'neutral',
       hint: 'Add a key in Settings to ask the front office about a deal',
-      links: [],
-      basis: basis({
-        because: lines([
-          ['Why', ai.offReason ?? 'No AI key is set for trades.'],
-          ['What still works', 'Building a deal, its figures and the difference between the sides, the offers, the trade talk and the league\'s fits are all worked out by Pennant itself.'],
-        ]),
-        source: source(ctx, 'Settings'), unknown: [], wouldChange: ['An AI key in Settings.'], lean: null, certainty: 'fact',
-      }),
+      reason: ai.offReason ?? 'No AI key is set for trades.',
+      stillWorks: 'Building a deal, its figures and the difference between the sides, the offers, the trade talk and the league\'s fits are all worked out by Pennant itself.',
     }),
-    note: claim({
+    note: aiNoteClaim({
+      source: source(ctx, 'The front office'),
       text: 'The AI explains the figures above. It decides nothing.',
-      tone: 'neutral',
-      links: [],
-      basis: policyBasis(ctx, 'The front office', lines([
-        ['What it is given', 'The deal on the builder with every figure Pennant worked out for it, and the run of the organization to look things up.'],
-        ['What it is not', 'Pennant\'s answer: the analysis is. It reads the deal and gives no answer of yes or no: the decision is yours.'],
-      ])),
+      given: 'The deal on the builder with every figure Pennant worked out for it, and the run of the organization to look things up.',
+      isNot: 'Pennant\'s answer: the analysis is. It reads the deal and gives no answer of yes or no: the decision is yours.',
+      stamp: DESK_STAMP,
     }),
   };
 }
@@ -609,17 +604,13 @@ export function tradeAnalysisView(ctx: TradesContext, a: TradeAnalysis, deal: Tr
 
 /** The AI desk's answer, marked as its own words (D-001: it explains the analysis; it decides nothing). */
 export function tradeAnswerAbout(ctx: TradesContext, voice: { name: string; role: string }, tone: Tone = 'neutral') {
-  return claim({
+  return aiWrittenClaim({
+    source: source(ctx, 'The front office'),
     text: `${voice.name === 'the front office' ? 'The front office' : voice.name}'s read, written by AI from the figures above.`,
     tone,
-    links: [],
-    basis: basis({
-      because: lines([
-        ['What it was given', 'The deal on the builder with every figure Pennant worked out for it, and the run of the organization to look things up.'],
-        ['What it is', 'An explanation of Pennant\'s analysis in a staff member\'s voice. It decides nothing, and the decision is yours.'],
-      ]),
-      source: source(ctx, 'The front office'), unknown: ['An AI can be wrong about what it reads; the figures above are Pennant\'s own.'],
-      wouldChange: ['A change to either side, or another question.'], lean: null, certainty: 'unknown',
-    }),
+    given: 'The deal on the builder with every figure Pennant worked out for it, and the run of the organization to look things up.',
+    what: 'An explanation of Pennant\'s analysis in a staff member\'s voice. It decides nothing, and the decision is yours.',
+    canBeWrong: 'An AI can be wrong about what it reads; the figures above are Pennant\'s own.',
+    wouldChange: ['A change to either side, or another question.'],
   });
 }

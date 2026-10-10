@@ -1,0 +1,268 @@
+{
+  "title": {
+    "display": "Staff room"
+  },
+  "lede": {
+    "display": "Ask your staff about the Club 1 N or the league. They answer from Pennant's figures; the decisions are yours."
+  },
+  "staff": [
+    {
+      "id": "analyst",
+      "name": {
+        "display": "Peter"
+      },
+      "role": {
+        "display": "Analyst",
+        "hint": "Peter, front-office analyst"
+      },
+      "intro": {
+        "display": "Peter is your front-office analyst. Ask him about the Club 1 N or the league: every number comes out of your save rather than his memory, and he answers from where he sits, so he won't always agree with the others."
+      },
+      "starters": [
+        {
+          "display": "How is my team actually playing so far?"
+        },
+        {
+          "display": "Who in the minors is closest to helping us?"
+        },
+        {
+          "display": "Which contracts are a concern?"
+        }
+      ],
+      "placeholder": {
+        "display": "Message"
+      },
+      "room": false
+    },
+    {
+      "id": "manager",
+      "name": {
+        "display": "Dale Cole"
+      },
+      "role": {
+        "display": "Manager",
+        "hint": "Dale Cole, field manager"
+      },
+      "intro": {
+        "display": "Dale Cole is your field manager. Ask him about the Club 1 N or the league: every number comes out of your save rather than his memory, and he answers from where he sits, so he won't always agree with the others."
+      },
+      "starters": [
+        {
+          "display": "Who are you thinking of starting tonight?"
+        },
+        {
+          "display": "Who needs a day off?"
+        },
+        {
+          "display": "How do you want to use the bullpen this week?"
+        }
+      ],
+      "placeholder": {
+        "display": "Message"
+      },
+      "room": false
+    },
+    {
+      "id": "trainer",
+      "name": {
+        "display": "Ana Frey"
+      },
+      "role": {
+        "display": "Trainer",
+        "hint": "Ana Frey, head trainer"
+      },
+      "intro": {
+        "display": "Ana Frey is your head trainer. Ask him about the Club 1 N or the league: every number comes out of your save rather than his memory, and he answers from where he sits, so he won't always agree with the others."
+      },
+      "starters": [
+        {
+          "display": "Who is hurt and how long are they out?"
+        },
+        {
+          "display": "Is anyone at risk of breaking down?"
+        },
+        {
+          "display": "Who is close to a rehab assignment?"
+        }
+      ],
+      "placeholder": {
+        "display": "Message"
+      },
+      "room": false
+    },
+    {
+      "id": "scout",
+      "name": {
+        "display": "Terry Ellis"
+      },
+      "role": {
+        "display": "Scout",
+        "hint": "Terry Ellis, scout"
+      },
+      "intro": {
+        "display": "Terry Ellis is your scout. Ask him about the Club 1 N or the league: every number comes out of your save rather than his memory, and he answers from where he sits, so he won't always agree with the others."
+      },
+      "starters": [
+        {
+          "display": "Which prospect is closest to helping us?"
+        },
+        {
+          "display": "Who is overrated on our farm?"
+        },
+        {
+          "display": "What are you looking for in the draft?"
+        }
+      ],
+      "placeholder": {
+        "display": "Message"
+      },
+      "room": false
+    },
+    {
+      "id": "gm",
+      "name": {
+        "display": "Morgan Brock"
+      },
+      "role": {
+        "display": "General Manager",
+        "hint": "Morgan Brock, general manager"
+      },
+      "intro": {
+        "display": "Morgan Brock is your general manager. Ask him about the Club 1 N or the league: every number comes out of your save rather than his memory, and he answers from where he sits, so he won't always agree with the others."
+      },
+      "starters": [
+        {
+          "display": "How is my team actually playing so far?"
+        },
+        {
+          "display": "Who in the minors is closest to helping us?"
+        },
+        {
+          "display": "Which contracts are a concern?"
+        },
+        {
+          "display": "Who can pitch tonight?"
+        }
+      ],
+      "placeholder": {
+        "display": "Message"
+      },
+      "room": false
+    },
+    {
+      "id": "room",
+      "name": {
+        "display": "The Room"
+      },
+      "role": {
+        "display": "Group chat"
+      },
+      "intro": {
+        "display": "Everyone you put in the room answers the same question in turn, each seeing what the others said. Ask about the Club 1 N or the league: they won't always agree, which is the point. Start a message with a name, or type @, to ask one of them alone."
+      },
+      "starters": [
+        {
+          "display": "Who is hurt, and how do we handle him when he is back?"
+        },
+        {
+          "display": "Is a starter worth going after, and can we afford one?"
+        },
+        {
+          "display": "What is the biggest problem with this team right now?"
+        }
+      ],
+      "placeholder": {
+        "display": "Message: @ to ask one person"
+      },
+      "room": true
+    }
+  ],
+  "room": {
+    "members": [
+      "trainer",
+      "manager"
+    ],
+    "limit": 4,
+    "title": {
+      "display": "In the room:"
+    },
+    "hint": {
+      "display": "They answer in order and see what the others said. Add or remove anyone at any point: a new voice reads the conversation so far. Start a message with a name, or put an @ in front of one, to ask that person alone."
+    },
+    "pickOne": {
+      "display": "Pick at least one."
+    }
+  },
+  "ai": {
+    "available": false,
+    "off": {
+      "text": "AI is off. Everything else in Pennant works without it.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Why",
+            "value": "No Anthropic (Claude) key set. Open Settings and add your key — you can get one at console.claude.com."
+          },
+          {
+            "label": "What still works",
+            "value": "Every report, view, figure and finding is worked out by Pennant itself. The staff room only puts questions about them to an AI."
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "Settings",
+          "asOf": null,
+          "gameDate": "2040-5-6"
+        },
+        "unknown": [],
+        "wouldChange": [
+          "An AI key in Settings."
+        ],
+        "lean": null,
+        "certainty": "recorded",
+        "called": "From Pennant's own record"
+      },
+      "links": [],
+      "hint": "Add a key in Settings to ask your staff questions"
+    },
+    "note": {
+      "text": "Written by AI from Pennant's figures. It decides nothing.",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "What it is given",
+            "value": "Your question, the conversation so far, and Pennant's own reports and figures, which it looks up as it answers."
+          },
+          {
+            "label": "What it is not",
+            "value": "Pennant's answer: its reports are. It explains them in words and makes no decision: the decision is yours."
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "The front office",
+          "asOf": null,
+          "gameDate": "2040-5-6"
+        },
+        "unknown": [],
+        "wouldChange": [],
+        "lean": null,
+        "certainty": "policy",
+        "called": "A line chosen and stated",
+        "stamp": "How AI is used: stated, not fitted"
+      },
+      "links": []
+    }
+  },
+  "askAbout": {
+    "display": "Ask about him"
+  },
+  "startOver": {
+    "display": "Start over"
+  },
+  "stop": {
+    "display": "Stop"
+  }
+}

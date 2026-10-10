@@ -1,0 +1,34 @@
+{
+  "provider": "anthropic",
+  "outcome": "misshapen",
+  "result": {
+    "text": "That doesn't look like a key for this provider.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "Provider",
+          "value": "Anthropic (Claude)"
+        },
+        {
+          "label": "What the check found",
+          "value": "Anthropic keys begin with \"sk-ant-\"."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Another key, copied whole."
+      ],
+      "lean": null,
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
+    },
+    "links": []
+  }
+}

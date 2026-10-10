@@ -11,3 +11,20 @@ export function timestampWords(iso: string | null | undefined): string | null {
   const at = new Date(iso);
   return Number.isNaN(at.getTime()) ? null : FORMAT.format(at);
 }
+
+const CLOCK = new Intl.DateTimeFormat('en-US', { timeStyle: 'short' });
+const DAY = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+
+/** The time of day alone ("3:04 PM"), for a message in a conversation (N13); null when not a time. */
+export function clockWords(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? null : CLOCK.format(at);
+}
+
+/** The day alone ("Oct 10, 2026"), for a conversation's day dividers (N13); null when not a time. */
+export function dayWords(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? null : DAY.format(at);
+}

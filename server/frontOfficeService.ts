@@ -31,7 +31,7 @@ import { databaseGeneration, leagueUpgradeUnderWay, tableExists } from './db.js'
 import {
   buildClubReport, buildDecision, buildFrontOffice, buildTrail, type BuildRequest, type BuildResult, type ClubRequest, type DecisionRequest, type TrailRequest, type WorkerJob,
 } from './frontOfficeBuild.js';
-import { catalogClubs } from './org.js';
+import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 import { importedAt } from './playerStateRoutes.js';
 import { adoptAuthored } from './presentation/claim.js';
 import { REPORTING } from './presentation/frontOffice/desk.js';
@@ -362,31 +362,10 @@ export function currentReportStamp(): string | null {
   }
 }
 
-/** Why a Front Office request cannot be answered, as a sentence. */
-export class FrontOfficeRefusal extends Error {
-  constructor(message: string, readonly status: 404) {
-    super(message);
-    this.name = 'FrontOfficeRefusal';
-  }
-}
-
-export const NO_DATA = 'Nothing is imported yet, so there is no report to read.';
-export const NO_CLUB = 'No club is chosen, and the save doesn\'t say which club you run. Choose one in Settings.';
-export const UNKNOWN_CLUB = 'Pennant doesn\'t know that club in this save.';
+// The club a request names and its refusals live in `orgParam.ts` (N13); re-exported, so every importer is unchanged
+export { FrontOfficeRefusal, NO_CLUB, NO_DATA, UNKNOWN_CLUB, resolveOrg } from './orgParam.js';
 export const UNKNOWN_DEPARTMENT = 'Pennant doesn\'t know that department.';
 export const UNKNOWN_CLAIM = 'That item isn\'t open in the current export. It may have been resolved, or the export changed.';
-
-/** The club a request names: a team id, or `automatic` (the served resolution: configured, else the human's club). */
-export function resolveOrg(param: string): number {
-  if (!tableExists('players') || !tableExists('teams')) throw new FrontOfficeRefusal(NO_DATA, 404);
-  // The club question still open (N7): the automatic club is not served as if it had been chosen
-  const owed = param === 'automatic' ? clubOwed() : null;
-  if (owed) throw new FrontOfficeRefusal(owed.text, 404);
-  const id = param === 'automatic' ? currentOrganization()?.id ?? null : Number(param);
-  if (id === null) throw new FrontOfficeRefusal(NO_CLUB, 404);
-  if (!Number.isInteger(id) || id <= 0 || !catalogClubs().some((c) => c.team_id === id)) throw new FrontOfficeRefusal(UNKNOWN_CLUB, 404);
-  return id;
-}
 
 /** The Morning Report's desk and department cards, as built (the GM's attention is put on it by `frontOfficeAttention.ts`). */
 export async function frontOfficeSummary(orgId: number): Promise<FrontOfficeSummary> {

@@ -371,6 +371,160 @@
         }
       }
     },
+    "/api/v2/ai/keys": {
+      "get": {
+        "operationId": "getAiKeys",
+        "summary": "Every AI provider with whether its key is set and where it comes from, in words (never the key), where keys are kept, and whether any AI surface is on.",
+        "tags": [
+          "v2"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiKeysView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/ai/keys/check": {
+      "post": {
+        "operationId": "checkAiKey",
+        "summary": "Check a key with its own provider without keeping it (or the key the server holds, when none is sent); the outcome in words, never the key.",
+        "tags": [
+          "v2"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiKeyCheck"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiKeyCheckAnswer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/briefing/{org}": {
+      "get": {
+        "operationId": "getBriefing",
+        "summary": "The GM Briefing as written, in its sections, with when and from which export, or why there is none; the state of a new one.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "writeBriefing",
+        "summary": "Write a new briefing in the background; answers at once with the view, now writing. A 409 in words with AI off.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "HTTP 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/catalog": {
       "get": {
         "operationId": "getCatalog",
@@ -1344,6 +1498,318 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutomaticSetup"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/staff-room/{org}": {
+      "get": {
+        "operationId": "getStaffRoom",
+        "summary": "The Staff room: who can be asked and what each is for, the room, and whether AI is on.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffRoomView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/staff-room/{org}/ask": {
+      "post": {
+        "operationId": "askStaffRoom",
+        "summary": "A question to one person or the room, answered as server-sent events (started, speaker, looking-up, text, notice, answered, then done or failed). A player dragged in (`about`) is asked about in the server's words. Refused before the stream in words: no question (400), an unknown club or player (404), AI off or an answer already running (409).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffRoomAsk"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A stream of server-sent events; each event's data is a JSON StaffRoomEvent.",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "400": {
+            "description": "The request could not be done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "HTTP 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/staff-room/{org}/conversation": {
+      "get": {
+        "operationId": "getStaffConversation",
+        "summary": "The conversation with one person (or the room) as kept for the club, the React chat's own; each answer in the served markdown subset with its links, marked as written by AI.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "with",
+            "in": "query",
+            "required": false,
+            "description": "A person's id (`analyst`, `manager`, ...), or `room`. The analyst when left out.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffRoomConversation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearStaffConversation",
+        "summary": "Start over: the conversation with one person (or the room) emptied. A 409 in words while an answer is being written.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "with",
+            "in": "query",
+            "required": false,
+            "description": "A person's id, or `room`. The analyst when left out.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffRoomCleared"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "HTTP 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/storylines/{org}": {
+      "get": {
+        "operationId": "getStorylines",
+        "summary": "Storylines as written, with when and from which export, or why there are none; the state of a new set (never written, writing, written, failed).",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorylinesView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "writeStorylines",
+        "summary": "Write a new set of storylines in the background; answers at once with the view, now writing. A 409 in words with AI off.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorylinesView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "HTTP 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -3649,6 +4115,303 @@
           }
         }
       },
+      "AiKeyCheck": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string",
+            "description": "The key to test; left out, the key the server already holds for the provider is tested."
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "description": "`POST /api/v2/ai/keys/check`: a key to test with its provider (never kept, logged or served back)."
+      },
+      "AiKeyCheckAnswer": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "outcome": {
+            "description": "`works`, `refused` (the provider turned it down), `unchecked` (the provider could not be reached), `misshapen`.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "works",
+                  "refused",
+                  "unchecked",
+                  "misshapen"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "result": {
+            "$ref": "#/components/schemas/Claim"
+          }
+        },
+        "required": [
+          "provider",
+          "outcome",
+          "result"
+        ],
+        "description": "What the check found, in words, never repeating the key."
+      },
+      "AiKeysView": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiProviderRow"
+            }
+          },
+          "where": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Where keys are kept (\"In your Mac's Keychain; Pennant never writes them to a file\")."
+          },
+          "off": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said when no AI surface has a key: everything else in Pennant works without one; null otherwise."
+          }
+        },
+        "required": [
+          "title",
+          "lede",
+          "providers",
+          "where"
+        ],
+        "description": "`GET /api/v2/ai/keys`: every provider, where keys are kept, and whether any AI surface is on."
+      },
+      "AiLink": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "`pennant://player/<id>` or `pennant://club/<teamId>`, exactly as it appears in the markdown."
+          },
+          "text": {
+            "type": "string",
+            "description": "The words linked, as they appear in the text (\"Gerrit Cole\")."
+          },
+          "target": {
+            "$ref": "#/components/schemas/Target",
+            "description": "A player (with his organization's club when known) or a club."
+          }
+        },
+        "required": [
+          "url",
+          "text",
+          "target"
+        ],
+        "description": "A link inside AI-written text: the URL the text carries, the words linked and where it leads."
+      },
+      "AiProviderRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`anthropic`, `openai`, `gemini`, `opencode`, `ollama`."
+          },
+          "name": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Key set, from the Keychain (ends 4f2a)\", \"No key\", \"No key needed: it runs on this Mac\"."
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "needsKey": {
+            "type": "boolean"
+          },
+          "source": {
+            "description": "`keychain`, `env` or `stored`; null with no key.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "keychain",
+                  "env",
+                  "stored"
+                ]
+              },
+              {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            ]
+          },
+          "sourceText": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"From the Keychain\"; null with no key."
+          },
+          "getOne": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Get a key at console.claude.com\"; null where none is needed."
+          },
+          "usedFor": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Used for the Staff room and Storylines\"; null when no AI feature uses it."
+          },
+          "check": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Check key\"."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "configured",
+          "needsKey",
+          "source"
+        ],
+        "description": "One AI provider: whether its key is set and where it comes from, never the key itself."
+      },
+      "AiStory": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "The AI's own category, as written (plain text, not markdown): \"The Club\", \"Player Spotlight\", \"Down on the Farm\", \"Front Office\", \"Looking Ahead\" as a rule; \"The Club\" when it gave none. AI text, so not a server `Cell` (review L8)."
+          },
+          "headline": {
+            "type": "string",
+            "description": "The AI's own headline, as written (plain text, not markdown)."
+          },
+          "body": {
+            "$ref": "#/components/schemas/AiText"
+          }
+        },
+        "required": [
+          "category",
+          "headline",
+          "body"
+        ]
+      },
+      "AiSurfaceState": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "off": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "With AI off: one calm line that the rest of Pennant works without it, the reason in its basis; null when on."
+          },
+          "note": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What the AI is and is not: it explains Pennant's figures and decides nothing."
+          }
+        },
+        "required": [
+          "available",
+          "note"
+        ],
+        "description": "Whether a surface's AI can answer, in served words."
+      },
+      "AiText": {
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiLink"
+            }
+          }
+        },
+        "required": [
+          "markdown",
+          "links"
+        ],
+        "description": "AI-written text in the served markdown subset, with its links (see the file's header)."
+      },
+      "AiWritingState": {
+        "description": "`never` written, `writing` now, `written`, or the last try `failed` (what was written before stays).",
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "never",
+              "writing",
+              "written",
+              "failed"
+            ]
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "AiWritingStatus": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/AiWritingState"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Written Oct 10, 2026, 3:04 PM, from the export of May 9, 2040\", \"Writing now\", \"Not written yet\", or the failure."
+          },
+          "older": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said when what is shown was written from another export than the one imported now (\"Written from an earlier export\", or \"a different export\" when it is dated after it); null when it is the same day's, or a date is unknown."
+          },
+          "write": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Write storylines\" or \"Write fresh storylines\"."
+          },
+          "canWrite": {
+            "type": "boolean",
+            "description": "Whether asking for a new one can be done now (AI on, nothing being written)."
+          },
+          "notice": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Another model wrote it, and why; null when the chosen one did."
+          },
+          "written": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Beside the writing: written by AI from Pennant's figures, which decides nothing; null with nothing written."
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AiSurfaceState"
+          },
+          "writingStamp": {
+            "type": "string",
+            "description": "Moves whenever the writing or its state changes."
+          }
+        },
+        "required": [
+          "state",
+          "status",
+          "write",
+          "canWrite",
+          "ai",
+          "writingStamp"
+        ],
+        "description": "Where a piece of AI writing stands: when it was written and from what, or why not."
+      },
       "ApiError": {
         "type": "object",
         "properties": {
@@ -3885,6 +4648,88 @@
           "asOf"
         ],
         "description": "Who answered: the department and its specialist, and how current the evidence is."
+      },
+      "BriefingSection": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The AI's own heading (\"Status\", \"Decisions Needed\"), as written; null for text before the first heading."
+          },
+          "body": {
+            "$ref": "#/components/schemas/AiText"
+          }
+        },
+        "required": [
+          "heading",
+          "body"
+        ]
+      },
+      "BriefingView": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/AiWritingState"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Written Oct 10, 2026, 3:04 PM, from the export of May 9, 2040\", \"Writing now\", \"Not written yet\", or the failure."
+          },
+          "older": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said when what is shown was written from another export than the one imported now (\"Written from an earlier export\", or \"a different export\" when it is dated after it); null when it is the same day's, or a date is unknown."
+          },
+          "write": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Write storylines\" or \"Write fresh storylines\"."
+          },
+          "canWrite": {
+            "type": "boolean",
+            "description": "Whether asking for a new one can be done now (AI on, nothing being written)."
+          },
+          "notice": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Another model wrote it, and why; null when the chosen one did."
+          },
+          "written": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Beside the writing: written by AI from Pennant's figures, which decides nothing; null with nothing written."
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AiSurfaceState"
+          },
+          "writingStamp": {
+            "type": "string",
+            "description": "Moves whenever the writing or its state changes."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BriefingSection"
+            }
+          }
+        },
+        "required": [
+          "ai",
+          "canWrite",
+          "lede",
+          "sections",
+          "state",
+          "status",
+          "title",
+          "write",
+          "writingStamp"
+        ],
+        "description": "`GET|POST /api/v2/briefing/:org`."
       },
       "Catalog": {
         "type": "object",
@@ -18776,6 +19621,51 @@
           }
         ]
       },
+      "StaffMemberView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`analyst`, `manager`, `pitching`, `hitting`, `trainer`, `scout`, `gm`, `owner`, or `room`."
+          },
+          "name": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Hal Harper\"; \"The Room\"."
+          },
+          "role": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "A short title for a tab (\"Pitching Coach\", \"Group chat\"), the full role in its help tag."
+          },
+          "intro": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What he is for and how he answers, shown before the first question."
+          },
+          "starters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Questions worth asking him, as the GM would put them."
+          },
+          "placeholder": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The compose field's placeholder."
+          },
+          "room": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "intro",
+          "starters",
+          "placeholder",
+          "room"
+        ],
+        "description": "One person who can be asked, or the room (several at once)."
+      },
       "StaffMemo": {
         "type": "object",
         "properties": {
@@ -18889,6 +19779,482 @@
           "claim"
         ],
         "description": "A pitcher beside the map."
+      },
+      "StaffRoomAnsweredEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "answered"
+            ]
+          },
+          "message": {
+            "$ref": "#/components/schemas/StaffRoomMessage"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "description": "One person's answer is complete: the message as kept, its text final, with its links. Replaces the streamed text."
+      },
+      "StaffRoomAsk": {
+        "type": "object",
+        "properties": {
+          "with": {
+            "type": "string",
+            "description": "Who is asked: a person's id, or `room`."
+          },
+          "question": {
+            "type": "string",
+            "description": "The question as typed. Leave out with `about`."
+          },
+          "about": {
+            "type": "object",
+            "properties": {
+              "playerId": {
+                "$ref": "#/components/schemas/Integer"
+              }
+            },
+            "required": [
+              "playerId"
+            ],
+            "description": "\"Ask about him\": a player dragged in; the server words the question."
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "In the room: who is in it (at most the room's limit)."
+          }
+        },
+        "required": [
+          "with"
+        ],
+        "description": "`POST /api/v2/staff-room/:org/ask`: a question for one person or the room."
+      },
+      "StaffRoomCleared": {
+        "type": "object",
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/StaffRoomConversation"
+          },
+          "done": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Started over with Peter.\""
+          }
+        },
+        "required": [
+          "conversation",
+          "done"
+        ],
+        "description": "`DELETE …/conversation?with=`: the conversation started over."
+      },
+      "StaffRoomConversation": {
+        "type": "object",
+        "properties": {
+          "with": {
+            "type": "string"
+          },
+          "speaker": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Peter · Front-office analyst\"."
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRoomMessage"
+            }
+          },
+          "count": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"3 questions\"; null with none."
+          },
+          "written": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "That every answer is the AI's explanation in a staff member's voice and decides nothing."
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AiSurfaceState"
+          },
+          "conversationStamp": {
+            "type": "string",
+            "description": "Moves whenever the conversation is written."
+          }
+        },
+        "required": [
+          "with",
+          "speaker",
+          "messages",
+          "written",
+          "ai",
+          "conversationStamp"
+        ],
+        "description": "`GET /api/v2/staff-room/:org/conversation?with=`: the conversation with one person (or the room), kept per club."
+      },
+      "StaffRoomDoneEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "count": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "conversationStamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "conversationStamp"
+        ],
+        "description": "Everyone has answered; the conversation is kept."
+      },
+      "StaffRoomEvent": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/StaffRoomStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StaffRoomSpeakerEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StaffRoomLookingUpEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StaffRoomTextEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StaffRoomNoticeEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StaffRoomAnsweredEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StaffRoomDoneEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StaffRoomFailedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/UnknownStaffRoomEvent"
+          }
+        ]
+      },
+      "StaffRoomFailedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "failed"
+            ]
+          },
+          "reason": {
+            "description": "`keyRefused` (the provider refused the key), `declined` (the model declined), or `failed`.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "keyRefused",
+                  "declined",
+                  "failed"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "failure": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What happened, in a sentence, with what to do in its basis."
+          },
+          "partial": {
+            "$ref": "#/components/schemas/StaffRoomMessage",
+            "description": "The answer as far as it got, kept; null when nothing arrived."
+          },
+          "conversationStamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "reason",
+          "failure",
+          "conversationStamp"
+        ],
+        "description": "The answer could not be finished. What was asked, and what had arrived, are kept."
+      },
+      "StaffRoomLookingUpEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "looking-up"
+            ]
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "step": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "type",
+          "messageId",
+          "step"
+        ],
+        "description": "A step while he works (\"Reading a player card\")."
+      },
+      "StaffRoomMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable within a conversation (\"m3\"); an answer streamed in keeps the id its `speaker` event named."
+          },
+          "from": {
+            "description": "`gm` or `staff`.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "gm",
+                  "staff"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "speaker": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Who answered (\"Hal Harper · Pitching Coach\"); null for the GM."
+          },
+          "typed": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The GM's words exactly as typed; null for an answer."
+          },
+          "answer": {
+            "$ref": "#/components/schemas/AiText",
+            "description": "The answer, written by AI; null for the GM's question."
+          },
+          "lookedUp": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "What the staff member looked up while answering (\"Read a player card\")."
+          },
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When it was said (ISO 8601), for ordering; null in a conversation kept before times were."
+          },
+          "clock": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The time of day in words (\"3:04 PM\"); null when not known."
+          },
+          "calendarDay": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The day in words (\"Oct 10, 2026\"), for a divider where it changes; null when not known."
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "typed",
+          "lookedUp",
+          "at"
+        ],
+        "description": "One message in a conversation: the GM's question as typed, or a staff member's answer."
+      },
+      "StaffRoomNoticeEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "notice"
+            ]
+          },
+          "notice": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "type",
+          "notice"
+        ],
+        "description": "Not a failure: another model answered, and why."
+      },
+      "StaffRoomPicker": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The ids put in the room by default (the Mac app keeps the GM's own choice)."
+          },
+          "limit": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The most people in the room at once."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"In the room:\"."
+          },
+          "hint": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How the room works, in a line."
+          },
+          "pickOne": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Said when nobody is in it."
+          }
+        },
+        "required": [
+          "members",
+          "limit",
+          "title",
+          "hint",
+          "pickOne"
+        ],
+        "description": "The room: who can be put in it, who is in by default, and how it works."
+      },
+      "StaffRoomSpeakerEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "speaker"
+            ]
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "speaker": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "type",
+          "messageId",
+          "speaker"
+        ],
+        "description": "A person starts an answer: the message id the deltas after it belong to."
+      },
+      "StaffRoomStartedEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "started"
+            ]
+          },
+          "question": {
+            "$ref": "#/components/schemas/StaffRoomMessage"
+          },
+          "answering": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The ids of who will answer, in order."
+          }
+        },
+        "required": [
+          "type",
+          "question",
+          "answering"
+        ],
+        "description": "The question was taken: the GM's message as kept, and who will answer."
+      },
+      "StaffRoomTextEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text"
+            ]
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "delta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "messageId",
+          "delta"
+        ],
+        "description": "More of the answer, in the markdown subset: the deltas add up exactly to `answered`'s text without its links (a line break arrives with the next line's words). Links arrive only with `answered`."
+      },
+      "StaffRoomView": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffMemberView"
+            }
+          },
+          "room": {
+            "$ref": "#/components/schemas/StaffRoomPicker",
+            "description": "Null when there is only one person to ask."
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AiSurfaceState"
+          },
+          "askAbout": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Ask about him\": what dragging a player in does."
+          },
+          "startOver": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "stop": {
+            "$ref": "#/components/schemas/Cell"
+          }
+        },
+        "required": [
+          "title",
+          "lede",
+          "staff",
+          "ai",
+          "askAbout",
+          "startOver",
+          "stop"
+        ],
+        "description": "`GET /api/v2/staff-room/:org`: who can be asked, what each is for, and whether AI is on."
       },
       "StaffSection": {
         "type": "object",
@@ -19036,6 +20402,69 @@
             "type": "string"
           }
         ]
+      },
+      "StorylinesView": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/AiWritingState"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Written Oct 10, 2026, 3:04 PM, from the export of May 9, 2040\", \"Writing now\", \"Not written yet\", or the failure."
+          },
+          "older": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said when what is shown was written from another export than the one imported now (\"Written from an earlier export\", or \"a different export\" when it is dated after it); null when it is the same day's, or a date is unknown."
+          },
+          "write": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Write storylines\" or \"Write fresh storylines\"."
+          },
+          "canWrite": {
+            "type": "boolean",
+            "description": "Whether asking for a new one can be done now (AI on, nothing being written)."
+          },
+          "notice": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "Another model wrote it, and why; null when the chosen one did."
+          },
+          "written": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Beside the writing: written by AI from Pennant's figures, which decides nothing; null with nothing written."
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AiSurfaceState"
+          },
+          "writingStamp": {
+            "type": "string",
+            "description": "Moves whenever the writing or its state changes."
+          },
+          "title": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "lede": {
+            "$ref": "#/components/schemas/Cell"
+          },
+          "stories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiStory"
+            }
+          }
+        },
+        "required": [
+          "ai",
+          "canWrite",
+          "lede",
+          "state",
+          "status",
+          "stories",
+          "title",
+          "write",
+          "writingStamp"
+        ],
+        "description": "`GET|POST /api/v2/storylines/:org`."
       },
       "Target": {
         "type": "object",
@@ -20268,6 +21697,18 @@
           "type"
         ],
         "description": "An event this build of the contract does not name, sent by a newer server. The spec lists it last among `ServerEvent`'s shapes, so an older app decodes it (and ignores it) instead of failing the stream."
+      },
+      "UnknownStaffRoomEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "A Staff room event this build of the contract does not name, sent by a newer server: listed last among `StaffRoomEvent`'s shapes, so an older app decodes it (and ignores it) instead of failing the stream."
       },
       "ValueScale": {
         "type": "object",

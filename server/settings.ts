@@ -747,6 +747,23 @@ const KEY_SHAPE: Partial<Record<ProviderId, { test: RegExp; hint: string }>> = {
   opencode: { test: /^.{16,}$/, hint: 'That looks too short for an OpenCode Zen key.' },
 };
 
+/** Why a pasted key cannot be one for this provider, in a sentence; null when its shape is right (N13: the key check). */
+export function keyShapeProblem(provider: ProviderId, key: string): string | null {
+  const shape = KEY_SHAPE[provider];
+  if (!shape) return null;
+  return shape.test.test(key.trim()) ? null : shape.hint;
+}
+
+/**
+ * Where keys are kept on this server: the environment when every key set comes from it (an environment variable wins,
+ * `getApiKey`), else handed over from the Keychain (the Mac app's sidecar), else the data folder (N13 review L7).
+ */
+export function keyStorageKind(): 'keychain' | 'stored' | 'env' {
+  const sources = PROVIDERS.filter((p) => p.requiresKey).map((p) => statusOf(p.id).source).filter((s) => s !== null);
+  if (sources.length > 0 && sources.every((s) => s === 'env')) return 'env';
+  return injected ? 'keychain' : 'stored';
+}
+
 /** Verifies a key against the API before saving, so a typo is caught here. */
 settingsRoutes.post('/settings/api-key', async (req, res) => {
   const { key, provider: raw } = req.body as { key?: string; provider?: string };

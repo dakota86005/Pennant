@@ -1,15 +1,16 @@
 import { Router } from 'express';
 import fs from 'node:fs';
-import path from 'node:path';
 import { db, tableExists } from './db.js';
-import { DATA_DIR } from './config.js';
 import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, providerFor, type FallbackNotice } from './providers.js';
+import { noKeyMessage } from './chat.js';
 import { computeProspects } from './org.js';
 import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
 import { LEVEL_NAMES, currentGameDate, seasonYear, teamFinances, rulesBriefing } from './valuation.js';
 import { jobStatus, startJob } from './jobs.js';
+import { storylinesNow, storylinesPath } from './aiSurfacesService.js';
+import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 
 export const storylineRoutes = Router();
 
@@ -28,7 +29,8 @@ interface StorylineCache {
   notice?: FallbackNotice | null;
 }
 
-const cachePath = (orgId: number) => path.join(DATA_DIR, `storylines-${orgId}.json`);
+// The file lives in `aiSurfacesService.ts` (N13), which the Mac app's Storylines reads too: the same name as before
+const cachePath = storylinesPath;
 
 /** Everything the AI needs to write about this org, in one compact object. */
 export function assembleContext(orgId: number) {
@@ -369,3 +371,37 @@ storylineRoutes.post('/storylines/:orgId', (req, res) => {
 export function startStorylineJob(orgId: number): void {
   startJob('storylines', orgId, () => generateStorylines(orgId));
 }
+
+// ── The Mac app's Storylines (N13, Stage A; D-074) ──────────────────────────
+
+/** Whether Storylines can be written: a key for the provider chosen for them (read on every request). */
+export function storylinesAiState(): { available: boolean; offReason: string | null } {
+  const provider = featureProvider('storylines');
+  const available = providerCredential(provider) !== null;
+  // The same plain words as the Staff room's and the briefing's (review L7)
+  return { available, offReason: available ? null : noKeyMessage(provider) };
+}
+
+export const STORYLINES_AI_OFF = 'AI is off. Add a key in Settings to have storylines written.';
+
+storylineRoutes.get('/v2/storylines/:org', (req, res, next) => {
+  try {
+    res.json(storylinesNow(String(req.params.org), storylinesAiState()));
+  } catch (err) {
+    if (err instanceof FrontOfficeRefusal) res.status(err.status).json({ error: err.message });
+    else next(err);
+  }
+});
+
+/** Starts a set (the React route's job, `generateStorylines`) and answers at once with the view, now writing. */
+storylineRoutes.post('/v2/storylines/:org', (req, res, next) => {
+  try {
+    const orgId = resolveOrg(String(req.params.org));
+    if (!storylinesAiState().available) return res.status(409).json({ error: STORYLINES_AI_OFF });
+    startJob('storylines', orgId, () => generateStorylines(orgId));
+    res.json(storylinesNow(String(orgId), storylinesAiState()));
+  } catch (err) {
+    if (err instanceof FrontOfficeRefusal) res.status(err.status).json({ error: err.message });
+    else next(err);
+  }
+});
