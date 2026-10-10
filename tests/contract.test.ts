@@ -995,6 +995,19 @@ describe('the server answers in the contract\'s shape (the synthetic save)', () 
     fixture('events.sse', kept.map((e) => `event: ${e.name}\ndata: ${JSON.stringify(stable(e.data))}\n\n`).join(''));
   }, SLOW);
 
+  it('the committed Staff room stream (staff-room.sse, written by aiSurfaces.test.ts) holds StaffRoomEvents in the strict form (N13)', () => {
+    const sse = fs.readFileSync(path.join(FIXTURES, 'staff-room.sse'), 'utf8');
+    const events = [...sse.matchAll(/^event: (.*)\ndata: (.*)$/gm)].map((m) => ({ name: m[1], data: JSON.parse(m[2]) }));
+    expect(events.map((e) => e.name)).toEqual(expect.arrayContaining(['started', 'speaker', 'looking-up', 'text', 'answered', 'done', 'failed']));
+    const validate = validator('StaffRoomEvent');
+    for (const event of events) {
+      expect(event.data.type, 'the SSE event name is the payload\'s type').toBe(event.name);
+      expect(validate(event.data) ? [] : validate.errors, event.name).toEqual([]);
+      expect(bannedInPayload(event.data)).toEqual([]);
+      expect(servedBasisProblems(event.data)).toEqual([]);
+    }
+  });
+
   it('announces a save played since the chosen one on the event stream, in the strict form (N6, Stage B1)', () => {
     const previous = loadConfig();
     const pretend = new PretendHome();
