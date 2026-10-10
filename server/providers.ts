@@ -486,6 +486,8 @@ export interface ToolLoopOpts {
   maxTurns: number;
   /** Told when the chosen model could not be used and another answered. */
   onFallback?: (notice: FallbackNotice) => void;
+  /** Stops the loop and the provider's request (the Staff room's Stop, a closed window, the time limit; N13 review M1). */
+  signal?: AbortSignal;
 }
 
 export interface ToolLoopResult {
@@ -559,6 +561,7 @@ async function openAiToolLoop(
   let answer = '';
 
   for (let turn = 0; turn < o.maxTurns; turn++) {
+    o.signal?.throwIfAborted();
     const stream = await client.chat.completions.create({
       model: o.model,
       stream: true,
@@ -571,7 +574,7 @@ async function openAiToolLoop(
           parameters: t.input_schema as Record<string, unknown>,
         },
       })),
-    });
+    }, { signal: o.signal });
 
     // Tool calls arrive in fragments identified by index, not by id
     const calls = new Map<number, { id: string; name: string; args: string }>();
@@ -633,6 +636,7 @@ async function runAll(
 ): Promise<Anthropic.ToolResultBlockParam[]> {
   const results: Anthropic.ToolResultBlockParam[] = [];
   for (const use of uses) {
+    o.signal?.throwIfAborted();
     o.onTool(use.name);
     try {
       results.push({
@@ -751,10 +755,12 @@ async function geminiLoop(o: ToolLoopOpts, model: string): Promise<ToolLoopResul
   let answer = '';
 
   for (let turn = 0; turn < o.maxTurns; turn++) {
+    o.signal?.throwIfAborted();
     const stream = await client.models.generateContentStream({
       model,
       contents: toGeminiContents(o.messages),
       config: {
+        ...(o.signal ? { abortSignal: o.signal } : {}),
         systemInstruction: o.system,
         tools: [
           {
@@ -895,6 +901,16 @@ export function describeError(provider: ProviderId, err: unknown): string {
   return message || 'The request failed.';
 }
 
+/**
+ * Takes the key, and anything shaped like one, out of a sentence a provider wrote, before it is served (N13: the key
+ * check, and the Staff room's failed sentence, review L2).
+ */
+export function withoutKey(text: string, key: string): string {
+  let out = text;
+  if (key) out = out.split(key).join('[the key]');
+  return out.replace(/\b(?:sk|AIza|key)[-_A-Za-z0-9]{8,}/g, '[the key]');
+}
+
 /** Digs the human sentence out of a body that may be JSON nested in JSON. */
 function unwrap(raw: string): string {
   let text = raw;
@@ -933,13 +949,14 @@ async function anthropicToolLoop(o: ToolLoopOpts): Promise<ToolLoopResult> {
   let answer = '';
 
   for (let turn = 0; turn < o.maxTurns; turn++) {
+    o.signal?.throwIfAborted();
     const message = await client.messages.create({
       model: o.model,
       max_tokens: 4000,
       system: o.system,
       tools: o.tools,
       messages: o.messages,
-    });
+    }, { signal: o.signal });
     if (message.stop_reason === 'refusal') return { answer, refused: true };
 
     for (const block of message.content) {

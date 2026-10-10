@@ -4,6 +4,7 @@ import path from 'node:path';
 import { db } from '../server/db.js';
 import { DATA_DIR } from '../server/config.js';
 import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
+import { STAFF_ANSWER_LIMIT } from '../server/chat.js';
 import {
   aiSurfaceStats, briefingPath, historyPath, readConversation, resetAiSurfaces, storylinesPath, writeConversation,
 } from '../server/aiSurfacesService.js';
@@ -22,6 +23,7 @@ interface LoopOpts {
   onText: (delta: string) => void;
   onTool: (name: string) => void;
   onFallback: (n: { message: string; from: string; to: string; provider: string }) => void;
+  signal?: AbortSignal;
 }
 type Script = (o: LoopOpts) => Promise<{ answer: string; refused: boolean }>;
 const asked: LoopOpts[] = [];
@@ -228,6 +230,18 @@ describe('the Staff room\'s stream (N13; D-001, D-074)', () => {
   });
 
 
+  it('a provider\'s own sentence in a failure never carries the key (review L2)', async () => {
+    script = async () => {
+      throw Object.assign(new Error(`Bad request: the header carried ${KEY} and sk-other-looking-key-123456789`), { status: 400 });
+    };
+    const { events } = await ask(save.org, { with: 'analyst', question: 'Who is hurt?' });
+    const failed = events.at(-1)!.data;
+    expect(failed).toMatchObject({ type: 'failed', reason: 'failed' });
+    expect(failed.failure.basis.because[0].value).toMatch(/^Bad request: the header carried \[the key\]/);
+    expect(JSON.stringify(events)).not.toContain(KEY);
+    expect(JSON.stringify(events)).not.toContain('sk-other-looking-key');
+  });
+
   it('in the room, each person answers in turn, each a message of his own; one asked by name answers alone', async () => {
     const room = (await get(`/api/v2/staff-room/${save.org}`)).json;
     const people = room.staff.filter((p: { room: boolean }) => !p.room).map((p: { id: string }) => p.id);
@@ -256,11 +270,13 @@ describe('the Staff room\'s stream (N13; D-001, D-074)', () => {
   });
 
   it('answers one question at a time per conversation, and keeps what arrived when the app stops listening', async () => {
-    let release: () => void = () => {};
-    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const gate = new Promise<void>(() => {});
+    let signal: AbortSignal | undefined;
     script = async (o) => {
+      signal = o.signal;
       o.onText('First part. ');
-      await gate;
+      // A model that stops when asked to (the provider's request is aborted), or never answers
+      await Promise.race([gate, new Promise((resolve) => o.signal?.addEventListener('abort', resolve))]);
       o.onText('Second part.');
       return { answer: 'x', refused: false };
     };
@@ -277,9 +293,83 @@ describe('the Staff room\'s stream (N13; D-001, D-074)', () => {
     controller.abort();
     await running;
     await vi.waitFor(() => expect(readConversation(save.org, 'analyst').map((m) => m.content)).toEqual(['Long one?', 'First part. ']));
-    release();
-    // The answer finishing later changes nothing kept, and the conversation is free again
-    await vi.waitFor(async () => expect((await ask(save.org, { with: 'analyst', question: 'Free now?' })).status).toBe(200));
+    // Stop reaches the model's request, and the conversation is free again with nothing released by hand (review M1)
+    await vi.waitFor(() => expect(signal?.aborted).toBe(true));
+    script = async (o) => {
+      o.onText('Fresh.');
+      return { answer: 'Fresh.', refused: false };
+    };
+    const free = await ask(save.org, { with: 'analyst', question: 'Free now?' });
+    expect(free.status).toBe(200);
+    expect(free.events.at(-1)!.name).toBe('done');
+    expect(readConversation(save.org, 'analyst').map((m) => m.content)).toEqual(['Long one?', 'First part. ', 'Free now?', 'Fresh.']);
+  });
+
+  it('stops an answer that runs past the time limit, says so in words, and frees the conversation (review M1)', async () => {
+    const limit = STAFF_ANSWER_LIMIT.ms;
+    STAFF_ANSWER_LIMIT.ms = 200;
+    script = async (o) => {
+      o.onText('Thinking it over');
+      // A model that never finishes and never notices it was stopped
+      await new Promise(() => {});
+      return { answer: 'never', refused: false };
+    };
+    try {
+      const { events } = await ask(save.org, { with: 'analyst', question: 'Take your time?' });
+      expect(events.at(-1)!.name).toBe('failed');
+      expect(events.filter((e) => e.name === 'failed' || e.name === 'done')).toHaveLength(1);
+      const failed = events.at(-1)!.data;
+      expect(failed.reason).toBe('failed');
+      expect(failed.failure.basis.because[0].value).toMatch(/took too long/);
+      expect(failed.partial.answer.markdown).toBe('Thinking it over');
+      expect(bannedInPayload(failed)).toEqual([]);
+    } finally {
+      STAFF_ANSWER_LIMIT.ms = limit;
+    }
+    script = async (o) => {
+      o.onText('Quick.');
+      return { answer: 'Quick.', refused: false };
+    };
+    expect((await ask(save.org, { with: 'analyst', question: 'Quicker?' })).status).toBe(200);
+  });
+
+  it('a conversation file that cannot be written is a refusal in words, and the server and the conversation carry on (review M2)', async () => {
+    const file = historyPath(save.org, 'analyst');
+    fs.rmSync(file, { force: true });
+    fs.mkdirSync(file);
+    try {
+      const refused = await fetch(`${base}/api/v2/staff-room/${save.org}/ask`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ with: 'analyst', question: 'Anyone?' }),
+        signal: AbortSignal.timeout(5000),
+      });
+      expect(refused.status).toBe(500);
+      expect(await refused.json()).toEqual({ error: 'Pennant couldn\'t take that question just now. Try again.' });
+      expect(asked).toHaveLength(0);
+    } finally {
+      fs.rmSync(file, { recursive: true, force: true });
+    }
+    expect((await ask(save.org, { with: 'analyst', question: 'And now?' })).status).toBe(200);
+  });
+
+  it('the React chat stops the model when its page stops listening, and answers as before otherwise', async () => {
+    let signal: AbortSignal | undefined;
+    script = async (o) => {
+      signal = o.signal;
+      o.onText('Part. ');
+      await new Promise((resolve) => o.signal?.addEventListener('abort', resolve));
+      return { answer: 'Part. ', refused: false };
+    };
+    const controller = new AbortController();
+    const res = await fetch(`${base}/api/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+      body: JSON.stringify({ orgId: save.org, persona: 'analyst', messages: [{ role: 'user', content: 'Long?' }] }),
+    });
+    const reader = res.body!.getReader();
+    await reader.read();
+    controller.abort();
+    await vi.waitFor(() => expect(signal?.aborted).toBe(true));
+    // Nothing of a stopped answer is stored as the model's context
+    expect(fs.existsSync(path.join(DATA_DIR, `chat-context-${save.org}.json`))).toBe(false);
   });
 });
 

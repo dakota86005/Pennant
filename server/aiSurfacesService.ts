@@ -408,12 +408,20 @@ export class StaffRoomAnswer {
     return event;
   }
 
-  /** Keeps the conversation as it stands (an answer stopped part-way keeps what arrived; an empty one is dropped). */
+  /**
+   * Keeps the conversation as it stands (an answer stopped part-way keeps what arrived; an empty one is dropped). Never
+   * throws (review M2): it runs when the app stops listening, where a throw would end the server, so a file that cannot
+   * be written is logged and the answer still ends in words.
+   */
   keep(): void {
     if (this.closed) return;
     this.closed = true;
     const thread = this.thread.filter((m) => m.role === 'user' || m.content.trim().length > 0);
-    writeConversation(this.orgId, this.withId, thread);
+    try {
+      writeConversation(this.orgId, this.withId, thread);
+    } catch (err) {
+      console.error('[staff-room] the conversation couldn\'t be kept:', err instanceof Error ? err.message : 'unknown');
+    }
   }
 
   private endAnswer(): StaffRoomEvent[] {
