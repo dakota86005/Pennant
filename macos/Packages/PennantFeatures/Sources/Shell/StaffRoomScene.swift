@@ -49,6 +49,8 @@ public struct StaffRoomScene: View {
         .task(id: ConversationTask(key: model.storeKey, with: with)) { await model.loadStaffConversation(with) }
         .onAppear { takeHandedPlayer() }
         .onChange(of: router.pending) { _, _ in takeHandedPlayer() }
+        // A player handed over before the room was read is asked about once it is
+        .onChange(of: store.view == nil) { _, _ in takeHandedPlayer() }
         .onChange(of: store.view?.staff.map(\.id)) { _, ids in
             // A person this save's staff no longer has: back to the first served one
             if let ids, !ids.isEmpty, !ids.contains(with) { with = ids[0] }
