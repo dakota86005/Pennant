@@ -12,6 +12,10 @@ final class FedTransport: ClientTransport, @unchecked Sendable {
     private var _streams: [AsyncStream<ArraySlice<UInt8>>.Continuation] = []
     private var _ended: Set<Int> = []
     private var _paths: [String] = []
+    private var _conversation: Data?
+
+    /// What the conversation read answers from now on; nil fails it (the live answer stays in place).
+    func conversation(_ body: Data?) { lock.withLock { _conversation = body } }
 
     /// How many questions have arrived.
     var asks: Int { lock.withLock { _streams.count } }
@@ -35,7 +39,12 @@ final class FedTransport: ClientTransport, @unchecked Sendable {
         let path = request.path ?? ""
         lock.withLock { _paths.append(path) }
         guard request.method == .post, path.hasSuffix("/ask") else {
-            return (HTTPResponse(status: .internalServerError), nil)
+            guard request.method == .get, path.contains("/conversation"), let body = lock.withLock({ _conversation }) else {
+                return (HTTPResponse(status: .internalServerError), nil)
+            }
+            var response = HTTPResponse(status: .ok)
+            response.headerFields[.contentType] = "application/json"
+            return (response, HTTPBody(body))
         }
         let (stream, continuation) = AsyncStream<ArraySlice<UInt8>>.makeStream()
         let number = lock.withLock {
@@ -109,6 +118,26 @@ struct StaffRoomRaceTests {
         let sent = transport.paths.count
         await store.loadConversation("analyst", client: client, key: key, force: true)
         #expect(transport.paths.count == sent)
+    }
+
+    @Test("a stopped answer's words stay on screen until a conversation read holds them (the server keeps them as it sees the app stop)")
+    func stoppedWordsKept() async throws {
+        let (store, client, key, transport) = setUp()
+        // The read right after Stop: the server has not kept the stopped words yet
+        transport.conversation(try fixtureData("responses/getStaffConversation.json"))
+        #expect(store.ask(.typed("Slow?"), with: "analyst", members: nil, client: client, key: key))
+        #expect(await eventually { transport.asks == 1 })
+        transport.feed(0, event("speaker", #"{"type":"speaker","messageId":"t1b2v4jw","speaker":{"display":"Peter"}}"#)
+            + event("text", #"{"type":"text","messageId":"t1b2v4jw","delta":"Starting"}"#))
+        #expect(await eventually { store.answers["analyst"]?.messages.first?.streamed == "Starting" })
+        let reads = transport.paths.count
+        store.stop("analyst", client: client, key: key)
+        #expect(await eventually { transport.paths.count > reads && store.conversations["analyst"] != nil })
+        #expect(store.answers["analyst"]?.messages.first?.streamed == "Starting")
+        // A later read that holds them: the live copy goes, the kept message is drawn instead
+        transport.conversation(try fixtureData("responses/getStaffConversation-written.json"))
+        await store.loadConversation("analyst", client: client, key: key, force: true)
+        #expect(store.answers["analyst"] == nil)
     }
 
     @Test("Stop, then the question asked again at once: the new answer is its own, never ended by the old one")

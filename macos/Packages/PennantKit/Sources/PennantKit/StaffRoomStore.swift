@@ -113,8 +113,10 @@ public final class StaffRoomStore {
                 conversations[with] = served
                 conversationKeys[with] = key
                 conversationProblems[with] = nil
-                // The kept conversation now holds what streamed: the live copy goes, unless another answer has started
-                if answers[with]?.outcome.isRunning == false { answers[with] = nil }
+                // The kept conversation now holds what streamed: the live copy goes, unless another answer has started,
+                // or a stopped answer's words are not in it yet (the server keeps them when it sees the app stop
+                // listening, which can come after this read): they stay on screen until a read holds them
+                if let live = answers[with], !live.outcome.isRunning, !Self.awaitsKeeping(live, in: served) { answers[with] = nil }
             case .notFound(let refused):
                 conversationProblems[with] = .served(try refused.body.json.error)
             case .undocumented(let code, let payload):
@@ -126,6 +128,13 @@ public final class StaffRoomStore {
             conversationProblems[with] = problem
             if let detail = problem.detail { log("could not read a Staff room conversation: \(detail)") }
         }
+    }
+
+    /// Whether a stopped answer has words the conversation read does not hold yet.
+    static func awaitsKeeping(_ live: StaffRoomAnswer, in conversation: Conversation) -> Bool {
+        guard live.outcome == .stopped else { return false }
+        let kept = Set(conversation.messages.map(\.id))
+        return live.messages.contains { !$0.streamed.isEmpty && !kept.contains($0.id) }
     }
 
     // MARK: Asking
