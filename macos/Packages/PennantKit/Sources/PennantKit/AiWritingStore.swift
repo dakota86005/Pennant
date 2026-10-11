@@ -24,7 +24,7 @@ public final class AiWritingStore {
 
     private var loadedKeys: [Piece: AppModel.StoreKey] = [:]
     private var loadedRevisions: [Piece: Int] = [:]
-    private var followedKey: AppModel.StoreKey?
+    private var following = FollowedKey()
     private let log: @MainActor (String) -> Void
 
     public init(log: @escaping @MainActor (String) -> Void = { _ in }) {
@@ -39,22 +39,27 @@ public final class AiWritingStore {
         }
     }
 
-    /// Another save or club drops both at once.
-    public func follow(_ key: AppModel.StoreKey?) {
-        guard let key else { return }
-        defer { followedKey = key }
-        guard let last = followedKey, last.saveId != key.saveId || last.club != key.club else { return }
+    /// Another save or club drops both at once. Returns false for a key the store has moved past (a stale call, which
+    /// does nothing; review N13B, H1).
+    @discardableResult
+    public func follow(_ key: AppModel.StoreKey?) -> Bool {
+        guard let key else { return false }
+        switch following.follow(key) {
+        case .older: return false
+        case .first, .same, .newer: return true
+        case .otherScope: break
+        }
         storylines = nil
         briefing = nil
         problems = [:]
         loadedKeys = [:]
         loadedRevisions = [:]
+        return true
     }
 
     /// A piece for the key, once per key and AI keys' revision; again when `force` (the job ended).
     public func load(_ piece: Piece, client: Client?, key: AppModel.StoreKey?, keysRevision: Int, force: Bool = false) async {
-        guard let client, let key else { return }
-        follow(key)
+        guard let client, let key, follow(key) else { return }
         if !force, loadedKeys[piece] == key, loadedRevisions[piece] == keysRevision { return }
         let org = FrontOfficeStore.org(key)
         do {
@@ -63,7 +68,7 @@ public final class AiWritingStore {
                 switch try await client.getStorylines(path: .init(org: org)) {
                 case .ok(let answer):
                     let served = try answer.body.json
-                    guard followedKey == key else { return }
+                    guard following.key == key else { return }
                     storylines = served
                     loaded(piece, key: key, revision: keysRevision)
                 case .notFound(let refused):
@@ -75,7 +80,7 @@ public final class AiWritingStore {
                 switch try await client.getBriefing(path: .init(org: org)) {
                 case .ok(let answer):
                     let served = try answer.body.json
-                    guard followedKey == key else { return }
+                    guard following.key == key else { return }
                     briefing = served
                     loaded(piece, key: key, revision: keysRevision)
                 case .notFound(let refused):
@@ -94,8 +99,7 @@ public final class AiWritingStore {
 
     /// Asks for a new piece; the server answers at once with it writing (or why it can't, in its sentence).
     public func write(_ piece: Piece, client: Client?, key: AppModel.StoreKey?) async {
-        guard let client, let key, !requesting.contains(piece) else { return }
-        follow(key)
+        guard let client, let key, !requesting.contains(piece), follow(key) else { return }
         requesting.insert(piece)
         defer { requesting.remove(piece) }
         let org = FrontOfficeStore.org(key)
@@ -106,7 +110,7 @@ public final class AiWritingStore {
                 switch try await client.writeStorylines(path: .init(org: org)) {
                 case .ok(let answer):
                     let served = try answer.body.json
-                    guard followedKey == key else { return }
+                    guard following.key?.scope == key.scope else { return }
                     storylines = served
                     problems[piece] = nil
                     return
@@ -119,7 +123,7 @@ public final class AiWritingStore {
                 switch try await client.writeBriefing(path: .init(org: org)) {
                 case .ok(let answer):
                     let served = try answer.body.json
-                    guard followedKey == key else { return }
+                    guard following.key?.scope == key.scope else { return }
                     briefing = served
                     problems[piece] = nil
                     return

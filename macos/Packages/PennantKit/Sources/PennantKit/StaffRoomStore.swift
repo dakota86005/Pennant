@@ -31,7 +31,11 @@ public final class StaffRoomStore {
     private var loadedKeysRevision = 0
     private var askedViewKey: AppModel.StoreKey?
     private var conversationKeys: [String: AppModel.StoreKey] = [:]
-    private var followedKey: AppModel.StoreKey?
+    private var following = FollowedKey()
+    /// The question under way in each conversation, by its number: the stream, its end and the read after it act only
+    /// while their question is still this one (Stop, or another question, moves it on; review N13B, H1 and M1).
+    private var asking: [String: Int] = [:]
+    private var asked = 0
     private let log: @MainActor (String) -> Void
 
     public init(log: @escaping @MainActor (String) -> Void = { _ in }) {
@@ -42,13 +46,19 @@ public final class StaffRoomStore {
     public func isAnswering(_ with: String) -> Bool { answers[with]?.outcome.isRunning ?? false }
 
     /// Follows the app's key: another save or club drops everything at once (another club's conversation is never
-    /// drawn), stopping any answer under way; a new import of the same club keeps it.
-    public func follow(_ key: AppModel.StoreKey?) {
-        guard let key else { return }
-        defer { followedKey = key }
-        guard let last = followedKey, last.saveId != key.saveId || last.club != key.club else { return }
+    /// drawn), stopping any answer under way; a new import or Front Office build of the same club keeps it, and an
+    /// answer under way goes on. Returns false for a key the store has moved past (a stale call, which does nothing).
+    @discardableResult
+    public func follow(_ key: AppModel.StoreKey?) -> Bool {
+        guard let key else { return false }
+        switch following.follow(key) {
+        case .older: return false
+        case .first, .same, .newer: return true
+        case .otherScope: break
+        }
         for task in tasks.values { task.cancel() }
         tasks = [:]
+        asking = [:]
         view = nil
         viewProblem = nil
         conversations = [:]
@@ -59,14 +69,14 @@ public final class StaffRoomStore {
         startedOver = [:]
         loadedViewKey = nil
         conversationKeys = [:]
+        return true
     }
 
     // MARK: Reading
 
     /// Who can be asked, once per key and AI keys' revision (a key added or removed turns AI on or off).
     public func loadView(client: Client?, key: AppModel.StoreKey?, keysRevision: Int) async {
-        guard let client, let key else { return }
-        follow(key)
+        guard let client, let key, follow(key) else { return }
         if loadedViewKey == key, loadedKeysRevision == keysRevision { return }
         askedViewKey = key
         do {
@@ -93,14 +103,13 @@ public final class StaffRoomStore {
 
     /// One conversation, once per key (again when `force`: after an answer, Stop or a change elsewhere).
     public func loadConversation(_ with: String, client: Client?, key: AppModel.StoreKey?, force: Bool = false) async {
-        guard let client, let key else { return }
-        follow(key)
+        guard let client, let key, follow(key) else { return }
         if !force, conversationKeys[with] == key, conversations[with] != nil { return }
         do {
             switch try await client.getStaffConversation(path: .init(org: FrontOfficeStore.org(key)), query: .init(with: with)) {
             case .ok(let answer):
                 let served = try answer.body.json
-                guard followedKey == key else { return }
+                guard following.key == key else { return }
                 conversations[with] = served
                 conversationKeys[with] = key
                 conversationProblems[with] = nil
@@ -134,7 +143,10 @@ public final class StaffRoomStore {
     public func ask(_ question: Question, with: String, members: [String]?, client: Client?, key: AppModel.StoreKey?) -> Bool {
         guard let client, let key, !isAnswering(with) else { return false }
         if case .typed(let words) = question, words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return false }
-        follow(key)
+        guard follow(key) else { return false }
+        asked += 1
+        let ask = asked
+        asking[with] = ask
         askProblems[with] = nil
         failures[with] = nil
         startedOver[with] = nil
@@ -144,7 +156,7 @@ public final class StaffRoomStore {
         case .about(let id): .init(with: with, about: .init(playerId: id), members: members)
         }
         tasks[with] = Task { [weak self] in
-            await self?.stream(body, with: with, client: client, key: key)
+            await self?.stream(body, with: with, ask: ask, client: client, key: key)
         }
         return true
     }
@@ -156,22 +168,31 @@ public final class StaffRoomStore {
         answers[with]?.end(stopped: true)
         tasks[with]?.cancel()
         tasks[with] = nil
+        // The stopped question's task ends on its own: nothing it does after this reaches the next question's answer
+        asking[with] = nil
         Task { await loadConversation(with, client: client, key: key, force: true) }
     }
 
-    private func stream(_ body: Components.Schemas.StaffRoomAsk, with: String, client: Client, key: AppModel.StoreKey) async {
+    /// Whether a question is still the one under way in its conversation, for the club and save it was asked about.
+    private func isCurrent(_ ask: Int, with: String, scope: AppModel.StoreKey.Scope) -> Bool {
+        asking[with] == ask && following.key?.scope == scope
+    }
+
+    private func stream(_ body: Components.Schemas.StaffRoomAsk, with: String, ask: Int, client: Client, key: AppModel.StoreKey) async {
         let org = FrontOfficeStore.org(key)
+        let scope = key.scope
         do {
             let problem: RequestProblem
             switch try await client.askStaffRoom(path: .init(org: org), body: .json(body)) {
             case .ok(let answer):
                 try await StaffRoomStream.read(try answer.body.textEventStream) { [weak self] reading in
-                    guard let self, self.followedKey == key else { return }
+                    guard let self, self.isCurrent(ask, with: with, scope: scope) else { return }
                     self.answers[with]?.apply(reading)
                     if case .malformed(let type) = reading { self.log("a Staff room event of type \(type) did not decode") }
                 }
-                end(with, key: key, stopped: Task.isCancelled)
-                await loadConversation(with, client: client, key: key, force: true)
+                guard isCurrent(ask, with: with, scope: scope) else { return }
+                end(with, stopped: Task.isCancelled)
+                await readAfterAnswer(with, client: client, scope: scope)
                 return
             case .badRequest(let refused): problem = .served(try refused.body.json.error)
             case .notFound(let refused): problem = .served(try refused.body.json.error)
@@ -179,26 +200,33 @@ public final class StaffRoomStore {
             case .undocumented(let code, let payload):
                 problem = await .undocumented(code, body: payload.body, operation: "askStaffRoom", fromV2: true)
             }
-            guard followedKey == key else { return }
+            guard isCurrent(ask, with: with, scope: scope) else { return }
             // Refused before anything was asked: nothing streamed, the question stays the GM's to send again
             answers[with] = nil
             askProblems[with] = problem
             tasks[with] = nil
+            asking[with] = nil
         } catch {
-            guard followedKey == key else { return }
+            guard isCurrent(ask, with: with, scope: scope) else { return }
             let stopped = RequestProblem.isCancellation(error) || Task.isCancelled
             if !stopped {
                 let problem = RequestProblem.from(error)
                 askProblems[with] = problem
                 if let detail = problem.detail { log("the Staff room's answer stopped: \(detail)") }
             }
-            end(with, key: key, stopped: stopped)
-            await loadConversation(with, client: client, key: key, force: true)
+            end(with, stopped: stopped)
+            await readAfterAnswer(with, client: client, scope: scope)
         }
     }
 
-    private func end(_ with: String, key: AppModel.StoreKey, stopped: Bool) {
-        guard followedKey == key else { return }
+    /// The conversation read again once an answer ends, under the key followed now (a new import or build may have
+    /// come while it streamed), never the one the question was asked under.
+    private func readAfterAnswer(_ with: String, client: Client, scope: AppModel.StoreKey.Scope) async {
+        guard let key = following.key, key.scope == scope else { return }
+        await loadConversation(with, client: client, key: key, force: true)
+    }
+
+    private func end(_ with: String, stopped: Bool) {
         answers[with]?.end(stopped: stopped)
         switch answers[with]?.outcome {
         case .failed(let failed)?:
@@ -211,18 +239,19 @@ public final class StaffRoomStore {
             break
         }
         tasks[with] = nil
+        asking[with] = nil
     }
 
     /// Starts the conversation over (the server empties it, as the React chat's Start over does). Refused while it is
     /// answering, in the server's sentence.
     public func startOver(_ with: String, client: Client?, key: AppModel.StoreKey?) async {
-        guard let client, let key, !isAnswering(with) else { return }
+        guard let client, let key, !isAnswering(with), follow(key) else { return }
         do {
             let problem: RequestProblem
             switch try await client.clearStaffConversation(path: .init(org: FrontOfficeStore.org(key)), query: .init(with: with)) {
             case .ok(let answer):
                 let cleared = try answer.body.json
-                guard followedKey == key else { return }
+                guard following.key?.scope == key.scope else { return }
                 conversations[with] = cleared.conversation
                 conversationKeys[with] = key
                 answers[with] = nil
