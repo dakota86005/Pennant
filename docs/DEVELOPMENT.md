@@ -524,6 +524,8 @@ without publishing).
 
 1. **Tests** (Linux) — typecheck and tests, and, on a tag, that the tag equals `pennant-v` + `package.json`'s version.
 2. **macOS** and **Windows** — separate jobs on purpose, so Apple signing credentials never reach the Windows job.
+   **Pennant for Mac** (`pennant-mac`, the SwiftUI app) builds beside them until the N15 cutover; see "Releasing
+   Pennant for Mac" below.
 3. **Publish** — creates the release (titled "Pennant x.y.z") and attaches installers, blockmaps and the update
    manifests (`latest-mac.yml`, `latest.yml`), retrying transient failures. The manifests must be present or clients
    never learn a release exists.
@@ -545,6 +547,101 @@ A signed macOS release needs:
   `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`. The workflow already maps them to electron-builder's variables.
 - The bundle id is already Pennant's (`com.dakotawise.pennant`); sign with a Developer ID certificate under
   your own team before the first signed release.
+
+The same five secrets sign and notarize Pennant for Mac, which also needs `SPARKLE_ED_PRIVATE_KEY` and the
+public key file; the one-time setup below makes all of them.
+
+### Releasing Pennant for Mac
+
+The SwiftUI app (D-076) ships as a notarized DMG on the same GitHub release as the Electron installers, and updates
+itself with Sparkle 2 from an appcast attached to that release. Everything runs in `.github/workflows/release.yml`,
+through the scripts in `macos/scripts/releasing/`:
+
+| Step | Script | What it does |
+|---|---|---|
+| Build | `build-app.sh` | The Release configuration, unsigned, with the staged server (`npm run mac:stage`). The version comes from `package.json` at build time, for the app and each extension, and is checked (`version.sh --check-app`). Writes `entitlements.tsv`, each target's entitlements file as the project names it. |
+| Sign | `sign-app.sh` | Inside out (SWIFTUI_REBUILD.md section 5.2): each Mach-O file in `Resources` (the `.node` files), the Node binary with only `allow-jit` and `allow-unsigned-executable-memory`, each framework's helpers then the framework (Sparkle), each app extension with its own entitlements, the app last with the hardened runtime and no JIT or sandbox entitlement (refused if present). Ends with `codesign --verify --deep --strict`. |
+| Notarize | `notarize.sh` | `notarytool submit --wait` with the app-specific password, then `stapler staple` and `validate`. Run on the app, then on the DMG. A rejection prints Apple's log. |
+| DMG | `make-dmg.sh` | `hdiutil`: the app and an `/Applications` link, compressed, signed with the Developer ID. Named `Pennant-for-Mac-<version>.dmg` (the Electron DMG is `Pennant-<version>-<arch>.dmg`). |
+| Appcast | `make-appcast.sh` | Sparkle's `generate_appcast` (`fetch-sparkle-tools.sh`: Sparkle 2.10.0, checked against a pinned SHA-256) signs the DMG with the EdDSA private key, read from standard input, and writes `appcast.xml` with the release's body as Markdown notes. |
+| Secrets | `check-secrets.sh`, `ci-keychain.sh` | Name every missing secret before anything is signed; load the certificate into a throwaway keychain on the runner (CI only) and remove it afterwards. |
+
+The jobs: `pennant-mac` (macOS 26; on a `pennant-v*` tag or by hand) runs `tests/macRelease.test.ts`, builds, packs an
+unsigned DMG for inspection (the `pennant-mac-unsigned` artifact, never published), then checks the secrets, signs,
+notarizes, packs and verifies (`codesign`, `spctl` for the app and the DMG, `stapler validate`), and uploads the
+`pennant-mac` artifact. On a tag, `release` attaches that DMG with the Electron installers, and `pennant-mac-appcast`
+writes the appcast and attaches it. The app reads
+`https://github.com/dakota86005/Pennant/releases/latest/download/appcast.xml`: GitHub always serves the newest
+published release's asset there, so the address never changes and nothing else needs hosting. Release builds carry
+`SUFeedURL` and `SUPublicEDKey` (set by the "Embed the server" phase); Debug builds carry neither and never check.
+
+**Without the secrets** the job builds and packs the unsigned DMG, then fails at "Check the signing and notarizing
+secrets", naming each missing one; the appcast job fails naming `SPARKLE_ED_PRIVATE_KEY`. Nothing is faked.
+
+**A dry run on any Mac** (no secrets, no keychain, nothing launched or notarized):
+
+```bash
+npm ci && npm run mac:stage
+macos/scripts/releasing/dry-run.sh /tmp/pennant-dry-run   # Pennant.app signed ad hoc, and the DMG
+```
+
+The ad-hoc app is for inspection only: with the hardened runtime and no team, macOS would refuse its native module.
+
+#### The owner's one-time setup
+
+Only the owner does this, on his own Mac. No one else handles the certificate, the passwords or the private key, and
+none of them is ever committed. `gh` must be signed in to an account that can administer `dakota86005/Pennant`.
+
+1. **Export the Developer ID Application certificate.**
+   1. Open Keychain Access, choose the login keychain, and select My Certificates.
+   2. Find "Developer ID Application: … (6T7RV2A4DQ)" and expand it; it must have a private key under it. If there is
+      none, create it in Xcode ▸ Settings ▸ Accounts ▸ (the team) ▸ Manage Certificates ▸ + ▸ Developer ID Application.
+   3. Select the certificate (not the key), choose File ▸ Export Items…, pick Personal Information Exchange (.p12),
+      save it as `~/Desktop/pennant-developer-id.p12`, and give it a new strong password. Keep that password for step 5.
+2. **Make an app-specific password** for notarization: sign in at account.apple.com with the Apple ID of the developer
+   account, open Sign-In and Security ▸ App-Specific Passwords, add one named "Pennant notarization", and copy it.
+3. **Note the Team ID**: `6T7RV2A4DQ` (developer.apple.com ▸ Account ▸ Membership details; it is the project's
+   `DEVELOPMENT_TEAM`).
+4. **Make Sparkle's EdDSA key pair.** From the repository root:
+
+   ```bash
+   SPARKLE="$(macos/scripts/releasing/fetch-sparkle-tools.sh)"   # the pinned Sparkle 2.10.0 tools
+   "$SPARKLE/bin/generate_keys" --account pennant       # makes the pair, keeps the private key in your login keychain
+   "$SPARKLE/bin/generate_keys" --account pennant -p > macos/Support/sparkle-public-key.txt   # the public key, one line
+   "$SPARKLE/bin/generate_keys" --account pennant -x ~/Desktop/sparkle-private-key           # a copy of the private key
+   ```
+
+   Commit `macos/Support/sparkle-public-key.txt` (it is public; every Release build puts it in the app). **Back up the
+   private key** (a password manager): if it is lost, apps already installed can never accept another update.
+5. **Add the six repository secrets** (each command reads the value from a file or asks for it, so nothing lands in
+   the shell history):
+
+   ```bash
+   R=dakota86005/Pennant
+   base64 -i ~/Desktop/pennant-developer-id.p12 | gh secret set APPLE_CERTIFICATE_P12 -R $R
+   gh secret set APPLE_CERTIFICATE_PASSWORD -R $R          # the .p12 password from step 1
+   gh secret set APPLE_ID -R $R                            # the developer account's Apple ID email
+   gh secret set APPLE_APP_SPECIFIC_PASSWORD -R $R         # from step 2
+   gh secret set APPLE_TEAM_ID -R $R --body 6T7RV2A4DQ
+   gh secret set SPARKLE_ED_PRIVATE_KEY -R $R < ~/Desktop/sparkle-private-key
+   gh secret list -R $R                                    # the six names, no values
+   ```
+
+6. **Delete the exported files**: `rm ~/Desktop/pennant-developer-id.p12 ~/Desktop/sparkle-private-key` (the
+   certificate and the key stay in the login keychain and the backup).
+7. **Try it without releasing**: GitHub ▸ Actions ▸ Pennant release ▸ Run workflow, on the branch. `pennant-mac`
+   should pass and leave a signed, notarized DMG as the `pennant-mac` artifact. A run by hand publishes nothing.
+
+#### Cutting a release
+
+1. Move the `[Unreleased]` notes in `CHANGELOG.md` under the new version, run `npm version <x.y.z>
+   --no-git-tag-version`, commit, and merge.
+2. The owner pushes the tag: `git tag pennant-v<x.y.z> && git push origin pennant-v<x.y.z>`.
+3. The workflow tests, builds the Electron installers and Pennant for Mac, publishes the release (generated notes),
+   then attaches `appcast.xml`. Edit the release's body before the appcast job runs to change what Sparkle shows, or
+   edit it afterwards and re-run that job.
+4. The release check (SWIFTUI_REBUILD.md section 8): install the DMG on the owner's Mac and his brother's, and update
+   to it through Sparkle from the version before.
 
 ### Application id and compatibility holds
 
