@@ -32,7 +32,10 @@
       "placeholder": {
         "display": "Message"
       },
-      "room": false
+      "room": false,
+      "startOverWarning": {
+        "display": "The conversation with Peter is cleared. This can't be undone."
+      }
     },
     {
       "id": "manager",
@@ -60,7 +63,10 @@
       "placeholder": {
         "display": "Message"
       },
-      "room": false
+      "room": false,
+      "startOverWarning": {
+        "display": "The conversation with Dale Cole is cleared. This can't be undone."
+      }
     },
     {
       "id": "trainer",
@@ -88,7 +94,10 @@
       "placeholder": {
         "display": "Message"
       },
-      "room": false
+      "room": false,
+      "startOverWarning": {
+        "display": "The conversation with Ana Frey is cleared. This can't be undone."
+      }
     },
     {
       "id": "scout",
@@ -116,7 +125,10 @@
       "placeholder": {
         "display": "Message"
       },
-      "room": false
+      "room": false,
+      "startOverWarning": {
+        "display": "The conversation with Terry Ellis is cleared. This can't be undone."
+      }
     },
     {
       "id": "gm",
@@ -147,7 +159,10 @@
       "placeholder": {
         "display": "Message"
       },
-      "room": false
+      "room": false,
+      "startOverWarning": {
+        "display": "The conversation with Morgan Brock is cleared. This can't be undone."
+      }
     },
     {
       "id": "room",
@@ -174,7 +189,10 @@
       "placeholder": {
         "display": "Message: @ to ask one person"
       },
-      "room": true
+      "room": true,
+      "startOverWarning": {
+        "display": "The room's conversation is cleared. This can't be undone."
+      }
     }
   ],
   "room": {

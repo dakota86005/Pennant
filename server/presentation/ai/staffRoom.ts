@@ -83,6 +83,7 @@ function memberOf(ctx: AiContext, p: StaffPerson, room: boolean): StaffMemberVie
     starters: (STARTERS[p.id] ?? STARTERS_ANY).map((s) => cell(s)),
     placeholder: cell(room ? 'Message: @ to ask one person' : 'Message'),
     room,
+    startOverWarning: cell(`${room ? 'The room\'s conversation' : `The conversation with ${p.name}`} is cleared. This can't be undone.`),
   };
 }
 

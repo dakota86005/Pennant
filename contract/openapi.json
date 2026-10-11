@@ -4191,6 +4191,26 @@
           "reenter": {
             "$ref": "#/components/schemas/Claim",
             "description": "Said beside a provider whose key the Mac app could not read back from its Keychain (the item is there, but this build may not read it without asking): enter the key again, and the app keeps it anew. The app shows it only then."
+          },
+          "otherCopy": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said beside a provider after Remove when the only item left is another copy's (a development build, an earlier signature), which this copy may neither read nor delete: it is not this copy's key, and nothing here uses it."
+          },
+          "newerElsewhere": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said beside a provider whose key this copy reads, when another copy has saved one for it more recently: the key in use may be the older one."
+          },
+          "saveFailed": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said when a key could not be saved in the Keychain (the system's reason goes in the help tag and the log)."
+          },
+          "removeFailed": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said when a key could not be removed from the Keychain; it is still kept."
+          },
+          "handOverFailed": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "Said when a key was saved or removed but the running server could not be told; it takes effect at the next start."
           }
         },
         "required": [
@@ -4198,7 +4218,12 @@
           "lede",
           "providers",
           "where",
-          "reenter"
+          "reenter",
+          "otherCopy",
+          "newerElsewhere",
+          "saveFailed",
+          "removeFailed",
+          "handOverFailed"
         ],
         "description": "`GET /api/v2/ai/keys`: every provider, where keys are kept, and whether any AI surface is on."
       },
@@ -19658,6 +19683,10 @@
           },
           "room": {
             "type": "boolean"
+          },
+          "startOverWarning": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What Start over does to this conversation, said in its confirmation (\"The conversation with … is cleared.\")."
           }
         },
         "required": [
@@ -19667,7 +19696,8 @@
           "intro",
           "starters",
           "placeholder",
-          "room"
+          "room",
+          "startOverWarning"
         ],
         "description": "One person who can be asked, or the room (several at once)."
       },
