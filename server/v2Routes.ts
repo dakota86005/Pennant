@@ -68,6 +68,9 @@ import type {
   LeagueFranchiseView, LeagueLeadersView, LeagueOrgComparisonView, LeagueStandingsView, LeagueUsVsThemView,
 } from './presentation/league/types.js';
 import type { ScoutingDraftBoardView, ScoutingPlayerSearchView, ScoutingProspectView } from './presentation/scouting/types.js';
+import { glanceNow, spotlightNow } from './glanceService.js';
+import type { Glance } from './presentation/frontOffice/glance.js';
+import type { SpotlightList } from './presentation/spotlightWords.js';
 
 export const v2Routes = Router();
 
@@ -298,6 +301,13 @@ v2Routes.get('/views/:org/scouting/draftBoard/prospects/:player', frontOffice<Sc
   scoutingDraftProspectNow(String(req.params.org), req.params.player)));
 v2Routes.get('/views/:org/scouting/playerSearch', frontOffice<ScoutingPlayerSearchView>((req) =>
   scoutingPlayerSearchNow(String(req.params.org), req.query as Record<string, unknown>)));
+
+/**
+ * Pennant outside its windows (N14, Stage A, D-075): the glance the widget and the menu bar extra show, and the list the
+ * app puts in Spotlight, each read from what is already kept per import.
+ */
+v2Routes.get('/glance/:org', frontOffice<Glance>((req) => glanceNow(resolveOrg(String(req.params.org)))));
+v2Routes.get('/spotlight/:org', frontOffice<SpotlightList>(async (req) => spotlightNow(resolveOrg(String(req.params.org)))));
 
 /** The club a theme route is about (a team id, or `automatic`), with its colours as the export has them. */
 function themedClub(param: string) {

@@ -1053,6 +1053,48 @@
         }
       }
     },
+    "/api/v2/glance/{org}": {
+      "get": {
+        "operationId": "getGlance",
+        "summary": "Pennant at a glance, for the desktop widget and the menu bar extra: the record, the next game and the desk's count with its first items, each the Morning Report's own words.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Glance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/player/{id}": {
       "get": {
         "operationId": "getPlayerDossier",
@@ -1498,6 +1540,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutomaticSetup"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/spotlight/{org}": {
+      "get": {
+        "operationId": "getSpotlightList",
+        "summary": "What the Mac app puts in Spotlight after each import: our organization's players and the league's clubs, in the search's words, each with where it opens.",
+        "tags": [
+          "v2"
+        ],
+        "parameters": [
+          {
+            "name": "org",
+            "in": "path",
+            "required": true,
+            "description": "A team id, or `automatic` for the club the app follows (the configured club, else the one the save's human runs).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpotlightList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "HTTP 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -11380,6 +11464,148 @@
           }
         ]
       },
+      "Glance": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reportStamp": {
+            "type": "string"
+          },
+          "deskStamp": {
+            "type": "string",
+            "description": "Moves whenever a desk status changes, as the summary's does."
+          },
+          "club": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The club's name; null when the export does not have it."
+          },
+          "asOf": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "How current it is (the Morning Report's own line)."
+          },
+          "record": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "\"Won 26, lost 17\", its `value.display` the figure (\"26–17\"); null when the standings lack it (`missing` says why)."
+          },
+          "nextGame": {
+            "$ref": "#/components/schemas/GlanceGame",
+            "description": "The next game; null when none is scheduled or known (`missing` says why)."
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cell"
+            },
+            "description": "Why the record or the next game is not shown, one sentence each, as the masthead says it."
+          },
+          "desk": {
+            "$ref": "#/components/schemas/GlanceDesk"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "The Morning Report, where the whole of it opens."
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "reportStamp",
+          "deskStamp",
+          "asOf",
+          "missing",
+          "desk",
+          "open"
+        ],
+        "description": "Pennant at a glance (`GET /api/v2/glance/:org`)."
+      },
+      "GlanceDesk": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "$ref": "#/components/schemas/Integer",
+            "description": "The open items to decide, as the Dock's badge counts them (`Desk.openCount`); a floor when the desk is incomplete."
+          },
+          "line": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"3 to decide\", \"Nothing to decide\", \"At least 3 to decide\", with the desk's order rule in its help tag."
+          },
+          "top": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GlanceItem"
+            },
+            "description": "The desk's first items in its own order, at most `GLANCE_DESK_ITEMS`."
+          }
+        },
+        "required": [
+          "count",
+          "line",
+          "top"
+        ],
+        "description": "The desk at a glance."
+      },
+      "GlanceGame": {
+        "type": "object",
+        "properties": {
+          "when": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"Tonight · 7:05 PM\", \"May 18 · 7:05 PM\"."
+          },
+          "matchup": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "\"vs Colorado Rockies\"."
+          },
+          "claim": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "The game with its basis (the date, the time, the starters' source)."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "Where the game opens (the schedule and game plans)."
+          }
+        },
+        "required": [
+          "when",
+          "matchup",
+          "claim",
+          "open"
+        ],
+        "description": "The next game, as the masthead's Tonight card says it."
+      },
+      "GlanceItem": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "headline": {
+            "$ref": "#/components/schemas/Claim",
+            "description": "What it is, in one line, with the department's evidence as its basis."
+          },
+          "department": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "The department that raised it (\"Major League Ops\")."
+          },
+          "open": {
+            "$ref": "#/components/schemas/Target",
+            "description": "The view that opens it in full; null when it opens nothing beyond its basis."
+          }
+        },
+        "required": [
+          "key",
+          "headline",
+          "department"
+        ],
+        "description": "One item on the desk, as the desk lists it."
+      },
       "GlossaryEntry": {
         "type": "object",
         "properties": {
@@ -19650,6 +19876,46 @@
             "type": "string"
           }
         ]
+      },
+      "SpotlightList": {
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "$ref": "#/components/schemas/Integer"
+          },
+          "importStamp": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "description": "Our organization's players, by name; each `line` is the search's (\"SS · Hometown Hawks · Majors\")."
+          },
+          "clubs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "description": "The league's major-league clubs, by name."
+          },
+          "about": {
+            "$ref": "#/components/schemas/Cell",
+            "description": "What the list holds, in a sentence, for Settings and the log."
+          }
+        },
+        "required": [
+          "orgId",
+          "importStamp",
+          "players",
+          "clubs",
+          "about"
+        ],
+        "description": "The list Spotlight is given (`GET /api/v2/spotlight/:org`)."
       },
       "StaffMemberView": {
         "type": "object",
