@@ -24,6 +24,24 @@ for key in CFBundleShortVersionString CFBundleVersion; do
     || /usr/libexec/PlistBuddy -c "Add :${key} string ${VERSION}" "${PLIST}"
 done
 
+# 1b. Sparkle's feed and public key (D-076), in Release builds only, so a Debug build never checks for updates. The
+# public key is the owner's (macos/Support/sparkle-public-key.txt, DEVELOPMENT.md "Releasing Pennant for Mac"); until
+# it is committed a Release build has none, and the release workflow refuses to sign such an app.
+if [ "${CONFIGURATION:-}" = "Release" ]; then
+  source "${SRCROOT}/scripts/releasing/lib.sh"
+  set_plist() {
+    /usr/libexec/PlistBuddy -c "Set :$1 $2" "${PLIST}" 2>/dev/null \
+      || /usr/libexec/PlistBuddy -c "Add :$1 string $2" "${PLIST}"
+  }
+  set_plist SUFeedURL "${RELEASE_FEED_URL}"
+  PUBLIC_KEY="$(tr -d '[:space:]' < "${RELEASE_PUBLIC_KEY_FILE}" 2>/dev/null || true)"
+  if [[ "${PUBLIC_KEY}" =~ ^[A-Za-z0-9+/]{43}=$ ]]; then
+    set_plist SUPublicEDKey "${PUBLIC_KEY}"
+  else
+    echo "warning: No Sparkle public key in macos/Support/sparkle-public-key.txt: this build cannot check for updates."
+  fi
+fi
+
 # 2. The server
 if [ "${PENNANT_SKIP_SERVER:-NO}" = "YES" ]; then
   echo "warning: PENNANT_SKIP_SERVER=YES: this app has no server inside and will say so when it starts."
