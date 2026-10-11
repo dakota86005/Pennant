@@ -3275,19 +3275,32 @@ answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at 
 - **No dialog, by the switch that applies to this keychain.** `kSecUseAuthenticationUI(Fail)` (deprecated since macOS 11)
   and `LAContext.interactionNotAllowed` govern only the data-protection keychain, as Security's own header says; for
   the login keychain the switch is the process-wide `SecKeychainSetUserInteractionAllowed(false)` (still exported, no
-  longer in the SDK's headers, so found at run time), held off for exactly each call and put back. CI run 38083908362
+  longer in the SDK's headers, so found at run time), held off for exactly each call and put back. The switch is
+  process-wide, so every other Keychain use in the app (N14's updater included) runs under the same lock
+  (`KeychainItems.exclusively`), never while it is off. Should a later macOS drop the switch, nothing that could ask is
+  tried: only items this process added are read or deleted, every other one is reported unreadable, and the app logs it
+  once. CI run 38083908362
   proved it with two differently signed copies of the same code on a throwaway keychain: the second copy's read of the
   first's item came back unreadable at once, and the same read with dialogs allowed waited on the system's "wants to use
   your confidential information" dialog until stopped (its screenshot is the job's artifact).
 - **Another copy's item cannot be replaced, so a key is kept beside it.** The same run showed a copy may not delete an
   item another copy made (`errSecInvalidOwnerEdit`), so "delete, then add" cannot re-own it. A provider's key is kept
-  under its id, or under `<id>.2`, `<id>.3`… when an item there is another copy's; reading takes the newest item this
-  copy can read, a provider with items but none readable shows the served `AiKeysView.reenter` line ("Pennant couldn't
-  read the key saved for this provider. Enter it again."), and removing deletes what this copy may and leaves the rest.
-  A Developer ID release keeps one designated requirement across updates, so this arises only for ad hoc or differently
-  signed builds. CI run 38085037441 proved the whole round: the second copy keeps its key beside the first's
+  under its id, or under `<id>.2`, `<id>.3`… when an item there is another copy's; reading takes the item this copy can
+  read (its own; of several, the most recently modified), a provider with items but none readable shows the served
+  `AiKeysView.reenter` line ("Pennant couldn't read the key saved for this provider. Enter it again."), and removing
+  deletes what this copy may and leaves the rest. Only `errSecInvalidOwnerEdit` is read as another copy's; any other
+  refusal is a failure in the server's words (`removeFailed`, `saveFailed`). A removal that leaves another copy's item
+  is remembered per service in the app's defaults, so the row says `otherCopy` ("Another copy of Pennant kept a key for
+  this provider here.") rather than "enter it again"; a readable key older than another copy's item says
+  `newerElsewhere` (review of Stage B, 2026-10-10). A Developer ID release keeps one designated requirement across
+  updates, so each update reads, replaces and removes the items before it and nothing piles up; on a development Mac
+  every ad hoc re-signed build is a new copy, so a key saved from several builds leaves one item per build (Keychain
+  Access, or Remove in each build, clears them). CI run 38085037441 proved the whole round: the second copy keeps its key beside the first's
   item and reads its own, the first still reads its own, each removes only its own, and nothing ever asks.
 - **Saving hands the set over at once; tests never touch the Mac's Keychain.** A saved key goes to the running server on
   stdin (`{"keys":{…}}`) with no restart, and the field empties: the key is never shown again, logged or put in an error
-  (a failure is its step and `OSStatus`). The UI tests launch with `-PennantTestKeys memory`; the package tests use
-  `NoKeys`, `FixedKeys`, `MemoryKeyStore` or a service of their own, removed after.
+  (a failure is the server's sentence, its step and `OSStatus` only in the help tag and the log). A hand-over that fails
+  is said (`handOverFailed`: the change takes effect at the next start), never a silent success. Every UI test launches
+  with `-PennantTestKeys memory`; the package tests use `NoKeys`, `FixedKeys`, `MemoryKeyStore`, and the two that use
+  the real Keychain run only where `PENNANT_KEYCHAIN_TESTS=1` is set (CI's throwaway runners), never on a developer's
+  Mac.

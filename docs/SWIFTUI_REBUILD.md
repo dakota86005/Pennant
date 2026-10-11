@@ -1617,6 +1617,21 @@ Stage B amendment (the keys). Every word is the server's; Swift lays it out and 
   it with `PENNANT_DEV_LOCAL_AI_URL`), never a real provider or key. The UI tests keep their keys in memory
   (`-PennantTestKeys memory`). CI run 38093716278 passed every job: the three N13 UI tests with their audits at 0
   findings (no new set-aside rule), the Keychain probe and all four shards.
+- **After the review (2026-10-10).** An answer belongs to its own question: the stream, its end and the read after it act
+  only while a per-question number is still the one under way, for its save and club, so a new Front Office build
+  mid-answer (`reportStamp` moves) or Stop then a quick question again never leaves an answer running or ends the new
+  one. A store never turns back to a key it has moved past (`FollowedKey`, the Staff room and AI writing). Streamed text
+  is parsed at most every 100 ms and once after the last delta, and the view follows the stream by
+  `StaffRoomAnswer.applied`. The room with nobody in it asks no one. Start over's confirmation says what it clears
+  (`StaffMemberView.startOverWarning`). Window ▸ Staff Room (⇧⌘0) is listed once (the scene's own item removed). In
+  Settings, Return in a key field saves that row (no shared default button); a failed save, removal or hand-over is the
+  server's sentence (`saveFailed`, `removeFailed`, `handOverFailed`), its status only in the help tag and the log; a
+  provider left with another copy's item says so (`otherCopy`), and one whose key is older than another copy's says
+  `newerElsewhere`. **Every Keychain use in the process goes through `KeychainItems`' lock** (`exclusively` for anything
+  else, N14's updater included): the dialog switch is process-wide, and a legacy Keychain call made while it is off
+  fails as if it needed a dialog. Every UI test keeps its keys in memory; the two Keychain package tests run only on
+  CI (`PENNANT_KEYCHAIN_TESTS=1`). The stand-in provider answers "And the bullpen?" slowly, so Escape-to-stop is tested
+  unconditionally.
 
 ### 3.6 Signature interactions
 
