@@ -41,7 +41,7 @@ final class Integration {
         store.onSpotlight = { [spotlight] list in spotlight?.index(list) }
         log(glanceStore.folder == nil
             ? "glance: no App Group container this build can reach (unsigned, or not entitled): the widget gets no snapshot"
-            : "glance: the widget's snapshot is kept in the App Group")
+            : "glance: the widget's snapshot is kept in \(glanceStore.folder?.lastPathComponent ?? "")")
         if spotlight == nil { log("spotlight: this development build does not index (-PennantDevSpotlight YES to)") }
         follow()
     }

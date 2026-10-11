@@ -2265,16 +2265,27 @@ final class PennantUITests: XCTestCase {
         general.click()
         let toggle = element(app, "settings.menuBarExtra")
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "no menu bar switch in Settings ▸ General")
-        if !toggle.isHittable { reveal(toggle, in: element(app, "settings.general")) }
+        // The switch sits low in the form, where the runner's Dock covers the window's bottom: the form is scrolled to
+        // its end first (the sections below the switch bring it up into the window's middle), never clicked under the Dock
+        let form = element(app, "settings.general")
+        for _ in 0..<3 { form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)).scroll(byDeltaX: 0, deltaY: -2000) }
+        let settings = app.windows.firstMatch
+        print("[glance] \(methodName): the switch at \(toggle.frame) in Settings at \(settings.frame)")
         toggle.click()
-        keep(app.windows.firstMatch.screenshot(), named: "n14-settings-menu-bar")
+        XCTAssertTrue(waitForValue(toggle, on: true), "the menu bar switch did not turn on (value \(String(describing: toggle.value)))")
+        keep(settings.screenshot(), named: "n14-settings-menu-bar")
         app.typeKey("w", modifierFlags: .command)
 
         // Its window, from the menu bar
         let item = app.statusItems.firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 10), "the menu bar extra did not appear once turned on")
+        if app.state != .runningForeground { app.activate() }
         item.click()
         let open = element(app, "menuBarExtra.openPennant")
+        if !open.waitForExistence(timeout: 10) {
+            print("[glance] \(methodName): no extra's window after a click on \(item.frame); windows: \(app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame)" }); status items: \(app.statusItems.count)")
+            item.click()
+        }
         XCTAssertTrue(open.waitForExistence(timeout: 10), "the menu bar extra's window did not open")
         XCTAssertTrue(element(app, "menuBarExtra.desk").waitForExistence(timeout: 30), "the menu bar extra did not show the served desk")
         let panel = element(app, "menuBarExtra")
@@ -2294,6 +2305,18 @@ final class PennantUITests: XCTestCase {
         let spotlight = log.split(separator: "\n").filter { $0.contains("spotlight:") || $0.contains("glance:") }
         print("[spotlight] \(methodName): \(spotlight.isEmpty ? "no line in the app's log" : spotlight.joined(separator: " | "))")
         quitCleanly(app)
+    }
+
+    /// Waits for a switch to read on (or off); its value is 1 or 0, as a number or a string.
+    @MainActor
+    private func waitForValue(_ toggle: XCUIElement, on: Bool, timeout: TimeInterval = 5) -> Bool {
+        let deadline = Date.now.addingTimeInterval(timeout)
+        repeat {
+            let value = toggle.value.map { "\($0)" } ?? ""
+            if (value == "1" || value == "true") == on { return true }
+            RunLoop.current.run(until: Date.now.addingTimeInterval(0.2))
+        } while Date.now < deadline
+        return false
     }
 
     // MARK: The AI surfaces (N13)

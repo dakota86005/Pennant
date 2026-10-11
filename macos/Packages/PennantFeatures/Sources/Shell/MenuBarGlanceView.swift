@@ -30,6 +30,8 @@ public struct MenuBarGlanceView: View {
         .frame(width: 300, alignment: .leading)
         .foregroundStyle(Color(nsColor: .labelColor))
         .background(Color(nsColor: .readablePage))
+        // A container of its own, so its identifier names it and never replaces its children's
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("menuBarExtra")
     }
 
