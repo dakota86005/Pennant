@@ -73,6 +73,9 @@ expect "the first copy saved its key" '^saved$' "$LAST"
 expect "the switch that forbids dialogs is there" 'was found' "$LAST"
 step "the first copy reads it" 30 "$work/probe-a" read "$service"
 expect "the first copy reads its own key without a dialog" 'readable: anthropic' "$LAST"
+step "the first copy, as if the switch were gone, reads" 30 "$work/probe-a" read-without-switch "$service"
+[ "$LAST_STATUS" = 142 ] && say "FAIL: the read without the switch hung (a dialog)" && failures=$((failures + 1))
+expect "with no switch, an item this run did not add is not tried, even the copy's own" 'unreadable: anthropic' "$LAST"
 
 step "the second copy reads it (no dialog allowed)" 30 "$work/probe-b" read "$service"
 [ "$LAST_STATUS" = 142 ] && say "FAIL: the second copy's read hung (a dialog)" && failures=$((failures + 1))
@@ -93,12 +96,14 @@ step "the second copy saves the key again" 30 "$work/probe-b" save "$service" an
 expect "the second copy keeps the key again beside the first copy's item, which it may not delete" '^saved$' "$LAST"
 step "the second copy reads it now" 30 "$work/probe-b" read "$service"
 expect "the second copy reads its own key" 'readable: anthropic' "$LAST"
+expect "the second copy's own key is the newest" 'newer elsewhere: $' "$LAST"
 step "the first copy reads (no dialog allowed)" 30 "$work/probe-a" read "$service"
 [ "$LAST_STATUS" = 142 ] && say "FAIL: the first copy's read hung (a dialog)" && failures=$((failures + 1))
 expect "the first copy still reads its own item, never asking about the second's" 'readable: anthropic' "$LAST"
+expect "the first copy says the second copy's key is newer" 'newer elsewhere: anthropic' "$LAST"
 step "the second copy removes its key" 30 "$work/probe-b" remove "$service" anthropic
 [ "$LAST_STATUS" = 142 ] && say "FAIL: removing hung (a dialog)" && failures=$((failures + 1))
-expect "the second copy removes what it may, leaving the first copy's item alone" '^removed$' "$LAST"
+expect "the second copy removes what it may, and says the first copy's item is left" "^removed, another copy's item left$" "$LAST"
 step "the second copy reads after removing" 30 "$work/probe-b" read "$service"
 expect "only the first copy's item is left, unreadable to the second" 'unreadable: anthropic' "$LAST"
 step "the first copy removes its own" 30 "$work/probe-a" remove "$service" anthropic

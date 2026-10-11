@@ -657,13 +657,16 @@ struct ThemePreview: View {
 /// is used for and where to get one, in the server's words. A key is typed into a secure field, checked with its own
 /// provider (`POST /api/v2/ai/keys/check`, the outcome in words), kept in this app's own Keychain item and handed to the
 /// running server on stdin with no restart; after that it is never shown again (the served status says it is set, with
-/// at most its last four characters). Removing it deletes the item and hands the set over again. A kept key this copy
-/// of the app may not read without asking shows the served "enter it again" line. Never logged, never in an error.
+/// at most its last four characters). Removing it deletes the item and hands the set over again. Beside each provider,
+/// the served line for where its kept items stand (`KeyStanding`): "enter it again" for a key this copy may not read
+/// without asking, "another copy kept a key here" once the GM removed his own beside another copy's item, "a newer key
+/// elsewhere". A failed save, removal or hand-over is the server's sentence, its system status only in the help tag and
+/// the log (review N13B, L5, L6, M4). Never logged, never in an error.
 struct AISettings: View {
     @Environment(AppModel.self) private var model
     @State private var keys: Components.Schemas.AiKeysView?
     @State private var problem: RequestProblem?
-    @State private var unreadable: Set<String> = []
+    @State private var standing = KeyStanding()
     @State private var attempt = 0
     private let preloaded: Components.Schemas.AiKeysView?
 
@@ -680,7 +683,7 @@ struct AISettings: View {
                     AiClaimLine(answer._where)
                 }
                 ForEach(answer.providers, id: \.id) { row in
-                    ProviderKeyRow(row: row, reenter: unreadable.contains(row.id) ? answer.reenter : nil) {
+                    ProviderKeyRow(row: row, kept: Self.keptLine(row.id, standing: standing, answer: answer), lines: answer) {
                         attempt += 1
                     }
                 }
@@ -698,6 +701,14 @@ struct AISettings: View {
         .accessibilityIdentifier("settings.ai")
     }
 
+    /// The served line for where a provider's kept items stand, if any.
+    static func keptLine(_ id: String, standing: KeyStanding, answer: Components.Schemas.AiKeysView) -> (claim: Components.Schemas.Claim, name: String)? {
+        if standing.anotherCopys.contains(id) { return (answer.otherCopy, "otherCopy") }
+        if standing.unreadable.contains(id) { return (answer.reenter, "reenter") }
+        if standing.newerElsewhere.contains(id) { return (answer.newerElsewhere, "newerElsewhere") }
+        return nil
+    }
+
     private struct TaskKey: Hashable {
         var store: AppModel.StoreKey?
         var keysRevision: Int
@@ -706,7 +717,7 @@ struct AISettings: View {
 
     private func load() async {
         guard preloaded == nil else { return }
-        unreadable = await model.keyStore.unreadable()
+        standing = await model.keyStore.standing()
         guard let client = model.client else {
             problem = .notRunning
             return
@@ -731,13 +742,18 @@ struct AISettings: View {
 /// one, a secure field, Check (its served words), Save and Remove.
 private struct ProviderKeyRow: View {
     let row: Components.Schemas.AiProviderRow
-    /// The served "enter it again" line, when this provider's kept key could not be read back.
-    let reenter: Components.Schemas.Claim?
+    /// The served line for where this provider's kept items stand ("enter it again", another copy's, a newer one), and
+    /// its name for the accessibility identifier.
+    let kept: (claim: Components.Schemas.Claim, name: String)?
+    /// The served lines for a failed save, removal or hand-over.
+    let lines: Components.Schemas.AiKeysView
     let changed: () -> Void
     @Environment(AppModel.self) private var model
     @State private var entry = ""
     @State private var checked: Components.Schemas.AiKeyCheckAnswer?
     @State private var problem: RequestProblem?
+    /// A save, removal or hand-over that failed: the served sentence, and the system's status for the help tag only.
+    @State private var keyFailure: (claim: Components.Schemas.Claim, detail: String)?
     @State private var working = false
 
     var body: some View {
@@ -746,9 +762,12 @@ private struct ProviderKeyRow: View {
             if let usedFor = row.usedFor {
                 Text(verbatim: usedFor.display).font(.callout).foregroundStyle(.readableSecondary)
             }
-            if let reenter { AiClaimLine(reenter).accessibilityIdentifier("settings.ai.\(row.id).reenter") }
+            if let kept { AiClaimLine(kept.claim).accessibilityIdentifier("settings.ai.\(row.id).\(kept.name)") }
             if row.needsKey {
+                // Return in the field saves this row's key: one field, one action, never a default button shared by
+                // every row (review N13B, L5)
                 SecureField(text: $entry, prompt: Text(verbatim: row.getOne?.display ?? "")) { Text("Key") }
+                    .onSubmit { if canSave { Task { await save() } } }
                     .accessibilityIdentifier("settings.ai.\(row.id).key")
                 HStack {
                     if let check = row.check {
@@ -763,17 +782,22 @@ private struct ProviderKeyRow: View {
                             .accessibilityIdentifier("settings.ai.\(row.id).remove")
                     }
                     Button("Save") { Task { await save() } }
-                        .disabled(working || entry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .keyboardShortcut(.defaultAction)
+                        .disabled(!canSave)
                         .accessibilityIdentifier("settings.ai.\(row.id).save")
                 }
                 if let checked { AiClaimLine(checked.result).accessibilityIdentifier("settings.ai.\(row.id).checked") }
                 if let problem { ProblemLine(problem) }
+                if let keyFailure {
+                    ProblemLine(served: keyFailure.claim.text, detail: [keyFailure.claim.hint, keyFailure.detail].compactMap(\.self).joined(separator: " · "))
+                        .accessibilityIdentifier("settings.ai.\(row.id).failure")
+                }
             }
         } header: {
             Text(verbatim: row.name.display)
         }
     }
+
+    private var canSave: Bool { !working && !entry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     private func runCheck() async {
         guard let client = model.client else { problem = .notRunning; return }
@@ -801,14 +825,15 @@ private struct ProviderKeyRow: View {
         working = true
         defer { working = false }
         do {
-            try await model.saveKey(entry, for: row.id)
+            let handed = try await model.saveKey(entry, for: row.id)
             // Never shown again: the served status now says it is set
             entry = ""
             checked = nil
             problem = nil
+            keyFailure = handed.failure.map { (lines.handOverFailed, $0) }
             changed()
         } catch {
-            problem = .failed(detail: error.description)
+            keyFailure = (lines.saveFailed, error.description)
         }
     }
 
@@ -816,12 +841,13 @@ private struct ProviderKeyRow: View {
         working = true
         defer { working = false }
         do {
-            try await model.removeKey(row.id)
+            let handed = try await model.removeKey(row.id)
             checked = nil
             problem = nil
+            keyFailure = handed.failure.map { (lines.handOverFailed, $0) }
             changed()
         } catch {
-            problem = .failed(detail: error.description)
+            keyFailure = (lines.removeFailed, error.description)
         }
     }
 }

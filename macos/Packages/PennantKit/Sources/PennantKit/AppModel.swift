@@ -172,6 +172,10 @@ public final class AppModel {
         philosophy = PhilosophyStore { line in log.write(line, source: "app") }
         staffRoom = StaffRoomStore { line in log.write(line, source: "app") }
         writing = AiWritingStore { line in log.write(line, source: "app") }
+        // Once per launch: with the switch gone, kept keys are not read (Settings asks for them again; review N13B, M3)
+        if keyStore is KeychainKeyStore, !KeychainItems.canForbidDialogs {
+            log.write("the Keychain's switch that forbids dialogs was not found: kept AI keys are not read", source: "app")
+        }
     }
 
     #if DEBUG
@@ -928,34 +932,39 @@ public final class AppModel {
 }
 
 extension AppModel {
-    /// Hands the running server the Keychain's keys again (Settings, N13), and says the AI's state may have changed.
-    public func updateKeys() async {
-        await serverController.updateKeys()
+    /// Hands the running server the Keychain's keys again (Settings, N13), says the AI's state may have changed, and
+    /// says whether the server could be told.
+    @discardableResult
+    public func updateKeys() async -> KeyHandOver {
+        let handed = await serverController.updateKeys()
         keysRevision += 1
+        return handed
     }
 
     /// Keeps a provider's key (the Keychain, in the app's own item) and hands the running server the new set, with no
-    /// restart. The key is never logged or shown again.
-    public func saveKey(_ key: String, for provider: String) async throws(KeyStoreFailure) {
+    /// restart, saying whether it could. The key is never logged or shown again.
+    @discardableResult
+    public func saveKey(_ key: String, for provider: String) async throws(KeyStoreFailure) -> KeyHandOver {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return .handedOver }
         do {
             try await keyStore.save(trimmed, for: provider)
         } catch {
             controller.log.write("could not keep the \(provider) key: \(error.description)", source: "app")
             throw error
         }
-        await updateKeys()
+        return await updateKeys()
     }
 
-    /// Removes a provider's key and hands the running server the set without it.
-    public func removeKey(_ provider: String) async throws(KeyStoreFailure) {
+    /// Removes a provider's key and hands the running server the set without it, saying whether it could.
+    @discardableResult
+    public func removeKey(_ provider: String) async throws(KeyStoreFailure) -> KeyHandOver {
         do {
             try await keyStore.remove(provider)
         } catch {
             controller.log.write("could not remove the \(provider) key: \(error.description)", source: "app")
             throw error
         }
-        await updateKeys()
+        return await updateKeys()
     }
 }

@@ -258,14 +258,21 @@ public actor ServerController {
         }
     }
 
-    /// Hands new keys to the running server without a restart (Settings, N13).
-    public func updateKeys() async {
+    /// Hands new keys to the running server without a restart (Settings, N13), and says whether it could (review N13B,
+    /// L6): a failed write is a failure, never a silent success. With no server running there is nothing to tell; it
+    /// reads the keys when it starts.
+    @discardableResult
+    public func updateKeys() async -> KeyHandOver {
         let keys = await keySource.keys()
-        guard let child = process else { return }
+        guard let child = process else { return .handedOver }
         do {
             try child.send(SidecarProtocol.keysLine(keys: keys))
+            return .handedOver
         } catch {
-            log.write("could not hand over the keys: \(error)", source: "app")
+            // The error's domain and code only: never its description, never a key
+            let detail = RequestProblem.logLine(error)
+            log.write("could not hand over the keys: \(detail)", source: "app")
+            return .failed(detail: detail)
         }
     }
 

@@ -6,7 +6,7 @@ import Security
 
 let arguments = CommandLine.arguments
 guard arguments.count >= 3 else {
-    print("usage: probe save|read|remove|read-allowing-dialog <service> [account] [secret]")
+    print("usage: probe save|read|read-without-switch|remove|read-allowing-dialog <service> [account] [secret]")
     exit(2)
 }
 let items = KeychainItems(service: arguments[2])
@@ -23,16 +23,21 @@ case "save" where arguments.count == 5:
     }
 case "remove" where arguments.count == 4:
     do {
-        try items.remove(account: arguments[3])
-        print("removed")
+        switch try items.remove(account: arguments[3]) {
+        case .removed: print("removed")
+        case .anotherCopysLeft: print("removed, another copy's item left")
+        }
     } catch {
         print("failed \(error.step) \(error.status)")
         exit(1)
     }
-case "read":
-    let contents = items.contents()
+case "read", "read-without-switch":
+    // Without the switch (a system where it is gone, review N13B M3): nothing this run did not add is tried
+    let reader = arguments[1] == "read" ? items : KeychainItems(service: arguments[2], switchFound: false)
+    let contents = reader.contents()
     print("readable: \(contents.readable.keys.sorted().joined(separator: ","))")
     print("unreadable: \(contents.unreadable.sorted().joined(separator: ","))")
+    print("newer elsewhere: \(contents.newerElsewhere.sorted().joined(separator: ","))")
 case "read-allowing-dialog" where arguments.count == 4:
     // The control: the same read with the system free to ask (no switch, no context). A dialog here blocks until the
     // script's alarm ends it, which proves the steps above would have shown one without the switch.

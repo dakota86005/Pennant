@@ -99,8 +99,15 @@ final class FakeProcess: SidecarProcess, @unchecked Sendable {
     var kills: Int { lock.withLock { _kills } }
     var hasExited: Bool { exitState.finished != nil }
 
+    /// Whether a write to stdin fails (a pipe that broke while the process lives on).
+    var refusesSends: Bool {
+        get { lock.withLock { _refusesSends } }
+        set { lock.withLock { _refusesSends = newValue } }
+    }
+    private var _refusesSends = false
+
     func send(_ data: Data) throws {
-        if hasExited { throw CocoaError(.fileWriteUnknown) }
+        if hasExited || refusesSends { throw CocoaError(.fileWriteUnknown) }
         lock.withLock { _sent.append(data) }
     }
 

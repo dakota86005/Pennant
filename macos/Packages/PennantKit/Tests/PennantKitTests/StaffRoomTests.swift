@@ -173,10 +173,10 @@ struct StaffRoomTests {
         #expect(items.contents().readable == ["anthropic": "sk-test-one"])
         try items.save("sk-test-two", account: "anthropic")
         #expect(items.contents().readable == ["anthropic": "sk-test-two"])
-        try items.remove(account: "anthropic")
+        #expect(try items.remove(account: "anthropic") == .removed)
         #expect(items.contents() == .init())
         // Removing what is not there is not a failure
-        try items.remove(account: "anthropic")
+        #expect(try items.remove(account: "anthropic") == .removed)
     }
 
     @Test("a provider's key is kept under its id, or a later generation beside another copy's item")
@@ -186,9 +186,91 @@ struct StaffRoomTests {
         #expect(KeychainItems.parse("anthropic.x") == ("anthropic.x", 1))
         #expect(KeychainItems.account("openai", generation: 1) == "openai")
         #expect(KeychainItems.account("openai", generation: 3) == "openai.3")
+        // Only another copy's ownership is "another copy's": a dialog not allowed or a failed authorisation is a failure,
+        // as the item may be this copy's own (review N13B, M4)
         #expect(KeychainItems.belongsToAnother(errSecInvalidOwnerEdit))
-        #expect(KeychainItems.belongsToAnother(errSecInteractionNotAllowed))
+        #expect(!KeychainItems.belongsToAnother(errSecInteractionNotAllowed))
+        #expect(!KeychainItems.belongsToAnother(errSecAuthFailed))
         #expect(!KeychainItems.belongsToAnother(errSecParam))
+    }
+
+    @Test("this copy's own key is the one read; another copy's newer item is said, never read (review N13B, L2)")
+    func standingOfItems() {
+        let early = Date(timeIntervalSince1970: 1_000), later = Date(timeIntervalSince1970: 2_000)
+        func standing(_ items: [(String, Date?)], _ reads: [String: KeychainItems.Reading]) -> KeychainItems.Contents {
+            KeychainItems.standing(of: items.map { .init(account: $0.0, modified: $0.1) }) { reads[$0] ?? .gone }
+        }
+        // Own item older than another copy's: read, and said to be older
+        var contents = standing([("openai", early), ("openai.2", later)], ["openai": .secret("mine"), "openai.2": .refused])
+        #expect(contents.readable == ["openai": "mine"])
+        #expect(contents.newerElsewhere == ["openai"])
+        #expect(contents.unreadable.isEmpty)
+        // Own item the newest: nothing to say
+        contents = standing([("openai", later), ("openai.2", early)], ["openai": .secret("mine"), "openai.2": .refused])
+        #expect(contents.newerElsewhere.isEmpty)
+        // The same second (the legacy keychain keeps seconds), or a date not known: not said to be newer
+        contents = standing([("openai", early), ("openai.2", early)], ["openai": .secret("mine"), "openai.2": .refused])
+        #expect(contents.newerElsewhere.isEmpty)
+        contents = standing([("openai", nil), ("openai.2", later)], ["openai": .secret("mine"), "openai.2": .refused])
+        #expect(contents.newerElsewhere.isEmpty)
+        // Two of this copy's own: the more recently modified, whatever its generation
+        contents = standing([("anthropic", later), ("anthropic.3", early)], ["anthropic": .secret("new"), "anthropic.3": .secret("old")])
+        #expect(contents.readable == ["anthropic": "new"])
+        // Only another copy's: unreadable; one gone since it was listed: nothing
+        contents = standing([("anthropic", early), ("openai", early)], ["anthropic": .refused, "openai": .gone])
+        #expect(contents.unreadable == ["anthropic"])
+        #expect(contents.readable.isEmpty)
+    }
+
+    @Test("with the switch gone, nothing this process did not add is read or deleted (review N13B, M3)")
+    func noSwitchTriesNothing() {
+        let service = "com.dakotawise.pennant.tests.\(UUID().uuidString)"
+        #expect(KeychainItems.mayTry("anthropic", service: service, dialogsForbidden: true))
+        #expect(!KeychainItems.mayTry("anthropic", service: service, dialogsForbidden: false))
+    }
+
+    @Test("a provider removed beside another copy's item is that copy's, never 'enter it again'; saving forgets it (review N13B, M4)")
+    func setAsideStanding() {
+        var contents = KeychainItems.Contents()
+        contents.unreadable = ["anthropic", "openai"]
+        var (standing, aside) = KeychainKeyStore.standing(contents, setAside: ["anthropic", "gemini"])
+        #expect(standing.anotherCopys == ["anthropic"])
+        #expect(standing.unreadable == ["openai"])
+        // Gemini has no item left at all: forgotten
+        #expect(aside == ["anthropic"])
+        contents.unreadable = []
+        contents.readable = ["anthropic": "k"]
+        (standing, aside) = KeychainKeyStore.standing(contents, setAside: ["anthropic"])
+        #expect(standing == KeyStanding())
+        #expect(aside.isEmpty)
+    }
+
+    @Test("the memory store the UI tests use stands in the same way: removed beside another copy's item, then saved")
+    func memoryStanding() async throws {
+        let keys = MemoryKeyStore(unreadable: ["anthropic"])
+        #expect(await keys.standing() == KeyStanding(unreadable: ["anthropic"]))
+        try await keys.remove("anthropic")
+        #expect(await keys.standing() == KeyStanding(anotherCopys: ["anthropic"]))
+        try await keys.save("sk-ant-x", for: "anthropic")
+        #expect(await keys.standing() == KeyStanding())
+    }
+
+    @Test("the switch said to be missing: kept items are reported unreadable without being tried, a new key is added and read, and another item is not removed (review N13B, M3)",
+          .enabled(if: keychainTestsAllowed, "writes to the login keychain: CI's throwaway runners only"))
+    nonisolated func keychainWithoutSwitch() throws {
+        let service = "com.dakotawise.pennant.tests.\(UUID().uuidString)"
+        let items = KeychainItems(service: service)
+        let without = KeychainItems(service: service, switchFound: false)
+        defer { try? items.remove(account: "anthropic") }
+        try items.save("sk-test-one", account: "anthropic")
+        // This process could read it, so "unreadable" shows it was never tried
+        #expect(without.contents().unreadable == ["anthropic"])
+        try without.save("sk-test-two", account: "anthropic")
+        #expect(without.contents().readable == ["anthropic": "sk-test-two"])
+        #expect(items.contents().readable["anthropic"] != nil)
+        #expect(throws: KeychainItems.Failure.self) { try without.remove(account: "anthropic") }
+        #expect(try items.remove(account: "anthropic") == .removed)
+        #expect(items.contents() == .init())
     }
 
     @Test("a service per bundle id: the release app keeps N3's name, a development build its own")
@@ -217,8 +299,18 @@ struct StaffRoomTests {
         #expect(last == #"{"keys":{"anthropic":"sk-ant-new"}}"# + "\n")
         #expect(model.keysRevision > revision)
         #expect(launcher.launched.count == 1)
-        try await model.removeKey("anthropic")
+        #expect(try await model.removeKey("anthropic") == .handedOver)
         #expect(process.sent.last.map { String(decoding: $0, as: UTF8.self) } == #"{"keys":{}}"# + "\n")
+        // A hand-over that fails is said, never a silent success; the Keychain keeps the change (review N13B, L6)
+        process.refusesSends = true
+        guard case .failed(let detail) = try await model.saveKey("sk-ant-other", for: "anthropic") else {
+            Issue.record("a failed hand-over reported success")
+            await model.shutdown()
+            return
+        }
+        #expect(!detail.contains("sk-ant"))
+        #expect(await keys.keys() == ["anthropic": "sk-ant-other"])
+        process.refusesSends = false
         await model.shutdown()
     }
 }

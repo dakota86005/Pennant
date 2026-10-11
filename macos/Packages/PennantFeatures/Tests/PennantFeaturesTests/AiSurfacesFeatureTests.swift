@@ -61,4 +61,14 @@ struct AiSurfacesFeatureTests {
         #expect(router.take() == PlayerRef(id: 1000))
         #expect(router.take() == nil)
     }
+
+    @Test("each provider's kept items get the server's own line: another copy's after Remove, never 'enter it again' (review N13B, M4, L2)")
+    func keptLines() throws {
+        let answer = try #require(PreviewFixtures.aiKeys)
+        let standing = KeyStanding(unreadable: ["openai"], anotherCopys: ["anthropic"], newerElsewhere: ["gemini"])
+        #expect(AISettings.keptLine("anthropic", standing: standing, answer: answer)?.claim == answer.otherCopy)
+        #expect(AISettings.keptLine("openai", standing: standing, answer: answer)?.claim == answer.reenter)
+        #expect(AISettings.keptLine("gemini", standing: standing, answer: answer)?.claim == answer.newerElsewhere)
+        #expect(AISettings.keptLine("ollama", standing: standing, answer: answer) == nil)
+    }
 }
