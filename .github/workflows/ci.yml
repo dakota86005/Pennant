@@ -82,6 +82,9 @@ jobs:
           key: pennant-mac-${{ runner.os }}-${{ hashFiles('macos/Packages/PennantKit/Package.resolved', 'macos/Packages/PennantDesign/Package.resolved', 'macos/Packages/PennantFeatures/Package.resolved', 'macos/Pennant.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
       - name: PennantKit tests
         working-directory: macos/Packages/PennantKit
+        # The Keychain tests run only here, on a throwaway runner, never on a developer's Mac (their login keychain)
+        env:
+          PENNANT_KEYCHAIN_TESTS: "1"
         run: swift test --force-resolved-versions
       - name: PennantDesign tests
         working-directory: macos/Packages/PennantDesign

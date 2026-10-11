@@ -196,7 +196,7 @@ struct EventReconnectTests {
     @MainActor
     func boundedProblems() async throws {
         let configuration = try fakeConfiguration()
-        let model = AppModel(configuration: configuration)
+        let model = AppModel(configuration: configuration, keys: MemoryKeyStore())
         for n in 0..<(AppModel.keptEventProblems + 15) { await model.handle(.malformed(type: "type-\(n)")) }
         #expect(model.eventProblems.count == AppModel.keptEventProblems)
         #expect(model.eventProblems.last?.type == "type-\(AppModel.keptEventProblems + 14)")

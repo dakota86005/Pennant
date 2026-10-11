@@ -410,7 +410,8 @@ struct KeyReadingTests {
         #expect(launcher.launched.isEmpty)
     }
 
-    @Test("the Keychain store reads on a detached task, not on the caller's actor")
+    @Test("the Keychain store reads on a detached task, not on the caller's actor",
+          .enabled(if: keychainTestsAllowed, "reads the login keychain: CI's throwaway runners only"))
     @MainActor
     func keychainOffMain() async {
         // An unused service: nothing is found, and nothing prompts

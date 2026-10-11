@@ -163,7 +163,8 @@ struct StaffRoomTests {
 
     // MARK: Keys
 
-    @Test("the Keychain items: kept, read back, replaced and removed, under a test service of its own")
+    @Test("the Keychain items: kept, read back, replaced and removed, under a test service of its own",
+          .enabled(if: keychainTestsAllowed, "writes to the login keychain: CI's throwaway runners only"))
     nonisolated func keychainItems() throws {
         let items = KeychainItems(service: "com.dakotawise.pennant.tests.\(UUID().uuidString)")
         defer { try? items.remove(account: "anthropic") }
