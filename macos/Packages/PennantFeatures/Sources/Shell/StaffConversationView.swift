@@ -47,8 +47,8 @@ struct StaffConversationView: View {
                 .onScrollGeometryChange(for: Bool.self) { geometry in
                     geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 48
                 } action: { _, bottom in atBottom = bottom }
-                .onChange(of: answer?.messages.last?.streamed.count) { _, _ in follow(proxy) }
-                .onChange(of: answer?.messages.count) { _, _ in follow(proxy) }
+                // Followed by the number of events applied, never by measuring the text on every delta (review N13B, L9)
+                .onChange(of: answer?.applied) { _, _ in follow(proxy) }
                 .onChange(of: conversation?.conversationStamp) { _, _ in follow(proxy) }
                 // Who is in the room above the conversation, the compose field below it, each in the safe area (under
                 // the toolbar, never beneath it), on the page's opaque colour
@@ -110,7 +110,7 @@ struct StaffConversationView: View {
                         Label { Text(verbatim: starter.display) } icon: { Image(systemName: "text.bubble") }
                     }
                     .buttonStyle(.bordered)
-                    .disabled(store.isAnswering(with))
+                    .disabled(!canSend)
                 }
             }
         }
@@ -162,8 +162,7 @@ struct StaffConversationView: View {
                 Button { send(draft) } label: { Label("Send", systemImage: "arrow.up.circle.fill") }
                     .labelStyle(.iconOnly)
                     .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(store.isAnswering(with) || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || (members?.wrappedValue.isEmpty ?? false))
+                    .disabled(!canSend || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .help(Text("Send"))
                     .accessibilityIdentifier("staffRoom.send")
             }
@@ -172,9 +171,15 @@ struct StaffConversationView: View {
         }
     }
 
+    /// Whether a question can go: nothing streaming here, and, in the room, at least one person in it. Return, the Send
+    /// button and the starters all ask it (review N13B, L10).
+    private var canSend: Bool {
+        !store.isAnswering(with) && !(members?.wrappedValue.isEmpty ?? false)
+    }
+
     private func send(_ words: String) {
         let question = words.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty else { return }
+        guard canSend, !question.isEmpty else { return }
         if model.askStaff(.typed(question), with: with, members: members?.wrappedValue) {
             if words == draft { draft = "" }
             atBottom = true

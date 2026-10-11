@@ -47,6 +47,9 @@ public struct StaffRoomAnswer: Sendable, Equatable {
     public private(set) var afterTheEnd = 0
     /// Counts the answers completed, so a view can announce each once.
     public private(set) var answeredCount = 0
+    /// Counts the events applied, so a view follows the stream by a number rather than measuring the text each time
+    /// (review N13B, L9).
+    public private(set) var applied = 0
 
     public init() {}
 
@@ -72,6 +75,7 @@ public struct StaffRoomAnswer: Sendable, Equatable {
     }
 
     private mutating func apply(_ kind: Components.Schemas.StaffRoomEvent.Kind) {
+        applied += 1
         switch kind {
         case .started(let started):
             question = started.question

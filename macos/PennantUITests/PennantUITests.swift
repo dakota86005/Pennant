@@ -2270,6 +2270,14 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(ask.waitForExistence(timeout: 10), "the toolbar has no Ask Staff")
         XCTAssertTrue(ask.isEnabled, "Ask Staff is still disabled")
         closeMainWindow(app)
+        // The Window menu names the Staff room once, the item with ⇧⌘0 (review N13B, L7); counted with no window open,
+        // so the menu's list of open windows adds nothing
+        let windowMenu = app.menuBars.menuBarItems["Window"]
+        windowMenu.click()
+        let staffItems = windowMenu.menus.firstMatch.menuItems.matching(NSPredicate(format: "title == %@", "Staff Room"))
+        XCTAssertTrue(staffItems.firstMatch.waitForExistence(timeout: 10), "the Window menu has no Staff Room")
+        XCTAssertEqual(staffItems.count, 1, "the Window menu lists the Staff room more than once")
+        app.typeKey(.escape, modifierFlags: [])
         openStaffRoom(app, until: "staffRoom.aiOff")
         let off = element(app, "staffRoom.aiOff")
         XCTAssertTrue(off.waitForExistence(timeout: 30), "the Staff room did not open, or does not say AI is off")

@@ -47,6 +47,11 @@ public struct StaffRoomScene: View {
                 let with = with
                 Task { await model.startStaffOver(with) }
             } label: { Text(verbatim: store.view?.startOver.display ?? "") }
+        } message: {
+            // What it clears, in the server's words, as Mail says what can't be undone (review N13B, L8)
+            if let warning = store.view?.staff.first(where: { $0.id == with })?.startOverWarning {
+                Text(verbatim: warning.display)
+            }
         }
         .task(id: RoomTask(key: model.storeKey, keysRevision: model.keysRevision)) { await model.loadStaffRoom() }
         .task(id: ConversationTask(key: model.storeKey, with: with)) { await model.loadStaffConversation(with) }
@@ -160,6 +165,8 @@ public struct StaffRoomScene: View {
     private func askAbout(_ player: PlayerRef) -> Bool {
         guard let view = store.view, view.ai.available else { return false }
         let room = view.staff.first { $0.id == with }?.room ?? false
+        // The room with nobody in it asks no one, as its Send button does not (review N13B, L10)
+        if room, members(view).isEmpty { return false }
         return model.askStaff(.about(playerId: player.id), with: with, members: room ? members(view) : nil)
     }
 

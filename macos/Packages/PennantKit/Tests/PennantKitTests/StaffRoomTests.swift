@@ -42,6 +42,8 @@ struct StaffRoomTests {
         #expect(live.lookedUp.map(\.display) == ["Reading a player card"])
         #expect(live.final?.answer?.links.first?.url == "pennant://player/1000")
         #expect(answer.answeredCount == 1)
+        // Every event applied is counted, so the view follows the stream without measuring the text (review N13B, L9)
+        #expect(answer.applied == kinds.count)
         guard case .done(let done) = answer.outcome else { Issue.record("done"); return }
         #expect(done.conversationStamp == "cstamp")
     }

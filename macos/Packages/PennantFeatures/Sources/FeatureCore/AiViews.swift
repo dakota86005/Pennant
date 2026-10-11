@@ -40,19 +40,40 @@ public struct AiTextView: View {
     }
 }
 
-/// Text still streaming in: the same subset, with no links (they arrive with the final text).
+/// Text still streaming in: the same subset, with no links (they arrive with the final text). The whole text is parsed
+/// again at most every `interval`, and once more after the last delta, never on every one: a long answer re-parsed on
+/// each delta cost the square of its length (review N13B, L9). `version` says when the text grew (its UTF-8 length,
+/// which a Swift string knows without counting).
 public struct AiStreamedText: View {
     let markdown: String
+    let version: Int
+    @State private var shown: AttributedString?
+    @State private var parsedAt = ContinuousClock.now - .seconds(1)
+
+    /// How often a growing text is parsed again at most.
+    public static let interval: Duration = .milliseconds(100)
 
     public init(_ markdown: String) {
         self.markdown = markdown
+        version = markdown.utf8.count
     }
 
     public var body: some View {
-        Text(AiTextRendering.streamed(markdown))
+        Text(shown ?? AiTextRendering.streamed(markdown))
             .foregroundStyle(.primary)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .task(id: version) {
+                // A delta sooner than the interval waits out the rest of it; a later one replaces this wait, and parses
+                // at once if the interval has passed by then
+                let since = ContinuousClock.now - parsedAt
+                if since < Self.interval {
+                    try? await Task.sleep(for: Self.interval - since)
+                    if Task.isCancelled { return }
+                }
+                shown = AiTextRendering.streamed(markdown)
+                parsedAt = .now
+            }
     }
 }
 

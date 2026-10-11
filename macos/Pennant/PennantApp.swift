@@ -72,6 +72,8 @@ struct PennantApp: App {
         }
         // Fits GitHub's runner's 1024 × 768 screen whole
         .defaultSize(width: 860, height: 600)
+        // Window ▸ Staff Room (⇧⌘0) is the app's own command: the scene adds no second item (review N13B, L7)
+        .commandsRemoved()
 
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()
