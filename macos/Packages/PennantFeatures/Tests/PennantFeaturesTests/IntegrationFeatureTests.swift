@@ -37,11 +37,17 @@ struct IntegrationFeatureTests {
         let list = try #require(PreviewFixtures.spotlight)
         let store = IntegrationStore.preview(glance: nil, spotlight: list)
         let first = try #require(list.players.first), last = try #require(list.players.last)
-        let resolved = store.entities(for: [Int(last.id)!, 999_999, Int(first.id)!], kind: .player)
-        #expect(resolved.map(\.id) == [Int(last.id)!, 999_999, Int(first.id)!])
-        #expect(resolved[0] == .init(id: Int(last.id)!, name: last.title, line: last.line))
-        #expect(resolved[1] == .init(id: 999_999, name: "", line: ""))
-        #expect(store.suggested(.club).map(\.name) == list.clubs.map(\.title))
+        let lastId = try #require(Int(last.id)), firstId = try #require(Int(first.id))
+        let asked: [Int] = [lastId, 999_999, firstId]
+        let resolved = store.entities(for: asked, kind: .player)
+        let ids: [Int] = resolved.map(\.id)
+        #expect(ids == asked)
+        let expected = IntegrationStore.EntityLine(id: lastId, name: last.title, line: last.line)
+        #expect(resolved[0] == expected)
+        #expect(resolved[1] == IntegrationStore.EntityLine(id: 999_999, name: "", line: ""))
+        let suggested: [String] = store.suggested(.club).map(\.name)
+        let titles: [String] = list.clubs.map(\.title)
+        #expect(suggested == titles)
     }
 
     @Test("a search's players and clubs become entities; its views and Player Search do not")
@@ -49,10 +55,13 @@ struct IntegrationFeatureTests {
         let answer = try #require(PreviewFixtures.decode(Components.Schemas.SearchAnswer.self, "search"))
         let results = answer.groups.flatMap(\.results)
         let clubs = IntegrationStore.entityLines(results, kind: .club)
-        #expect(clubs.count == results.filter { $0.kind.value1 == .club }.count)
+        let servedClubs: Int = results.filter { $0.kind.value1 == .club }.count
+        #expect(clubs.count == servedClubs)
         let players = IntegrationStore.entityLines(results, kind: .player)
-        #expect(players.allSatisfy { $0.id > 0 })
-        #expect(IntegrationStore.entityLines(results, kind: .player).count <= results.filter { $0.kind.value1 == .player }.count)
+        let positive: Bool = players.allSatisfy { $0.id > 0 }
+        #expect(positive)
+        let servedPlayers: Int = results.filter { $0.kind.value1 == .player }.count
+        #expect(players.count <= servedPlayers)
     }
 }
 

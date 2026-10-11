@@ -103,13 +103,20 @@ struct IntegrationStoreTests {
         let list = try #require(store.spotlight)
         let first = try #require(list.players.first), second = try #require(list.players.dropFirst().first)
         let asked = [Int(second.id)!, Int(first.id)!]
-        #expect(store.entities(for: asked, kind: .player).map(\.name) == [second.title, first.title])
-        #expect(store.suggested(.club).map(\.id) == list.clubs.compactMap { Int($0.id) })
+        let names: [String] = store.entities(for: asked, kind: .player).map(\.name)
+        #expect(names == [second.title, first.title])
+        let clubIds: [Int] = store.suggested(.club).map(\.id)
+        let servedIds: [Int] = list.clubs.compactMap { Int($0.id) }
+        #expect(clubIds == servedIds)
         // The served search, players only: never a view or the "All in Player Search" line
         let found = await store.search("club", kind: .club, client: model.client)
         let served = try JSONDecoder().decode(Components.Schemas.SearchAnswer.self, from: fixtureData("responses/search.json"))
-        #expect(found.map(\.name) == served.groups.flatMap(\.results).filter { $0.kind.value1 == .club }.map(\.title))
-        #expect(await store.search("   ", kind: .player, client: model.client).isEmpty)
+        let results: [Components.Schemas.SearchResult] = served.groups.flatMap(\.results)
+        let clubTitles: [String] = results.filter { $0.kind.value1 == .club }.map(\.title)
+        let foundNames: [String] = found.map(\.name)
+        #expect(foundNames == clubTitles)
+        let blank = await store.search("   ", kind: .player, client: model.client)
+        #expect(blank.isEmpty)
     }
 
     @Test("no server, no key: nothing is asked")
