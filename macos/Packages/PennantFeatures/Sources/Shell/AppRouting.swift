@@ -22,6 +22,8 @@ public final class AppRouting {
     public var revealDataStatus = false
     /// Find Anything (⌘K) with every main window closed: the main window that opens next opens with its palette up.
     private var paletteRequestPending = false
+    /// Go ▸ a department (⌘1 to ⌘9) with every main window closed: the main window that opens next goes there.
+    private var shortcutRequestPending: Int?
     /// Bumped each time something asks the Setup window to start again at the save step.
     public private(set) var setupRequest = 0
     /// A request to start again that the Setup window has not taken yet (it may open only after the request is made).
@@ -109,6 +111,17 @@ public final class AppRouting {
         paletteRequestPending = true
     }
 
+    /// Go ▸ ⌘`number` with no main window open: the next main window opens on that department.
+    public func requestShortcut(_ number: Int) {
+        shortcutRequestPending = number
+    }
+
+    /// The department asked for with no main window open, once: the next main window takes it.
+    public func takeShortcutRequest() -> Int? {
+        defer { shortcutRequestPending = nil }
+        return shortcutRequestPending
+    }
+
     /// The request for the palette, once: the main window that opens next takes it.
     public func takePaletteRequest() -> Bool {
         defer { paletteRequestPending = false }
@@ -128,7 +141,13 @@ public struct CommandAvailability: Equatable, Sendable {
     public var refreshData: Bool
     public var importExport: Bool
     public var dataStatus: Bool
+    /// Go ▸ a department (⌘1 to ⌘9): always, whichever window is key, as Find Anything. From a player's, a club's or
+    /// Compare's window, or with no window key, the main window used last comes forward on that department, or a new
+    /// one opens on it.
     public var goToDepartment: Bool
+    /// Back, Forward and the inspector belong to a main window's own history and panel, so they act only while a main
+    /// window is key: from a player's window they are disabled, as Safari's Back and Forward are from a window of
+    /// another page (a player's window has no history of its own to go back through).
     public var back: Bool
     public var forward: Bool
     public var inspector: Bool
@@ -149,7 +168,7 @@ public struct CommandAvailability: Equatable, Sendable {
         // Moving around the window never waits for the server: each view says "Starting…" itself until it is ready.
         // (PR #58 and #59 on GitHub's runner: gated on the server, these menu items were still disabled when ⌘K and
         // ⌘4 were typed, the menu not yet redrawn after the server came up, so the keys did nothing.)
-        goToDepartment = window != nil
+        goToDepartment = true
         back = window?.canGoBack ?? false
         forward = window?.canGoForward ?? false
         inspector = window != nil

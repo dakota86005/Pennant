@@ -116,7 +116,15 @@ export interface OfficeChoiceGroup {
 
 /** A table drawn with its chosen row's detail beneath it, with the two sentences that go with that (N12 review, L6). */
 export function paneTable(table: OfficeTable, noun = 'players'): OfficeTable {
-  return { ...table, noneKept: cell(`No ${noun} match these filters.`), choose: cell('Select a row to see more.') };
+  return choosable({ ...table, noneKept: cell(`No ${noun} match these filters.`) });
+}
+
+/**
+ * A table drawn with its chosen row's detail beneath it and no filters of its own (League Office's, Scouting's): what it
+ * says beneath it while no row is chosen. Served, so the app writes no sentence of its own (D-056).
+ */
+export function choosable<T extends OfficeTable>(table: T): T {
+  return { ...table, choose: cell('Select a row to see more.') };
 }
 
 /** A choice that narrows a table to some of its rows (Contracts' groups, Free Agents' positions): its words. */

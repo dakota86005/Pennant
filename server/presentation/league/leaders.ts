@@ -14,6 +14,7 @@ import { factClaim, head, hintIf, player, type ClubhouseContext } from '../clubh
 import { tableRow } from '../majorLeague/common.js';
 import { BATTING_STATS, PITCHING_STATS } from '../statCatalog.js';
 import { column } from './common.js';
+import { choosable } from './office.js';
 import type { LeagueLeaderGroup, LeagueLeadersView, OfficeRow, OfficeSection } from './types.js';
 
 const LEADERS = 'The league leaders';
@@ -106,7 +107,7 @@ function section(group: 'batting' | 'pitching', c: Category, leaders: Leader[], 
     id: `${group}.${c.key}`,
     title: cell(c.title, { hint: c.key }),
     summary,
-    table: {
+    table: choosable({
       columns: [
         column('rank', 'Rank', true),
         column('player', 'Player'),
@@ -115,7 +116,7 @@ function section(group: 'batting' | 'pitching', c: Category, leaders: Leader[], 
       ],
       rows,
       empty: cell(c.rate ? 'Nobody qualifies yet.' : 'No lines this season yet.'),
-    },
+    }),
     note: null,
   };
 }

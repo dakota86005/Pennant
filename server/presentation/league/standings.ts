@@ -15,6 +15,7 @@ import { cell, servedValue } from '../claim.js';
 import { factClaim, head, hintIf, plural, type ClubhouseContext } from '../clubhouse/common.js';
 import { glossaryTable } from '../glossary.js';
 import { clubCell, clubRow, column, officeClub, ordinal, pctText, signed } from './common.js';
+import { choosable } from './office.js';
 import type { LeagueStaffRead, LeagueStandingsView, OfficeRow, OfficeSection } from './types.js';
 
 const STANDINGS = 'The standings';
@@ -202,11 +203,11 @@ function allSection(s: Standings): OfficeSection {
     id: 'standings-all',
     title: cell('All divisions'),
     summary: null,
-    table: {
+    table: choosable({
       columns: [team, column('division', 'Division', false, { hint: 'The club\'s division; sorts in the standings\' order' }), ...rest],
       rows,
       empty: cell('No major league clubs in this league\'s standings.'),
-    },
+    }),
     note: null,
   };
 }
@@ -216,12 +217,12 @@ function divisionSection(name: string, teams: StandingsTeam[], scheduled: number
     id,
     title: cell(name),
     summary: null,
-    table: {
+    table: choosable({
       columns: columns(),
       // The served order is the standings' own (OOTP's place in the division, its tiebreakers respected)
       rows: teams.map((t, i) => teamRow(t, scheduled, i === 0 && known(t.gb) && t.gb <= 0)),
       empty: cell('No clubs in this division.'),
-    },
+    }),
     note: null,
   };
 }

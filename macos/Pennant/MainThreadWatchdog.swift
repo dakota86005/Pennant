@@ -7,7 +7,16 @@ import Foundation
 /// Payroll & Budget opened in a 900-point window, and XCTest could only say "main thread busy for 30.0s"). A thread of
 /// its own pings the main queue each half second; after 5 s without an answer it writes the main thread's stack twice:
 /// at once, from a signal the main thread itself takes (`backtrace_symbols_fd`), and from `/usr/bin/sample`, into
-/// `hang-*.log` beside the app's log (kept with each UI test's logs by `test.sh`). Once per process. Nonisolated: its
+/// `hang-*.log` beside the app's log (kept with each UI test's logs by `test.sh`). Once per process. A shorter stall of
+/// 2 s or more keeps the stacks taken from 1.5 s on, as `hang-stall-<n>.log` (`captureStall`).
+///
+/// Whose time the 2 to 4 s stalls are (PR #63's run, read again with these stacks on run 38079051437): the test's, not
+/// the GM's. In Player Search's full-page audit every stall holds XCTest's own work on the app's main thread: its
+/// in-process queries (`XCTPerformOnMainRunLoop`, `XCElementSnapshot children`) or the accessibility hierarchy it copies
+/// (`_XCopyHierarchy`), with the table's row views made and put away for them (`NSTableRowData`); they line up with
+/// the test's "Get number of matches" and audit steps. The launch stalls (Compare, the club owed after Setup) are the
+/// first Morning Report's first frame on a fresh runner: Metal compiling its render pipelines with no shader cache, then
+/// SwiftUI's first layout. No stack holds a frame of Pennant's own code. Nonisolated: its
 /// timer runs on a queue of its own (the app target's default isolation is the main actor, whose check would stop it).
 nonisolated final class MainThreadWatchdog: @unchecked Sendable {
     private let log: @Sendable (String) -> Void
@@ -18,6 +27,11 @@ nonisolated final class MainThreadWatchdog: @unchecked Sendable {
     private var reported = false
     private var timer: (any DispatchSourceTimer)?
     private let main = pthread_self()
+    /// A shorter stall's stacks (1.5 s and more), only on the watchdog's queue: the open file, how many stacks it holds,
+    /// and how many stalls were kept.
+    private var stallFile: Int32 = -1
+    private var stallStacks = 0
+    private var stallsKept = 0
 
     /// Made on the main thread (it notes the main thread's own id).
     init(folder: URL, log: @escaping @Sendable (String) -> Void) {
@@ -28,12 +42,18 @@ nonisolated final class MainThreadWatchdog: @unchecked Sendable {
     func start() {
         // The stack's room made now, never first inside the signal handler
         _ = watchdogFrames
+        // Runs on the main thread, interrupting whatever it was doing: its stack, to the open file (none: nothing)
+        signal(SIGUSR2) { _ in
+            let fd = watchdogDescriptor
+            guard fd >= 0 else { return }
+            backtrace_symbols_fd(watchdogFrames, backtrace(watchdogFrames, 512), fd)
+        }
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now() + 1, repeating: .milliseconds(500))
         timer.setEventHandler { [weak self] in self?.tick() }
         timer.resume()
         self.timer = timer
-        log("watchdog: watching the main thread (a stack is written after 5 s without an answer)")
+        log("watchdog: watching the main thread (a stack is written after 5 s without an answer, and kept from a stall of 2 s)")
     }
 
     private func tick() {
@@ -52,6 +72,8 @@ nonisolated final class MainThreadWatchdog: @unchecked Sendable {
         if waited >= 5, lock.withLock({ !reported }) {
             lock.withLock { reported = true }
             report(waited)
+        } else if waited >= 1.5, waited < 5 {
+            captureStall(waited)
         }
     }
 
@@ -61,6 +83,49 @@ nonisolated final class MainThreadWatchdog: @unchecked Sendable {
             return sent.map { Date().timeIntervalSince($0) }
         }
         if let late, late >= 2 { log(String(format: "watchdog: the main thread answered after %.1f s", late)) }
+        if let late { queue.async { [self] in endStall(late) } }
+    }
+
+    /// A stall shorter than the 5 s report's: from 1.5 s without an answer, the main thread's stack each half second (at
+    /// most 6), into `hang-stall.tmp`. Kept as `hang-stall-<n>.log` if the answer came after 2 s or more (at most 10 per
+    /// process), else removed (`endStall`). Each stack is the thread's own, from the signal, as the 5 s report's is.
+    private func captureStall(_ waited: TimeInterval) {
+        guard stallsKept < 10, stallStacks < 6 else { return }
+        if stallFile < 0 {
+            let path = folder.appending(path: "hang-stall.tmp").path(percentEncoded: false)
+            _ = FileManager.default.createFile(atPath: path, contents: nil)
+            stallFile = open(path, O_WRONLY | O_TRUNC)
+            guard stallFile >= 0 else { return }
+        }
+        stallStacks += 1
+        let head = String(format: "--- stack %d, %.1f s without an answer\n", stallStacks, waited)
+        _ = head.withCString { write(stallFile, $0, strlen($0)) }
+        watchdogDescriptor = stallFile
+        pthread_kill(main, SIGUSR2)
+        Thread.sleep(forTimeInterval: 0.2)
+        watchdogDescriptor = -1
+    }
+
+    /// The stall is over: its stacks kept, and their first in the app's log, if it lasted 2 s or more.
+    private func endStall(_ late: TimeInterval) {
+        guard stallFile >= 0 else { return }
+        close(stallFile)
+        stallFile = -1
+        stallStacks = 0
+        let file = folder.appending(path: "hang-stall.tmp")
+        guard late >= 2 else {
+            try? FileManager.default.removeItem(at: file)
+            return
+        }
+        stallsKept += 1
+        let kept = folder.appending(path: "hang-stall-\(stallsKept).log")
+        try? FileManager.default.removeItem(at: kept)
+        try? FileManager.default.moveItem(at: file, to: kept)
+        log(String(format: "watchdog: the stacks of the %.1f s stall are in hang-stall-%d.log; its first follows", late, stallsKept))
+        let text = (try? String(contentsOf: kept, encoding: .utf8)) ?? ""
+        for line in text.split(separator: "\n").dropFirst().prefix(while: { !$0.hasPrefix("---") }).prefix(80) {
+            log("watchdog: stall \(stallsKept) " + line.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " "))
+        }
     }
 
     /// The main thread's stack, from a signal it takes itself, then from `sample`; their heads in the app's log.
@@ -72,12 +137,6 @@ nonisolated final class MainThreadWatchdog: @unchecked Sendable {
         let fd = open(path, O_WRONLY | O_TRUNC)
         if fd >= 0 {
             watchdogDescriptor = fd
-            // Runs on the main thread, interrupting whatever it was doing: its stack, to the open file
-            signal(SIGUSR2) { _ in
-                let fd = watchdogDescriptor
-                guard fd >= 0 else { return }
-                backtrace_symbols_fd(watchdogFrames, backtrace(watchdogFrames, 512), fd)
-            }
             pthread_kill(main, SIGUSR2)
             Thread.sleep(forTimeInterval: 1)
             watchdogDescriptor = -1

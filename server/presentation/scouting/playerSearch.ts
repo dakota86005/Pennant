@@ -12,7 +12,7 @@ import type { PlayersPage } from '../../league.js';
 import { cell } from '../claim.js';
 import { ageCell, head, hintIf, plural, player, statCell, statSort, type ClubhouseContext } from '../clubhouse/common.js';
 import { column } from '../league/common.js';
-import { keysServed } from '../league/office.js';
+import { choosable, keysServed } from '../league/office.js';
 import type { OfficeRow } from '../league/types.js';
 import { block, line, tableRow } from '../majorLeague/common.js';
 import { BATTING_STATS, PITCHING_STATS, type StatDef } from '../statCatalog.js';
@@ -275,12 +275,12 @@ export function playerSearchView(v: ClubhouseContext, input: PlayerSearchInput):
     chosen: input.chosen.map(tokenOf),
     group: groupOf(input.group),
     count: cell(countText, hintIf(notes.join('. ')) ? { hint: hintIf(notes.join('. ')) } : {}),
-    results: {
+    results: choosable({
       columns: columnsOf(input.group),
       rows,
       empty: cell(emptyText, searched ? { hint: `Batters and pitchers are searched apart: try ${input.group === 'pitching' ? 'Batters' : 'Pitchers'}` } : {}),
       serverSorts: true,
-    },
+    }),
     more,
     empty: null,
   };
