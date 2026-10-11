@@ -403,7 +403,8 @@ nonisolated public enum PreviewFixtures {
         trades: TradesStore? = nil,
         philosophy: PhilosophyStore? = nil,
         staffRoom: StaffRoomStore? = nil,
-        writing: AiWritingStore? = nil
+        writing: AiWritingStore? = nil,
+        integration: IntegrationStore? = nil
     ) -> AppModel {
         var status = status(configured: configured)
         if let clubOwed { status?.clubOwed = clubOwed }
@@ -449,8 +450,18 @@ nonisolated public enum PreviewFixtures {
             trades: configured ? (trades ?? Self.trades) : nil,
             philosophy: configured ? (philosophy ?? Self.philosophy) : nil,
             staffRoom: configured ? (staffRoom ?? StaffRoomStore.preview(view: Self.staffRoom, conversations: [Self.staffConversation(written: false)].compactMap { $0 })) : nil,
-            writing: configured ? (writing ?? AiWritingStore.preview(storylines: Self.storylines(written: false), briefing: Self.briefing(written: false))) : nil
+            writing: configured ? (writing ?? AiWritingStore.preview(storylines: Self.storylines(written: false), briefing: Self.briefing(written: false))) : nil,
+            integration: configured ? (integration ?? IntegrationStore.preview(glance: Self.glance, spotlight: Self.spotlight)) : nil
         )
+    }
+
+    /// The glance the menu bar extra and the widget show, and Spotlight's list (N14).
+    public static var glance: Components.Schemas.Glance? {
+        decode(Components.Schemas.Glance.self, "getGlance")
+    }
+
+    public static var spotlight: Components.Schemas.SpotlightList? {
+        decode(Components.Schemas.SpotlightList.self, "getSpotlightList")
     }
 
     /// A model in a server state other than ready.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The app's entitlements (N14, D-075): only the App Group it shares with its widget. The Team-ID prefix (macOS-style
+     group) needs no provisioning profile and spares the person macOS 15's "access data from other apps" prompt. No App
+     Sandbox (D-055). An unsigned build carries none of this, so it reaches no group container (AppGroup.container). -->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>$(PENNANT_APP_GROUP)</string>
+	</array>
+</dict>
+</plist>

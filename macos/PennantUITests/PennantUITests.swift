@@ -2231,6 +2231,71 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    // MARK: Pennant outside its windows (N14, Stage A)
+
+    /// The widget's glance written after the first refresh (to the test's folder, never the Mac's App Group), Spotlight
+    /// given the served list (on CI's throwaway runner only), and the menu bar extra: off by default, turned on in Settings
+    /// ▸ General, its window opened from the menu bar with the served record and desk, audited, and Open Pennant bringing
+    /// the main window forward on the Morning Report.
+    @MainActor
+    func testMenuBarExtra() throws {
+        let glance = scratch.appending(path: "glance", directoryHint: .isDirectory)
+        let app = launch(arguments: ["-PennantDevGlanceFolder", glance.path(percentEncoded: false), "-PennantDevSpotlight", "YES"])
+        waitForShell(app)
+        // Off until the GM turns it on
+        XCTAssertFalse(app.statusItems.firstMatch.exists, "the menu bar extra showed before it was turned on")
+
+        // The widget's snapshot: the served glance, written whole
+        let file = glance.appending(path: "glance.json")
+        let deadline = Date.now.addingTimeInterval(60)
+        while !FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) && Date.now < deadline {
+            RunLoop.current.run(until: Date.now.addingTimeInterval(0.25))
+        }
+        let data = try Data(contentsOf: file)
+        let snapshot = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let desk = try XCTUnwrap(snapshot["desk"] as? [String: Any])
+        XCTAssertNotNil(desk["count"] as? Int)
+        XCTAssertTrue((desk["line"] as? String)?.isEmpty == false)
+        print("[glance] \(methodName): the snapshot says \(desk["line"] ?? "?") and \((snapshot["record"] as? [String: Any])?["display"] ?? "no record")")
+
+        // Turned on in Settings ▸ General
+        app.typeKey(",", modifierFlags: .command)
+        let general = app.toolbars.buttons["General"].firstMatch
+        XCTAssertTrue(general.waitForExistence(timeout: 5), "no General tab")
+        general.click()
+        let toggle = element(app, "settings.menuBarExtra")
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "no menu bar switch in Settings ▸ General")
+        if !toggle.isHittable { reveal(toggle, in: element(app, "settings.general")) }
+        toggle.click()
+        keep(app.windows.firstMatch.screenshot(), named: "n14-settings-menu-bar")
+        app.typeKey("w", modifierFlags: .command)
+
+        // Its window, from the menu bar
+        let item = app.statusItems.firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 10), "the menu bar extra did not appear once turned on")
+        item.click()
+        let open = element(app, "menuBarExtra.openPennant")
+        XCTAssertTrue(open.waitForExistence(timeout: 10), "the menu bar extra's window did not open")
+        XCTAssertTrue(element(app, "menuBarExtra.desk").waitForExistence(timeout: 30), "the menu bar extra did not show the served desk")
+        let panel = element(app, "menuBarExtra")
+        keep(panel.screenshot(), named: "n14-menu-bar-extra")
+        try audit(app, named: "accessibility-audit-menu-bar-extra")
+
+        // Open Pennant: the main window, on the Morning Report
+        if !open.exists { item.click() }
+        XCTAssertTrue(open.waitForExistence(timeout: 10))
+        open.click()
+        XCTAssertTrue(element(app, "detail.frontOffice.morningReport").waitForExistence(timeout: 10), "Open Pennant did not show the Morning Report")
+        XCTAssertTrue(open.waitForNonExistence(timeout: 5), "the menu bar extra's window stayed open")
+
+        // What the app did with Spotlight's list, as its log says (never asserted to succeed: an unsigned build may be
+        // refused by the index; the line says which)
+        let log = (try? String(contentsOf: scratch.appending(path: "logs/server.log"), encoding: .utf8)) ?? ""
+        let spotlight = log.split(separator: "\n").filter { $0.contains("spotlight:") || $0.contains("glance:") }
+        print("[spotlight] \(methodName): \(spotlight.isEmpty ? "no line in the app's log" : spotlight.joined(separator: " | "))")
+        quitCleanly(app)
+    }
+
     // MARK: The AI surfaces (N13)
 
     /// Opens the Staff room from the Window menu (its shortcut, ⇧⌘0, else the item itself), never by the toolbar button,

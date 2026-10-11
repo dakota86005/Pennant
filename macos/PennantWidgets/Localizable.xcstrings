@@ -1,0 +1,21 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Nothing to show yet": {
+      "extractionState": "manual"
+    },
+    "Open Pennant to see your club": {
+      "extractionState": "manual"
+    },
+    "Out of date": {
+      "extractionState": "manual"
+    },
+    "Pennant": {
+      "extractionState": "manual"
+    },
+    "Your record, next game and desk": {
+      "extractionState": "manual"
+    }
+  },
+  "version": "1.0"
+}

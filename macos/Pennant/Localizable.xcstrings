@@ -55,6 +55,9 @@
     "Ask Staff": {
       "extractionState": "manual"
     },
+    "Ask Staff About a Player": {
+      "extractionState": "manual"
+    },
     "Ask Staff About Him": {
       "extractionState": "manual"
     },
@@ -479,10 +482,16 @@
     "Open Decision": {
       "extractionState": "manual"
     },
+    "Open Pennant": {
+      "extractionState": "manual"
+    },
     "Open Report": {
       "extractionState": "manual"
     },
     "Open in %@": {
+      "extractionState": "manual"
+    },
+    "Open the Morning Report": {
       "extractionState": "manual"
     },
     "Opponent": {
@@ -667,6 +676,9 @@
     },
     "Show Log": {},
     "Show in Finder": {
+      "extractionState": "manual"
+    },
+    "Show Pennant in the Menu Bar": {
       "extractionState": "manual"
     },
     "Show why": {

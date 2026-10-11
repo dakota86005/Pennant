@@ -192,3 +192,27 @@ describe('the Mac app\'s structural labels', () => {
     expect(verbatimLiterals(fs.readFileSync(file, 'utf8'))).toEqual([]);
   });
 });
+
+/**
+ * The widget extension (N14, Stage A, D-075) is its own bundle with its own catalog: its labels are looked up there, and
+ * it draws served text only through `Text(verbatim:)`, as the app does.
+ */
+describe('the widget\'s structural labels', () => {
+  const sources = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'macos/PennantWidgets'], { encoding: 'utf8' })
+    .split('\n')
+    .filter((file) => file.endsWith('.swift'));
+  const keys = new Set(Object.keys((JSON.parse(fs.readFileSync('macos/PennantWidgets/Localizable.xcstrings', 'utf8')) as Catalog).strings));
+
+  it('finds the widget\'s sources and labels', () => {
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.flatMap((file) => structuralLiterals(fs.readFileSync(file, 'utf8'))).length).toBeGreaterThan(2);
+  });
+
+  it.each(sources)('%s: every label is in the widget\'s String Catalog, and verbatim only for served values', (file) => {
+    const code = fs.readFileSync(file, 'utf8');
+    // `.configurationDisplayName` and `.description` are labels too
+    const labels = [...structuralLiterals(code), ...[...code.matchAll(/\.(?:configurationDisplayName|description)\("((?:[^"\\\n]|\\.)*)"/g)].map((m) => m[1])];
+    expect(labels.filter((text) => !keys.has(text))).toEqual([]);
+    expect(verbatimLiterals(code)).toEqual([]);
+  });
+});

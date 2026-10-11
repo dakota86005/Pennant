@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The widget's entitlements (N14, D-075): a widget extension runs in the App Sandbox, and reads only the glance the
+     app writes to their shared App Group. No network: it never calls the server. -->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>$(PENNANT_APP_GROUP)</string>
+	</array>
+</dict>
+</plist>
