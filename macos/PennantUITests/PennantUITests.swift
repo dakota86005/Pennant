@@ -118,8 +118,11 @@ final class PennantUITests: XCTestCase {
         // left there reaches it; a test's later launches keep what its own first launch wrote
         let fresh = launchedThisTest ? [] : ["-PennantTestFreshDefaults", "YES"]
         launchedThisTest = true
+        // AI keys in memory for every test, never the Keychain of the Mac running them: a key kept there would otherwise
+        // reach a provider (review N13B, M2)
+        let keys = ["-PennantTestKeys", "memory"]
         // Each key equivalent the app receives, and the modifier keys held at launch, said in its log (PR #58)
-        app.launchArguments += state + fresh + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
+        app.launchArguments += state + fresh + keys + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
         app.launch()
         return app
     }
@@ -2261,7 +2264,7 @@ final class PennantUITests: XCTestCase {
     /// for, one calm served line where the compose field would be; the room's members; audited; closed with ⌘W.
     @MainActor
     func testStaffRoomAiOff() throws {
-        let app = launch(arguments: ["-PennantTestKeys", "memory"])
+        let app = launch()
         waitForShell(app)
         let ask = element(app, "toolbar.askStaff")
         XCTAssertTrue(ask.waitForExistence(timeout: 10), "the toolbar has no Ask Staff")
@@ -2288,7 +2291,7 @@ final class PennantUITests: XCTestCase {
     /// not offered, one calm line; and the Morning Report's collapsed briefing.
     @MainActor
     func testStorylinesAndBriefingAiOff() throws {
-        let app = launch(arguments: ["-PennantTestKeys", "memory", "-PennantDebugRoute", "frontOffice.storylines"])
+        let app = launch(arguments: ["-PennantDebugRoute", "frontOffice.storylines"])
         waitForShell(app)
         XCTAssertTrue(element(app, "storylines.aiOff").waitForExistence(timeout: 30), "Storylines does not say AI is off")
         XCTAssertTrue(element(app, "storylines.status").exists, "Storylines does not say where it stands")
@@ -2308,13 +2311,14 @@ final class PennantUITests: XCTestCase {
 
     /// The Staff room answering, through the stand-in provider `test.sh` runs on this Mac (never a real one, never a
     /// key): a question typed and sent with ⌘Return, the answer streamed in and kept, marked as the AI's; the link the
-    /// stand-in made up is drawn as words, never a link; Escape stops a second answer; Start over, confirmed, empties it.
+    /// stand-in made up is drawn as words, never a link; Escape stops a second, slow answer, keeping what had arrived;
+    /// Start over, confirmed, empties it.
     @MainActor
     func testStaffRoomAnswer() throws {
         guard let local = environment["PENNANT_UI_LOCAL_AI"] else {
             throw XCTSkip("PENNANT_UI_LOCAL_AI is not set: test.sh runs the stand-in provider (macos/scripts/fake-ai-provider.mjs)")
         }
-        let app = launch(arguments: ["-PennantTestKeys", "memory"], environment: ["PENNANT_DEV_LOCAL_AI_URL": local])
+        let app = launch(environment: ["PENNANT_DEV_LOCAL_AI_URL": local])
         waitForShell(app)
         closeMainWindow(app)
         openStaffRoom(app, until: "staffRoom.compose")
@@ -2331,15 +2335,21 @@ final class PennantUITests: XCTestCase {
         keep(room.screenshot(), named: "n13-staff-room-answer")
         try audit(app, named: "accessibility-audit-staff-room-answer")
 
-        // A second question, stopped with Escape: the answer ends at once, and the room can be asked again
+        // A second question, which the stand-in answers slowly (about half a minute), stopped with Escape: the answer
+        // ends at once, the conversation as the server kept it shows what had arrived and never the rest, and the room
+        // can be asked again (review N13B, M5: no step here is conditional)
         compose.click()
         compose.typeText("And the bullpen?")
         app.typeKey(.return, modifierFlags: .command)
         let stop = element(app, "staffRoom.stop")
-        if stop.waitForExistence(timeout: 10) {
-            app.typeKey(.escape, modifierFlags: [])
-            XCTAssertTrue(stop.waitForNonExistence(timeout: 15), "Escape did not stop the answer")
-        }
+        XCTAssertTrue(stop.waitForExistence(timeout: 30), "no Stop while the slow answer streams")
+        let begun = app.staticTexts.containing(NSPredicate(format: "value CONTAINS %@", "Starting on the bullpen")).firstMatch
+        XCTAssertTrue(begun.waitForExistence(timeout: 30), "the slow answer did not begin to stream")
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(stop.waitForNonExistence(timeout: 15), "Escape did not stop the answer")
+        XCTAssertTrue(begun.waitForExistence(timeout: 30), "what had arrived before Stop was not kept")
+        let rest = app.staticTexts.containing(NSPredicate(format: "value CONTAINS %@", "the whole bullpen read")).firstMatch
+        XCTAssertFalse(rest.exists, "the stopped answer went on to its end")
         keep(room.screenshot(), named: "n13-staff-room-stopped")
 
         // Start over, confirmed as Mail confirms what can't be undone
