@@ -90,6 +90,9 @@ public final class AppModel {
     public private(set) var staffRoom: StaffRoomStore
     /// Storylines and the GM Briefing (`AiWritingStore`, N13), read again when the server's `job` event says one ended.
     public private(set) var writing: AiWritingStore
+    /// Pennant outside its windows (`IntegrationStore`, N14): the glance for the menu bar extra and the widget, and
+    /// Spotlight's list; loaded by the app on `storeKey` and the desk's stamp.
+    public private(set) var integration: IntegrationStore
     /// Where the AI keys are kept (N13): the app's own Keychain items, or memory in tests. The server is handed them on
     /// stdin at its start and again after each change (`saveKey`, `removeKey`); the server never keeps them.
     public nonisolated let keyStore: any KeyStore
@@ -172,6 +175,7 @@ public final class AppModel {
         philosophy = PhilosophyStore { line in log.write(line, source: "app") }
         staffRoom = StaffRoomStore { line in log.write(line, source: "app") }
         writing = AiWritingStore { line in log.write(line, source: "app") }
+        integration = IntegrationStore { line in log.write(line, source: "app") }
         // Once per launch: with the switch gone, kept keys are not read (Settings asks for them again; review N13B, M3)
         if keyStore is KeychainKeyStore, !KeychainItems.canForbidDialogs {
             log.write("the Keychain's switch that forbids dialogs was not found: kept AI keys are not read", source: "app")
@@ -205,7 +209,8 @@ public final class AppModel {
         trades: TradesStore? = nil,
         philosophy: PhilosophyStore? = nil,
         staffRoom: StaffRoomStore? = nil,
-        writing: AiWritingStore? = nil
+        writing: AiWritingStore? = nil,
+        integration: IntegrationStore? = nil
     ) -> AppModel {
         let model = AppModel(configuration: configuration, keys: MemoryKeyStore())
         model.serverState = state
@@ -248,6 +253,7 @@ public final class AppModel {
         if let philosophy { model.philosophy = philosophy }
         if let staffRoom { model.staffRoom = staffRoom }
         if let writing { model.writing = writing }
+        if let integration { model.integration = integration }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }

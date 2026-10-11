@@ -17,6 +17,9 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "PennantKit", targets: ["PennantKit"]),
+        // N14: the glance the app writes to the App Group and the widget reads; Foundation only, so the widget
+        // extension links nothing else of the app's
+        .library(name: "PennantGlance", targets: ["PennantGlance"]),
     ],
     dependencies: [
         .package(path: "../PennantAPI"),
@@ -24,9 +27,11 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.3.1"),
     ],
     targets: [
+        .target(name: "PennantGlance", swiftSettings: concurrency),
         .target(
             name: "PennantKit",
             dependencies: [
+                "PennantGlance",
                 .product(name: "PennantAPI", package: "PennantAPI"),
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
                 .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
@@ -37,6 +42,7 @@ let package = Package(
             name: "PennantKitTests",
             dependencies: [
                 "PennantKit",
+                "PennantGlance",
                 .product(name: "PennantAPI", package: "PennantAPI"),
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
             ],
