@@ -55,6 +55,8 @@ export interface StaffMemberView {
   /** The compose field's placeholder. */
   placeholder: Cell;
   room: boolean;
+  /** What Start over does to this conversation, said in its confirmation ("The conversation with … is cleared."). */
+  startOverWarning: Cell;
 }
 
 /** The room: who can be put in it, who is in by default, and how it works. */
@@ -312,6 +314,27 @@ export interface AiKeysView {
   where: Claim;
   /** Said when no AI surface has a key: everything else in Pennant works without one; null otherwise. */
   off: Claim | null;
+  /**
+   * Said beside a provider whose key the Mac app could not read back from its Keychain (the item is there, but this
+   * build may not read it without asking): enter the key again, and the app keeps it anew. The app shows it only then.
+   */
+  reenter: Claim;
+  /**
+   * Said beside a provider after Remove when the only item left is another copy's (a development build, an earlier
+   * signature), which this copy may neither read nor delete: it is not this copy's key, and nothing here uses it.
+   */
+  otherCopy: Claim;
+  /**
+   * Said beside a provider whose key this copy reads, when another copy has saved one for it more recently: the key
+   * in use may be the older one.
+   */
+  newerElsewhere: Claim;
+  /** Said when a key could not be saved in the Keychain (the system's reason goes in the help tag and the log). */
+  saveFailed: Claim;
+  /** Said when a key could not be removed from the Keychain; it is still kept. */
+  removeFailed: Claim;
+  /** Said when a key was saved or removed but the running server could not be told; it takes effect at the next start. */
+  handOverFailed: Claim;
 }
 
 /** `POST /api/v2/ai/keys/check`: a key to test with its provider (never kept, logged or served back). */

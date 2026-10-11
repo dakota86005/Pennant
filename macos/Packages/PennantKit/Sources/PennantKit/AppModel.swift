@@ -86,6 +86,13 @@ public final class AppModel {
     public private(set) var trades: TradesStore
     /// Philosophy & Staff (`PhilosophyStore`, N12 Track C): the philosophy editor and Coaching Staff.
     public private(set) var philosophy: PhilosophyStore
+    /// The Staff room (`StaffRoomStore`, N13): who can be asked, the conversations, an answer streaming in.
+    public private(set) var staffRoom: StaffRoomStore
+    /// Storylines and the GM Briefing (`AiWritingStore`, N13), read again when the server's `job` event says one ended.
+    public private(set) var writing: AiWritingStore
+    /// Where the AI keys are kept (N13): the app's own Keychain items, or memory in tests. The server is handed them on
+    /// stdin at its start and again after each change (`saveKey`, `removeKey`); the server never keeps them.
+    public nonisolated let keyStore: any KeyStore
     /// The club question still open for the chosen save, as the server last said on the status or the settings (N7,
     /// D-063's club question): while it is set the window holds the report and asks, across a relaunch. Nil when none.
     public private(set) var clubOwed: Components.Schemas.ClubOwed?
@@ -128,14 +135,21 @@ public final class AppModel {
 
     /// - Parameter keptReports: where the Morning Report is kept across launches; the configuration's caches folder
     ///   by default (the app's own, never the data folder). Tests give a scratch folder.
+    /// - Parameter keys: where the AI keys are kept; by default this app's Keychain items (`KeychainKeyStore` for the
+    ///   bundle id), or memory when a controller is given (tests never touch the Keychain).
     public init(
         configuration: ServerConfiguration,
         controller: ServerController? = nil,
         keptReports: KeptReports? = nil,
+        keys: (any KeyStore)? = nil,
         makeClient: @escaping @Sendable (ServerConnection) -> Client = { PennantClient.make(port: $0.port, token: $0.token) }
     ) {
         self.configuration = configuration
-        let controller = controller ?? ServerController(configuration: configuration)
+        let keyStore: any KeyStore = keys ?? (controller == nil
+            ? KeychainKeyStore(service: KeychainKeyStore.service(forBundleID: Bundle.main.bundleIdentifier))
+            : MemoryKeyStore())
+        self.keyStore = keyStore
+        let controller = controller ?? ServerController(configuration: configuration, keySource: keyStore)
         self.controller = controller
         self.backups = controller.backups
         self.makeClient = makeClient
@@ -156,6 +170,12 @@ public final class AppModel {
         players = PlayerStore { line in log.write(line, source: "app") }
         trades = TradesStore { line in log.write(line, source: "app") }
         philosophy = PhilosophyStore { line in log.write(line, source: "app") }
+        staffRoom = StaffRoomStore { line in log.write(line, source: "app") }
+        writing = AiWritingStore { line in log.write(line, source: "app") }
+        // Once per launch: with the switch gone, kept keys are not read (Settings asks for them again; review N13B, M3)
+        if keyStore is KeychainKeyStore, !KeychainItems.canForbidDialogs {
+            log.write("the Keychain's switch that forbids dialogs was not found: kept AI keys are not read", source: "app")
+        }
     }
 
     #if DEBUG
@@ -183,9 +203,11 @@ public final class AppModel {
         leagueOffice: LeagueOfficeStore? = nil,
         scouting: ScoutingStore? = nil,
         trades: TradesStore? = nil,
-        philosophy: PhilosophyStore? = nil
+        philosophy: PhilosophyStore? = nil,
+        staffRoom: StaffRoomStore? = nil,
+        writing: AiWritingStore? = nil
     ) -> AppModel {
-        let model = AppModel(configuration: configuration)
+        let model = AppModel(configuration: configuration, keys: MemoryKeyStore())
         model.serverState = state
         model.status = status ?? state.connection?.status
         model.settings = settings
@@ -224,6 +246,8 @@ public final class AppModel {
         }
         if let trades { model.trades = trades }
         if let philosophy { model.philosophy = philosophy }
+        if let staffRoom { model.staffRoom = staffRoom }
+        if let writing { model.writing = writing }
         model.clubOwed = model.status?.clubOwed ?? settings?.clubOwed
         return model
     }
@@ -737,8 +761,12 @@ public final class AppModel {
             // The minute's look changed what it says (first seen, another save, cleared): as the status would serve it
             savePlayedElsewhere = played.savePlayedElsewhere
             status?.savePlayedElsewhere = played.savePlayedElsewhere
-        case .job, nil:
-            // The storylines and briefing jobs arrive with N13
+        case .job(let job):
+            // Storylines or the briefing finished (or started) writing for the club the app shows: read it again, no
+            // polling (N13)
+            guard club?.ref.id == job.orgId, let piece = AiWritingStore.Piece(rawValue: job.kind) else { return }
+            await writing.load(piece, client: client, key: storeKey, keysRevision: keysRevision, force: true)
+        case nil:
             break
         case .deskChanged(let changed):
             // A status changed (another window, an import that resolved items, a change served with no desk): the desk is
@@ -799,6 +827,8 @@ public final class AppModel {
         scouting.follow(storeKey)
         trades.follow(storeKey)
         philosophy.follow(storeKey)
+        staffRoom.follow(storeKey)
+        writing.follow(storeKey)
         let stamp = next.lastImport?.finishedAt ?? ""
         guard stamp != importStamp else { return }
         importStamp = stamp
@@ -866,6 +896,8 @@ public final class AppModel {
         scouting.follow(storeKey)
         trades.follow(storeKey)
         philosophy.follow(storeKey)
+        staffRoom.follow(storeKey)
+        writing.follow(storeKey)
         if storeKey != nil, !loggedKey {
             loggedKey = true
             controller.log.write("store key known \(launchClock)", source: "app")
@@ -900,9 +932,39 @@ public final class AppModel {
 }
 
 extension AppModel {
-    /// Hands the running server the Keychain's keys again (Settings, N13), and says the AI's state may have changed.
-    public func updateKeys() async {
-        await serverController.updateKeys()
+    /// Hands the running server the Keychain's keys again (Settings, N13), says the AI's state may have changed, and
+    /// says whether the server could be told.
+    @discardableResult
+    public func updateKeys() async -> KeyHandOver {
+        let handed = await serverController.updateKeys()
         keysRevision += 1
+        return handed
+    }
+
+    /// Keeps a provider's key (the Keychain, in the app's own item) and hands the running server the new set, with no
+    /// restart, saying whether it could. The key is never logged or shown again.
+    @discardableResult
+    public func saveKey(_ key: String, for provider: String) async throws(KeyStoreFailure) -> KeyHandOver {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .handedOver }
+        do {
+            try await keyStore.save(trimmed, for: provider)
+        } catch {
+            controller.log.write("could not keep the \(provider) key: \(error.description)", source: "app")
+            throw error
+        }
+        return await updateKeys()
+    }
+
+    /// Removes a provider's key and hands the running server the set without it, saying whether it could.
+    @discardableResult
+    public func removeKey(_ provider: String) async throws(KeyStoreFailure) -> KeyHandOver {
+        do {
+            try await keyStore.remove(provider)
+        } catch {
+            controller.log.write("could not remove the \(provider) key: \(error.description)", source: "app")
+            throw error
+        }
+        return await updateKeys()
     }
 }

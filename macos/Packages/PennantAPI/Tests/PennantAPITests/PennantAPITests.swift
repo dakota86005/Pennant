@@ -399,4 +399,77 @@ struct PennantAPITests {
         #expect(coverage.activityThrough == "2026-5-10")
         #expect(coverage.coveredThrough == nil)
     }
+
+    // MARK: The Staff room's answer stream (N13, D-074)
+
+    private func staffRoomEvents(_ body: String) async throws -> [Components.Schemas.StaffRoomEvent] {
+        let transport = CannedTransport(contentType: "text/event-stream; charset=utf-8", body: body)
+        let response = try await client(transport).askStaffRoom(path: .init(org: "automatic"), body: .json(.init(with: "analyst", question: "How?")))
+        let stream = try response.ok.body.textEventStream
+            .asDecodedServerSentEventsWithJSONData(of: Components.Schemas.StaffRoomEvent.self)
+        var events: [Components.Schemas.StaffRoomEvent] = []
+        for try await event in stream {
+            if let data = event.data { events.append(data) }
+        }
+        return events
+    }
+
+    @Test("the captured Staff room stream decodes, each event to its own kind, one terminal event per answer")
+    func capturedStaffRoomStream() async throws {
+        let events = try await staffRoomEvents(try fixture("staff-room.sse"))
+        let kinds = events.compactMap(\.kind)
+        #expect(kinds.count == events.count)
+        #expect(events.allSatisfy { if case .known = $0.reading { true } else { false } })
+        #expect(kinds.filter(\.isTerminal).count == 2)
+        guard case .answered(let answered) = kinds.first(where: { if case .answered = $0 { true } else { false } }) else {
+            Issue.record("an answered event"); return
+        }
+        #expect(answered.message.answer?.links.first?.url == "pennant://player/1000")
+        guard case .failed(let failed) = kinds.last else { Issue.record("the last is failed"); return }
+        #expect(failed.reason.value1 == .keyRefused)
+        #expect(failed.partial?.answer?.markdown.isEmpty == false)
+    }
+
+    @Test("a Staff room event reads as known, unknown, or known but malformed")
+    func staffRoomEventReading() async throws {
+        let events = try await staffRoomEvents(sse([
+            ("text", #"{"type":"text","messageId":"m1","delta":"Hi"}"#),
+            ("a-later-event", #"{"type":"a-later-event","x":1}"#),
+            ("text", #"{"type":"text","messageId":"m1"}"#),
+        ]))
+        #expect(events.count == 3)
+        guard case .known(.text(let text)) = events[0].reading else { Issue.record("text"); return }
+        #expect(text.delta == "Hi")
+        #expect(events[1].reading == .unknown(type: "a-later-event"))
+        #expect(events[2].reading == .malformed(type: "text"))
+    }
+
+    @Test("the Staff room reading covers every shape the generated union has")
+    func staffRoomReadingCoversEveryShape() {
+        let names = Components.Schemas.StaffRoomEvent.knownTypeNames
+        #expect(names.count == Components.Schemas.StaffRoomEvent.shapeCount)
+        #expect(Set(Components.Schemas.StaffRoomEvent.Kind.typeNames) == names)
+        #expect(names == ["started", "speaker", "looking-up", "text", "notice", "answered", "done", "failed"])
+    }
+
+    @Test("the AI surfaces' captured payloads decode (N13)")
+    func aiSurfaceFixtures() async throws {
+        let decoder = JSONDecoder()
+        func data(_ name: String) throws -> Data { Data(try fixture("responses/\(name).json").utf8) }
+        let room = try decoder.decode(Components.Schemas.StaffRoomView.self, from: data("getStaffRoom"))
+        #expect(room.room?.limit == 4)
+        for name in ["getStaffConversation", "getStaffConversation-written"] {
+            _ = try decoder.decode(Components.Schemas.StaffRoomConversation.self, from: data(name))
+        }
+        _ = try decoder.decode(Components.Schemas.StaffRoomCleared.self, from: data("clearStaffConversation-cleared"))
+        for name in ["getStorylines", "getStorylines-written"] {
+            _ = try decoder.decode(Components.Schemas.StorylinesView.self, from: data(name))
+        }
+        for name in ["getBriefing", "getBriefing-written"] {
+            _ = try decoder.decode(Components.Schemas.BriefingView.self, from: data(name))
+        }
+        let keys = try decoder.decode(Components.Schemas.AiKeysView.self, from: data("getAiKeys"))
+        #expect(keys.providers.isEmpty == false)
+        _ = try decoder.decode(Components.Schemas.AiKeyCheckAnswer.self, from: data("checkAiKey-misshapen"))
+    }
 }

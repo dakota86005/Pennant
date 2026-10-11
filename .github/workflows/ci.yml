@@ -82,6 +82,9 @@ jobs:
           key: pennant-mac-${{ runner.os }}-${{ hashFiles('macos/Packages/PennantKit/Package.resolved', 'macos/Packages/PennantDesign/Package.resolved', 'macos/Packages/PennantFeatures/Package.resolved', 'macos/Pennant.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
       - name: PennantKit tests
         working-directory: macos/Packages/PennantKit
+        # The Keychain tests run only here, on a throwaway runner, never on a developer's Mac (their login keychain)
+        env:
+          PENNANT_KEYCHAIN_TESTS: "1"
         run: swift test --force-resolved-versions
       - name: PennantDesign tests
         working-directory: macos/Packages/PennantDesign
@@ -95,6 +98,25 @@ jobs:
           -derivedDataPath build/macos-ci/DerivedData -clonedSourcePackagesDirPath build/macos-ci/SourcePackages
           -onlyUsePackageVersionsFromResolvedFile -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO PENNANT_SKIP_SERVER=YES build-for-testing
+
+  # The Keychain without a dialog (N13, D-074): the app's Keychain code, compiled into two differently signed copies,
+  # reads and replaces the other copy's item in a throwaway keychain without the system asking anyone anything, and a
+  # control step shows the runner would have shown a dialog otherwise. CI only (macos/scripts/keychain-no-prompt.sh
+  # refuses to run elsewhere); the runner's own keychain list is put back afterwards. No secrets.
+  keychain-no-prompt:
+    name: Mac app (the Keychain never asks)
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: macos/scripts/keychain-no-prompt.sh
+      - name: Keep the probe's log and the control's screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keychain-probe
+          path: build/keychain-probe
+          if-no-files-found: ignore
 
   # The XCUITests (SWIFTUI_REBUILD.md section 8) on GitHub's macOS runner, which has a logged-in GUI session no one is
   # using, so no one's screen is taken over: the app with its bundled server on the synthetic league (never a real

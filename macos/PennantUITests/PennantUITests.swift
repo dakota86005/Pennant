@@ -118,8 +118,11 @@ final class PennantUITests: XCTestCase {
         // left there reaches it; a test's later launches keep what its own first launch wrote
         let fresh = launchedThisTest ? [] : ["-PennantTestFreshDefaults", "YES"]
         launchedThisTest = true
+        // AI keys in memory for every test, never the Keychain of the Mac running them: a key kept there would otherwise
+        // reach a provider (review N13B, M2)
+        let keys = ["-PennantTestKeys", "memory"]
         // Each key equivalent the app receives, and the modifier keys held at launch, said in its log (PR #58)
-        app.launchArguments += state + fresh + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
+        app.launchArguments += state + fresh + keys + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
         app.launch()
         return app
     }
@@ -2225,6 +2228,155 @@ final class PennantUITests: XCTestCase {
             }
             up("Coaching Staff, round \(round)")
         }
+        quitCleanly(app)
+    }
+
+    // MARK: The AI surfaces (N13)
+
+    /// Opens the Staff room from the Window menu (its shortcut, ⇧⌘0, else the item itself), never by the toolbar button,
+    /// so the pointer is not left on the title bar; waits for the element that says it is up.
+    @MainActor
+    private func openStaffRoom(_ app: XCUIApplication, until identifier: String) {
+        app.typeKey("0", modifierFlags: [.command, .shift])
+        if element(app, identifier).waitForExistence(timeout: 10) { return }
+        print("[focus] \(methodName): ⇧⌘0 did not open the Staff room; the Window menu's item is chosen")
+        app.menuBars.menuBarItems["Window"].click()
+        app.menuBars.menuItems["Staff Room"].click()
+    }
+
+    /// Closes the main window with ⌘W (it is key after launch), so the Staff room is audited alone: the audit measures
+    /// each element against the screen, and a main window under the room had its masthead read against the room's pixels.
+    @MainActor
+    private func closeMainWindow(_ app: XCUIApplication) {
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(main.waitForNonExistence(timeout: 10), "⌘W did not close the main window")
+    }
+
+    /// The window holding an element (the Staff room's, the main one's).
+    @MainActor
+    private func window(of app: XCUIApplication, holding identifier: String) -> XCUIElement {
+        app.windows.containing(.any, identifier: identifier).firstMatch
+    }
+
+    /// The Staff room with AI off (no key: the app keeps its keys in memory in tests, never the Mac's Keychain): opened
+    /// from the Window menu's shortcut (the toolbar's Ask Staff is enabled), the people down the side, what the analyst is
+    /// for, one calm served line where the compose field would be; the room's members; audited; closed with ⌘W.
+    @MainActor
+    func testStaffRoomAiOff() throws {
+        let app = launch()
+        waitForShell(app)
+        let ask = element(app, "toolbar.askStaff")
+        XCTAssertTrue(ask.waitForExistence(timeout: 10), "the toolbar has no Ask Staff")
+        XCTAssertTrue(ask.isEnabled, "Ask Staff is still disabled")
+        closeMainWindow(app)
+        // The Window menu names the Staff room once, the item with ⇧⌘0 (review N13B, L7); counted with no window open,
+        // so the menu's list of open windows adds nothing
+        let windowMenu = app.menuBars.menuBarItems["Window"]
+        windowMenu.click()
+        let staffItems = windowMenu.menus.firstMatch.menuItems.matching(NSPredicate(format: "title == %@", "Staff Room"))
+        XCTAssertTrue(staffItems.firstMatch.waitForExistence(timeout: 10), "the Window menu has no Staff Room")
+        XCTAssertEqual(staffItems.count, 1, "the Window menu lists the Staff room more than once")
+        app.typeKey(.escape, modifierFlags: [])
+        openStaffRoom(app, until: "staffRoom.aiOff")
+        let off = element(app, "staffRoom.aiOff")
+        XCTAssertTrue(off.waitForExistence(timeout: 30), "the Staff room did not open, or does not say AI is off")
+        XCTAssertTrue(element(app, "staffRoom.member.analyst").exists, "the analyst is not listed")
+        XCTAssertTrue(element(app, "staffRoom.opening").exists, "the analyst's opening is not shown")
+        XCTAssertFalse(element(app, "staffRoom.compose").exists, "a compose field is offered with AI off")
+        let room = window(of: app, holding: "staffRoom.aiOff")
+        keep(room.screenshot(), named: "n13-staff-room-ai-off")
+        element(app, "staffRoom.member.room").click()
+        XCTAssertTrue(element(app, "staffRoom.room").waitForExistence(timeout: 10), "the room's members are not shown")
+        keep(room.screenshot(), named: "n13-staff-room-ai-off-room")
+        try audit(app, named: "accessibility-audit-staff-room-ai-off")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(off.waitForNonExistence(timeout: 10), "⌘W did not close the Staff room")
+        quitCleanly(app)
+    }
+
+    /// Storylines and the GM Briefing with AI off, in dark: where each stands in the server's words, the write button
+    /// not offered, one calm line; and the Morning Report's collapsed briefing.
+    @MainActor
+    func testStorylinesAndBriefingAiOff() throws {
+        let app = launch(arguments: ["-PennantDebugRoute", "frontOffice.storylines"])
+        waitForShell(app)
+        XCTAssertTrue(element(app, "storylines.aiOff").waitForExistence(timeout: 30), "Storylines does not say AI is off")
+        XCTAssertTrue(element(app, "storylines.status").exists, "Storylines does not say where it stands")
+        XCTAssertFalse(element(app, "storylines.write").isEnabled, "Storylines can be written with AI off")
+        let main = app.windows.firstMatch
+        keep(main.screenshot(), named: "n13-storylines-ai-off-dark")
+        try audit(app, named: "accessibility-audit-storylines-ai-off")
+        element(app, "sidebar.frontOffice.briefing").click()
+        XCTAssertTrue(element(app, "briefing.aiOff").waitForExistence(timeout: 30), "the GM Briefing does not say AI is off")
+        XCTAssertFalse(element(app, "briefing.write").isEnabled, "a briefing can be written with AI off")
+        keep(main.screenshot(), named: "n13-briefing-ai-off-dark")
+        try audit(app, named: "accessibility-audit-briefing-ai-off")
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element(app, "morningReport.briefing").waitForExistence(timeout: 30), "the Morning Report has no GM Briefing")
+        quitCleanly(app)
+    }
+
+    /// The Staff room answering, through the stand-in provider `test.sh` runs on this Mac (never a real one, never a
+    /// key): a question typed and sent with ⌘Return, the answer streamed in and kept, marked as the AI's; the link the
+    /// stand-in made up is drawn as words, never a link; Escape stops a second, slow answer, keeping what had arrived;
+    /// Start over, confirmed, empties it.
+    @MainActor
+    func testStaffRoomAnswer() throws {
+        guard let local = environment["PENNANT_UI_LOCAL_AI"] else {
+            throw XCTSkip("PENNANT_UI_LOCAL_AI is not set: test.sh runs the stand-in provider (macos/scripts/fake-ai-provider.mjs)")
+        }
+        let app = launch(environment: ["PENNANT_DEV_LOCAL_AI_URL": local])
+        waitForShell(app)
+        closeMainWindow(app)
+        openStaffRoom(app, until: "staffRoom.compose")
+        let compose = element(app, "staffRoom.compose")
+        XCTAssertTrue(compose.waitForExistence(timeout: 30), "the Staff room has no compose field with the local provider on")
+        compose.click()
+        compose.typeText("How are we doing?")
+        app.typeKey(.return, modifierFlags: .command)
+        let answered = app.staticTexts.containing(NSPredicate(format: "value CONTAINS %@", "The decision is yours")).firstMatch
+        XCTAssertTrue(answered.waitForExistence(timeout: 60), "no answer arrived; see \(scratch.path)/logs/server.log")
+        XCTAssertTrue(element(app, "ai.marking").waitForExistence(timeout: 30), "the answer is not marked as the AI's")
+        XCTAssertFalse(app.links["this page"].exists, "a link the model made up is drawn as a link")
+        let room = window(of: app, holding: "staffRoom.compose")
+        keep(room.screenshot(), named: "n13-staff-room-answer")
+        try audit(app, named: "accessibility-audit-staff-room-answer")
+
+        // A second question, which the stand-in answers slowly (about half a minute), stopped with Escape: the answer
+        // ends at once, the conversation as the server kept it shows what had arrived and never the rest, and the room
+        // can be asked again (review N13B, M5: no step here is conditional)
+        compose.click()
+        compose.typeText("And the bullpen?")
+        app.typeKey(.return, modifierFlags: .command)
+        let stop = element(app, "staffRoom.stop")
+        XCTAssertTrue(stop.waitForExistence(timeout: 30), "no Stop while the slow answer streams")
+        let begun = app.staticTexts.containing(NSPredicate(format: "value CONTAINS %@", "Starting on the bullpen")).firstMatch
+        XCTAssertTrue(begun.waitForExistence(timeout: 30), "the slow answer did not begin to stream")
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(stop.waitForNonExistence(timeout: 15), "Escape did not stop the answer")
+        XCTAssertTrue(begun.waitForExistence(timeout: 30), "what had arrived before Stop was not kept")
+        let rest = app.staticTexts.containing(NSPredicate(format: "value CONTAINS %@", "the whole bullpen read")).firstMatch
+        XCTAssertFalse(rest.exists, "the stopped answer went on to its end")
+        keep(room.screenshot(), named: "n13-staff-room-stopped")
+
+        // Start over, confirmed as Mail confirms what can't be undone
+        let startOver = element(app, "staffRoom.startOver")
+        XCTAssertTrue(startOver.waitForExistence(timeout: 30), "no Start over")
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: startOver)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 30), .completed, "Start over stayed disabled")
+        startOver.click()
+        // A confirmation sheet on the window (or a dialog): its destructive button is the served "Start over"
+        let named = NSPredicate(format: "label BEGINSWITH[c] %@", "Start")
+        let inSheet = app.sheets.buttons.matching(named).firstMatch
+        let inDialog = app.dialogs.buttons.matching(named).firstMatch
+        let asked = Date.now.addingTimeInterval(10)
+        while !inSheet.exists && !inDialog.exists && Date.now < asked { _ = inSheet.waitForExistence(timeout: 1) }
+        XCTAssertTrue(inSheet.exists || inDialog.exists, "Start over asked for no confirmation")
+        (inSheet.exists ? inSheet : inDialog).click()
+        XCTAssertTrue(element(app, "staffRoom.opening").waitForExistence(timeout: 30), "the conversation was not started over")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(compose.waitForNonExistence(timeout: 10), "⌘W did not close the Staff room")
         quitCleanly(app)
     }
 

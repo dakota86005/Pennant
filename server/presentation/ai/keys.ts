@@ -62,6 +62,16 @@ function rowOf(ctx: AiContext, p: ProviderReading, usedFor: string[]): AiProvide
   };
 }
 
+/** A line about the Mac app's Keychain items, said beside one provider in Settings. */
+function keychainLine(
+  ctx: AiContext, text: string, tone: 'neutral' | 'caution', hint: string, because: { label: string; value: string }[], wouldChange: string[],
+) {
+  return claim({
+    text, tone, hint, links: [],
+    basis: basis({ because, source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange, lean: null, certainty: AI_STATE_CERTAINTY }),
+  });
+}
+
 /** Every provider, where keys are kept, and whether any AI surface is on. */
 export function aiKeysView(
   ctx: AiContext, providers: ProviderReading[], featureProviders: Record<string, string>, keptIn: 'keychain' | 'stored' | 'env', anyOn: boolean,
@@ -94,6 +104,37 @@ export function aiKeysView(
         source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['An AI key in Settings.'], lean: null, certainty: AI_STATE_CERTAINTY,
       }),
     }),
+    reenter: claim({
+      text: 'Pennant couldn\'t read the key saved for this provider. Enter it again.',
+      tone: 'caution', hint: 'Saving it keeps a new copy in your Keychain that Pennant can read', links: [],
+      basis: basis({
+        because: [
+          { label: 'What happened', value: 'A key is saved in your Keychain, but this copy of Pennant was not allowed to read it without asking you (it may have been saved by another build).' },
+          { label: 'What to do', value: 'Enter the key again and save it. Pennant removes the items it may and keeps the key in a new one of its own; an item another copy saved stays where it is, unused.' },
+        ],
+        source: sourceOf(ctx, 'Settings'), unknown: [], wouldChange: ['The key entered again.'], lean: null, certainty: AI_STATE_CERTAINTY,
+      }),
+    }),
+    otherCopy: keychainLine(ctx, 'Another copy of Pennant kept a key for this provider here. This copy doesn\'t use it.', 'neutral',
+      'Enter a key to use one in this copy',
+      [
+        { label: 'What is left', value: 'An item saved by another copy of Pennant (another build, or one signed differently). This copy may neither read nor remove it, so it stays in your Keychain, unused here.' },
+        { label: 'To clear it', value: 'Remove it in the copy that saved it, or in Keychain Access.' },
+      ], ['A key entered here.']),
+    newerElsewhere: keychainLine(ctx, 'Another copy of Pennant saved a newer key for this provider. Enter it again to use it here.', 'caution',
+      'This copy still uses the key it saved',
+      [{ label: 'What happened', value: 'Another copy of Pennant saved a key for this provider after this copy did. This copy may not read that one, so it goes on using its own, which may be older.' }],
+      ['The key entered again.']),
+    saveFailed: keychainLine(ctx, 'Pennant couldn\'t save the key in your Keychain.', 'caution', 'Nothing was changed. Try again',
+      [{ label: 'What happened', value: 'Your Mac\'s Keychain turned the change down. The key was not kept and nothing was handed to Pennant\'s server.' }],
+      ['Saving again.']),
+    removeFailed: keychainLine(ctx, 'Pennant couldn\'t remove the key from your Keychain.', 'caution', 'The key is still kept. Try again',
+      [{ label: 'What happened', value: 'Your Mac\'s Keychain turned the change down, so at least one item for this provider is still kept.' }],
+      ['Removing again.']),
+    handOverFailed: keychainLine(ctx, 'Pennant\'s server couldn\'t be told about the change. It takes effect when Pennant next starts.', 'caution',
+      'Your Keychain has the change',
+      [{ label: 'What happened', value: 'The Keychain was changed, but handing the keys to the running server failed, so it goes on with the ones it had.' }],
+      ['Pennant started again.']),
   };
 }
 

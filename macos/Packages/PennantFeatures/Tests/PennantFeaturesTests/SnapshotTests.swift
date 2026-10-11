@@ -133,7 +133,7 @@ struct SnapshotTests {
             switch tab {
             case .general: GeneralSettings()
             case .appearance: AppearanceSettings()
-            case .ai: AISettings(preloaded: PreviewFixtures.providers)
+            case .ai: AISettings(preloaded: PreviewFixtures.aiKeys)
             }
         }
         let height = SettingsView.height(tab, themes: model.themeChoices?.choices.count ?? 0, refusedPacks: model.themeChoices?.refused.count ?? 0)

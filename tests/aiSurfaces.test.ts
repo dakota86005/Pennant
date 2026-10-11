@@ -576,6 +576,29 @@ describe('the AI keys (D-006, D-055): never served, logged or echoed; only to th
     expect(bannedInPayload(json)).toEqual([]);
   });
 
+  it('serves the Mac app\'s Keychain lines in words: another copy\'s item, a newer one elsewhere, and each failure (review N13B M4, L2, L5, L6)', async () => {
+    const { json } = await get('/api/v2/ai/keys');
+    expect(json.otherCopy.text).toMatch(/^Another copy of Pennant kept a key/);
+    expect(json.newerElsewhere.text).toMatch(/Enter it again/);
+    for (const line of ['reenter', 'otherCopy', 'newerElsewhere', 'saveFailed', 'removeFailed', 'handOverFailed']) {
+      expect(json[line].text.length, line).toBeGreaterThan(0);
+      expect(json[line].hint, line).toBeTruthy();
+      expect(json[line].basis.because.length, line).toBeGreaterThan(0);
+    }
+    for (const line of ['saveFailed', 'removeFailed', 'handOverFailed']) expect(json[line].tone, line).toBe('caution');
+    // The hover says what saving again does: a new item of its own, never that it replaces another copy's (review L4)
+    expect(JSON.stringify(json.reenter.basis)).not.toMatch(/replaces the old item/);
+    expect(bannedInPayload(json)).toEqual([]);
+  });
+
+  it('serves what Start over clears for each conversation, in the confirmation\'s words (review N13B L8)', async () => {
+    const room = (await get(`/api/v2/staff-room/${save.org}`)).json;
+    for (const member of room.staff) {
+      expect(member.startOverWarning.display, member.id).toMatch(/is cleared\. This can't be undone\.$/);
+      if (!member.room) expect(member.startOverWarning.display).toContain(member.name.display);
+    }
+  });
+
   it('checks a key with its own provider without repeating, logging or keeping it', async () => {
     const lines: string[] = [];
     const spies = (['log', 'warn', 'error', 'info'] as const).map((m) => vi.spyOn(console, m).mockImplementation((...args: unknown[]) => { lines.push(args.map(String).join(' ')); }));

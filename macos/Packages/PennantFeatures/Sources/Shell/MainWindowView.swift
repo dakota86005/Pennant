@@ -292,7 +292,7 @@ struct DebugIncreasedContrast: ViewModifier {
     }
 }
 
-/// Back and Forward, Ask Staff (a stub until the staff room, N13) and the inspector toggle. Icons are monochrome.
+/// Back and Forward, Ask Staff (the Staff room, N13) and the inspector toggle. Icons are monochrome.
 struct WindowToolbar: ToolbarContent {
     let window: MainWindowModel
 
@@ -311,10 +311,7 @@ struct WindowToolbar: ToolbarContent {
             DataStatusButton()
         }
         ToolbarItem(placement: .primaryAction) {
-            Button("Ask Staff", systemImage: "bubble.left.and.text.bubble.right") {}
-                .disabled(true)
-                .help(Text("Ask Staff arrives in a later build"))
-                .accessibilityIdentifier("toolbar.askStaff")
+            AskStaffButton()
         }
         ToolbarItem(placement: .primaryAction) {
             Button {
@@ -325,6 +322,17 @@ struct WindowToolbar: ToolbarContent {
             .help(window.inspectorPresented ? Text("Hide Inspector") : Text("Show Inspector"))
             .accessibilityIdentifier("toolbar.inspector")
         }
+    }
+}
+
+/// Ask Staff: opens the Staff room (N13), or brings it forward.
+struct AskStaffButton: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("Ask Staff", systemImage: "bubble.left.and.text.bubble.right") { openWindow(id: SceneID.staff) }
+            .help(Text("Ask Staff"))
+            .accessibilityIdentifier("toolbar.askStaff")
     }
 }
 

@@ -1585,6 +1585,54 @@ jobs and files as the React app.
 - *For Stage B:* the Staff room window and inspector tab, streaming into `AttributedString`, dragging a `PlayerRef` in,
   Storylines and the GM Briefing (the Morning Report's collapsed item 8), and keys stored in the Keychain from Settings.
 
+**As built at N13, Stage B (2026-10-10): the AI surfaces on the Mac.** Branch `feature/swiftui-n13-mac`; D-074 and its
+Stage B amendment (the keys). Every word is the server's; Swift lays it out and opens only what the server named.
+- **The Staff room** is its own window (`Window("Staff Room", id: "staff")`, `StaffRoomScene`), opened by the toolbar's
+  Ask Staff, Window ▸ Staff Room (⇧⌘0), Ask Staff About Him (each player's context menu and the Player menu) or a
+  player dropped on it. Not an inspector tab: the inspector holds the basis of what the window shows, and a conversation
+  that streams wants its own height and width, as Messages has. The served people are down the side (a `List`, the
+  choice kept in `@SceneStorage`); the room's members are toggles (at most the served limit), kept per club in
+  `@AppStorage` (`PennantStaffRoomMembers`), the served default otherwise. A conversation is the served history, then
+  the answer streaming in (`StaffRoomStore`, `StaffRoomAnswer`): deltas drawn with
+  `AttributedString(markdown:options: .inlineOnlyPreservingWhitespace)`, "looking up" steps as quiet lines, the final
+  text swapped in on `answered`; it follows the bottom unless the GM has scrolled up; VoiceOver hears each finished
+  answer once. Links open through `OpenURLAction` only when the server listed them for that text
+  (`AiTextRendering`): a player's or a club's window; every other URL, a web page included, is drawn as words. Send is
+  Return or ⌘Return; Stop is Escape and closes the stream; Start over is confirmed (the server's DELETE cannot be
+  undone). AI off is the served line where the compose field would be; a refusal (409 "already answering", AI off) is
+  the server's sentence; a stream that ends without `done` or `failed` is a failure, with what arrived kept.
+- **Storylines and the GM Briefing** are Front Office views (`StorylinesView`, `BriefingView`), and the briefing is the
+  Morning Report's collapsed item 8 (`BriefingDisclosure`): the served status, the "older" line, a notice, the write
+  button in its words and served enabled state, the marking. The `job` event reloads the piece (`AiWritingStore`); no
+  polling.
+- **Keys** (Settings ▸ AI, on `GET /api/v2/ai/keys`): each provider's served status, use and where to get a key; a
+  secure field, Check key (`POST …/check`, the outcome in words), Save (the app's own Keychain item, then the set handed
+  to the running server on stdin, no restart; the field empties) and Remove. The Keychain design and its CI proof are
+  D-074's Stage B amendment.
+- **Tests:** `StaffRoomTests` (stream order, one end, unknown and malformed events, a dropped connection, refusals,
+  "about him" sent as an id, links, the Keychain items under a test service, keys handed over), PennantAPI's stream
+  reading, `AiSurfacesFeatureTests`, `AiSurfacesSnapshotTests` (local only), and the UI tests `testStaffRoomAiOff`,
+  `testStorylinesAndBriefingAiOff` and `testStaffRoomAnswer`, the last through a stand-in OpenAI-compatible provider
+  that `test.sh` runs on 127.0.0.1 (`macos/scripts/fake-ai-provider.mjs`; the chat set to the local provider, pointed at
+  it with `PENNANT_DEV_LOCAL_AI_URL`), never a real provider or key. The UI tests keep their keys in memory
+  (`-PennantTestKeys memory`). CI run 38093716278 passed every job: the three N13 UI tests with their audits at 0
+  findings (no new set-aside rule), the Keychain probe and all four shards.
+- **After the review (2026-10-10).** An answer belongs to its own question: the stream, its end and the read after it act
+  only while a per-question number is still the one under way, for its save and club, so a new Front Office build
+  mid-answer (`reportStamp` moves) or Stop then a quick question again never leaves an answer running or ends the new
+  one. A store never turns back to a key it has moved past (`FollowedKey`, the Staff room and AI writing). Streamed text
+  is parsed at most every 100 ms and once after the last delta, and the view follows the stream by
+  `StaffRoomAnswer.applied`. The room with nobody in it asks no one. Start over's confirmation says what it clears
+  (`StaffMemberView.startOverWarning`). Window ▸ Staff Room (⇧⌘0) is listed once (the scene's own item removed). In
+  Settings, Return in a key field saves that row (no shared default button); a failed save, removal or hand-over is the
+  server's sentence (`saveFailed`, `removeFailed`, `handOverFailed`), its status only in the help tag and the log; a
+  provider left with another copy's item says so (`otherCopy`), and one whose key is older than another copy's says
+  `newerElsewhere`. **Every Keychain use in the process goes through `KeychainItems`' lock** (`exclusively` for anything
+  else, N14's updater included): the dialog switch is process-wide, and a legacy Keychain call made while it is off
+  fails as if it needed a dialog. Every UI test keeps its keys in memory; the two Keychain package tests run only on
+  CI (`PENNANT_KEYCHAIN_TESTS=1`). The stand-in provider answers "And the bullpen?" slowly, so Escape-to-stop is tested
+  unconditionally.
+
 ### 3.6 Signature interactions
 
 - **Drag and drop** (`Transferable` `PlayerRef` and `ClubRef`): drag a player from any table into:
@@ -2514,7 +2562,7 @@ sizes, not dates.
 | **N10** | Farm & Development | Server: farm copy, Prospects words and Development movers moved. App: Overview, Organization, Affiliates, Assignments, Decision, Prospects, Development tracking | 5 |
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
 | **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
-| **N13** | AI surfaces, native | (*Stage A built: section 3.5, "As built at N13, Stage A"*) Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
+| **N13** | AI surfaces, native | (*Stage A built: section 3.5, "As built at N13, Stage A"; Stage B built: "As built at N13, Stage B"*) Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
 | **N14** | macOS integration and release | App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
 

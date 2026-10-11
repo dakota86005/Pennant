@@ -30,6 +30,10 @@ func scratchFolder(_ label: String = "pennantkit") throws -> URL {
     return folder
 }
 
+/// Whether a test may use the real Keychain: only where `PENNANT_KEYCHAIN_TESTS=1` is set, which CI's runners (throwaway
+/// machines) set and a developer's Mac never does, so no test ever touches the login keychain of the Mac it runs on.
+let keychainTestsAllowed = ProcessInfo.processInfo.environment["PENNANT_KEYCHAIN_TESTS"] == "1"
+
 struct Timeout: Error {}
 
 /// Waits until the controller reaches a state the predicate accepts.
@@ -95,8 +99,15 @@ final class FakeProcess: SidecarProcess, @unchecked Sendable {
     var kills: Int { lock.withLock { _kills } }
     var hasExited: Bool { exitState.finished != nil }
 
+    /// Whether a write to stdin fails (a pipe that broke while the process lives on).
+    var refusesSends: Bool {
+        get { lock.withLock { _refusesSends } }
+        set { lock.withLock { _refusesSends = newValue } }
+    }
+    private var _refusesSends = false
+
     func send(_ data: Data) throws {
-        if hasExited { throw CocoaError(.fileWriteUnknown) }
+        if hasExited || refusesSends { throw CocoaError(.fileWriteUnknown) }
         lock.withLock { _sent.append(data) }
     }
 

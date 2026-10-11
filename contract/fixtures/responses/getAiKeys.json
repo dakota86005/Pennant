@@ -292,5 +292,175 @@
     },
     "links": [],
     "hint": "Add a key to ask your staff, or to have storylines written"
+  },
+  "reenter": {
+    "text": "Pennant couldn't read the key saved for this provider. Enter it again.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "What happened",
+          "value": "A key is saved in your Keychain, but this copy of Pennant was not allowed to read it without asking you (it may have been saved by another build)."
+        },
+        {
+          "label": "What to do",
+          "value": "Enter the key again and save it. Pennant removes the items it may and keeps the key in a new one of its own; an item another copy saved stays where it is, unused."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "The key entered again."
+      ],
+      "lean": null,
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
+    },
+    "links": [],
+    "hint": "Saving it keeps a new copy in your Keychain that Pennant can read"
+  },
+  "otherCopy": {
+    "text": "Another copy of Pennant kept a key for this provider here. This copy doesn't use it.",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "What is left",
+          "value": "An item saved by another copy of Pennant (another build, or one signed differently). This copy may neither read nor remove it, so it stays in your Keychain, unused here."
+        },
+        {
+          "label": "To clear it",
+          "value": "Remove it in the copy that saved it, or in Keychain Access."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "A key entered here."
+      ],
+      "lean": null,
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
+    },
+    "links": [],
+    "hint": "Enter a key to use one in this copy"
+  },
+  "newerElsewhere": {
+    "text": "Another copy of Pennant saved a newer key for this provider. Enter it again to use it here.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "What happened",
+          "value": "Another copy of Pennant saved a key for this provider after this copy did. This copy may not read that one, so it goes on using its own, which may be older."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "The key entered again."
+      ],
+      "lean": null,
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
+    },
+    "links": [],
+    "hint": "This copy still uses the key it saved"
+  },
+  "saveFailed": {
+    "text": "Pennant couldn't save the key in your Keychain.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "What happened",
+          "value": "Your Mac's Keychain turned the change down. The key was not kept and nothing was handed to Pennant's server."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Saving again."
+      ],
+      "lean": null,
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
+    },
+    "links": [],
+    "hint": "Nothing was changed. Try again"
+  },
+  "removeFailed": {
+    "text": "Pennant couldn't remove the key from your Keychain.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "What happened",
+          "value": "Your Mac's Keychain turned the change down, so at least one item for this provider is still kept."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Removing again."
+      ],
+      "lean": null,
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
+    },
+    "links": [],
+    "hint": "The key is still kept. Try again"
+  },
+  "handOverFailed": {
+    "text": "Pennant's server couldn't be told about the change. It takes effect when Pennant next starts.",
+    "tone": "caution",
+    "basis": {
+      "because": [
+        {
+          "label": "What happened",
+          "value": "The Keychain was changed, but handing the keys to the running server failed, so it goes on with the ones it had."
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "Settings",
+        "asOf": null,
+        "gameDate": null
+      },
+      "unknown": [],
+      "wouldChange": [
+        "Pennant started again."
+      ],
+      "lean": null,
+      "certainty": "recorded",
+      "called": "From Pennant's own record"
+    },
+    "links": [],
+    "hint": "Your Keychain has the change"
   }
 }

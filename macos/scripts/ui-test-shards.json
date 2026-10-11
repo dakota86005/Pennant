@@ -13,7 +13,8 @@
       "PennantUITests/testPlayerNoteKeptOnLeaving": 45,
       "PennantUITests/testClubOwedAfterSetupCloses": 19,
       "PennantUITests/testSetupFlowOnAScratchFolder": 16,
-      "PennantUITests/testLaunchWithKeptPayload": 12
+      "PennantUITests/testLaunchWithKeptPayload": 12,
+      "PennantUITests/testStaffRoomAnswer": 90
     },
     {
       "PennantUITests/testClubhouseNarrowWindow": 971,
@@ -23,7 +24,8 @@
       "PennantUITests/testGlassShellExamplePackLight": 53,
       "PennantUITests/testClubhouseWideWindow": 45,
       "PennantUITests/testPlayerWindowRestored": 16,
-      "ScrollClipTests": 0
+      "ScrollClipTests": 0,
+      "PennantUITests/testStaffRoomAiOff": 60
     },
     {
       "PennantUITests/testLeagueOfficeNarrowWindow": 701,
@@ -34,7 +36,8 @@
       "PennantUITests/testDeskMarkAndUndo": 57,
       "PennantUITests/testCompareByMenuAndDrag": 47,
       "PennantUITests/testFollowByDrag": 42,
-      "PennantUITests/testStartsTheServerAndQuitsCleanly": 7
+      "PennantUITests/testStartsTheServerAndQuitsCleanly": 7,
+      "PennantUITests/testStorylinesAndBriefingAiOff": 90
     },
     {
       "PennantUITests/testFinanceNarrowWindow": 519,

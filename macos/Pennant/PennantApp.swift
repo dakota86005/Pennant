@@ -64,6 +64,17 @@ struct PennantApp: App {
         .defaultSize(width: 980, height: 760)
         .commandsRemoved()
 
+        // The Staff room (N13): the people the club can ask, a conversation each, an answer streaming in
+        Window("Staff Room", id: SceneID.staff) {
+            StaffRoomScene()
+                .environment(appDelegate.model)
+                .environment(appDelegate.routing)
+        }
+        // Fits GitHub's runner's 1024 × 768 screen whole
+        .defaultSize(width: 860, height: 600)
+        // Window ▸ Staff Room (⇧⌘0) is the app's own command: the scene adds no second item (review N13B, L7)
+        .commandsRemoved()
+
         Window("Set Up Pennant", id: SceneID.setup) {
             SetupScene()
                 .environment(appDelegate.model)
@@ -111,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             savedStateLine = FreshTestState.removeSavedWindows(bundleId: id)
         }
         #endif
-        let model = AppModel(configuration: AppConfiguration.server())
+        let model = AppModel(configuration: AppConfiguration.server(), keys: AppConfiguration.keyStore())
         let controller = model.serverController
         self.model = model
         outside = OutsideTheWindow(model: model)
