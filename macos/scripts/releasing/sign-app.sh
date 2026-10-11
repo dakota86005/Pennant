@@ -51,6 +51,17 @@ entitlements_for() {
   fi
   sed -e "s/\$(TeamIdentifierPrefix)/${team}./g" -e "s/\$(AppIdentifierPrefix)/${team}./g" \
     "${file}" > "${SCRATCH}/${name}.entitlements"
+  if grep -q '\$[({]' "${SCRATCH}/${name}.entitlements"; then
+    release_fail "${file} still holds a build setting to fill in; build with build-app.sh, which fills them in."
+  fi
+  # A Developer ID signature's team must be the App Group's prefix, or the app and its widget share nothing
+  if [ "${IDENTITY}" != "-" ]; then
+    local group
+    while IFS= read -r group; do
+      case "${group}" in "${APPLE_TEAM_ID:-}."*) ;; *) release_fail "${name}'s App Group ${group} is not team ${APPLE_TEAM_ID:-?}'s." ;; esac
+    done < <(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups' \
+      "${SCRATCH}/${name}.entitlements" 2>/dev/null | sed -e '1d' -e '$d' -e 's/^ *//')
+  fi
   ENT=(--entitlements "${SCRATCH}/${name}.entitlements")
 }
 is_macho() { /usr/bin/file -b "$1" | grep -q '^Mach-O'; }

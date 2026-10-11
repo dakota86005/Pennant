@@ -559,7 +559,7 @@ through the scripts in `macos/scripts/releasing/`:
 
 | Step | Script | What it does |
 |---|---|---|
-| Build | `build-app.sh` | The Release configuration, unsigned, with the staged server (`npm run mac:stage`). The version comes from `package.json` at build time, for the app and each extension, and is checked (`version.sh --check-app`). Writes `entitlements.tsv`, each target's entitlements file as the project names it. |
+| Build | `build-app.sh` | The Release configuration, unsigned, with the staged server (`npm run mac:stage`). The version comes from `package.json` at build time, for the app and each extension, and is checked (`version.sh --check-app`). Writes `entitlements.tsv`: each target's entitlements file as the project names it, its build settings filled in (`entitlements.mjs`; the App Group, with the signing team from `APPLE_TEAM_ID`). |
 | Sign | `sign-app.sh` | Inside out (SWIFTUI_REBUILD.md section 5.2): each Mach-O file in `Resources` (the `.node` files), the Node binary with only `allow-jit` and `allow-unsigned-executable-memory`, each framework's helpers then the framework (Sparkle), each app extension with its own entitlements, the app last with the hardened runtime and no JIT or sandbox entitlement (refused if present). Ends with `codesign --verify --deep --strict`. |
 | Notarize | `notarize.sh` | `notarytool submit --wait` with the app-specific password, then `stapler staple` and `validate`. Run on the app, then on the DMG. A rejection prints Apple's log. |
 | DMG | `make-dmg.sh` | `hdiutil`: the app and an `/Applications` link, compressed, signed with the Developer ID. Named `Pennant-for-Mac-<version>.dmg` (the Electron DMG is `Pennant-<version>-<arch>.dmg`). |

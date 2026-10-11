@@ -153,6 +153,32 @@ describe('without the secrets the pipeline fails, naming them', () => {
   });
 });
 
+describe('each bundle\'s entitlements, with its build settings filled in', () => {
+  const settings = (b: Record<string, string>) => ({ buildSettings: { SRCROOT: scratch, ...b } });
+  const fill = (targets: object[]) =>
+    spawnSync('node', [path.join(SCRIPTS, 'entitlements.mjs'), path.join(scratch, 'filled')], { input: JSON.stringify(targets), encoding: 'utf8' });
+
+  it('fills in the target\'s settings, keeps the identity\'s prefixes, and skips the test bundle', () => {
+    fs.writeFileSync(path.join(scratch, 'App.entitlements'), '<string>$(PENNANT_APP_GROUP)</string><string>$(TeamIdentifierPrefix)x</string>');
+    const r = fill([
+      settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant', CODE_SIGN_ENTITLEMENTS: 'App.entitlements', PENNANT_APP_GROUP: 'TEAM.group.com.dakotawise.pennant' }),
+      settings({ WRAPPER_EXTENSION: 'xctest', FULL_PRODUCT_NAME: 'PennantUITests.xctest', TARGET_NAME: 'PennantUITests' }),
+      settings({ WRAPPER_EXTENSION: 'appex', FULL_PRODUCT_NAME: 'Other.appex', TARGET_NAME: 'Other' }),
+    ]);
+    expect(r.status).toBe(0);
+    const file = path.join(scratch, 'filled', 'Pennant.app.entitlements');
+    expect(r.stdout).toBe(`Pennant.app\t${file}\nOther.appex\t\n`);
+    expect(fs.readFileSync(file, 'utf8')).toBe('<string>TEAM.group.com.dakotawise.pennant</string><string>$(TeamIdentifierPrefix)x</string>');
+  });
+
+  it('stops on a setting the target does not define', () => {
+    fs.writeFileSync(path.join(scratch, 'Undefined.entitlements'), '<string>$(NOT_A_SETTING)</string>');
+    const r = fill([settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant', CODE_SIGN_ENTITLEMENTS: 'Undefined.entitlements' })]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('NOT_A_SETTING');
+  });
+});
+
 describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () => {
   const machO = '/usr/bin/true'; // any Mach-O file stands in for a binary; signing replaces its signature
 
@@ -262,6 +288,13 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     const r = run('sign-app.sh', [app, '-', tsv]);
     expect(r.status).not.toBe(0);
     expect(r.err).toContain('nowhere.entitlements');
+  });
+
+  it('refuses entitlements whose build settings were never filled in', () => {
+    const { app, tsv } = fakeApp('unfilled', '<key>com.apple.security.application-groups</key><array><string>$(PENNANT_APP_GROUP)</string></array>');
+    const r = run('sign-app.sh', [app, '-', tsv]);
+    expect(r.status).not.toBe(0);
+    expect(r.err).toContain('build setting');
   });
 
   it('refuses an app with no server inside', () => {

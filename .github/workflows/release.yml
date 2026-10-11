@@ -131,6 +131,9 @@ jobs:
       - run: npm run mac:stage
       - name: Build the Release app (unsigned)
         run: macos/scripts/releasing/build-app.sh build/mac-release
+        env:
+          # The signing team, so the App Group shared with the widget carries its prefix
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Pack the unsigned app (for inspection only)
         run: >
           macos/scripts/releasing/make-dmg.sh build/mac-release/Pennant.app
