@@ -3304,3 +3304,50 @@ answering byte for byte as before. SWIFTUI_REBUILD.md section 3.5, "As built at 
   with `-PennantTestKeys memory`; the package tests use `NoKeys`, `FixedKeys`, `MemoryKeyStore`, and the two that use
   the real Keychain run only where `PENNANT_KEYCHAIN_TESTS=1` is set (CI's throwaway runners), never on a developer's
   Mac.
+
+## D-075 — Pennant outside its windows: Shortcuts and Spotlight open and show, the widget and the menu bar draw the served glance
+
+**Status:** Proposed (N14 Stage A builder, 2026-10-10). Applies D-001, D-056, D-058 and D-060 to the Mac app's macOS
+integration. **Implementation:** the server's `GET /api/v2/glance/:org` (`server/presentation/frontOffice/glance.ts`,
+`server/glanceService.ts`) and `GET /api/v2/spotlight/:org` (`server/presentation/spotlightWords.ts`); PennantKit's
+`PennantGlance` library (`GlanceSnapshot`, `GlanceSnapshotStore`, `AppGroup`, `GlanceTimeline`) and `IntegrationStore`;
+the app target's `AppIntents.swift`, `Entities.swift`, `IntentRouter.swift`, `Integration.swift` and the `MenuBarExtra`
+scene; Shell's `MenuBarGlanceView` and the Settings switch; the `PennantWidgets` extension. SWIFTUI_REBUILD.md section 6,
+"As built at N14, Stage A".
+
+- **Every word outside the windows is the Morning Report's or the search's.** The glance is the summary's own record,
+  next game (the Tonight card's `when`, `matchup` and claim), "as of" line and desk, picked, never re-judged: the desk's
+  count is the served open count the Dock badge shows, worded on the server ("3 to decide", "Nothing to decide", "At least
+  3 to decide" when a department could not be read: a floor, never a total), its first three items in the desk's own
+  order. A record or game not shown is the masthead's sentence saying why. No odds, posture or window label (D-060).
+- **Spotlight is given the served list, exactly.** Our organization's players at every level the search index holds (the
+  farm included) and the league's major-league clubs, by name, in the search's words: names, positions and clubs, never a
+  rating or a value. After each import the app replaces what Spotlight holds of Pennant's with it (`deleteAppEntities`,
+  then `indexAppEntities`). A release build indexes by itself; a development build only when asked
+  (`-PennantDevSpotlight YES`), so a scratch league never fills a developer's Spotlight.
+- **Intents open and show; none decides or acts on OOTP (D-001).** Open Player and Open Club (`OpenIntent`s, which
+  Spotlight uses for its results), Open the Morning Report, Ask Staff About a Player (Player ▸ Ask Staff About Him: the
+  server words the question, and the Staff room asks only while AI is on; with AI off it shows the served line and asks
+  nothing) and Refresh Data (Club ▸ Refresh Data: an import of the export already on disk). Entities are resolved from the
+  served list and the served search; an id the list does not hold keeps only its id, since what opens a player is his id.
+  Titles and parameter names are structural labels in the String Catalog.
+- **The widget draws the last served glance and never calls the server.** The app writes a small JSON snapshot (served
+  strings and figures, and the club card's served colour pairs) to the App Group after each refresh and desk change,
+  whole or not at all, and asks WidgetKit to reload. With no snapshot the widget says so in its catalog's words; a
+  snapshot not refreshed for a day is drawn with its served words and marked "Out of date" (the app's own freshness rule
+  about its own file; the served "as of" says how current the data is). Colours are the served card pair only where it
+  reads at the server's bar (4.5:1, 7:1 with Increase Contrast), checked again as drawn, else Pennant's fixed, checked page
+  and text colours. Small and medium families.
+- **The App Group is `<TEAMID>.group.com.dakotawise.pennant`, and `….pennant.dev` for a development build**, so a
+  development build never writes the release widget's glance (as D-074 keeps one Keychain service per bundle id). The
+  Team-ID prefix is the macOS-style group, which needs no provisioning profile and spares the person macOS 15's prompt
+  about reaching another app's data. The app reaches the container only when its own signature carries the group
+  (`SecTaskCopyValueForEntitlement`): an unsigned build (CI's) or one signed without it writes no snapshot, touches no
+  group folder and fails nowhere. Tests and the UI tests write to a scratch folder (`-PennantDevGlanceFolder`), never
+  the Mac's App Group.
+- **The menu bar extra is off until the GM turns it on** (Settings ▸ General, "Show Pennant in the Menu Bar", the app's
+  own defaults). Its window shows the served glance on an opaque, checked page and Open Pennant, which brings the main
+  window forward on the Morning Report (or opens one on it).
+- **"Show in Spotlight" is not offered in the context menus.** macOS has no call that opens Spotlight on an app's
+  entity; `NSWorkspace.showSearchResults(forQueryString:)` opens a Finder search of files, where indexed app entities do
+  not appear, so the item would open an empty window. Spotlight finds the players and clubs by name as indexed.
