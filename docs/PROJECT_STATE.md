@@ -228,6 +228,13 @@ display.
   needs Apple secrets the repository does not hold, so the macOS release job
   cannot pass yet; Windows builds are intentionally unsigned
   ([DEVELOPMENT.md](DEVELOPMENT.md#releases)).
+- Pennant for Mac (the SwiftUI app) has its own release job beside the Electron
+  ones (`pennant-mac`, N14 Stage B, D-076): a Release build signed inside out,
+  notarized and stapled, a DMG (`Pennant-for-Mac-<version>.dmg`), and a Sparkle
+  appcast attached to the same release. The six secrets it needs are not in the
+  repository yet, so it packs an unsigned DMG for inspection and fails naming
+  them; an ad-hoc dry run on a Mac works (DEVELOPMENT.md, "Releasing Pennant for
+  Mac").
 - Identity: product name, repository addresses and the version come from
   `server/project.ts` and `server/appInfo.ts` (D-049). The Electron `appId` is
   `com.dakotawise.pennant`, the package author is Dakota Wise, and release tags

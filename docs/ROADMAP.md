@@ -270,8 +270,10 @@ Next, in dependency order:
 
 Nothing here is baseball work; each item needs the owner.
 
-- The five signing secrets (DEVELOPMENT.md), so a macOS release can be signed and notarized. The owner enrolled in
-  the Apple Developer Program on 2026-09-25; the Developer ID certificates exist.
+- The five signing secrets and Sparkle's key pair (DEVELOPMENT.md, "Releasing Pennant for Mac", the owner's one-time
+  setup), so a macOS release can be signed, notarized and offered as an update. The owner enrolled in the Apple
+  Developer Program on 2026-09-25; the Developer ID certificates exist. The pipeline that uses them is built (N14,
+  Stage B, D-076) and fails naming each one until they are added.
 - Vector brand masters and a macOS icon variant.
 - Whether to rename the GitHub repository (D-049).
 - The first tagged release (`pennant-v0.1.0`), once the above are settled. The application id
