@@ -2784,6 +2784,15 @@ Same branch, after Stage A merged (PR #67). D-076, "The updater in the app" and 
   findings on the runner, run 38429217123). The audit's first run found the last check in the system's secondary grey
   (3.9:1; now `.readableSecondary`) and the Settings window's hosting group unnamed (now named as the sidebar's column
   is, `SettingsPaneName`).
+- **Review fixes**: `SettingsPaneName` had named every unnamed group up to the window "Updates", and the window
+  outlives a switch of tab; it now names only the nearest group, never past the window's content view ("Updates"
+  inside a tab view's item, "Settings" for a container every tab shares), and `testUpdatesSettingsAndMenu` checks
+  that General then shows nothing called Updates outside the toolbar. `testDepartmentsInspectorAndSettings` (no
+  updater) asserts Check for Updates… is unavailable. The last check is also read again at the end of every update
+  cycle (Sparkle's header calls `lastUpdateCheckDate` nowhere KVO compliant). In the scripts' tests: Sparkle 2.10.0's
+  `Downloader.xpc` ships an empty set of entitlements, and the stand-in now does too; netrc is checked on each
+  package-resolving `xcodebuild` call, not each file; `entitlements.mjs` stops on a product listed twice with different
+  entitlements.
 
 ### Dependencies (approved by the owner, 2026-09-25)
 
