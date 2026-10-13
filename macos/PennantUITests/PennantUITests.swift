@@ -2328,6 +2328,52 @@ final class PennantUITests: XCTestCase {
         quitCleanly(app)
     }
 
+    // MARK: Updates (N14, Stage B)
+
+    /// Check for Updates… in the app menu, below About, and Settings ▸ Updates' switch: off until the GM turns it on
+    /// (consent first), turned on, and the tab audited alone. The app runs with its updater in memory
+    /// (`-PennantTestUpdater memory`), never Sparkle, so nothing reaches the network; the menu item is found, never
+    /// clicked, since a Debug build has no feed.
+    @MainActor
+    func testUpdatesSettingsAndMenu() throws {
+        let app = launch(arguments: ["-PennantTestUpdater", "memory"])
+        waitForShell(app)
+
+        // The app menu's item, below About, without opening the menu
+        let check = app.menuBars.menuItems["Check for Updates…"].firstMatch
+        XCTAssertTrue(check.waitForExistence(timeout: 5), "no Check for Updates… in the app menu")
+        XCTAssertTrue(check.isEnabled, "Check for Updates… was unavailable with an updater")
+        let appMenu = app.menuBars.menuBarItems["Pennant"].menus.firstMatch
+        let titles = appMenu.menuItems.allElementsBoundByIndex.map(\.title).filter { !$0.isEmpty }
+        if let about = titles.firstIndex(where: { $0.hasPrefix("About") }), let at = titles.firstIndex(of: "Check for Updates…"),
+           let settings = titles.firstIndex(where: { $0.hasPrefix("Settings") }) {
+            XCTAssertTrue(about < at && at < settings, "Check for Updates… is not between About and Settings: \(titles)")
+        } else {
+            XCTFail("the app menu's items were \(titles)")
+        }
+
+        // Settings alone, so its audit measures only its own window (D-075): the main window closes first
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        XCTAssertTrue(main.waitForExistence(timeout: 5), "no main window")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
+        app.typeKey(",", modifierFlags: .command)
+        let tab = app.toolbars.buttons["Updates"].firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "no Updates tab")
+        tab.click()
+        XCTAssertTrue(element(app, "settings.updates").waitForExistence(timeout: 5), "Settings ▸ Updates did not show")
+        let toggle = element(app, "settings.updates.automatic")
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "no automatic-check switch in Settings ▸ Updates")
+        XCTAssertTrue(waitForValue(toggle, on: false), "automatic checks were on before the GM said yes")
+        XCTAssertTrue(element(app, "settings.updates.lastCheck").exists, "no last check in Settings ▸ Updates")
+        toggle.click()
+        XCTAssertTrue(waitForValue(toggle, on: true), "the automatic-check switch did not turn on (value \(String(describing: toggle.value)))")
+        keep(app.windows.firstMatch.screenshot(), named: "n14-settings-updates")
+        try audit(app, named: "accessibility-audit-settings-updates")
+        app.typeKey("w", modifierFlags: .command)
+        quitCleanly(app)
+    }
+
     /// The part of a window a click reaches: inside its frame, below its toolbar, and within its screen's visible frame
     /// (below the menu bar, above the Dock), in the screen coordinates of `XCUIElement.frame` (top-left origin).
     @MainActor

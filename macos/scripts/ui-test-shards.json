@@ -49,7 +49,8 @@
       "PennantUITests/testClubWindow": 66,
       "PennantUITests/testClubhouseWideWindowDark": 45,
       "PennantUITests/testSearchToClubWindow": 40,
-      "PennantUITests/testZeroQuestionFirstRun": 11
+      "PennantUITests/testZeroQuestionFirstRun": 11,
+      "PennantUITests/testUpdatesSettingsAndMenu": 30
     }
   ]
 }
