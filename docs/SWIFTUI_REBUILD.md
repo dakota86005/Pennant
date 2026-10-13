@@ -2453,8 +2453,10 @@ and `staff-options`, light and dark.
   the path with no main window open. The audit reads the panel, a dialog in the tree, in its own pixels, as it reads a
   window's (D-075's amendment: audits measure the key window; a finding on a window that is not key means the test
   isolates the window under audit, never a set-aside). The panel, which the audit found with no description, is titled
-  "Pennant" once from inside it (`MenuBarPanelTitle`), and the glance's root container carries `.accessibilityLabel`;
-  the earlier walk up AppKit's views is gone (review N14A, L9). The test clicks the status item once and the Settings
+  "Pennant" once from inside it (`MenuBarPanelTitle`: `window.title`). The hosting view AppKit puts in it, a group no
+  SwiftUI modifier reaches, is still found unnamed with `.accessibilityLabel` on the glance's root container (run
+  38348239530), so the one unnamed group nearest the panel is labelled "Pennant", once; the earlier version labelled
+  every unnamed group up the chain and the panel's accessibility label (review N14A, L9). The test clicks the status item once and the Settings
   switch only once it is scrolled wholly into reach (below the toolbar, above the Dock), each asserted, never retried.
 - **Review fixes (review N14A, 2026-10-12):** the UI tests never reach the App Group or Spotlight (M1, M2); the save and
   club are followed outside the windows (M3, L2, L3, L6); intent descriptions are catalogued and the string-catalog test

@@ -32,9 +32,8 @@ public struct MenuBarGlanceView: View {
         .foregroundStyle(Color(nsColor: .labelColor))
         .background(Color(nsColor: .readablePage))
         .background(MenuBarPanelTitle())
-        // A container of its own, named for VoiceOver, so its identifier names it and never replaces its children's
+        // A container of its own, so its identifier names it and never replaces its children's
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(MenuBarPanelTitle.title))
         .accessibilityIdentifier("menuBarExtra")
     }
 
@@ -129,21 +128,40 @@ struct GlanceBody: View {
     }
 }
 
-/// Titles the menu bar extra's panel "Pennant", once, from inside it: the window AppKit makes for a `MenuBarExtra` has no
-/// title, and the accessibility audit on GitHub's runner found it, a dialog, with no description (run 38116687375). The
-/// title is the panel's own name, as any window's is; the glance inside is named by its container's
-/// `.accessibilityLabel` (review N14A, L9). Draws nothing.
+/// Names the menu bar extra's panel "Pennant", once, from inside it (review N14A, L9). AppKit makes the panel and the
+/// hosting view in it for a `MenuBarExtra`, and the accessibility audit on GitHub's runner found both with no description
+/// (run 38116687375). The panel gets the title any window has (`window.title`). The hosting view, which vends itself as a
+/// group, is reached by no SwiftUI modifier: run 38348239530 found it unnamed with `.accessibilityLabel` on the glance's
+/// root container, so the one unnamed group nearest the panel, between this view and the panel's content view, is
+/// labelled, as the sidebar column's container is. One group only, never the nested ones, and only its label. Draws
+/// nothing.
 struct MenuBarPanelTitle: NSViewRepresentable {
     static let title: LocalizedStringResource = "Pennant"
 
-    func makeNSView(context: Context) -> TitlesItsWindow { TitlesItsWindow() }
-    func updateNSView(_ view: TitlesItsWindow, context: Context) {}
+    func makeNSView(context: Context) -> NamesItsPanel { NamesItsPanel() }
+    func updateNSView(_ view: NamesItsPanel, context: Context) {}
 
-    final class TitlesItsWindow: NSView {
+    final class NamesItsPanel: NSView {
+        /// The panel named, so a later move names no inner group in turn.
+        private weak var named: NSWindow?
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard let window, window.title.isEmpty else { return }
-            window.title = String(localized: MenuBarPanelTitle.title)
+            guard let window, window !== named else { return }
+            named = window
+            let name = String(localized: MenuBarPanelTitle.title)
+            if window.title.isEmpty { window.title = name }
+            var outermost: NSView?
+            var view = superview
+            while let current = view {
+                if current.isAccessibilityElement(), current.accessibilityRole() == .group,
+                   current.accessibilityLabel()?.isEmpty ?? true {
+                    outermost = current
+                }
+                if current === window.contentView { break }
+                view = current.superview
+            }
+            outermost?.setAccessibilityLabel(name)
         }
 
         override func isAccessibilityElement() -> Bool { false }
