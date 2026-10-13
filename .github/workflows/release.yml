@@ -267,7 +267,12 @@ jobs:
           name: windows
           path: artifacts/windows
 
-      - name: Attach installers to the release
+      # Draft first (D-076): the release is created as a draft, every asset is
+      # uploaded and checked, and only then is it published as the latest. A
+      # failure anywhere leaves a draft nobody sees, and the previous release
+      # stays the latest, so no client is ever offered a release missing an
+      # installer or a manifest. Re-running the failed run finishes the draft.
+      - name: Upload the installers to a draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -291,22 +296,28 @@ jobs:
           # and went on to upload twelve assets to a release that was never
           # created — twelve "release not found" lines and a red run holding a
           # perfectly good pair of installers. Retry the create; only an explicit
-          # "already exists" is a reason to skip it.
+          # "already exists" is a reason to skip it, and then only for a draft:
+          # a published release is never changed by a re-run.
           created=
           for attempt in 1 2 3 4 5; do
             if out=$(gh release create "${GITHUB_REF_NAME}" \
                        --repo "${GITHUB_REPOSITORY}" \
                        --title "Pennant ${GITHUB_REF_NAME#pennant-v}" \
-                       --generate-notes 2>&1); then
+                       --generate-notes --draft 2>&1); then
               created=yes
-              echo "Release created"
+              echo "Draft release created"
               break
             fi
             echo "${out}"
             case "${out}" in
               *already*exists*)
+                draft=$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft -q .isDraft)
+                if [ "${draft}" != "true" ]; then
+                  echo "::error::${GITHUB_REF_NAME} is already published; a re-run never changes a published release"
+                  exit 1
+                fi
                 created=yes
-                echo "Release already exists — uploading to it"
+                echo "The draft already exists — uploading to it"
                 break
                 ;;
             esac
@@ -314,7 +325,7 @@ jobs:
             sleep $(( attempt * 15 ))
           done
           if [ -z "${created}" ]; then
-            echo "::error::Could not create the release after 5 attempts"
+            echo "::error::Could not create the draft release after 5 attempts"
             exit 1
           fi
 
@@ -334,14 +345,46 @@ jobs:
             upload "${asset}" || exit 1
           done < assets.zero
 
-          # The manifests must be present or clients never learn a release exists
+      # Every file built is on the draft, at its size, and the manifests are
+      # there, or clients never learn a release exists
+      - name: Verify the draft's assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          draft=$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft -q .isDraft)
+          [ "${draft}" = "true" ] || { echo "::error::${GITHUB_REF_NAME} is not a draft"; exit 1; }
           gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
-            --json assets -q '.assets[].name' > published.txt
-          cat published.txt
+            --json assets -q '.assets[] | "\(.name)\t\(.size)"' | sort > published.tsv
+          cat published.tsv
+          while IFS= read -r -d '' asset; do
+            printf '%s\t%s\n' "$(basename "${asset}")" "$(stat -c %s "${asset}")"
+          done < assets.zero | sort > built.tsv
+          missing=$(comm -23 built.tsv published.tsv)
+          if [ -n "${missing}" ]; then
+            echo "::error::Not on the draft at the size built:"
+            echo "${missing}"
+            exit 1
+          fi
           for f in latest-mac.yml latest.yml; do
-            grep -qx "$f" published.txt \
+            cut -f1 published.tsv | grep -qx "$f" \
               || { echo "::error::$f missing from the release — auto-update will not work"; exit 1; }
           done
+
+      # Last, and only after the verification: the draft becomes the release
+      # and the latest one, which is what the updaters read
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --latest && break
+            echo "Publish failed (attempt ${attempt})"
+            if [ "${attempt}" = 5 ]; then echo "::error::Could not publish the release; it is still a draft"; exit 1; fi
+            sleep $(( attempt * 15 ))
+          done
+          draft=$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft -q .isDraft)
+          [ "${draft}" = "false" ] || { echo "::error::${GITHUB_REF_NAME} is still a draft"; exit 1; }
+          echo "Published ${GITHUB_REF_NAME} as the latest release"
 
   # Pennant for Mac's update feed (D-076), by hand only until N15, and never
   # published: generate_appcast, from the Sparkle release the app links (pinned

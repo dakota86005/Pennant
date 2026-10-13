@@ -194,6 +194,27 @@ describe('release.yml: tags and secrets', () => {
     expect(all['pennant-mac']).toContain('check-updater.sh build/mac-release/Pennant.app');
   });
 
+  it('publishes draft first: creates a draft, uploads, verifies, and only then publishes, as its last step', () => {
+    const release = steps(all.release);
+    const names = release.map((s) => s.name);
+    const upload = release.find((s) => s.name === 'Upload the installers to a draft release');
+    expect(upload?.text).toMatch(/gh release create "\$\{GITHUB_REF_NAME\}"[^\n]*\\\n(?:[^\n]*\\\n)*[^\n]*--draft 2>&1/);
+    expect(upload?.text).toContain('a re-run never changes a published release');
+    // The publish step is the job's last, after the verification, and the only one that publishes
+    expect(names.slice(-2)).toEqual(['Verify the draft\'s assets', 'Publish the release']);
+    expect(release.at(-1)?.text).toContain('gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --latest');
+    const publishing = Object.keys(all).flatMap((id) =>
+      steps(all[id]).filter((s) => /--draft=false|--latest|gh release edit/.test(s.text)).map((s) => `${id}: ${s.name}`));
+    expect(publishing).toEqual(['release: Publish the release']);
+    // Uploads happen only before the verification; the verification compares every built file and the manifests
+    const uploads = Object.keys(all).flatMap((id) => steps(all[id]).filter((s) => s.text.includes('gh release upload')).map((s) => `${id}: ${s.name}`));
+    expect(uploads).toEqual(['release: Upload the installers to a draft release']);
+    const verify = release.find((s) => s.name === 'Verify the draft\'s assets')?.text ?? '';
+    expect(verify).toContain('comm -23 built.tsv published.tsv');
+    expect(verify).toContain('for f in latest-mac.yml latest.yml; do');
+    expect(verify).not.toMatch(/\|\| true|continue-on-error/);
+  });
+
   it('runs these tests before it builds', () => {
     expect(all['pennant-mac']).toContain('npx vitest run tests/macRelease.test.ts');
   });
