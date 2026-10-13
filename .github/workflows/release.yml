@@ -157,6 +157,14 @@ jobs:
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      # The account goes into the throwaway keychain once, checked with Apple, so notarize.sh never puts the password
+      # on a command line
+      - name: Store the notarization account in the throwaway keychain
+        run: macos/scripts/releasing/ci-keychain.sh notary >> "${GITHUB_ENV}"
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Sign inside out
         run: >
           macos/scripts/releasing/sign-app.sh build/mac-release/Pennant.app "${PENNANT_SIGN_IDENTITY}"
@@ -165,19 +173,11 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Notarize and staple the app
         run: macos/scripts/releasing/notarize.sh build/mac-release/Pennant.app
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Make, notarize and staple the DMG
         run: |
           dmg="build/mac-release/dmg/Pennant-for-Mac-$(macos/scripts/releasing/version.sh).dmg"
           macos/scripts/releasing/make-dmg.sh build/mac-release/Pennant.app "${dmg}" "${PENNANT_SIGN_IDENTITY}"
           macos/scripts/releasing/notarize.sh "${dmg}"
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Verify the app is signed and notarized
         run: |

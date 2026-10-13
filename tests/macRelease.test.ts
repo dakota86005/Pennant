@@ -149,7 +149,14 @@ describe('without the secrets the pipeline fails, naming them', () => {
   it('refuses to notarize without the account', () => {
     const r = run('notarize.sh', [path.join(scratch, 'Nothing.dmg')]);
     expect(r.status).not.toBe(0);
+    expect(r.err).toContain('PENNANT_NOTARY_PROFILE');
     expect(r.err).toContain('APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID');
+  });
+
+  it('never puts the notarization password on notarytool\'s command line when notarizing', () => {
+    const notarize = read('macos/scripts/releasing/notarize.sh');
+    expect(notarize).toContain('--keychain-profile "${PENNANT_NOTARY_PROFILE}"');
+    expect(notarize).not.toMatch(/--password|APPLE_APP_SPECIFIC_PASSWORD}/);
   });
 });
 

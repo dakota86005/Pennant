@@ -3,17 +3,16 @@
 #
 #   notarize.sh PATH            PATH is an .app (sent as a zip) or a .dmg
 #
-# Needs APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID (the owner's one-time setup, DEVELOPMENT.md
-# "Releasing Pennant for Mac"); fails naming any that is missing. A rejection prints Apple's log and fails.
+# Signs in with a notarytool keychain profile, never a password on the command line: PENNANT_NOTARY_PROFILE names it,
+# and PENNANT_SIGN_KEYCHAIN, when set, is the keychain holding it (on CI, `ci-keychain.sh notary` stores APPLE_ID,
+# APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID there; DEVELOPMENT.md "Releasing Pennant for Mac"). Fails, naming
+# what is missing, without one. A rejection prints Apple's log and fails.
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
 TARGET="${1:?an .app or .dmg}"
-missing=()
-for name in APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-  [ -n "${!name:-}" ] || missing+=("${name}")
-done
-[ ${#missing[@]} -eq 0 ] || release_fail "Cannot notarize: missing ${missing[*]} (DEVELOPMENT.md, \"Releasing Pennant for Mac\")."
+[ -n "${PENNANT_NOTARY_PROFILE:-}" ] || release_fail "Cannot notarize: no PENNANT_NOTARY_PROFILE, the stored \
+APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID (ci-keychain.sh notary; DEVELOPMENT.md, \"Releasing Pennant for Mac\")."
 
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "${SCRATCH}"' EXIT
@@ -23,7 +22,8 @@ case "${TARGET}" in
   *) release_fail "notarize.sh takes an .app or a .dmg, not ${TARGET}" ;;
 esac
 
-AUTH=(--apple-id "${APPLE_ID}" --password "${APPLE_APP_SPECIFIC_PASSWORD}" --team-id "${APPLE_TEAM_ID}")
+AUTH=(--keychain-profile "${PENNANT_NOTARY_PROFILE}")
+if [ -n "${PENNANT_SIGN_KEYCHAIN:-}" ]; then AUTH+=(--keychain "${PENNANT_SIGN_KEYCHAIN}"); fi
 echo "[notarize] submitting $(basename "${TARGET}") and waiting for Apple"
 /usr/bin/xcrun notarytool submit "${SUBMIT}" "${AUTH[@]}" --wait --timeout 45m --output-format json \
   > "${SCRATCH}/result.json" || true
@@ -32,7 +32,7 @@ id="$(/usr/bin/plutil -extract id raw -o - "${SCRATCH}/result.json" 2>/dev/null 
 if [ "${status}" != "Accepted" ]; then
   cat "${SCRATCH}/result.json" >&2 || true
   if [ -n "${id}" ]; then /usr/bin/xcrun notarytool log "${id}" "${AUTH[@]}" >&2 || true; fi
-  release_fail "Notarization of $(basename "${TARGET}") ended '${status}'."
+  release_fail "Notarization of $(basename "${TARGET}") ended '${status}'. A 403 means the account holder must accept the latest Program License Agreement at developer.apple.com."
 fi
 
 /usr/bin/xcrun stapler staple "${TARGET}"
