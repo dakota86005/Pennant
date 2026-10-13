@@ -74,9 +74,12 @@ mac:
       arch: [arm64, x64]
     - target: zip
       arch: [arm64, x64]
-  # Signing and notarization are picked up from environment variables in CI
-  # (CSC_LINK / CSC_KEY_PASSWORD, APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD /
-  # APPLE_TEAM_ID). Builds run fine unsigned when they are absent.
+  # Signing and notarization are picked up from environment variables in CI:
+  # release.yml loads the certificate and the notarization account into a
+  # throwaway keychain (macos/scripts/releasing/ci-keychain.sh) and names it with
+  # CSC_KEYCHAIN / CSC_NAME and APPLE_KEYCHAIN / APPLE_KEYCHAIN_PROFILE, never
+  # CSC_LINK (electron-builder 26's own keychain fails on CI; see release.yml).
+  # Builds run fine unsigned when they are absent.
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist

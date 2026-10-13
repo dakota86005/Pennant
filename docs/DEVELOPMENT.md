@@ -547,7 +547,13 @@ A signed macOS release needs:
 
 - An Apple Developer Program membership and a *Developer ID Application* certificate exported as a `.p12`.
 - These repository secrets: `APPLE_CERTIFICATE_P12` (base64 of the `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`,
-  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`. The workflow already maps them to electron-builder's variables.
+  `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`. The macOS job loads them, as Pennant for Mac's job does, into
+  a throwaway keychain with `macos/scripts/releasing/ci-keychain.sh` (removed at the end of the job whatever
+  happened) and points electron-builder at it (`CSC_KEYCHAIN`, `CSC_NAME`, `APPLE_KEYCHAIN`,
+  `APPLE_KEYCHAIN_PROFILE`), so the packaging step itself sees no secret. It never uses electron-builder's own
+  keychain (`CSC_LINK`): electron-builder 26 gives `security set-key-partition-list` the certificate's password
+  instead of the keychain's, which fails on the runner ("SecKeychainUnlock: The user name or passphrase you entered
+  is not correct") before anything is signed.
 - The bundle id is already Pennant's (`com.dakotawise.pennant`); sign with a Developer ID certificate under
   your own team before the first signed release.
 

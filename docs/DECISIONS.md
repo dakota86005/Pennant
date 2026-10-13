@@ -3342,7 +3342,10 @@ kept apart until N15; draft-first publishing) are recorded below.
   only by the owner (no agent sees the certificate, a password or the private key), reach only jobs on macOS runners,
   and each step gets only the ones it uses, never a whole job; a test holds this. The certificate and the notarization
   account live in a throwaway keychain for one run (the account as a `notarytool` profile, so no password is on a
-  command line while notarizing). Only the release job can write to the repository. Without the secrets, the job
+  command line while notarizing). The Electron app's macOS job uses the same keychain script and points
+  electron-builder at it, never at electron-builder's own keychain (`CSC_LINK`), whose 26.x import fails on the
+  runner (amended 2026-10-13, after the first dispatch with real secrets). Only the release job can write to the
+  repository. Without the secrets, the job
   builds and packs an unsigned DMG for inspection (never published) and fails naming each missing secret; the
   signed-and-notarized check is never weakened.
 - **An app that could never update is refused.** Before the verification and every artifact the job keeps,

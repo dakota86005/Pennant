@@ -24,10 +24,10 @@ permissions:
   contents: read
 
 # Mac and Windows are separate jobs rather than a matrix on purpose: the Apple
-# signing credentials must reach ONLY the macOS job. electron-builder's CSC_LINK
-# is a generic code-signing variable, so a Windows job that can see it will sign
-# .exe files with the Apple certificate — producing an invalid Authenticode
-# signature that is worse for users than shipping unsigned.
+# signing credentials must reach ONLY the macOS jobs. electron-builder's CSC_LINK
+# is a generic code-signing variable, so a Windows job that can see the certificate
+# will sign .exe files with it — producing an invalid Authenticode signature that
+# is worse for users than shipping unsigned.
 jobs:
   # Gates the release. Both packaging jobs wait on it, so a regression caught
   # here never reaches an installer.
@@ -71,17 +71,38 @@ jobs:
       - run: npm run abi:electron
       - run: npm run desktop:build
 
-      # Until the Apple secrets exist this packages an UNSIGNED app and the
-      # verification step below cannot pass. That is intended: it is not weakened to
-      # turn CI green. What a signed release needs is in docs/DEVELOPMENT.md.
-      - name: Package (signed and notarized when secrets are present)
-        run: npx electron-builder --mac --publish never
+      # The certificate goes into the throwaway keychain Pennant for Mac uses
+      # (ci-keychain.sh), not electron-builder's own: given CSC_LINK, electron-builder
+      # 26 runs `security set-key-partition-list -k` with the certificate's password
+      # instead of its keychain's (app-builder-lib/out/codeSign/macCodeSign.js,
+      # importCerts), which fails with "SecKeychainUnlock: The user name or passphrase
+      # you entered is not correct" before anything is signed. The notarization
+      # account is stored in the same keychain, so the packaging step sees no secret.
+      # Without the secrets the first step fails, naming them; the verification below
+      # is never weakened to turn CI green. DEVELOPMENT.md has the one-time setup.
+      - name: Load the Developer ID certificate into a throwaway keychain
+        run: macos/scripts/releasing/ci-keychain.sh create >> "${GITHUB_ENV}"
         env:
-          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      - name: Store the notarization account in the throwaway keychain
+        run: macos/scripts/releasing/ci-keychain.sh notary >> "${GITHUB_ENV}"
+        env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # electron-builder signs with the identity in that keychain (CSC_KEYCHAIN, and
+      # CSC_NAME without the "Developer ID Application: " prefix, as it requires) and
+      # notarizes through the stored profile (APPLE_KEYCHAIN, APPLE_KEYCHAIN_PROFILE).
+      # forceCodeSigning makes a missing identity an error rather than a warning.
+      - name: Package, signed and notarized
+        run: |
+          export CSC_KEYCHAIN="${PENNANT_SIGN_KEYCHAIN}"
+          export CSC_NAME="${PENNANT_SIGN_IDENTITY#Developer ID Application: }"
+          export APPLE_KEYCHAIN="${PENNANT_SIGN_KEYCHAIN}"
+          export APPLE_KEYCHAIN_PROFILE="${PENNANT_NOTARY_PROFILE}"
+          npx electron-builder --mac --publish never -c.forceCodeSigning=true
 
       - name: Verify the app is signed and notarized
         run: |
@@ -91,6 +112,10 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP"
           # Fails the build if Gatekeeper would reject it on a user's machine
           spctl --assess --type execute --verbose=4 "$APP"
+
+      - name: Remove the signing keychain
+        if: always()
+        run: macos/scripts/releasing/ci-keychain.sh delete
 
       # latest-mac.yml is the update feed electron-updater reads; the zips are
       # what Squirrel.Mac installs from (it cannot install from a dmg); the

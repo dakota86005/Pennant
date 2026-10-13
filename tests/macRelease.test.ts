@@ -171,6 +171,10 @@ describe('release.yml: tags and secrets', () => {
       'Store the notarization account in the throwaway keychain',
       'Sign inside out',
     ]);
+    expect(withSecret('macos', 'APPLE_')).toEqual([
+      'Load the Developer ID certificate into a throwaway keychain',
+      'Store the notarization account in the throwaway keychain',
+    ]);
     const sparkle = Object.keys(all).flatMap((id) => steps(all[id]).filter((s) => s.text.includes('SPARKLE_')).map((s) => `${id}: ${s.name}`));
     expect(sparkle).toEqual(['pennant-mac-appcast: Write the appcast']);
   });
@@ -183,6 +187,31 @@ describe('release.yml: tags and secrets', () => {
       expect(all[id]).not.toMatch(/continue-on-error|\|\| true/);
     }
     expect(all['pennant-mac']).toContain('xcrun stapler validate "$DMG"');
+  });
+
+  // electron-builder 26's own keychain (from CSC_LINK) fails before signing: its importCerts gives
+  // set-key-partition-list the certificate's password, not the keychain's. Both macOS jobs load the certificate
+  // with ci-keychain.sh instead, and remove that keychain whatever happened.
+  it('signs both apps from the reviewed throwaway keychain, never electron-builder\'s own, and always removes it', () => {
+    expect(uncommented(workflow)).not.toMatch(/CSC_LINK|CSC_KEY_PASSWORD/);
+    for (const id of ['macos', 'pennant-mac']) {
+      const names = steps(all[id]).map((s) => s.name);
+      const at = (name: string) => names.indexOf(name);
+      expect(at('Load the Developer ID certificate into a throwaway keychain'), id).toBeGreaterThan(-1);
+      expect(at('Store the notarization account in the throwaway keychain'), id)
+        .toBe(at('Load the Developer ID certificate into a throwaway keychain') + 1);
+      const remove = steps(all[id]).find((s) => s.name === 'Remove the signing keychain');
+      expect(remove?.text, id).toMatch(/^ {8}if: always\(\)$/m);
+      expect(remove?.text, id).toContain('ci-keychain.sh delete');
+      expect(at('Remove the signing keychain'), id).toBeGreaterThan(at('Verify the app is signed and notarized'));
+    }
+    const pack = steps(all.macos).find((s) => s.name === 'Package, signed and notarized')?.text ?? '';
+    expect(pack).not.toContain('secrets.');
+    expect(pack).toContain('export CSC_KEYCHAIN="${PENNANT_SIGN_KEYCHAIN}"');
+    // electron-builder refuses a CSC_NAME that starts with the certificate type
+    expect(pack).toContain('export CSC_NAME="${PENNANT_SIGN_IDENTITY#Developer ID Application: }"');
+    expect(pack).toContain('export APPLE_KEYCHAIN_PROFILE="${PENNANT_NOTARY_PROFILE}"');
+    expect(pack).toContain('npx electron-builder --mac --publish never -c.forceCodeSigning=true');
   });
 
   it('refuses an app that could never update itself before it verifies or keeps anything signed', () => {
