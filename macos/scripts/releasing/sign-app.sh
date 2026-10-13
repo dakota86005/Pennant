@@ -5,8 +5,10 @@
 #
 #   1. every regular Mach-O file under Contents/Resources (each .node of the server's node_modules, and any other);
 #   2. the Node binary, Contents/Helpers/pennant-server, with only V8's two entitlements;
-#   3. each framework's helpers (Sparkle's XPC services, Autoupdate and Updater.app), then the framework;
-#   4. each app extension (the widgets), with its own target's entitlements;
+#   3. each framework's helpers (Sparkle's XPC services, Autoupdate and Updater.app), then the framework, as Sparkle's
+#      own signing instructions do: no entitlements, but Downloader.xpc's kept (its sandbox, when Sparkle gives it one);
+#   4. each app extension (the widgets), with its own target's entitlements: an extension ENTITLEMENTS_TSV does not list
+#      stops the script, since a widget signed without its sandbox and App Group never loads;
 #   5. the app last: hardened runtime, no JIT entitlements, no App Sandbox.
 #
 # Every item gets the hardened runtime. IDENTITY "-" signs ad hoc, without a timestamp (the local dry run and the
@@ -40,9 +42,12 @@ sign() {
 # Set in this shell, never a subshell, so a missing file stops the script.
 ENT=()
 entitlements_for() {
-  local name="$1" file="" team="${APPLE_TEAM_ID:-}"
+  local name="$1" required="${2:-}" file="" team="${APPLE_TEAM_ID:-}"
   ENT=()
-  if [ -n "${TSV}" ]; then file="$(awk -F '\t' -v n="${name}" '$1 == n { print $2 }' "${TSV}")"; fi
+  if [ -n "${TSV}" ] && [ -n "${required}" ] && ! awk -F '\t' -v n="${name}" '$1 == n { found = 1 } END { exit !found }' "${TSV}"; then
+    release_fail "${name} is not in ${TSV}: its target's entitlements were never read (build-app.sh), so it would be signed without them."
+  fi
+  if [ -n "${TSV}" ]; then file="$(awk -F '\t' -v n="${name}" '$1 == n { print $2; exit }' "${TSV}")"; fi
   [ -n "${file}" ] || return 0
   [ -f "${file}" ] || release_fail "${name}'s entitlements file ${file} is missing."
   if grep -q 'TeamIdentifierPrefix\|AppIdentifierPrefix' "${file}" && [ -z "${team}" ]; then
@@ -89,29 +94,32 @@ fi
 [ -x "${CONTENTS}/Helpers/pennant-server" ] || release_fail "The app has no server (Contents/Helpers/pennant-server)."
 sign "${CONTENTS}/Helpers/pennant-server" --entitlements "${NODE_ENTITLEMENTS}"
 
-# 3. Frameworks: their helpers first, keeping the entitlements their authors gave them (Sparkle's Downloader.xpc)
+# 3. Frameworks: their helpers first. Sparkle's instructions sign each helper without entitlements but keep
+# Downloader.xpc's; a helper's other entitlements (Autoupdate arrives with an application identifier, which a Developer
+# ID signature without a provisioning profile cannot carry) are dropped.
+helper_entitlements() { if [ "$(basename "$1")" = "Downloader.xpc" ]; then echo "--preserve-metadata=entitlements"; fi; }
 if [ -d "${CONTENTS}/Frameworks" ]; then
   while IFS= read -r -d '' fw; do
     if [ -d "${fw}/Versions/Current" ]; then
       current="${fw}/Versions/Current"
       main="$(basename "${fw}" .framework)"
       while IFS= read -r -d '' helper; do
-        sign "${helper}" --preserve-metadata=entitlements
+        sign "${helper}" $(helper_entitlements "${helper}")
       done < <(find "${current}/" -mindepth 1 -maxdepth 2 \( -path '*/XPCServices/*.xpc' -o -name '*.app' \) -print0 | sort -z)
       while IFS= read -r -d '' exe; do
         if [ "$(basename "${exe}")" != "${main}" ] && is_macho "${exe}"; then
-          sign "${exe}" --preserve-metadata=entitlements
+          sign "${exe}"
         fi
       done < <(find "${current}/" -mindepth 1 -maxdepth 1 -type f -perm -u+x -print0 | sort -z)
     fi
-    sign "${fw}" --preserve-metadata=entitlements
+    sign "${fw}"
   done < <(find "${CONTENTS}/Frameworks" -mindepth 1 -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -print0 | sort -z)
 fi
 
 # 4. App extensions (the widgets)
 if [ -d "${CONTENTS}/PlugIns" ]; then
   while IFS= read -r -d '' appex; do
-    entitlements_for "$(basename "${appex}")"
+    entitlements_for "$(basename "${appex}")" required
     sign "${appex}" ${ENT[@]+"${ENT[@]}"}
   done < <(find "${CONTENTS}/PlugIns" -mindepth 1 -maxdepth 1 -name '*.appex' -print0 | sort -z)
 fi

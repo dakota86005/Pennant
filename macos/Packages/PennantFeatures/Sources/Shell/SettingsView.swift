@@ -7,7 +7,8 @@ import UniformTypeIdentifiers
 
 /// Settings (SWIFTUI_REBUILD.md section 3.1): General (the OOTP save and its import, its rating history, the club, the
 /// transaction log's save folder, the data status, the data folder and its backup), Appearance, and AI (each provider's key status, read
-/// only until N13). Updates arrive with N14. Every value shown is served; the labels are structural.
+/// only until N13), and Updates (N14 Stage B: Sparkle's automatic check and the last one, D-076). Every value shown is
+/// served or the updater's own; the labels are structural.
 public struct SettingsView: View {
     @Environment(AppRouting.self) private var routing
     @Environment(AppModel.self) private var model
@@ -21,6 +22,7 @@ public struct SettingsView: View {
         case .general: 620
         case .appearance: min(appearanceMax, 560 + 24 * CGFloat(max(0, themes - 2)) + 44 * CGFloat(max(0, refusedPacks)))
         case .ai: 460
+        case .updates: 240
         }
     }
 
@@ -42,6 +44,9 @@ public struct SettingsView: View {
             }
             Tab("AI", systemImage: "sparkles", value: AppRouting.SettingsTab.ai) {
                 AISettings().frame(width: Self.width, height: Self.height(.ai))
+            }
+            Tab("Updates", systemImage: "arrow.down.circle", value: AppRouting.SettingsTab.updates) {
+                UpdatesSettings().frame(width: Self.width, height: Self.height(.updates))
             }
         }
         .onChange(of: AppAppearance.served(model.settings), initial: true) { _, theme in

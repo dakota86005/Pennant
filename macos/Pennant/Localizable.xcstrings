@@ -1281,6 +1281,24 @@
     },
     "Coming in less going out": {
       "extractionState": "manual"
+    },
+    "Updates": {
+      "extractionState": "manual"
+    },
+    "Check for Updates Automatically": {
+      "extractionState": "manual"
+    },
+    "Last Checked": {
+      "extractionState": "manual"
+    },
+    "Never": {
+      "extractionState": "manual"
+    },
+    "This build doesn't check for updates": {
+      "extractionState": "manual"
+    },
+    "Check for Updates…": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

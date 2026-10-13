@@ -17,8 +17,12 @@ fs.mkdirSync(out, { recursive: true });
 const FROM_IDENTITY = new Set(['TeamIdentifierPrefix', 'AppIdentifierPrefix']);
 
 const targets = JSON.parse(fs.readFileSync(0, 'utf8'));
+// `-alltargets` can list a target twice (the app, once more as the UI tests' host), with the same settings: one row each
+const seen = new Set();
 for (const { buildSettings: b } of targets) {
   if (!['app', 'appex'].includes(b.WRAPPER_EXTENSION)) continue;
+  if (seen.has(b.FULL_PRODUCT_NAME)) continue;
+  seen.add(b.FULL_PRODUCT_NAME);
   const named = b.CODE_SIGN_ENTITLEMENTS ?? '';
   if (!named) {
     console.log(`${b.FULL_PRODUCT_NAME}\t`);

@@ -1,6 +1,6 @@
 #!/bin/bash
 # The release pipeline without the owner's secrets, on any Mac: builds the Release app, signs it inside out ad hoc,
-# and packs the DMG, into OUT_DIR. Nothing is notarized, published or launched, and no keychain is read.
+# refuses it if it could never update itself (check-updater.sh), and packs the DMG, into OUT_DIR. Nothing is notarized, published or launched, and no keychain is read.
 #
 #   npm ci && npm run mac:stage
 #   macos/scripts/releasing/dry-run.sh OUT_DIR
@@ -15,5 +15,6 @@ HERE="$(dirname "$0")"
 VERSION="$(release_version)"
 "${HERE}/build-app.sh" "${OUT}"
 "${HERE}/sign-app.sh" "${OUT}/Pennant.app" - "${OUT}/entitlements.tsv"
+"${HERE}/check-updater.sh" "${OUT}/Pennant.app"
 "${HERE}/make-dmg.sh" "${OUT}/Pennant.app" "${OUT}/$(release_dmg_name "${VERSION}")" -
 echo "[dry run] ${OUT}/$(release_dmg_name "${VERSION}") (ad hoc, not notarized)"

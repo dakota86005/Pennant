@@ -89,6 +89,54 @@ describe('the feed is Pennant\'s own repository', () => {
   });
 });
 
+describe('Sparkle in the app (N14 Stage B, step 2)', () => {
+  const tools = read('macos/scripts/releasing/fetch-sparkle-tools.sh');
+  const version = /SPARKLE_VERSION="([^"]+)"/.exec(tools)?.[1];
+
+  it('links the release tools\' Sparkle, pinned exactly, in the app target only', () => {
+    expect(version).toMatch(/^2\.\d+\.\d+$/);
+    const project = read('macos/Pennant.xcodeproj/project.pbxproj');
+    expect(project).toMatch(new RegExp(`repositoryURL = "https://github.com/sparkle-project/Sparkle";\\s*requirement = \\{\\s*kind = exactVersion;\\s*version = ${version!.replace(/\./g, '\\.')};`));
+    expect(project.match(/\/\* Sparkle in Frameworks \*\/ = \{/g)).toHaveLength(1);
+    const resolved = JSON.parse(read('macos/Pennant.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')) as {
+      pins: { identity: string; state: { version?: string } }[];
+    };
+    expect(resolved.pins.find((pin) => pin.identity === 'sparkle')?.state.version).toBe(version);
+    // The packages never link it, so their tests can never reach Sparkle's network code
+    for (const pkgFile of ['PennantKit', 'PennantFeatures', 'PennantDesign', 'PennantAPI']) {
+      expect(read(`macos/Packages/${pkgFile}/Package.swift`)).not.toMatch(/sparkle/i);
+    }
+  });
+
+  it('asks the GM first: no automatic check until he says yes, and nothing installed by itself', () => {
+    const plist = read('macos/Support/Info.plist');
+    expect(plist).not.toMatch(/<key>SUEnableAutomaticChecks<\/key>/);
+    expect(plist).toMatch(/<key>SUAllowsAutomaticUpdates<\/key>\s*<false\/>/);
+    expect(plist).toMatch(/<key>SUVerifyUpdateBeforeExtraction<\/key>\s*<true\/>/);
+  });
+
+  it('makes an updater only from a feed and a key, never in a Debug build', () => {
+    const updater = read('macos/Pennant/Updater.swift');
+    expect(updater).toMatch(/#if DEBUG[\s\S]*return \.off\(\)[\s\S]*#else[\s\S]*Updates\.feedConfigured\(bundle\.infoDictionary\)[\s\S]*#endif/);
+    expect(updater).not.toMatch(/SecItem|SecKeychain/);
+  });
+
+  it('fetches packages without the Keychain wherever xcodebuild runs', () => {
+    for (const file of ['macos/scripts/releasing/build-app.sh', 'macos/scripts/test.sh', '.github/workflows/ci.yml']) {
+      const text = uncommented(read(file));
+      const calls = text.split(/\bxcodebuild\b/).length - 1;
+      expect(calls, file).toBeGreaterThan(0);
+      expect(text, file).toContain('-packageAuthorizationProvider netrc');
+    }
+    expect(read('macos/scripts/releasing/build-app.sh')).toContain('-onlyUsePackageVersionsFromResolvedFile');
+  });
+
+  it('checks the dry run\'s app as the workflow does, after signing', () => {
+    const dry = uncommented(read('macos/scripts/releasing/dry-run.sh'));
+    expect(dry.indexOf('check-updater.sh')).toBeGreaterThan(dry.indexOf('sign-app.sh'));
+  });
+});
+
 /** A job's steps, each with its name (or its `run`/`uses` line) and its text, comments left out */
 function steps(job: string): { name: string; text: string }[] {
   const body = uncommented(job).slice(uncommented(job).indexOf('\n    steps:\n'));
@@ -328,6 +376,8 @@ describe('each bundle\'s entitlements, with its build settings filled in', () =>
       settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant', CODE_SIGN_ENTITLEMENTS: 'App.entitlements', PENNANT_APP_GROUP: 'TEAM.group.com.dakotawise.pennant' }),
       settings({ WRAPPER_EXTENSION: 'xctest', FULL_PRODUCT_NAME: 'PennantUITests.xctest', TARGET_NAME: 'PennantUITests' }),
       settings({ WRAPPER_EXTENSION: 'appex', FULL_PRODUCT_NAME: 'Other.appex', TARGET_NAME: 'Other' }),
+      // -alltargets lists the app again as the UI tests' host: one row, never two
+      settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant', CODE_SIGN_ENTITLEMENTS: 'App.entitlements', PENNANT_APP_GROUP: 'TEAM.group.com.dakotawise.pennant' }),
     ]);
     expect(r.status).toBe(0);
     const file = path.join(scratch, 'filled', 'Pennant.app.entitlements');
@@ -374,7 +424,8 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     fs.writeFileSync(path.join(c, 'Resources/server/node_modules/zz-prebuilt/Foo.class'), Buffer.from('cafebabe00000034', 'hex'));
     const fw = path.join(c, 'Frameworks/Sparkle.framework');
     const b = path.join(fw, 'Versions/B');
-    for (const rel of ['Sparkle', 'Autoupdate', 'Updater.app/Contents/MacOS/Updater', 'XPCServices/Downloader.xpc/Contents/MacOS/Downloader']) {
+    for (const rel of ['Sparkle', 'Autoupdate', 'Updater.app/Contents/MacOS/Updater', 'XPCServices/Downloader.xpc/Contents/MacOS/Downloader',
+      'XPCServices/Installer.xpc/Contents/MacOS/Installer']) {
       fs.mkdirSync(path.dirname(path.join(b, rel)), { recursive: true });
       fs.copyFileSync(machO, path.join(b, rel));
       fs.chmodSync(path.join(b, rel), 0o755);
@@ -382,6 +433,18 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     info(path.join(b, 'Resources'), 'org.sparkle-project.Sparkle', 'Sparkle', 'FMWK');
     info(path.join(b, 'Updater.app/Contents'), 'org.sparkle-project.Sparkle.Updater', 'Updater');
     info(path.join(b, 'XPCServices/Downloader.xpc/Contents'), 'org.sparkle-project.DownloaderService', 'Downloader', 'XPC!');
+    info(path.join(b, 'XPCServices/Installer.xpc/Contents'), 'org.sparkle-project.InstallerLauncher', 'Installer', 'XPC!');
+    // As Sparkle 2.10.0 ships them: Autoupdate with an application identifier, the downloader with its sandbox
+    const shipped = (rel: string, keys: string) => {
+      const ent = path.join(scratch, name, `${path.basename(rel)}.shipped.entitlements`);
+      fs.mkdirSync(path.dirname(ent), { recursive: true });
+      fs.writeFileSync(ent, `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>${keys}</dict></plist>`);
+      execFileSync('/usr/bin/codesign', ['--force', '--sign', '-', '--entitlements', ent, path.join(b, rel)], { stdio: 'ignore' });
+    };
+    shipped('Autoupdate', '<key>com.apple.application-identifier</key><string>org.sparkle-project.Sparkle.Autoupdate</string>');
+    shipped('XPCServices/Downloader.xpc', '<key>com.apple.security.app-sandbox</key><true/><key>com.apple.security.network.client</key><true/>');
     fs.symlinkSync('B', path.join(fw, 'Versions/Current'));
     fs.symlinkSync('Versions/Current/Sparkle', path.join(fw, 'Sparkle'));
     fs.symlinkSync('Versions/Current/Resources', path.join(fw, 'Resources'));
@@ -423,6 +486,7 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
       'Contents/Helpers/pennant-server',
       'Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app',
       'Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Downloader.xpc',
+      'Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Installer.xpc',
       'Contents/Frameworks/Sparkle.framework/Versions/Current/Autoupdate',
       'Contents/Frameworks/Sparkle.framework',
       'Contents/PlugIns/PennantWidgets.appex',
@@ -441,6 +505,25 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     expect(node).toContain('com.apple.security.cs.allow-unsigned-executable-memory');
     expect(entitlements(path.join(c, 'PlugIns/PennantWidgets.appex'))).toContain('ADHOC.group.com.dakotawise.pennant');
     expect(entitlements(app)).not.toMatch(/allow-jit|app-sandbox/);
+    // Sparkle's helpers as its instructions sign them: the downloader keeps its sandbox, Autoupdate loses the application
+    // identifier a Developer ID signature without a provisioning profile cannot carry
+    const sparkle = path.join(c, 'Frameworks/Sparkle.framework/Versions/B');
+    expect(entitlements(path.join(sparkle, 'XPCServices/Downloader.xpc'))).toContain('com.apple.security.app-sandbox');
+    expect(entitlements(path.join(sparkle, 'Autoupdate'))).not.toContain('application-identifier');
+    expect(flags(path.join(sparkle, 'Autoupdate'))).toMatch(/flags=0x\w+\([^)]*runtime[^)]*\)/);
+  });
+
+  it('stops on an app extension whose entitlements the build never read', () => {
+    const { app, tsv } = fakeApp('unlisted-extension');
+    fs.writeFileSync(tsv, 'Pennant.app\t\n');
+    const r = run('sign-app.sh', [app, '-', tsv]);
+    expect(r.status).not.toBe(0);
+    expect(r.err).toContain('PennantWidgets.appex is not in');
+  });
+
+  it('reads every target\'s entitlements, not only the scheme\'s, so the widget gets its own', () => {
+    const build = uncommented(read('macos/scripts/releasing/build-app.sh'));
+    expect(build).toMatch(/xcodebuild -project "\$\{PROJECT\}" -alltargets -configuration Release -showBuildSettings -json/);
   });
 
   it('refuses an app whose own entitlements carry JIT or the sandbox', () => {

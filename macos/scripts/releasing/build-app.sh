@@ -20,6 +20,9 @@ mkdir -p "${OUT}"
 OUT="$(cd "${OUT}" && pwd)"
 DERIVED="${OUT}/DerivedData"
 PROJECT="${RELEASE_REPO_ROOT}/macos/Pennant.xcodeproj"
+# Swift packages at the committed Package.resolved only (Sparkle pinned exactly), fetched without the Keychain: Xcode's
+# default looks up the download host's password there, which can stop on a dialog on a developer's Mac
+PACKAGES=(-onlyUsePackageVersionsFromResolvedFile -packageAuthorizationProvider netrc -skipPackagePluginValidation)
 VERSION="$(release_version)"
 # The team the release is signed by, so the App Group the app and its widget share carries its prefix
 TEAM=(); if [ -n "${APPLE_TEAM_ID:-}" ]; then TEAM=("DEVELOPMENT_TEAM=${APPLE_TEAM_ID}"); fi
@@ -27,7 +30,7 @@ TEAM=(); if [ -n "${APPLE_TEAM_ID:-}" ]; then TEAM=("DEVELOPMENT_TEAM=${APPLE_TE
 echo "[build] Pennant ${VERSION}, Release, unsigned"
 LOG="${OUT}/xcodebuild.log"
 if ! /usr/bin/xcodebuild -project "${PROJECT}" -scheme Pennant -configuration Release -destination 'generic/platform=macOS' \
-  -derivedDataPath "${DERIVED}" -skipPackagePluginValidation \
+  -derivedDataPath "${DERIVED}" "${PACKAGES[@]}" \
   CODE_SIGNING_ALLOWED=NO ${TEAM[@]+"${TEAM[@]}"} build >"${LOG}" 2>&1; then
   grep -E 'error:|BUILD FAILED' "${LOG}" | head -40 >&2
   release_fail "The Release build failed; the full log is ${LOG}"
@@ -46,11 +49,13 @@ while IFS= read -r -d '' plist; do
 done < <(find "${APP}/Contents" -path '*/PlugIns/*.appex/Contents/Info.plist' -print0)
 "$(dirname "$0")/version.sh" --check-app "${APP}"
 
-# Each target's entitlements, with its build settings filled in (entitlements.mjs; no list to keep in step)
+# Each target's entitlements, with its build settings filled in (entitlements.mjs; no list to keep in step). Every target
+# of the project, not the scheme's: the scheme builds the widget extension only as the app's dependency, and its
+# -showBuildSettings lists the app alone, so the widget would be signed without its sandbox and App Group
 # xcodebuild's warnings stay out of the log unless it fails, and then they are printed
 SETTINGS_LOG="${OUT}/build-settings.log"
-if ! /usr/bin/xcodebuild -project "${PROJECT}" -scheme Pennant -configuration Release -showBuildSettings -json \
-  ${TEAM[@]+"${TEAM[@]}"} >"${OUT}/build-settings.json" 2>"${SETTINGS_LOG}"; then
+if ! /usr/bin/xcodebuild -project "${PROJECT}" -alltargets -configuration Release -showBuildSettings -json \
+  "${PACKAGES[@]}" ${TEAM[@]+"${TEAM[@]}"} >"${OUT}/build-settings.json" 2>"${SETTINGS_LOG}"; then
   tail -40 "${SETTINGS_LOG}" >&2
   release_fail "xcodebuild could not show the Release build settings; the full log is ${SETTINGS_LOG}"
 fi

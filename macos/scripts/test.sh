@@ -89,7 +89,7 @@ if [ "${PENNANT_TEST_BUILD_ONLY:-0}" = "1" ]; then
   step "xcodebuild build-for-testing: the Pennant scheme (app, server, XCUITests), for the shard jobs"
   run xcodebuild-build "\*\* TEST BUILD" \
     xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS' \
-      -derivedDataPath "$OUT/DerivedData" -skipPackagePluginValidation ${signing[@]+"${signing[@]}"} \
+      -derivedDataPath "$OUT/DerivedData" -skipPackagePluginValidation -packageAuthorizationProvider netrc ${signing[@]+"${signing[@]}"} \
       build-for-testing || failed=1
 elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   step "xcodebuild test: the Pennant scheme (app, server, XCUITests)"
@@ -215,7 +215,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
       ${selection[@]+"${selection[@]}"} test-without-building)
   else
     xcode=(xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS'
-      -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" -skipPackagePluginValidation
+      -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" -skipPackagePluginValidation -packageAuthorizationProvider netrc
       ${signing[@]+"${signing[@]}"} ${selection[@]+"${selection[@]}"} test)
   fi
   # The stand-in AI provider (N13), on a free port of 127.0.0.1, for the Staff room's answering test; stopped below

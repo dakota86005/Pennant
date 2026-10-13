@@ -134,10 +134,19 @@ struct SnapshotTests {
             case .general: GeneralSettings()
             case .appearance: AppearanceSettings()
             case .ai: AISettings(preloaded: PreviewFixtures.aiKeys)
+            case .updates: UpdatesSettings()
             }
         }
         let height = SettingsView.height(tab, themes: model.themeChoices?.choices.count ?? 0, refusedPacks: model.themeChoices?.refused.count ?? 0)
-        try draw(view.environment(model).environment(routing), size: CGSize(width: SettingsView.width, height: height), dark: dark, name: "settings-\(tab.rawValue)", titled: true)
+        // Updates as a Release build shows it, its updater in memory (never Sparkle, never the network), last checked
+        let updates = Updates(driver: MemoryUpdater(automaticallyChecks: true, lastCheck: Date(timeIntervalSince1970: 1_791_000_000)))
+        try draw(view.environment(model).environment(routing).environment(updates), size: CGSize(width: SettingsView.width, height: height), dark: dark, name: "settings-\(tab.rawValue)", titled: true)
+    }
+
+    @Test("Updates in a build that never checks (every Debug build)", arguments: [false, true])
+    func updatesOff(dark: Bool) throws {
+        let view = UpdatesSettings().environment(Updates.off())
+        try draw(view, size: CGSize(width: SettingsView.width, height: SettingsView.height(.updates)), dark: dark, name: "settings-updates-off", titled: true)
     }
 
     @Test("General at full length, down to the data status", arguments: [false, true])
