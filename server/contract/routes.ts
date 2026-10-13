@@ -582,6 +582,28 @@ export const operations: Operation[] = [
     reused: false,
   },
 
+  // ── Pennant outside its windows (N14, Stage A, D-075) ───────────────────
+  {
+    operationId: 'getGlance',
+    method: 'get',
+    path: '/api/v2/glance/:org',
+    summary: 'Pennant at a glance, for the desktop widget and the menu bar extra: the record, the next game and the desk\'s count with its first items, each the Morning Report\'s own words.',
+    params: [ORG_PARAM],
+    response: 'Glance',
+    errors: { 404: 'ApiError' },
+    reused: false,
+  },
+  {
+    operationId: 'getSpotlightList',
+    method: 'get',
+    path: '/api/v2/spotlight/:org',
+    summary: 'What the Mac app puts in Spotlight after each import: our organization\'s players and the league\'s clubs, in the search\'s words, each with where it opens.',
+    params: [ORG_PARAM],
+    response: 'SpotlightList',
+    errors: { 404: 'ApiError' },
+    reused: false,
+  },
+
   // ── The player window and Compare (N11) ──────────────────────────────────
   {
     operationId: 'getPlayerDossier',

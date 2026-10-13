@@ -55,6 +55,9 @@
     "Ask Staff": {
       "extractionState": "manual"
     },
+    "Ask Staff About a Player": {
+      "extractionState": "manual"
+    },
     "Ask Staff About Him": {
       "extractionState": "manual"
     },
@@ -479,10 +482,28 @@
     "Open Decision": {
       "extractionState": "manual"
     },
+    "Open Pennant": {
+      "extractionState": "manual"
+    },
     "Open Report": {
       "extractionState": "manual"
     },
     "Open in %@": {
+      "extractionState": "manual"
+    },
+    "Open the Morning Report": {
+      "extractionState": "manual"
+    },
+    "Opens the club's window": {
+      "extractionState": "manual"
+    },
+    "Opens the Morning Report": {
+      "extractionState": "manual"
+    },
+    "Opens the player's window": {
+      "extractionState": "manual"
+    },
+    "Opens the Staff room on the player": {
       "extractionState": "manual"
     },
     "Opponent": {
@@ -567,6 +588,9 @@
       "extractionState": "manual"
     },
     "Providers": {
+      "extractionState": "manual"
+    },
+    "Reads the save's export again": {
       "extractionState": "manual"
     },
     "Refresh Data": {
@@ -667,6 +691,9 @@
     },
     "Show Log": {},
     "Show in Finder": {
+      "extractionState": "manual"
+    },
+    "Show Pennant in the Menu Bar": {
       "extractionState": "manual"
     },
     "Show why": {

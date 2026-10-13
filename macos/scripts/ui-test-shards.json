@@ -25,7 +25,8 @@
       "PennantUITests/testClubhouseWideWindow": 45,
       "PennantUITests/testPlayerWindowRestored": 16,
       "ScrollClipTests": 0,
-      "PennantUITests/testStaffRoomAiOff": 60
+      "PennantUITests/testStaffRoomAiOff": 60,
+      "PennantUITests/testMenuBarExtra": 45
     },
     {
       "PennantUITests/testLeagueOfficeNarrowWindow": 701,

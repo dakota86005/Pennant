@@ -81,7 +81,8 @@ describe('a structural label is a name, not an explanation (review S5)', () => {
 /**
  * The structural labels the Swift sources write, the way SwiftUI looks them up: a string literal given to `Text`,
  * `Button`, `Label`, `Section`, `Menu` and the other labelled views, to `.navigationTitle`, `.navigationSubtitle`,
- * `.help`, `.alert` and `.confirmationDialog`, a `prompt:`, a `title:`, a `LocalizedStringResource` or
+ * `.help`, `.alert` and `.confirmationDialog`, an App Intent's `IntentDescription`, `TypeDisplayRepresentation(name:)`
+ * and an App Shortcut's `shortTitle:` (N14; review N14A, M4), a `prompt:`, a `title:`, a `LocalizedStringResource` or
  * `LocalizedStringKey`, a `String(localized:)`, either side of a ternary, or a `case` returning a label. `Text(verbatim:)` is served text and is
  * not one (see `verbatimLiterals`); SF Symbol names are skipped.
  */
@@ -91,11 +92,12 @@ function structuralLiterals(source: string): string[] {
   const views = [
     'Text', 'Button', 'Label', 'Section', 'LabeledContent', 'Tab', 'CommandMenu', 'CommandGroup', 'Window', 'Picker',
     'TextField', 'SecureField', 'Toggle', 'Menu', 'ControlGroup', 'ContentUnavailableView', 'confirmationDialog', 'alert',
-    'navigationTitle', 'navigationSubtitle', 'help', 'item', 'row',
+    'navigationTitle', 'navigationSubtitle', 'help', 'item', 'row', 'IntentDescription',
   ].join('|');
   const patterns = [
     new RegExp(`\\b(?:${views})\\(\\s*${lit}`, 'g'),
-    new RegExp(`\\b(?:title|prompt): ${lit}`, 'g'),
+    new RegExp(`\\b(?:title|prompt|shortTitle): ${lit}`, 'g'),
+    new RegExp(`\\bTypeDisplayRepresentation\\(name: ${lit}`, 'g'),
     new RegExp(`(?:LocalizedStringResource|LocalizedStringKey) = ${lit}`, 'g'),
     new RegExp(`\\bString\\(localized: ${lit}`, 'g'),
     new RegExp(`\\? ${lit} : ${lit}`, 'g'),
@@ -137,6 +139,9 @@ describe('finding the Swift sources\' labels', () => {
     ['a String(localized:)', 'String(localized: "Set Budget")', 'Set Budget'],
     ['a ternary', 'shown ? "Hide Inspector" : "Show Inspector"', 'Show Inspector'],
     ['a case', 'case .ready: "Ready"', 'Ready'],
+    ['an intent\'s description', 'static let description = IntentDescription("Opens the club\'s window")', 'Opens the club\'s window'],
+    ['an entity type\'s name', 'TypeDisplayRepresentation(name: "Player")', 'Player'],
+    ['an App Shortcut\'s short title', 'AppShortcut(intent: X(), phrases: [], shortTitle: "Refresh Data", systemImageName: "arrow.clockwise")', 'Refresh Data'],
   ])('finds %s', (_what, source, label) => {
     expect(structuralLiterals(source)).toContain(label);
   });
@@ -153,6 +158,19 @@ describe('finding the Swift sources\' labels', () => {
   });
 });
 
+/**
+ * A label with an interpolation (`Open in \(name)`, `\(count) to decide`) is keyed by SwiftUI with a format
+ * specifier in its place (`Open in %@`, `%lld to decide`), so it is looked up as one.
+ */
+function inCatalogOf(keys: Set<string>, text: string): boolean {
+  if (keys.has(text)) return true;
+  if (!text.includes('\\(')) return false;
+  const pattern = new RegExp(
+    '^' + text.split(/\\\((?:[^()]|\([^()]*\))*\)/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('%(?:@|lld|ld|d|\\.\\d+f)') + '$',
+  );
+  return [...keys].some((key) => pattern.test(key));
+}
+
 describe('the Mac app\'s structural labels', () => {
   const sources = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'macos'], { encoding: 'utf8' })
     .split('\n')
@@ -163,18 +181,7 @@ describe('the Mac app\'s structural labels', () => {
     expect(sources.flatMap((file) => structuralLiterals(fs.readFileSync(file, 'utf8'))).length).toBeGreaterThan(50);
   });
 
-  /**
-   * A label with an interpolation (`Open in \(name)`, `\(count) to decide`) is keyed by SwiftUI with a format
-   * specifier in its place (`Open in %@`, `%lld to decide`), so it is looked up as one.
-   */
-  const inCatalog = (text: string): boolean => {
-    if (keys.has(text)) return true;
-    if (!text.includes('\\(')) return false;
-    const pattern = new RegExp(
-      '^' + text.split(/\\\((?:[^()]|\([^()]*\))*\)/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('%(?:@|lld|ld|d|\\.\\d+f)') + '$',
-    );
-    return [...keys].some((key) => pattern.test(key));
-  };
+  const inCatalog = (text: string): boolean => inCatalogOf(keys, text);
 
   it('looks a label with an interpolation up by its format key', () => {
     expect(inCatalog('Open in \\(name)')).toBe(keys.has('Open in %@'));
@@ -190,5 +197,29 @@ describe('the Mac app\'s structural labels', () => {
 
   it.each(sources)('%s: Text(verbatim:) only for served values', (file) => {
     expect(verbatimLiterals(fs.readFileSync(file, 'utf8'))).toEqual([]);
+  });
+});
+
+/**
+ * The widget extension (N14, Stage A, D-075) is its own bundle with its own catalog: its labels are looked up there, and
+ * it draws served text only through `Text(verbatim:)`, as the app does.
+ */
+describe('the widget\'s structural labels', () => {
+  const sources = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'macos/PennantWidgets'], { encoding: 'utf8' })
+    .split('\n')
+    .filter((file) => file.endsWith('.swift'));
+  const keys = new Set(Object.keys((JSON.parse(fs.readFileSync('macos/PennantWidgets/Localizable.xcstrings', 'utf8')) as Catalog).strings));
+
+  it('finds the widget\'s sources and labels', () => {
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.flatMap((file) => structuralLiterals(fs.readFileSync(file, 'utf8'))).length).toBeGreaterThan(2);
+  });
+
+  it.each(sources)('%s: every label is in the widget\'s String Catalog, and verbatim only for served values', (file) => {
+    const code = fs.readFileSync(file, 'utf8');
+    // `.configurationDisplayName` and `.description` are labels too
+    const labels = [...structuralLiterals(code), ...[...code.matchAll(/\.(?:configurationDisplayName|description)\("((?:[^"\\\n]|\\.)*)"/g)].map((m) => m[1])];
+    expect(labels.filter((text) => !inCatalogOf(keys, text))).toEqual([]);
+    expect(verbatimLiterals(code)).toEqual([]);
   });
 });

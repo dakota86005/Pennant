@@ -45,6 +45,8 @@ struct MainWindowScene: View {
             if routing.takePaletteRequest() { restored.showPalette("a main window opened for Find Anything") }
             // …or a department (⌘1 to ⌘9): this one opens on it
             if let number = routing.takeShortcutRequest() { restored.go(toShortcut: number) }
+            // …or a view asked for from outside the windows (Shortcuts, the menu bar extra; N14)
+            if let route = routing.takeRouteRequest() { restored.go(to: route) }
             #if DEBUG
             // A Debug build launched by a script for window screenshots can open with the ⌘K palette up
             // (`-PennantDebugPalette <query>`) or with a route (`-PennantDebugRoute department.view`, or

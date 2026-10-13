@@ -421,7 +421,9 @@ describe('the presentation boundary', () => {
     expect(importers('farmViewsBuild').sort()).toEqual(['farmViewService.ts', 'frontOfficeBuild.ts', 'frontOfficeWorker.ts']);
     expect(code('frontOfficeBuild.ts')).toMatch(/import type \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
     expect(code('frontOfficeBuild.ts')).not.toMatch(/import \{[^}]*\} from '\.\/farmViewsBuild\.js'/);
-    expect(importers('frontOfficeAttention').sort()).toEqual(['api.ts', 'v2Routes.ts']);
+    // N14 Stage A: the glance (the widget, the menu bar extra) reads the summary as served, and only the routes serve it
+    expect(importers('frontOfficeAttention').sort()).toEqual(['api.ts', 'glanceService.ts', 'v2Routes.ts']);
+    expect(importers('glanceService').sort()).toEqual(['v2Routes.ts']);
     // N11: the player window's notes read and write through Following's door (a note lives on the follow)
     expect(importers('aroundTheLeague').sort()).toEqual(['frontOfficeAttention.ts', 'playerViewService.ts', 'v2Routes.ts']);
     expect(importers('frontOfficeBuild').sort()).toEqual(['frontOfficeService.ts', 'frontOfficeWorker.ts']);
@@ -447,7 +449,9 @@ describe('the presentation boundary', () => {
       // N12 Track C: Philosophy & Staff's views, worded and served by their service
       'philosophyViewService.ts',
       // N13: the AI surfaces' words, read and kept by their service (which reaches no AI module; the AI modules route to it)
-      'aiSurfacesService.ts']);
+      'aiSurfacesService.ts',
+      // N14 Stage A: the glance and Spotlight's list, worded from the summary and the search index and served by the routes
+      'glanceService.ts']);
     const importers = filesUnder('')
       .filter((f) => !f.startsWith('presentation/') && !f.startsWith('contract/'))
       .filter((f) => /from\s+'\.\/presentation\//.test(code(f)));

@@ -1,0 +1,295 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "reportStamp": "rstamp",
+  "deskStamp": "dstamp",
+  "club": {
+    "display": "Club 1 N"
+  },
+  "asOf": {
+    "display": "Through May 5, 2040",
+    "hint": "The last game day in the imported export"
+  },
+  "record": {
+    "text": "Won 15, lost 15",
+    "tone": "neutral",
+    "basis": {
+      "because": [
+        {
+          "label": "Games played",
+          "value": "30"
+        },
+        {
+          "label": "At home",
+          "value": "0–15"
+        },
+        {
+          "label": "On the road",
+          "value": "15–0"
+        },
+        {
+          "label": "Last 10",
+          "value": "5–5"
+        }
+      ],
+      "source": {
+        "department": "frontOffice",
+        "specialist": "The standings in the export",
+        "asOf": null,
+        "gameDate": "2040-05-05"
+      },
+      "unknown": [],
+      "wouldChange": [],
+      "lean": null,
+      "certainty": "fact",
+      "called": "A fact from the export"
+    },
+    "links": [
+      {
+        "kind": "view",
+        "department": "league",
+        "view": "standings"
+      }
+    ],
+    "hint": "Won 15, lost 15, as the standings have it",
+    "value": {
+      "n": 15,
+      "unit": "games",
+      "display": "15–15"
+    }
+  },
+  "nextGame": {
+    "when": {
+      "display": "Tonight · 7:05 PM",
+      "hint": "Jul 1, 2040, 12:00 PM local start, as the export gives it"
+    },
+    "matchup": {
+      "display": "at Club 4 N"
+    },
+    "claim": {
+      "text": "Tonight: at Club 4 N",
+      "tone": "neutral",
+      "basis": {
+        "because": [
+          {
+            "label": "Date",
+            "value": "May 6, 2040"
+          },
+          {
+            "label": "Start",
+            "value": "7:05 PM, the park's local time as the export gives it"
+          },
+          {
+            "label": "Where",
+            "value": "At Club 4 N"
+          },
+          {
+            "label": "Our starter",
+            "value": "P 1013 · 3–3 · 5.61 ERA"
+          },
+          {
+            "label": "Their starter",
+            "value": "P 1091 · 3–3 · 5.58 ERA"
+          },
+          {
+            "label": "Club 4 N's record",
+            "value": "11–19"
+          }
+        ],
+        "source": {
+          "department": "frontOffice",
+          "specialist": "The schedule in the export",
+          "asOf": null,
+          "gameDate": "2040-05-05"
+        },
+        "unknown": [],
+        "wouldChange": [
+          "OOTP changes its projected starters as the rotation turns over."
+        ],
+        "lean": null,
+        "certainty": "fact",
+        "called": "A fact from the export"
+      },
+      "links": [
+        {
+          "kind": "view",
+          "department": "majorLeague",
+          "view": "scheduleGamePlans"
+        }
+      ],
+      "hint": "Open the schedule and game plans"
+    },
+    "open": {
+      "kind": "view",
+      "department": "majorLeague",
+      "view": "scheduleGamePlans",
+      "key": "61"
+    }
+  },
+  "missing": [],
+  "desk": {
+    "count": 10,
+    "line": {
+      "display": "10 to decide",
+      "hint": "Urgent first, then the nearest deadline; five from each department"
+    },
+    "top": [
+      {
+        "key": "farm:rotation_short:affiliate:101:ej78gq",
+        "headline": {
+          "text": "Farm 1 F: No pitcher is taking this club's starts; the rotation needs five.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "About",
+                "value": "An affiliate"
+              },
+              {
+                "label": "Why",
+                "value": "Taking starts: 0"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+          },
+          "links": [
+            {
+              "kind": "club",
+              "teamId": 101
+            }
+          ]
+        },
+        "department": {
+          "display": "Farm & Development"
+        },
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        }
+      },
+      {
+        "key": "farm:position_uncovered:affiliate:101:critical",
+        "headline": {
+          "text": "Farm 1 F: Nobody on the roster covers 1B, 3B, C, LF or RF.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "1B",
+                "value": "Farm 1 F: Nobody on the roster covers 1B."
+              },
+              {
+                "label": "3B",
+                "value": "Farm 1 F: Nobody on the roster covers 3B."
+              },
+              {
+                "label": "C",
+                "value": "Farm 1 F: Nobody on the roster covers C."
+              },
+              {
+                "label": "LF",
+                "value": "Farm 1 F: Nobody on the roster covers LF."
+              },
+              {
+                "label": "RF",
+                "value": "Farm 1 F: Nobody on the roster covers RF."
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values. The same kind of finding about the same club or the organization, at the same urgency, is one row listing its positions"
+          },
+          "links": [
+            {
+              "kind": "club",
+              "teamId": 101
+            }
+          ],
+          "hint": "5 findings, one row: each is in the breakdown"
+        },
+        "department": {
+          "display": "Farm & Development"
+        },
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        }
+      },
+      {
+        "key": "farm:pitcher_bodies_short:affiliate:101:gv3ubl",
+        "headline": {
+          "text": "Farm 1 F: Only three pitchers: short of what the club needs to cover a schedule.",
+          "tone": "bad",
+          "basis": {
+            "because": [
+              {
+                "label": "About",
+                "value": "An affiliate"
+              },
+              {
+                "label": "Why",
+                "value": "Pitchers: 3"
+              }
+            ],
+            "source": {
+              "department": "farm",
+              "specialist": "Minor League Operations",
+              "asOf": null,
+              "gameDate": "2040-05-05"
+            },
+            "unknown": [],
+            "wouldChange": [],
+            "lean": null,
+            "certainty": "provisional",
+            "called": "A starting number, not yet fitted on this save",
+            "stamp": "The farm's stated lines, 10 of 30 still starting values"
+          },
+          "links": [
+            {
+              "kind": "club",
+              "teamId": 101
+            }
+          ]
+        },
+        "department": {
+          "display": "Farm & Development"
+        },
+        "open": {
+          "kind": "view",
+          "department": "farm",
+          "view": "affiliates",
+          "key": "101"
+        }
+      }
+    ]
+  },
+  "open": {
+    "kind": "view",
+    "department": "frontOffice",
+    "view": "morningReport"
+  }
+}

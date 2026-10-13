@@ -154,6 +154,8 @@ struct UndoScope: Equatable {
 public enum AppPreferences {
     public static let notifiesNewExportKey = "PennantNotifiesNewExport"
     public static let showsDockBadgeKey = "PennantShowsDockBadge"
+    /// The menu bar extra (N14, D-075): off until the GM turns it on in Settings ▸ General.
+    public static let showsMenuBarExtraKey = "PennantShowsMenuBarExtra"
 
     /// Both are on until the GM turns one off.
     public static func notifiesNewExport(_ defaults: UserDefaults = .standard) -> Bool {
@@ -162,5 +164,10 @@ public enum AppPreferences {
 
     public static func showsDockBadge(_ defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: showsDockBadgeKey) as? Bool ?? true
+    }
+
+    /// Off until the GM turns it on.
+    public static func showsMenuBarExtra(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: showsMenuBarExtraKey) as? Bool ?? false
     }
 }

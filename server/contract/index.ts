@@ -131,6 +131,9 @@ export type {
   FollowSuggestion, Following, FollowUpdate, FollowUndo, FollowChange, SearchKind, SearchResult, SearchGroup, SearchAnswer,
 } from '../presentation/frontOffice/leagueTypes.js';
 export type { ClubOwed } from '../clubOwed.js';
+// Pennant outside its windows (N14, Stage A, D-075): the glance (widget, menu bar extra) and Spotlight's list
+export type { Glance, GlanceDesk, GlanceGame, GlanceItem } from '../presentation/frontOffice/glance.js';
+export type { SpotlightList } from '../presentation/spotlightWords.js';
 // The Morning Report's own parts on `FrontOfficeSummary` (N6): the masthead, "How we win and lose", the roster map
 export type {
   GameLetter, MastheadKicker, StandingLine, RunsFigure, LastFive, ProbableStarter, TonightGame, DeadlineNote, MastheadPart, MissingPart,

@@ -22,7 +22,8 @@ const GROUP_TITLES: Record<SearchKind, string> = { player: 'Players', club: 'Clu
 
 const levelWord = (level: number | null | undefined): string | null => (level === 1 ? 'Majors' : level ? LEVEL_WORDS[level] ?? null : null);
 
-function resultOf(e: SearchEntry, followed: boolean): SearchResult {
+/** One entry as a result, in its words (exported for Spotlight's list, N14). */
+export function resultOf(e: SearchEntry, followed: boolean): SearchResult {
   switch (e.kind) {
     case 'player':
       return {
