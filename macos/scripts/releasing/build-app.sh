@@ -47,7 +47,12 @@ done < <(find "${APP}/Contents" -path '*/PlugIns/*.appex/Contents/Info.plist' -p
 "$(dirname "$0")/version.sh" --check-app "${APP}"
 
 # Each target's entitlements, with its build settings filled in (entitlements.mjs; no list to keep in step)
-/usr/bin/xcodebuild -project "${PROJECT}" -scheme Pennant -configuration Release -showBuildSettings -json \
-  ${TEAM[@]+"${TEAM[@]}"} 2>/dev/null \
-  | node "$(dirname "$0")/entitlements.mjs" "${OUT}/entitlements" > "${OUT}/entitlements.tsv"
+# xcodebuild's warnings stay out of the log unless it fails, and then they are printed
+SETTINGS_LOG="${OUT}/build-settings.log"
+if ! /usr/bin/xcodebuild -project "${PROJECT}" -scheme Pennant -configuration Release -showBuildSettings -json \
+  ${TEAM[@]+"${TEAM[@]}"} >"${OUT}/build-settings.json" 2>"${SETTINGS_LOG}"; then
+  tail -40 "${SETTINGS_LOG}" >&2
+  release_fail "xcodebuild could not show the Release build settings; the full log is ${SETTINGS_LOG}"
+fi
+node "$(dirname "$0")/entitlements.mjs" "${OUT}/entitlements" < "${OUT}/build-settings.json" > "${OUT}/entitlements.tsv"
 echo "[build] ${APP}"

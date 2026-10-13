@@ -444,3 +444,42 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     expect(run('sign-app.sh', [app, '-', tsv]).status).not.toBe(0);
   });
 });
+
+describe.runIf(onMac)('packing the DMG (make-dmg.sh)', () => {
+  function tinyApp(name: string) {
+    const app = path.join(scratch, 'dmg', name, 'Pennant.app');
+    fs.mkdirSync(path.join(app, 'Contents', 'MacOS'), { recursive: true });
+    fs.writeFileSync(path.join(app, 'Contents', 'Info.plist'), '<plist version="1.0"><dict/></plist>\n');
+    return app;
+  }
+
+  // A fresh CI checkout has no build/mac-release/unsigned/; the first real run failed there with no message
+  it('makes the output\'s folder when it does not exist yet', () => {
+    const dmg = path.join(scratch, 'dmg', 'fresh', 'not', 'made', 'Pennant-unsigned.dmg');
+    const r = run('make-dmg.sh', [tinyApp('fresh'), dmg]);
+    expect(r.err).toBe('');
+    expect(r.status).toBe(0);
+    expect(fs.existsSync(dmg)).toBe(true);
+  }, 120_000);
+
+  it('prints hdiutil\'s own error when it fails, never a silent exit', () => {
+    const locked = path.join(scratch, 'dmg', 'locked');
+    fs.mkdirSync(locked, { recursive: true });
+    fs.chmodSync(locked, 0o555);
+    try {
+      const r = run('make-dmg.sh', [tinyApp('locked-app'), path.join(locked, 'Pennant.dmg')]);
+      expect(r.status).not.toBe(0);
+      expect(r.err).toContain('hdiutil create failed');
+      // hdiutil's own words come before ours
+      expect(r.err.trim().split('\n').length).toBeGreaterThan(1);
+    } finally {
+      fs.chmodSync(locked, 0o755);
+    }
+  }, 120_000);
+
+  it('never hides hdiutil\'s output with -quiet', () => {
+    for (const file of fs.readdirSync(SCRIPTS)) {
+      expect(read(`macos/scripts/releasing/${file}`), file).not.toMatch(/hdiutil[^\n]*-quiet/);
+    }
+  });
+});
