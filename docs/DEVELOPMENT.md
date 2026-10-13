@@ -394,8 +394,14 @@ folder as locally. Which tests each shard runs, with the seconds each took on th
 assigns it (the build job's log notes it); `tests/uiTestShards.test.ts` checks that every test runs in exactly one shard.
 To rebalance after the times change, download a run's logs and run
 `node macos/scripts/ui-test-shards.mjs balance <xcodebuild-test.log> [shards] [source]` (longest first, each to the
-shard with the least so far; a class of unit tests such as `ScrollClipTests` stays whole). Four shards: a free
-account runs at most five macOS jobs at once. Each shard's window screenshots, accessibility audits (the
+shard with the least so far; a class of unit tests such as `ScrollClipTests` stays whole). Balance from the slower of
+each test's times in the newest green runs (merge their logs keeping each test's longest line), never from one fast
+run. Four shards: a free account runs at most five macOS jobs at once. Each shard is about 26 minutes (setup
+included; the timeout, about double, is 53) since the accessibility audit reads each finding's element once, as one
+snapshot (2026-10-13): every attribute read of an `XCUIElement` is a query of the app's whole tree, about 2 s on the
+runner, and reading a finding's attributes one at a time had made Player Search's audit take 30 to 50 minutes and the
+suite about 3 hours of test time (now about 1 h 30). A UI test that reads many elements should read them from one
+snapshot the same way. Each shard's window screenshots, accessibility audits (the
 `[audit]`/`[quit]`/`[palette]`/`[focus]` lines in its log), the launch timing (in the shard that runs
 `testLaunchWithKeptPayload`) and its logs, `hang-*.log` included, come back as its own artifact, `xcuitest-shard-<n>`,
 laid out as the single job's `xcuitest-screenshots` was; a failed build keeps its logs as `xcuitest-build-logs`. The

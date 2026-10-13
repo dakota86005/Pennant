@@ -1469,7 +1469,11 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   thread (`XCTPerformOnMainRunLoop`, `_XCopyHierarchy`, the table's row views made and put away for them), at the test's
   "Get number of matches" and audit steps; at launch, the first Morning Report's first frame on a fresh runner (Metal
   compiling render pipelines with no shader cache, then SwiftUI's first layout). No stack held Pennant's own code, so no
-  GM's click is behind them; the stacks stay kept for the next run that finds one. Go's departments (⌘1 to ⌘9) work
+  GM's click is behind them; the stacks stay kept for the next run that finds one. (2026-10-13: those queries were
+  most of the audit's time. Each attribute of a finding's element was its own query of the whole tree, about 2 s on
+  the runner, ten or more per finding; the audit now reads the element once, as a snapshot, and Player Search's audit
+  of the same 82 cells fell from 1870 to 3040 s to under 530. The table is native and lazy: the tree holds the
+  page's row elements but cells only for the dozen rows on the screen.) Go's departments (⌘1 to ⌘9) work
   from a player's window (section 3.6's palette note). A UI test's fresh launch removes the saved windows where macOS 26
   keeps a non-sandboxed app's (`FreshTestState`: a daemon's container, by the app's signing identifier), as the old
   `Saved Application State` folder was empty at every launch; the pop-up's narrowest is an empty `NSPopUpButton`'s
