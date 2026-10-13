@@ -199,6 +199,8 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testStaffRoomAnswer configured '{"theme":"light","aiFeatures":{"chat":{"provider":"ollama","model":"stub"}}}'
   # N14 Stage A: the widget's glance written to the test's folder, and the menu bar extra turned on and opened
   prepare_ui_test testMenuBarExtra configured '{"theme":"light"}'
+  # N14 Stage B: Check for Updates… in the app menu and Settings ▸ Updates, with the updater in memory
+  prepare_ui_test testUpdatesSettingsAndMenu configured '{"theme":"light"}'
   # Which tests: PENNANT_TEST_ONLY's, else one CI shard's (its own, or for the catch-all every test the other shards
   # do not run), else all of them
   selection=()
