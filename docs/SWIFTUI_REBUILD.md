@@ -2628,7 +2628,7 @@ sizes, not dates.
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
 | **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
 | **N13** | AI surfaces, native | (*Stage A built: section 3.5, "As built at N13, Stage A"; Stage B built: "As built at N13, Stage B"*) Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
-| **N14** | macOS integration and release | (*Stage A built: section 6, "As built at N14, Stage A"; Stage B pipeline built: section 9, "As built at N14, Stage B (pipeline)"*) App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
+| **N14** | macOS integration and release | (*Stage A built: section 6, "As built at N14, Stage A"; Stage B built: section 9, "As built at N14, Stage B (pipeline)" and "(Sparkle)"*) App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
 
 ### N3.5, Stage B1: the import, as built (2026-09-26)
@@ -2739,7 +2739,7 @@ of one name share their history.
 ### As built at N14, Stage B (pipeline) (2026-10-12)
 
 Branch `feature/swiftui-n14-release`; D-076; DEVELOPMENT.md, "Releasing Pennant for Mac", has the steps and the
-owner's one-time setup. Step 2 (Sparkle in the app) waits for Stage A's project changes to merge.
+owner's one-time setup. Step 2 (Sparkle in the app) is the next note.
 
 - **Scripts** (`macos/scripts/releasing/`): the Release app built unsigned, then signed inside out by `sign-app.sh`
   (section 5.2: every Mach-O file the server carries, the Node binary with V8's two entitlements, Sparkle's helpers
@@ -2750,10 +2750,37 @@ owner's one-time setup. Step 2 (Sparkle in the app) waits for Stage A's project 
 - **Jobs**, by the owner's decision of 2026-10-13: until N15 a `pennant-v*` tag releases the Electron app only.
   `pennant-mac` and `pennant-mac-appcast` run only by hand and leave a signed, notarized DMG and a test appcast as
   artifacts, never attached to a release. Every release is published draft first. N15 switches the Mac app on (D-076).
-- **Until step 2**, a run by hand signs and notarizes the app and the DMG and then stops at "Refuse an app that could
-  never update itself" ("Sparkle isn't in the app yet"), so it keeps no signed artifact.
+- **Before step 2**, a run by hand signed and notarized the app and the DMG and then stopped at "Refuse an app that
+  could never update itself" ("Sparkle isn't in the app yet"), keeping no signed artifact (the owner's runs of
+  2026-10-13, the second of them 38406100433).
 - **Tests**: `tests/macRelease.test.ts` signs a fake tree ad hoc and verifies it deep and strict, checks the version,
   the updater check, and the workflow's tag guards, secret scoping, permissions and draft-first order.
+
+### As built at N14, Stage B (Sparkle) (2026-10-13)
+
+Same branch, after Stage A merged (PR #67). D-076, "The updater in the app" and "The Keychain".
+
+- **The package**: Sparkle 2.10.0, a remote Swift package of the Xcode project pinned with `exactVersion` (and its
+  revision in `Package.resolved`), linked by the Pennant target only; the release tools pin the same version. Every
+  `xcodebuild` in the scripts and CI fetches packages with `-packageAuthorizationProvider netrc`, never the Keychain.
+- **The app**: `Updater.swift` makes `SPUStandardUpdaterController` behind PennantKit's `UpdaterDriving` only when the
+  Info.plist has an https `SUFeedURL` and a `SUPublicEDKey` (Release builds, from `embed-server.sh`); otherwise, and in
+  every Debug build, `Updates.off()`. A Debug build launched with `-PennantTestUpdater memory` gets `MemoryUpdater`.
+  The Info.plist adds `SUVerifyUpdateBeforeExtraction` (on) and `SUAllowsAutomaticUpdates` (off), and leaves out
+  `SUEnableAutomaticChecks`, so Sparkle asks the GM before its first automatic check.
+- **The UI**: Check for Updates… in the app menu, below About (`CommandGroup(after: .appInfo)`), unavailable without
+  an updater; Settings ▸ Updates (`UpdatesSettings`, a fourth tab) with the automatic-check switch and the last check,
+  and in a build without an updater the switch off and unavailable with "This build doesn't check for updates".
+- **Signing**: `sign-app.sh` signs Sparkle's `Updater.app`, `Downloader.xpc`, `Installer.xpc` and `Autoupdate` before
+  `Sparkle.framework`, then the widget extension and the app. Two pipeline bugs the first dry run with Sparkle and the
+  widget showed, fixed: the helpers had kept the entitlements they ship with (`Autoupdate`'s application identifier,
+  which a Developer ID signature without a profile cannot carry; now only `Downloader.xpc`'s are kept, as Sparkle's
+  instructions say), and `build-app.sh` read the scheme's build settings, which list the app alone, so the widget was
+  signed without its sandbox and App Group (now `-alltargets`, and an extension with no entitlements read stops the
+  signing). `dry-run.sh` now runs `check-updater.sh`, which passes on its app.
+- **Tests**: `UpdatesTests` (PennantKit: the feed check, consent first, Check for Updates…, a build that never
+  checks), the Updates tab in the Settings snapshots (light and dark, with an updater and without), and
+  `testUpdatesSettingsAndMenu` (the menu item found, never clicked; the switch off, then on; the tab audited alone).
 
 ### Dependencies (approved by the owner, 2026-09-25)
 

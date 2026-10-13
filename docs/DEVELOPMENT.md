@@ -570,8 +570,8 @@ the scripts in `macos/scripts/releasing/`:
 
 | Step | Script | What it does |
 |---|---|---|
-| Build | `build-app.sh` | The Release configuration, unsigned, with the staged server (`npm run mac:stage`). The version comes from `package.json` at build time, for the app and each extension, and is checked (`version.sh --check-app`). Writes `entitlements.tsv`: each target's entitlements file as the project names it, its build settings filled in (`entitlements.mjs`; the App Group, with the signing team from `APPLE_TEAM_ID`). |
-| Sign | `sign-app.sh` | Inside out (SWIFTUI_REBUILD.md section 5.2): each Mach-O file in `Resources` (the `.node` files), the Node binary with only `allow-jit` and `allow-unsigned-executable-memory`, each framework's helpers then the framework (Sparkle), each app extension with its own entitlements, the app last with the hardened runtime and no JIT or sandbox entitlement (refused if present). Ends with `codesign --verify --deep --strict`. |
+| Build | `build-app.sh` | The Release configuration, unsigned, with the staged server (`npm run mac:stage`). The version comes from `package.json` at build time, for the app and each extension, and is checked (`version.sh --check-app`). Writes `entitlements.tsv`: each target's entitlements file as the project names it (every target of the project, `-alltargets`, so the widget's too), its build settings filled in (`entitlements.mjs`; the App Group, with the signing team from `APPLE_TEAM_ID`). |
+| Sign | `sign-app.sh` | Inside out (SWIFTUI_REBUILD.md section 5.2): each Mach-O file in `Resources` (the `.node` files), the Node binary with only `allow-jit` and `allow-unsigned-executable-memory`, each framework's helpers then the framework (Sparkle: no entitlements but `Downloader.xpc`'s, as Sparkle's instructions sign them), each app extension with its own entitlements (an extension `entitlements.tsv` does not list stops it), the app last with the hardened runtime and no JIT or sandbox entitlement (refused if present). Ends with `codesign --verify --deep --strict`. |
 | Notarize | `notarize.sh` | `notarytool submit --wait` through a keychain profile (`ci-keychain.sh notary` stores the account in the throwaway keychain, so no password is on a command line), then `stapler staple` and `validate`. Run on the app, then on the DMG. A rejection prints Apple's log. |
 | DMG | `make-dmg.sh` | `hdiutil`: the app and an `/Applications` link, compressed, signed with the Developer ID. Named `Pennant-for-Mac-<version>.dmg` (the Electron DMG is `Pennant-<version>-<arch>.dmg`). |
 | Updater | `check-updater.sh` | Refuses an app that could never update itself: `Sparkle.framework` must be inside, `SUFeedURL` must be the feed and `SUPublicEDKey` the committed key. |
@@ -588,9 +588,14 @@ then writes a test appcast from that DMG (its notes are one line naming the buil
 published release's asset there, so the address never changes and nothing else needs hosting. Release builds carry
 `SUFeedURL` and `SUPublicEDKey` (set by the "Embed the server" phase); Debug builds carry neither and never check.
 
-**Until Sparkle is in the app** (N14 Stage B, step 2), a run signs and notarizes the app and the DMG and then stops at
-"Refuse an app that could never update itself", saying Sparkle isn't in the app yet. That is intended: no signed
-artifact is kept from an app that could never update.
+**The updater in the app** (N14 Stage B, step 2): Sparkle 2.10.0 is a Swift package of the Xcode project, pinned
+exactly, and linked by the app target only. Automatic checks are off until the GM says yes (Sparkle asks at the second
+launch; Settings ▸ Updates has the switch and the last check), and Check for Updates… is in the app menu below About.
+Debug builds have no feed or key, so they never check, and the tests use an updater in memory. "Refuse an app that
+could never update itself" therefore passes on a Release build; before step 2 it stopped the run there. Every
+`xcodebuild` in the scripts and CI fetches packages with `-packageAuthorizationProvider netrc`, so resolving Sparkle's
+binary never consults the Keychain (Xcode's default can stop on a Keychain dialog on a developer's Mac); do the same
+when resolving by hand.
 
 **Without the secrets** the job builds and packs the unsigned DMG, then fails at "Check the signing and notarizing
 secrets", naming each missing one; the appcast job fails naming `SPARKLE_ED_PRIVATE_KEY`. Nothing is faked.
@@ -599,7 +604,7 @@ secrets", naming each missing one; the appcast job fails naming `SPARKLE_ED_PRIV
 
 ```bash
 npm ci && npm run mac:stage
-macos/scripts/releasing/dry-run.sh /tmp/pennant-dry-run   # Pennant.app signed ad hoc, and the DMG
+macos/scripts/releasing/dry-run.sh /tmp/pennant-dry-run   # Pennant.app signed ad hoc, its updater checked, and the DMG
 ```
 
 The ad-hoc app is for inspection only: with the hardened runtime and no team, macOS would refuse its native module.
@@ -660,8 +665,8 @@ D="$(mktemp -d)"   # a private folder outside iCloud, for the exported files
 6. **Remove the exported files**: `rm -rf "$D"` (the certificate and the key stay in the login keychain and the
    backup).
 7. **Try it without releasing**: GitHub ▸ Actions ▸ Pennant release ▸ Run workflow, on the branch. `pennant-mac`
-   should pass and leave a signed, notarized DMG as the `pennant-mac` artifact (until Sparkle is in the app, it stops
-   at the updater check instead, as above). A run by hand publishes nothing.
+   should pass and leave a signed, notarized DMG as the `pennant-mac` artifact, and `pennant-mac-appcast` a test
+   appcast. A run by hand publishes nothing.
 
 #### Cutting a release
 
