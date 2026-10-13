@@ -485,7 +485,8 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
   const machO = '/usr/bin/true'; // any Mach-O file stands in for a binary; signing replaces its signature
 
   /** A fake Pennant.app shaped like the real one: the server's .node, the Node binary, Sparkle, a widget extension */
-  function fakeApp(name: string, appEntitlements?: string): { app: string; tsv: string } {
+  // Downloader.xpc's entitlements as Sparkle 2.10.0's artifact ships them (SourcePackages/artifacts): an empty set
+  function fakeApp(name: string, appEntitlements?: string, downloaderEntitlements = ''): { app: string; tsv: string } {
     const app = path.join(scratch, name, 'Pennant.app');
     const c = path.join(app, 'Contents');
     const bin = (rel: string) => {
@@ -522,7 +523,7 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     info(path.join(b, 'Updater.app/Contents'), 'org.sparkle-project.Sparkle.Updater', 'Updater');
     info(path.join(b, 'XPCServices/Downloader.xpc/Contents'), 'org.sparkle-project.DownloaderService', 'Downloader', 'XPC!');
     info(path.join(b, 'XPCServices/Installer.xpc/Contents'), 'org.sparkle-project.InstallerLauncher', 'Installer', 'XPC!');
-    // As Sparkle 2.10.0 ships them: Autoupdate with an application identifier, the downloader with its sandbox
+    // As Sparkle 2.10.0 ships them: Autoupdate with an application identifier, the downloader with its own set
     const shipped = (rel: string, keys: string) => {
       const ent = path.join(scratch, name, `${path.basename(rel)}.shipped.entitlements`);
       fs.mkdirSync(path.dirname(ent), { recursive: true });
@@ -532,7 +533,7 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
       execFileSync('/usr/bin/codesign', ['--force', '--sign', '-', '--entitlements', ent, path.join(b, rel)], { stdio: 'ignore' });
     };
     shipped('Autoupdate', '<key>com.apple.application-identifier</key><string>org.sparkle-project.Sparkle.Autoupdate</string>');
-    shipped('XPCServices/Downloader.xpc', '<key>com.apple.security.app-sandbox</key><true/><key>com.apple.security.network.client</key><true/>');
+    shipped('XPCServices/Downloader.xpc', downloaderEntitlements);
     fs.symlinkSync('B', path.join(fw, 'Versions/Current'));
     fs.symlinkSync('Versions/Current/Sparkle', path.join(fw, 'Sparkle'));
     fs.symlinkSync('Versions/Current/Resources', path.join(fw, 'Resources'));
@@ -593,12 +594,24 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     expect(node).toContain('com.apple.security.cs.allow-unsigned-executable-memory');
     expect(entitlements(path.join(c, 'PlugIns/PennantWidgets.appex'))).toContain('ADHOC.group.com.dakotawise.pennant');
     expect(entitlements(app)).not.toMatch(/allow-jit|app-sandbox/);
-    // Sparkle's helpers as its instructions sign them: the downloader keeps its sandbox, Autoupdate loses the application
-    // identifier a Developer ID signature without a provisioning profile cannot carry
+    // Sparkle's helpers as its instructions sign them: the downloader keeps the set it shipped with (2.10.0's is empty, so
+    // no sandbox), Autoupdate loses the application identifier a Developer ID signature without a provisioning profile
+    // cannot carry
     const sparkle = path.join(c, 'Frameworks/Sparkle.framework/Versions/B');
-    expect(entitlements(path.join(sparkle, 'XPCServices/Downloader.xpc'))).toContain('com.apple.security.app-sandbox');
+    expect(entitlements(path.join(sparkle, 'XPCServices/Downloader.xpc'))).not.toContain('<key>');
     expect(entitlements(path.join(sparkle, 'Autoupdate'))).not.toContain('application-identifier');
     expect(flags(path.join(sparkle, 'Autoupdate'))).toMatch(/flags=0x\w+\([^)]*runtime[^)]*\)/);
+  });
+
+  it('keeps the entitlements Downloader.xpc ships with, whatever they are', () => {
+    // A Sparkle whose downloader came with its sandbox (as its docs describe for a sandboxed app's build) keeps it
+    const keys = '<key>com.apple.security.app-sandbox</key><true/><key>com.apple.security.network.client</key><true/>';
+    const { app, tsv } = fakeApp('downloader-own', undefined, keys);
+    const r = run('sign-app.sh', [app, '-', tsv]);
+    expect(r.status).toBe(0);
+    const downloader = entitlements(path.join(app, 'Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc'));
+    expect(downloader).toContain('com.apple.security.app-sandbox');
+    expect(downloader).toContain('com.apple.security.network.client');
   });
 
   it('stops on an app extension whose entitlements the build never read', () => {
