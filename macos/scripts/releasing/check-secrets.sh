@@ -23,7 +23,7 @@ for name in "${names[@]}"; do
 done
 problems=()
 [ ${#missing[@]} -eq 0 ] || problems+=("the repository secrets ${missing[*]}")
-if ! grep -Eq '^[A-Za-z0-9+/]{43}=$' "${RELEASE_PUBLIC_KEY_FILE}" 2>/dev/null; then
+if ! release_public_key >/dev/null; then
   problems+=("Sparkle's public key in macos/Support/sparkle-public-key.txt")
 fi
 if [ ${#problems[@]} -gt 0 ]; then

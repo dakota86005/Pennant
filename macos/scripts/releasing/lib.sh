@@ -12,6 +12,14 @@ RELEASE_GITHUB_REPO="dakota86005/Pennant"
 RELEASE_FEED_URL="https://github.com/${RELEASE_GITHUB_REPO}/releases/latest/download/appcast.xml"
 # The public half of the owner's Sparkle EdDSA key pair (one-time setup, DEVELOPMENT.md); not a secret
 RELEASE_PUBLIC_KEY_FILE="${RELEASE_REPO_ROOT}/macos/Support/sparkle-public-key.txt"
+# That key, read the one way every step reads it (check-secrets.sh, check-updater.sh, embed-server.sh): one base64 line
+# of 32 bytes, whitespace ignored. Prints it, or prints nothing and returns 1 when the file is missing or malformed.
+release_public_key() {
+  local key
+  key="$(tr -d '[:space:]' 2>/dev/null < "${RELEASE_PUBLIC_KEY_FILE}")" || return 1
+  [[ "${key}" =~ ^[A-Za-z0-9+/]{43}=$ ]] || return 1
+  echo "${key}"
+}
 # The DMG's name. Spaces are refused by the publish step; the Electron app's DMG is Pennant-<version>-<arch>.dmg,
 # so the native app's needs its own name until the N15 cutover.
 release_dmg_name() { echo "Pennant-for-Mac-$1.dmg"; }

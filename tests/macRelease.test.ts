@@ -153,6 +153,48 @@ describe('without the secrets the pipeline fails, naming them', () => {
   });
 });
 
+describe.runIf(onMac)('an app that could never update itself is refused (check-updater.sh)', () => {
+  const key = read('macos/Support/sparkle-public-key.txt').trim();
+  const feed = 'https://github.com/dakota86005/Pennant/releases/latest/download/appcast.xml';
+  function app(name: string, plist: Record<string, string>, sparkle: boolean) {
+    const contents = path.join(scratch, 'updater', name, 'Pennant.app', 'Contents');
+    fs.mkdirSync(contents, { recursive: true });
+    const file = path.join(contents, 'Info.plist');
+    execFileSync('/usr/bin/plutil', ['-create', 'xml1', file]);
+    for (const [k, v] of Object.entries(plist)) execFileSync('/usr/bin/plutil', ['-insert', k, '-string', v, file]);
+    if (sparkle) fs.mkdirSync(path.join(contents, 'Frameworks', 'Sparkle.framework'), { recursive: true });
+    return path.dirname(contents);
+  }
+
+  it('reads the committed key the one way every step does (lib.sh release_public_key)', () => {
+    expect(key).toMatch(/^[A-Za-z0-9+/]{43}=$/);
+    for (const script of ['macos/scripts/releasing/check-secrets.sh', 'macos/scripts/releasing/check-updater.sh', 'macos/scripts/embed-server.sh']) {
+      expect(read(script), script).toContain('release_public_key');
+      expect(read(script), script).not.toContain('{43}=');
+    }
+  });
+
+  it('passes an app with Sparkle, the feed and the committed key', () => {
+    const r = run('check-updater.sh', [app('good', { SUFeedURL: feed, SUPublicEDKey: key }, true)]);
+    expect(r.err).toBe('');
+    expect(r.status).toBe(0);
+  });
+
+  it('refuses an app without Sparkle, saying so', () => {
+    const r = run('check-updater.sh', [app('no-sparkle', { SUFeedURL: feed, SUPublicEDKey: key }, false)]);
+    expect(r.status).not.toBe(0);
+    expect(r.err).toContain("Sparkle isn't in the app yet");
+  });
+
+  it('refuses another feed or another key, naming each', () => {
+    const r = run('check-updater.sh', [app('wrong', { SUFeedURL: 'https://example.com/appcast.xml', SUPublicEDKey: `${'A'.repeat(43)}=` }, true)]);
+    expect(r.status).not.toBe(0);
+    expect(r.err).toContain('SUFeedURL');
+    expect(r.err).toContain('SUPublicEDKey');
+    expect(run('check-updater.sh', [app('none', {}, true)]).status).not.toBe(0);
+  });
+});
+
 describe('each bundle\'s entitlements, with its build settings filled in', () => {
   const settings = (b: Record<string, string>) => ({ buildSettings: { SRCROOT: scratch, ...b } });
   const fill = (targets: object[]) =>

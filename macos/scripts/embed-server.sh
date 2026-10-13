@@ -34,8 +34,7 @@ if [ "${CONFIGURATION:-}" = "Release" ]; then
       || /usr/libexec/PlistBuddy -c "Add :$1 string $2" "${PLIST}"
   }
   set_plist SUFeedURL "${RELEASE_FEED_URL}"
-  PUBLIC_KEY="$(tr -d '[:space:]' < "${RELEASE_PUBLIC_KEY_FILE}" 2>/dev/null || true)"
-  if [[ "${PUBLIC_KEY}" =~ ^[A-Za-z0-9+/]{43}=$ ]]; then
+  if PUBLIC_KEY="$(release_public_key)"; then
     set_plist SUPublicEDKey "${PUBLIC_KEY}"
   else
     echo "warning: No Sparkle public key in macos/Support/sparkle-public-key.txt: this build cannot check for updates."
