@@ -651,6 +651,14 @@ final class PennantUITests: XCTestCase {
         let app = launch()
         waitForShell(app)
 
+        // A development build makes no updater (D-076): Check for Updates… is in the app menu, and unavailable (read
+        // with the menu open, where AppKit validates its items)
+        app.menuBars.menuBarItems["Pennant"].click()
+        let check = app.menuBars.menuItems["Check for Updates…"].firstMatch
+        XCTAssertTrue(check.waitForExistence(timeout: 5), "no Check for Updates… in the app menu")
+        XCTAssertFalse(check.isEnabled, "Check for Updates… was available in a build with no updater")
+        app.typeKey(.escape, modifierFlags: [])
+
         let departments: [(key: String, id: String, first: String, last: String)] = [
             ("1", "frontOffice", "morningReport", "briefing"),
             ("2", "majorLeague", "report", "seasonTrends"),
