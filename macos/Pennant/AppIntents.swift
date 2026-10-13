@@ -5,13 +5,13 @@ import Shell
 import SwiftUI
 
 // Shortcuts and Spotlight (SWIFTUI_REBUILD.md section 6; N14, Stage A, D-075). Every intent opens or shows what the app
-// already shows, the way its menus do; none decides anything or acts on OOTP (D-001). Their titles and parameter names
-// are structural labels in the String Catalog.
+// already shows, the way its menus do; none decides anything or acts on OOTP (D-001). Their titles, descriptions and
+// parameter names are structural labels in the String Catalog (`tests/stringCatalog.test.ts`).
 
 /// Opens a player's window (Spotlight opens a player found there through this).
 struct OpenPlayerIntent: OpenIntent {
     static let title: LocalizedStringResource = "Open Player"
-    static let description = IntentDescription("Opens the player's window in Pennant.")
+    static let description = IntentDescription("Opens the player's window")
 
     @Parameter(title: "Player")
     var target: PlayerEntity
@@ -26,7 +26,7 @@ struct OpenPlayerIntent: OpenIntent {
 /// Opens a club's window (Spotlight opens a club found there through this).
 struct OpenClubIntent: OpenIntent {
     static let title: LocalizedStringResource = "Open Club"
-    static let description = IntentDescription("Opens the club's window in Pennant.")
+    static let description = IntentDescription("Opens the club's window")
 
     @Parameter(title: "Club")
     var target: ClubEntity
@@ -41,7 +41,7 @@ struct OpenClubIntent: OpenIntent {
 /// Brings Pennant forward on the Morning Report.
 struct OpenMorningReportIntent: AppIntent {
     static let title: LocalizedStringResource = "Open the Morning Report"
-    static let description = IntentDescription("Opens Pennant on the Morning Report.")
+    static let description = IntentDescription("Opens the Morning Report")
     static let openAppWhenRun = true
 
     @MainActor
@@ -52,10 +52,11 @@ struct OpenMorningReportIntent: AppIntent {
 }
 
 /// Opens the Staff room asking about a player, as Player ▸ Ask Staff About Him does: the server words the question, and
-/// the room asks only while AI is on (otherwise it shows the server's line saying AI is off, and asks nothing).
+/// the room asks only while AI is on (otherwise it shows the server's line saying AI is off, and asks nothing). App
+/// Shortcuts are fixed when the app is built, so it is offered whether AI is on or not (D-075).
 struct AskStaffAboutPlayerIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask Staff About a Player"
-    static let description = IntentDescription("Opens the Staff room asking about the player. Needs AI to be on.")
+    static let description = IntentDescription("Opens the Staff room on the player")
     static let openAppWhenRun = true
 
     @Parameter(title: "Player")
@@ -69,16 +70,33 @@ struct AskStaffAboutPlayerIntent: AppIntent {
 }
 
 /// Reads the save's export again, as Club ▸ Refresh Data does: an import of what is already on disk. It writes nothing to
-/// OOTP and changes nothing in the save.
+/// OOTP and changes nothing in the save. An import that does not start fails the action with the reason the window
+/// would give, never a success (review N14A, L4).
 struct RefreshDataIntent: AppIntent {
     static let title: LocalizedStringResource = "Refresh Data"
-    static let description = IntentDescription("Reads the save's latest export again.")
+    static let description = IntentDescription("Reads the save's export again")
     static let openAppWhenRun = true
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        await IntentRouter.shared.refresh()
+        if let problem = await IntentRouter.shared.refresh() { throw ImportNotStarted(problem: problem) }
         return .result()
+    }
+}
+
+/// Why Refresh Data started no import, as a window says it (`ProblemLine`): the server's own sentence ("An import is
+/// already running"), or the kind's structural title. Shortcuts and Siri show it as the action's failure.
+struct ImportNotStarted: Error, CustomLocalizedStringResourceConvertible {
+    let problem: RequestProblem
+
+    var localizedStringResource: LocalizedStringResource {
+        switch problem {
+        // Served words, shown as served
+        case .served(let sentence): LocalizedStringResource(stringLiteral: sentence)
+        case .notRunning: "The Pennant server isn't running"
+        case .unreachable: "Couldn't reach the Pennant server"
+        case .failed: "The request failed"
+        }
     }
 }
 

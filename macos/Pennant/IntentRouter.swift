@@ -69,12 +69,13 @@ final class IntentRouter {
         }
     }
 
-    /// Club ▸ Refresh Data, once the server is up (an intent may have launched Pennant a moment ago).
-    func refresh() async {
-        guard let model else { return }
+    /// Club ▸ Refresh Data, once the server is up (an intent may have launched Pennant a moment ago): nil when the import
+    /// started, else why not (the server's refusal, or no server).
+    func refresh() async -> RequestProblem? {
+        guard let model else { return .notRunning }
         await serverUp(model)
-        guard model.isReady else { return }
-        _ = await model.startImport()
+        guard model.isReady else { return .notRunning }
+        return await model.startImport()
     }
 
     // MARK: The entities' answers

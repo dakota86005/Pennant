@@ -81,7 +81,8 @@ describe('a structural label is a name, not an explanation (review S5)', () => {
 /**
  * The structural labels the Swift sources write, the way SwiftUI looks them up: a string literal given to `Text`,
  * `Button`, `Label`, `Section`, `Menu` and the other labelled views, to `.navigationTitle`, `.navigationSubtitle`,
- * `.help`, `.alert` and `.confirmationDialog`, a `prompt:`, a `title:`, a `LocalizedStringResource` or
+ * `.help`, `.alert` and `.confirmationDialog`, an App Intent's `IntentDescription`, `TypeDisplayRepresentation(name:)`
+ * and an App Shortcut's `shortTitle:` (N14; review N14A, M4), a `prompt:`, a `title:`, a `LocalizedStringResource` or
  * `LocalizedStringKey`, a `String(localized:)`, either side of a ternary, or a `case` returning a label. `Text(verbatim:)` is served text and is
  * not one (see `verbatimLiterals`); SF Symbol names are skipped.
  */
@@ -91,11 +92,12 @@ function structuralLiterals(source: string): string[] {
   const views = [
     'Text', 'Button', 'Label', 'Section', 'LabeledContent', 'Tab', 'CommandMenu', 'CommandGroup', 'Window', 'Picker',
     'TextField', 'SecureField', 'Toggle', 'Menu', 'ControlGroup', 'ContentUnavailableView', 'confirmationDialog', 'alert',
-    'navigationTitle', 'navigationSubtitle', 'help', 'item', 'row',
+    'navigationTitle', 'navigationSubtitle', 'help', 'item', 'row', 'IntentDescription',
   ].join('|');
   const patterns = [
     new RegExp(`\\b(?:${views})\\(\\s*${lit}`, 'g'),
-    new RegExp(`\\b(?:title|prompt): ${lit}`, 'g'),
+    new RegExp(`\\b(?:title|prompt|shortTitle): ${lit}`, 'g'),
+    new RegExp(`\\bTypeDisplayRepresentation\\(name: ${lit}`, 'g'),
     new RegExp(`(?:LocalizedStringResource|LocalizedStringKey) = ${lit}`, 'g'),
     new RegExp(`\\bString\\(localized: ${lit}`, 'g'),
     new RegExp(`\\? ${lit} : ${lit}`, 'g'),
@@ -137,6 +139,9 @@ describe('finding the Swift sources\' labels', () => {
     ['a String(localized:)', 'String(localized: "Set Budget")', 'Set Budget'],
     ['a ternary', 'shown ? "Hide Inspector" : "Show Inspector"', 'Show Inspector'],
     ['a case', 'case .ready: "Ready"', 'Ready'],
+    ['an intent\'s description', 'static let description = IntentDescription("Opens the club\'s window")', 'Opens the club\'s window'],
+    ['an entity type\'s name', 'TypeDisplayRepresentation(name: "Player")', 'Player'],
+    ['an App Shortcut\'s short title', 'AppShortcut(intent: X(), phrases: [], shortTitle: "Refresh Data", systemImageName: "arrow.clockwise")', 'Refresh Data'],
   ])('finds %s', (_what, source, label) => {
     expect(structuralLiterals(source)).toContain(label);
   });

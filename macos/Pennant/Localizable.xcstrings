@@ -494,6 +494,18 @@
     "Open the Morning Report": {
       "extractionState": "manual"
     },
+    "Opens the club's window": {
+      "extractionState": "manual"
+    },
+    "Opens the Morning Report": {
+      "extractionState": "manual"
+    },
+    "Opens the player's window": {
+      "extractionState": "manual"
+    },
+    "Opens the Staff room on the player": {
+      "extractionState": "manual"
+    },
     "Opponent": {
       "extractionState": "manual"
     },
@@ -576,6 +588,9 @@
       "extractionState": "manual"
     },
     "Providers": {
+      "extractionState": "manual"
+    },
+    "Reads the save's export again": {
       "extractionState": "manual"
     },
     "Refresh Data": {
