@@ -4,7 +4,8 @@ import WidgetKit
 
 /// Pennant's desktop widget (SWIFTUI_REBUILD.md section 6; N14, Stage A, D-075): the record, the next game and the desk,
 /// as the app was last served them. It reads the glance the app writes to their shared App Group and never calls the
-/// server; it writes no sentence of its own beyond the catalog's structural words for "nothing yet" and "out of date".
+/// server; it writes no sentence of its own beyond the catalog's structural words for "nothing yet" and when the app
+/// last wrote the glance.
 @main
 struct PennantWidgets: WidgetBundle {
     var body: some Widget {
@@ -29,8 +30,8 @@ struct GlanceEntry: TimelineEntry {
     let state: GlanceTimeline.State
 }
 
-/// Reads the snapshot and hands WidgetKit `GlanceTimeline`'s entries. The app asks for a reload after each snapshot it
-/// writes, so the timeline itself never asks again (`.never`).
+/// Reads the snapshot and hands WidgetKit `GlanceTimeline`'s entry. The app asks for a reload after each snapshot it
+/// writes, so the timeline itself never asks again (`.never`); the snapshot's age is the system's relative time.
 struct GlanceProvider: TimelineProvider {
     var store: GlanceSnapshotStore = AppGroup.glanceStore()
 
@@ -40,7 +41,7 @@ struct GlanceProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (GlanceEntry) -> Void) {
         let now = Date()
-        completion(GlanceEntry(date: now, state: GlanceTimeline.state(of: store.read(), at: now)))
+        completion(GlanceEntry(date: now, state: GlanceTimeline.state(of: store.read())))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<GlanceEntry>) -> Void) {

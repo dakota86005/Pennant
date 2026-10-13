@@ -9,7 +9,7 @@ public struct GlanceSnapshot: Codable, Sendable, Equatable {
     public static let currentVersion = 1
 
     public var version: Int
-    /// When the app wrote it: the widget says how long ago, and marks it out of date after a while (`GlanceTimeline`).
+    /// When the app wrote it: the widget says how long ago, in the system's relative time (`GlanceTimeline`).
     public var writtenAt: Date
     /// The club's name; nil when the export does not have it.
     public var club: String?

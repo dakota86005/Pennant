@@ -7,10 +7,10 @@
     "Open Pennant to see your club": {
       "extractionState": "manual"
     },
-    "Out of date": {
+    "Pennant": {
       "extractionState": "manual"
     },
-    "Pennant": {
+    "Updated %@ ago": {
       "extractionState": "manual"
     },
     "Your record, next game and desk": {

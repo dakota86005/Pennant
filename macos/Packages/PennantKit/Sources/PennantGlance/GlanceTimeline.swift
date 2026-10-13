@@ -1,44 +1,36 @@
 import Foundation
 
 /// What the widget shows when (N14, Stage A): the timeline its provider hands WidgetKit, worked out here so it is tested
-/// as a unit. The widget is told to reload whenever the app writes a new snapshot; between writes the only change is a
-/// snapshot growing old.
+/// as a unit. The widget is told to reload whenever the app writes a new snapshot, and between writes nothing it draws
+/// changes but the snapshot's age, which the system's own relative time keeps current (`Text(_:style: .relative)`). It
+/// never calls a snapshot "out of date": a glance the app has not rewritten may still be the latest there is, so the
+/// widget states facts, the served "as of" and when the app last wrote it (review N14A, M5).
 public enum GlanceTimeline {
     /// The widget's kind: the app asks WidgetKit to reload it by this name after each snapshot it writes.
     public static let widgetKind = "PennantGlance"
-
-    /// After how long a snapshot is drawn as out of date: a day without the app refreshing it. The app's own freshness
-    /// rule about its own file, not a baseball one; the served "as of" line says how current the data itself is.
-    public static let outOfDateAfter: TimeInterval = 24 * 60 * 60
 
     /// What one entry draws.
     public enum State: Equatable, Sendable {
         /// No snapshot yet: the app has not written one (or could not reach the App Group).
         case none
-        case current(GlanceSnapshot)
-        /// Older than `outOfDateAfter`: drawn with its served words, and marked out of date.
-        case outOfDate(GlanceSnapshot)
+        /// The snapshot, with its served words and when it was written.
+        case shown(GlanceSnapshot)
 
         public var snapshot: GlanceSnapshot? {
             switch self {
             case .none: nil
-            case .current(let snapshot), .outOfDate(let snapshot): snapshot
+            case .shown(let snapshot): snapshot
             }
         }
     }
 
-    /// The state at a moment. A snapshot written after `now` (the clock moved back) is current until a day after it
-    /// says it was written.
-    public static func state(of snapshot: GlanceSnapshot?, at now: Date) -> State {
-        guard let snapshot else { return .none }
-        return now.timeIntervalSince(snapshot.writtenAt) >= outOfDateAfter ? .outOfDate(snapshot) : .current(snapshot)
+    /// The state for a snapshot, however old.
+    public static func state(of snapshot: GlanceSnapshot?) -> State {
+        snapshot.map(State.shown) ?? .none
     }
 
-    /// The entries from `now`: what shows now and, while the snapshot is current, the moment it turns out of date.
+    /// The entries from `now`: one, since nothing changes until the app writes again.
     public static func entries(for snapshot: GlanceSnapshot?, at now: Date) -> [(date: Date, state: State)] {
-        let first = state(of: snapshot, at: now)
-        guard case .current(let current) = first else { return [(now, first)] }
-        // Current means the moment it turns is still ahead (a snapshot from the future turns a day after it says)
-        return [(now, first), (current.writtenAt.addingTimeInterval(outOfDateAfter), .outOfDate(current))]
+        [(now, state(of: snapshot))]
     }
 }

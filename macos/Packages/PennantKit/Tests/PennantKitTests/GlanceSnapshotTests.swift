@@ -110,7 +110,8 @@ struct GlanceSnapshotTests {
     }
 }
 
-/// The widget's timeline (N14, Stage A): what it shows now, and when a snapshot turns out of date.
+/// The widget's timeline (N14, Stage A): what it shows now. A snapshot is never called out of date (review N14A, M5):
+/// the widget states the served "as of" and when the app wrote it, in the system's relative time.
 @Suite("The widget's timeline")
 struct GlanceTimelineTests {
     private func snapshot(writtenAt: Date) -> GlanceSnapshot {
@@ -129,31 +130,45 @@ struct GlanceTimelineTests {
         #expect(entries[0].state == .none)
     }
 
-    @Test("a fresh snapshot: current now, out of date a day after it was written")
-    func fresh() {
-        let written = Date(timeIntervalSince1970: 1_800_000_000)
-        let now = written.addingTimeInterval(3600)
-        let s = snapshot(writtenAt: written)
-        let entries = GlanceTimeline.entries(for: s, at: now)
-        #expect(entries.map(\.state) == [.current(s), .outOfDate(s)])
-        #expect(entries[1].date == written.addingTimeInterval(GlanceTimeline.outOfDateAfter))
-    }
-
-    @Test("an old snapshot: drawn with its words, marked out of date, and nothing further")
-    func old() {
+    @Test("a snapshot, fresh or days old: one entry showing it, never a later one marking it out of date")
+    func shown() {
         let written = Date(timeIntervalSince1970: 1_800_000_000)
         let s = snapshot(writtenAt: written)
-        let entries = GlanceTimeline.entries(for: s, at: written.addingTimeInterval(GlanceTimeline.outOfDateAfter))
-        #expect(entries.map(\.state) == [.outOfDate(s)])
-        #expect(GlanceTimeline.state(of: s, at: written.addingTimeInterval(GlanceTimeline.outOfDateAfter - 1)) == .current(s))
+        let ages: [TimeInterval] = [3600, 3 * 24 * 3600, -600]
+        for age in ages {
+            let entries = GlanceTimeline.entries(for: s, at: written.addingTimeInterval(age))
+            let states: [GlanceTimeline.State] = entries.map(\.state)
+            #expect(states == [.shown(s)])
+            #expect(entries[0].date == written.addingTimeInterval(age))
+        }
+    }
+}
+
+/// The widget's ink (review N14A, M6): the system's primary and secondary whenever it is drawn tinted or vibrant; in full
+/// colour, the served pair only when it reads, else the fixed, checked colours.
+@Suite("The widget's ink")
+struct GlanceInkTests {
+    private let colors = GlanceSnapshot.Colors(
+        light: .init(background: "#ffffff", text: "#111111"), dark: .init(background: "#000000", text: "#eeeeee"),
+        lightIncreasedContrast: .init(background: "#ffffff", text: "#000000"), darkIncreasedContrast: .init(background: "#000000", text: "#ffffff")
+    )
+
+    @Test("tinted or vibrant: the system's own, whatever the club's colours")
+    func notFullColor() {
+        for dark in [false, true] {
+            #expect(GlanceInk.choose(colors: colors, dark: dark, increasedContrast: false, fullColor: false) { _ in true } == .system)
+            #expect(GlanceInk.choose(colors: nil, dark: dark, increasedContrast: true, fullColor: false) { _ in true } == .system)
+        }
     }
 
-    @Test("a snapshot from a clock set ahead is current, and turns a day after it says")
-    func future() {
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let s = snapshot(writtenAt: now.addingTimeInterval(600))
-        let entries = GlanceTimeline.entries(for: s, at: now)
-        #expect(entries.map(\.state) == [.current(s), .outOfDate(s)])
-        #expect(entries[1].date > now)
+    @Test("full colour: the appearance's served pair when it reads, else the fixed colours")
+    func fullColor() {
+        #expect(GlanceInk.choose(colors: colors, dark: true, increasedContrast: false, fullColor: true) { _ in true } == .served(colors.dark))
+        #expect(
+            GlanceInk.choose(colors: colors, dark: false, increasedContrast: true, fullColor: true) { _ in true }
+                == .served(colors.lightIncreasedContrast)
+        )
+        #expect(GlanceInk.choose(colors: colors, dark: false, increasedContrast: false, fullColor: true) { _ in false } == .fixed)
+        #expect(GlanceInk.choose(colors: nil, dark: false, increasedContrast: false, fullColor: true) { _ in true } == .fixed)
     }
 }

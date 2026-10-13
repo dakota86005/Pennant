@@ -158,6 +158,19 @@ describe('finding the Swift sources\' labels', () => {
   });
 });
 
+/**
+ * A label with an interpolation (`Open in \(name)`, `\(count) to decide`) is keyed by SwiftUI with a format
+ * specifier in its place (`Open in %@`, `%lld to decide`), so it is looked up as one.
+ */
+function inCatalogOf(keys: Set<string>, text: string): boolean {
+  if (keys.has(text)) return true;
+  if (!text.includes('\\(')) return false;
+  const pattern = new RegExp(
+    '^' + text.split(/\\\((?:[^()]|\([^()]*\))*\)/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('%(?:@|lld|ld|d|\\.\\d+f)') + '$',
+  );
+  return [...keys].some((key) => pattern.test(key));
+}
+
 describe('the Mac app\'s structural labels', () => {
   const sources = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'macos'], { encoding: 'utf8' })
     .split('\n')
@@ -168,18 +181,7 @@ describe('the Mac app\'s structural labels', () => {
     expect(sources.flatMap((file) => structuralLiterals(fs.readFileSync(file, 'utf8'))).length).toBeGreaterThan(50);
   });
 
-  /**
-   * A label with an interpolation (`Open in \(name)`, `\(count) to decide`) is keyed by SwiftUI with a format
-   * specifier in its place (`Open in %@`, `%lld to decide`), so it is looked up as one.
-   */
-  const inCatalog = (text: string): boolean => {
-    if (keys.has(text)) return true;
-    if (!text.includes('\\(')) return false;
-    const pattern = new RegExp(
-      '^' + text.split(/\\\((?:[^()]|\([^()]*\))*\)/).map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('%(?:@|lld|ld|d|\\.\\d+f)') + '$',
-    );
-    return [...keys].some((key) => pattern.test(key));
-  };
+  const inCatalog = (text: string): boolean => inCatalogOf(keys, text);
 
   it('looks a label with an interpolation up by its format key', () => {
     expect(inCatalog('Open in \\(name)')).toBe(keys.has('Open in %@'));
@@ -217,7 +219,7 @@ describe('the widget\'s structural labels', () => {
     const code = fs.readFileSync(file, 'utf8');
     // `.configurationDisplayName` and `.description` are labels too
     const labels = [...structuralLiterals(code), ...[...code.matchAll(/\.(?:configurationDisplayName|description)\("((?:[^"\\\n]|\\.)*)"/g)].map((m) => m[1])];
-    expect(labels.filter((text) => !keys.has(text))).toEqual([]);
+    expect(labels.filter((text) => !inCatalogOf(keys, text))).toEqual([]);
     expect(verbatimLiterals(code)).toEqual([]);
   });
 });

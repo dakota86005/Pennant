@@ -11,9 +11,13 @@ struct GlanceWidgetView: View {
     @Environment(\.widgetFamily) private var family
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
-        let colors = GlanceColors(snapshot: state.snapshot, dark: colorScheme == .dark, increasedContrast: contrast == .increased)
+        let colors = GlanceColors(
+            snapshot: state.snapshot, dark: colorScheme == .dark, increasedContrast: contrast == .increased,
+            fullColor: renderingMode == .fullColor
+        )
         Group {
             if let snapshot = state.snapshot {
                 if family == .systemMedium {
@@ -60,7 +64,7 @@ struct GlanceWidgetView: View {
             if showsDesk {
                 Text(verbatim: snapshot.desk.line).font(.caption.weight(.semibold)).lineLimit(1)
             }
-            Footer(state: state, asOf: snapshot.asOf, colors: colors)
+            Footer(snapshot: snapshot, colors: colors)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -87,19 +91,17 @@ private struct DeskColumn: View {
     }
 }
 
-/// How current: the served "as of" line, and "Out of date" once the app has not refreshed the glance for a day.
+/// How current, as facts: the served "as of" line (how current the data is), and when the app last wrote the glance, in
+/// the system's relative time, which keeps itself current. Never "out of date": a glance not rewritten may still be the
+/// latest there is (review N14A, M5).
 private struct Footer: View {
-    let state: GlanceTimeline.State
-    let asOf: String
+    let snapshot: GlanceSnapshot
     let colors: GlanceColors
 
     var body: some View {
-        HStack(spacing: 4) {
-            if case .outOfDate = state {
-                Image(systemName: "clock.badge.exclamationmark").accessibilityHidden(true)
-                Text("Out of date").fontWeight(.semibold)
-            }
-            Text(verbatim: asOf)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(verbatim: snapshot.asOf)
+            Text("Updated \(Text(snapshot.writtenAt, style: .relative)) ago")
         }
         .font(.caption2)
         .lineLimit(1)
@@ -125,24 +127,37 @@ private struct NothingYet: View {
     }
 }
 
-/// The widget's colours: the club card's served pair when it reads (the server's own bar, checked again here as the app
-/// checks what it draws), else Pennant's fixed, checked page and text colours. Text takes its colour as served, never
-/// faded, so the quieter lines on a club's colours are the same colour, set smaller.
+/// The widget's colours (`GlanceInk`): in full colour, the club card's served pair when it reads (the server's own bar,
+/// checked again here as the app checks what it draws), else Pennant's fixed, checked page and text colours; drawn tinted
+/// or vibrant, the system's primary and secondary, which the system treats for that rendering (review N14A, M6). Text on
+/// a club's colours takes its colour as served, never faded, so its quieter lines are the same colour, set smaller.
 struct GlanceColors {
     var background: Color
     var text: Color
     var secondary: Color
 
-    init(snapshot: GlanceSnapshot?, dark: Bool, increasedContrast: Bool) {
-        if let pair = snapshot?.colors?.pair(dark: dark, increasedContrast: increasedContrast),
-           let fill = ServedColor.components(pair.background), let ink = ServedColor.components(pair.text),
-           Contrast.ratio(fill, ink) >= GlanceSnapshot.Colors.requiredRatio(increasedContrast: increasedContrast),
-           let background = ServedColor.color(pair.background), let text = ServedColor.color(pair.text) {
-            self.background = background
-            self.text = text
-            secondary = text
-        } else {
-            background = Color(nsColor: .readablePage)
+    init(snapshot: GlanceSnapshot?, dark: Bool, increasedContrast: Bool, fullColor: Bool) {
+        let ink = GlanceInk.choose(
+            colors: snapshot?.colors, dark: dark, increasedContrast: increasedContrast, fullColor: fullColor
+        ) { pair in
+            guard let fill = ServedColor.components(pair.background), let ink = ServedColor.components(pair.text) else { return false }
+            return Contrast.ratio(fill, ink) >= GlanceSnapshot.Colors.requiredRatio(increasedContrast: increasedContrast)
+        }
+        background = Color(nsColor: .readablePage)
+        switch ink {
+        case .system:
+            text = .primary
+            secondary = .secondary
+        case .served(let pair):
+            if let fill = ServedColor.color(pair.background), let served = ServedColor.color(pair.text) {
+                background = fill
+                text = served
+                secondary = served
+            } else {
+                text = Color(nsColor: .labelColor)
+                secondary = Color(nsColor: .readableSecondaryLabel)
+            }
+        case .fixed:
             text = Color(nsColor: .labelColor)
             secondary = Color(nsColor: .readableSecondaryLabel)
         }
