@@ -2370,6 +2370,17 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(waitForValue(toggle, on: true), "the automatic-check switch did not turn on (value \(String(describing: toggle.value)))")
         keep(app.windows.firstMatch.screenshot(), named: "n14-settings-updates")
         try audit(app, named: "accessibility-audit-settings-updates")
+        // The tab's name leaves with the tab: on General, no container outside the toolbar is still called Updates (the
+        // window and what holds every tab outlive the switch)
+        let general = app.toolbars.buttons["General"].firstMatch
+        XCTAssertTrue(general.waitForExistence(timeout: 5), "no General tab")
+        general.click()
+        XCTAssertTrue(element(app, "settings.general").waitForExistence(timeout: 5), "Settings ▸ General did not show")
+        let toolbar = app.toolbars.firstMatch.frame
+        let named = app.windows.firstMatch.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Updates"))
+            .allElementsBoundByIndex.filter { !toolbar.contains($0.frame) }
+            .map { "type \($0.elementType.rawValue) id='\($0.identifier)' frame=\($0.frame)" }
+        XCTAssertEqual(named, [], "Settings ▸ General still announces Updates")
         app.typeKey("w", modifierFlags: .command)
         quitCleanly(app)
     }

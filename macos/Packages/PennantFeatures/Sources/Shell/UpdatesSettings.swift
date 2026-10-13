@@ -49,12 +49,15 @@ public struct UpdatesSettings: View {
     }
 }
 
-/// Names the Settings window's own containers for VoiceOver (the audit on GitHub's runner found the tab's hosting view, a
-/// group spanning the window, with no description). As with the sidebar's column (`SidebarColumnName`), AppKit draws that
-/// container and no SwiftUI modifier reaches it, so each unnamed group above this view, up to the window, is given the
-/// tab's structural name; only labels change, never children.
+/// Names the Settings window's container for VoiceOver (the audit on GitHub's runner found a group spanning the window
+/// with no description). As with the sidebar's column (`SidebarColumnName`), AppKit draws that container and no SwiftUI
+/// modifier reaches it, so the nearest enclosing view that vends itself as a group is found, given a structural name
+/// when it has none, and the walk stops there, never past the window's content view; only its label changes, never its
+/// children. The name is the tab's ("Updates") only inside a tab view's own item, which leaves with the tab; a container
+/// any other tab shows too (the window's, which outlives a switch to General) is named for the window, "Settings".
 struct SettingsPaneName: NSViewRepresentable {
-    static let name: LocalizedStringResource = "Updates"
+    static let tabName: LocalizedStringResource = "Updates"
+    static let windowName: LocalizedStringResource = "Settings"
 
     func makeNSView(context: Context) -> Finder { Finder() }
     func updateNSView(_ view: Finder, context: Context) { view.name() }
@@ -66,14 +69,29 @@ struct SettingsPaneName: NSViewRepresentable {
         }
 
         func name() {
+            let content = window?.contentView
             var view = superview
             while let current = view {
-                if current.isAccessibilityElement(), current.accessibilityRole() == .group,
-                   current.accessibilityLabel()?.isEmpty ?? true {
-                    current.setAccessibilityLabel(String(localized: SettingsPaneName.name))
+                if current.isAccessibilityElement(), current.accessibilityRole() == .group {
+                    if current.accessibilityLabel()?.isEmpty ?? true {
+                        let name = Self.isInTabItem(current) ? SettingsPaneName.tabName : SettingsPaneName.windowName
+                        current.setAccessibilityLabel(String(localized: name))
+                    }
+                    return
                 }
+                if current === content { return }
                 view = current.superview
             }
+        }
+
+        /// Whether a view sits inside a tab view (so in one tab's item), rather than holding it.
+        private static func isInTabItem(_ view: NSView) -> Bool {
+            var above = view.superview
+            while let current = above {
+                if current is NSTabView { return true }
+                above = current.superview
+            }
+            return false
         }
 
         override func isAccessibilityElement() -> Bool { false }

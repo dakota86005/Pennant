@@ -997,6 +997,9 @@
     "Sidebar": {
       "extractionState": "manual"
     },
+    "Settings": {
+      "extractionState": "manual"
+    },
     "Content": {
       "extractionState": "manual"
     },
