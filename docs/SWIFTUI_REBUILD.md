@@ -2780,7 +2780,10 @@ Same branch, after Stage A merged (PR #67). D-076, "The updater in the app" and 
   signing). `dry-run.sh` now runs `check-updater.sh`, which passes on its app.
 - **Tests**: `UpdatesTests` (PennantKit: the feed check, consent first, Check for Updates…, a build that never
   checks), the Updates tab in the Settings snapshots (light and dark, with an updater and without), and
-  `testUpdatesSettingsAndMenu` (the menu item found, never clicked; the switch off, then on; the tab audited alone).
+  `testUpdatesSettingsAndMenu` (the menu item found, never clicked; the switch off, then on; the tab audited alone, 0
+  findings on the runner, run 38429217123). The audit's first run found the last check in the system's secondary grey
+  (3.9:1; now `.readableSecondary`) and the Settings window's hosting group unnamed (now named as the sidebar's column
+  is, `SettingsPaneName`).
 
 ### Dependencies (approved by the owner, 2026-09-25)
 
