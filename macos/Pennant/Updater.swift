@@ -28,15 +28,21 @@ enum AppUpdater {
 }
 
 /// Sparkle's standard controller behind `UpdaterDriving`: its own windows, its own permission question, its own
-/// schedule. Its values are observed (KVO), so Settings shows a check Sparkle made or a question the GM answered.
+/// schedule. Its values are observed (KVO), so Settings shows a check Sparkle made or a question the GM answered; and
+/// since Sparkle documents only some of them as observable (not `lastUpdateCheckDate`), the end of every update cycle
+/// (`SPUUpdaterDelegate`) reads them all again too.
 /// Compiled in every build, so CI's Debug builds check it too; only a Release build with a feed makes one.
 @MainActor
 final class SparkleUpdater: UpdaterDriving {
-    private let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+    /// Held here: the controller keeps its delegate weakly.
+    private let cycles = UpdateCycles()
+    private let controller: SPUStandardUpdaterController
     private var observations: [NSKeyValueObservation] = []
     var onChange: (@MainActor () -> Void)?
 
     init() {
+        controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: cycles, userDriverDelegate: nil)
+        cycles.finished = { [weak self] in self?.onChange?() }
         let updater = controller.updater
         let changed: @Sendable () -> Void = { [weak self] in
             Task { @MainActor in self?.onChange?() }
@@ -58,5 +64,16 @@ final class SparkleUpdater: UpdaterDriving {
 
     func checkForUpdates() {
         controller.checkForUpdates(nil)
+    }
+}
+
+/// Sparkle's word that an update cycle ended (a check by hand or on schedule, with an update or none, or an error), when
+/// its last check time may have changed.
+@MainActor
+private final class UpdateCycles: NSObject, SPUUpdaterDelegate {
+    var finished: (() -> Void)?
+
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: (any Error)?) {
+        finished?()
     }
 }
