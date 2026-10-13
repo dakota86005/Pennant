@@ -2439,7 +2439,11 @@ and `staff-options`, light and dark.
 - **Verified:** `GlanceSnapshotTests`, `GlanceTimelineTests`, `IntegrationStoreTests` (PennantKit), `IntegrationFeatureTests`
   and `IntegrationSnapshotTests` (`n14-menu-bar-extra-*`, skipped on CI), the XCUITest `testMenuBarExtra` (the snapshot
   written to the test's folder, the switch, the extra's window with the served desk, audited, Open Pennant), assigned to
-  CI's shard 2.
+  CI's shard 2. The panel is audited alone: Settings and the main window are closed with ⌘W first (with the main window
+  behind it, run 38116687375 measured the masthead under the panel against the panel's pixels), so Open Pennant takes
+  the path with no main window open. The audit reads the panel, a dialog in the tree, in its own pixels, as it reads a
+  window's. AppKit's panel and the hosting view in it are named "Pennant" for VoiceOver (`MenuBarPanelName`, as the
+  sidebar's column is named), which the audit found with no description.
 - *Left for later:* "Show in Spotlight" in the context menus (D-075: no call opens Spotlight on an app's entity); the
   widget's large family; a desk item in the menu bar extra opening its decision.
 ---
