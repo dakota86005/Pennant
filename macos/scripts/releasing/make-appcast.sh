@@ -31,9 +31,13 @@ printf '%s' "${SPARKLE_ED_PRIVATE_KEY}" | "${TOOLS}/bin/generate_appcast" --ed-k
   --link "https://github.com/${RELEASE_GITHUB_REPO}/releases/tag/${TAG}" \
   --embed-release-notes -o "${OUT}/appcast.xml" "${WORK}"
 
-# What a client needs, or the release is not finished
-for want in "sparkle:edSignature=" "<sparkle:version>${VERSION}</sparkle:version>" \
-  "releases/download/${TAG}/$(basename "${DMG}")"; do
+# What a client needs, or the release is not finished. generate_appcast reads the minimum system from the app's
+# LSMinimumSystemVersion (the project's deployment target, macOS 26), so a Mac that cannot run it is never offered it.
+wants=("sparkle:edSignature=" "<sparkle:version>${VERSION}</sparkle:version>"
+  "<sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>" "releases/download/${TAG}/$(basename "${DMG}")")
+# Notes that were given must reach the update's description, or Sparkle shows an update with none
+if [ -s "${NOTES}" ]; then wants+=("<description"); fi
+for want in "${wants[@]}"; do
   grep -qF "${want}" "${OUT}/appcast.xml" || release_fail "appcast.xml lacks ${want}"
 done
 echo "[appcast] ${OUT}/appcast.xml (${TAG})"
