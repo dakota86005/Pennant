@@ -238,9 +238,12 @@ final class PennantUITests: XCTestCase {
         var pictured: [XCUIElement] = []
         // Each window with its own pixels, so an element is measured in the window that holds it
         let shots = app.windows.allElementsBoundByIndex.map { window in (frame: window.frame, shot: window.screenshot()) }
-        let windows = shots.map { (frame: $0.frame, pixels: WindowPixels($0.shot.image, frame: $0.frame)) }
+        // The menu bar extra's panel, which the tree lists as a dialog, never a window (N14): measured in its own pixels
+        // too, after the windows, so its text is never taken for text scrolled out of a window
+        let panels = app.dialogs.allElementsBoundByIndex.map { panel in (frame: panel.frame, shot: panel.screenshot()) }
+        let windows = (shots + panels).map { (frame: $0.frame, pixels: WindowPixels($0.shot.image, frame: $0.frame)) }
         // The window as the audit saw it, kept beside its findings
-        if let first = shots.first { keep(first.shot, named: "\(name)-window") }
+        if let first = (shots + panels).first { keep(first.shot, named: "\(name)-window") }
         let touchBar = app.touchBars.firstMatch
         let touchBarFrame = touchBar.exists ? touchBar.frame.insetBy(dx: -2, dy: -2) : nil
         let sidebar = app.outlines["sidebar"].firstMatch
@@ -249,7 +252,7 @@ final class PennantUITests: XCTestCase {
         // they sit in (on GitHub's runner the zoom button's menu view was reported where no button was found)
         let controls = [XCUIIdentifierCloseWindow, XCUIIdentifierMinimizeWindow, XCUIIdentifierZoomWindow].flatMap { id in
             app.buttons.matching(identifier: id).allElementsBoundByIndex.map { $0.frame.insetBy(dx: -2, dy: -2) }
-        } + windows.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: 90, height: 52) }
+        } + shots.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: 90, height: 52) }
         // The inspector column, where one is open: on a window too narrow for the sidebar, the report and the inspector
         // (GitHub's runner, a 1024-point-wide screen) the system lays the inspector over the report's trailing side
         let inspector = app.descendants(matching: .any)["inspector"].firstMatch
@@ -379,7 +382,7 @@ final class PennantUITests: XCTestCase {
                 let holder = windows.first { $0.frame.contains(frame) }
                 let ratio = holder?.pixels?.contrast(in: frame)
                 // Where no pixels were read, the windows as measured, so the line says why (PR #58: a finding with none)
-                let unread = " (no pixels read: windows " + shots.map { "\($0.frame) pictured \(Int($0.shot.image.size.width))×\(Int($0.shot.image.size.height))" }
+                let unread = " (no pixels read: windows " + (shots + panels).map { "\($0.frame) pictured \(Int($0.shot.image.size.width))×\(Int($0.shot.image.size.height))" }
                     .joined(separator: ", ") + (holder == nil ? "; none holds it)" : "; its window's picture is not at one scale)")
                 issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? unread))
                 pictured.append(element)
