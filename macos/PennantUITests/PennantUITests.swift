@@ -2274,7 +2274,18 @@ final class PennantUITests: XCTestCase {
         toggle.click()
         XCTAssertTrue(waitForValue(toggle, on: true), "the menu bar switch did not turn on (value \(String(describing: toggle.value)))")
         keep(settings.screenshot(), named: "n14-settings-menu-bar")
+        // Settings by its own identifier (`firstMatch` would be the next window once it closed)
+        let settingsWindow = app.windows.matching(identifier: settings.identifier).firstMatch
         app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(settingsWindow.waitForNonExistence(timeout: 5), "Settings did not close")
+
+        // The main window closed too (⌘W), so the extra's panel is audited alone, as a club's window is
+        // (`auditClubWindow`): run 38116687375 measured the main window's masthead under the panel against the panel's
+        // pixels. Open Pennant then opens a main window on the Morning Report, the path with none open.
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        XCTAssertTrue(main.waitForExistence(timeout: 5), "no main window behind Settings")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
 
         // Its window, from the menu bar
         let item = app.statusItems.firstMatch

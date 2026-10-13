@@ -30,6 +30,7 @@ public struct MenuBarGlanceView: View {
         .frame(width: 300, alignment: .leading)
         .foregroundStyle(Color(nsColor: .labelColor))
         .background(Color(nsColor: .readablePage))
+        .background(MenuBarPanelName())
         // A container of its own, so its identifier names it and never replaces its children's
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("menuBarExtra")
@@ -95,5 +96,44 @@ struct GlanceBody: View {
                 .accessibilityElement(children: .combine)
             }
         }
+    }
+}
+
+/// Names the menu bar extra's panel and the hosting view that holds the glance for VoiceOver (run 38116687375: the
+/// accessibility audit on GitHub's runner found the panel, a dialog, and its hosting view, a group, each with no
+/// description). AppKit makes both for the `MenuBarExtra`, so no SwiftUI modifier reaches them. Walking up from the
+/// glance to the panel's content view, each view that vends itself as an unnamed group, and then the panel itself when
+/// it has no title, gets the structural name "Pennant". Only labels change, never children or roles.
+struct MenuBarPanelName: NSViewRepresentable {
+    static let name: LocalizedStringResource = "Pennant"
+
+    func makeNSView(context: Context) -> Finder { Finder() }
+    func updateNSView(_ view: Finder, context: Context) { view.name() }
+
+    final class Finder: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            name()
+        }
+
+        func name() {
+            guard let window else { return }
+            let name = String(localized: MenuBarPanelName.name)
+            var view = superview
+            while let current = view {
+                if current.isAccessibilityElement(), current.accessibilityRole() == .group,
+                   current.accessibilityLabel()?.isEmpty ?? true {
+                    current.setAccessibilityLabel(name)
+                }
+                if current === window.contentView { break }
+                view = current.superview
+            }
+            if window.title.isEmpty, window.accessibilityLabel()?.isEmpty ?? true {
+                window.setAccessibilityLabel(name)
+                window.setAccessibilityTitle(name)
+            }
+        }
+
+        override func isAccessibilityElement() -> Bool { false }
     }
 }
