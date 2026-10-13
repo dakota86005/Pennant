@@ -2276,12 +2276,18 @@ final class PennantUITests: XCTestCase {
         general.click()
         let toggle = element(app, "settings.menuBarExtra")
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "no menu bar switch in Settings ▸ General")
-        // The switch sits low in the form, where the runner's Dock covers the window's bottom: the form is scrolled to
-        // its end first (the sections below the switch bring it up into the window's middle), never clicked under the Dock
+        // The switch sits low in the form, and on the runner's 1024 × 768 screen the Dock covers the window's bottom: the
+        // form is scrolled, a little at a time, until the switch lies wholly where a click reaches it (inside the window,
+        // below its toolbar, above the Dock), and only then clicked
         let form = element(app, "settings.general")
-        for _ in 0..<3 { form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)).scroll(byDeltaX: 0, deltaY: -2000) }
         let settings = app.windows.firstMatch
-        print("[glance] \(methodName): the switch at \(toggle.frame) in Settings at \(settings.frame)")
+        let reach = reachable(settings)
+        let wheel = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        for _ in 0..<40 where !reach.contains(toggle.frame) {
+            wheel.scroll(byDeltaX: 0, deltaY: toggle.frame.maxY > reach.maxY ? -80 : 80)
+        }
+        print("[glance] \(methodName): the switch at \(toggle.frame) in Settings at \(settings.frame), reachable \(reach)")
+        XCTAssertTrue(reach.contains(toggle.frame), "the menu bar switch could not be scrolled where a click reaches it: \(toggle.frame) in \(reach)")
         toggle.click()
         XCTAssertTrue(waitForValue(toggle, on: true), "the menu bar switch did not turn on (value \(String(describing: toggle.value)))")
         keep(settings.screenshot(), named: "n14-settings-menu-bar")
@@ -2301,22 +2307,16 @@ final class PennantUITests: XCTestCase {
         // Its window, from the menu bar
         let item = app.statusItems.firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 10), "the menu bar extra did not appear once turned on")
-        if app.state != .runningForeground { app.activate() }
         item.click()
         let open = element(app, "menuBarExtra.openPennant")
-        if !open.waitForExistence(timeout: 10) {
-            print("[glance] \(methodName): no extra's window after a click on \(item.frame); windows: \(app.windows.allElementsBoundByIndex.map { "\($0.identifier) \($0.frame)" }); status items: \(app.statusItems.count)")
-            item.click()
-        }
-        XCTAssertTrue(open.waitForExistence(timeout: 10), "the menu bar extra's window did not open")
+        XCTAssertTrue(open.waitForExistence(timeout: 10), "the menu bar extra's window did not open on a click on \(item.frame)")
         XCTAssertTrue(element(app, "menuBarExtra.desk").waitForExistence(timeout: 30), "the menu bar extra did not show the served desk")
         let panel = element(app, "menuBarExtra")
         keep(panel.screenshot(), named: "n14-menu-bar-extra")
         try audit(app, named: "accessibility-audit-menu-bar-extra")
 
         // Open Pennant: the main window, on the Morning Report
-        if !open.exists { item.click() }
-        XCTAssertTrue(open.waitForExistence(timeout: 10))
+        XCTAssertTrue(open.exists, "the menu bar extra's window closed during its audit")
         open.click()
         XCTAssertTrue(element(app, "detail.frontOffice.morningReport").waitForExistence(timeout: 10), "Open Pennant did not show the Morning Report")
         XCTAssertTrue(open.waitForNonExistence(timeout: 5), "the menu bar extra's window stayed open")
@@ -2326,6 +2326,23 @@ final class PennantUITests: XCTestCase {
         let outside = log.split(separator: "\n").filter { $0.contains("spotlight:") || $0.contains("glance:") }
         print("[glance] \(methodName): \(outside.isEmpty ? "no line in the app's log" : outside.joined(separator: " | "))")
         quitCleanly(app)
+    }
+
+    /// The part of a window a click reaches: inside its frame, below its toolbar, and within its screen's visible frame
+    /// (below the menu bar, above the Dock), in the screen coordinates of `XCUIElement.frame` (top-left origin).
+    @MainActor
+    private func reachable(_ window: XCUIElement) -> CGRect {
+        let frame = window.frame
+        guard let primary = NSScreen.screens.first else { return frame }
+        // AppKit's screen frames have their origin at the primary screen's bottom left
+        let flip = { (rect: CGRect) in CGRect(x: rect.minX, y: primary.frame.maxY - rect.maxY, width: rect.width, height: rect.height) }
+        let centre = CGPoint(x: frame.midX, y: frame.midY)
+        let screen = NSScreen.screens.first { flip($0.frame).contains(centre) } ?? primary
+        var reach = frame.intersection(flip(screen.visibleFrame))
+        // The toolbar (Settings' tabs) across the window's top
+        reach.origin.y += 60
+        reach.size.height -= 60 + 8
+        return reach
     }
 
     /// Waits for a switch to read on (or off); its value is 1 or 0, as a number or a string.
