@@ -11,6 +11,10 @@
 		4E5000000000000000000081 /* PennantDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000071 /* PennantDesign */; };
 		4E5000000000000000000082 /* PennantAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000072 /* PennantAPI */; };
 		4E5000000000000000000083 /* PennantFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000073 /* PennantFeatures */; };
+		4E5000000000000000000084 /* PennantGlance in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000074 /* PennantGlance */; };
+		4E50000000000000000000A0 /* PennantWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E5000000000000000000012 /* PennantWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4E50000000000000000000A1 /* PennantGlance in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000075 /* PennantGlance */; };
+		4E50000000000000000000A2 /* PennantDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000076 /* PennantDesign */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,11 +25,33 @@
 			remoteGlobalIDString = 4E5000000000000000000020;
 			remoteInfo = Pennant;
 		};
+		4E50000000000000000000A3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4E5000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E5000000000000000000022;
+			remoteInfo = PennantWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4E50000000000000000000A4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4E50000000000000000000A0 /* PennantWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		4E5000000000000000000010 /* Pennant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pennant.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4E5000000000000000000011 /* PennantUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PennantUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E5000000000000000000012 /* PennantWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PennantWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +70,11 @@
 			path = Support;
 			sourceTree = "<group>";
 		};
+		4E5000000000000000000008 /* PennantWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PennantWidgets;
+			sourceTree = "<group>";
+		};
 		4E5000000000000000000007 /* scripts */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = scripts;
@@ -60,6 +91,7 @@
 				4E5000000000000000000081 /* PennantDesign in Frameworks */,
 				4E5000000000000000000082 /* PennantAPI in Frameworks */,
 				4E5000000000000000000083 /* PennantFeatures in Frameworks */,
+				4E5000000000000000000084 /* PennantGlance in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -67,6 +99,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E50000000000000000000A5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4E50000000000000000000A1 /* PennantGlance in Frameworks */,
+				4E50000000000000000000A2 /* PennantDesign in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +119,7 @@
 			children = (
 				4E5000000000000000000004 /* Pennant */,
 				4E5000000000000000000005 /* PennantUITests */,
+				4E5000000000000000000008 /* PennantWidgets */,
 				4E5000000000000000000006 /* Support */,
 				4E5000000000000000000007 /* scripts */,
 				4E5000000000000000000003 /* Products */,
@@ -89,6 +131,7 @@
 			children = (
 				4E5000000000000000000010 /* Pennant.app */,
 				4E5000000000000000000011 /* PennantUITests.xctest */,
+				4E5000000000000000000012 /* PennantWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -103,11 +146,13 @@
 				4E5000000000000000000030 /* Sources */,
 				4E5000000000000000000031 /* Frameworks */,
 				4E5000000000000000000032 /* Resources */,
+				4E50000000000000000000A4 /* Embed Foundation Extensions */,
 				4E5000000000000000000033 /* Embed the server */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4E50000000000000000000A6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4E5000000000000000000004 /* Pennant */,
@@ -118,6 +163,7 @@
 				4E5000000000000000000071 /* PennantDesign */,
 				4E5000000000000000000072 /* PennantAPI */,
 				4E5000000000000000000073 /* PennantFeatures */,
+				4E5000000000000000000074 /* PennantGlance */,
 			);
 			productName = Pennant;
 			productReference = 4E5000000000000000000010 /* Pennant.app */;
@@ -146,6 +192,30 @@
 			productReference = 4E5000000000000000000011 /* PennantUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		4E5000000000000000000022 /* PennantWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E5000000000000000000059 /* Build configuration list for PBXNativeTarget "PennantWidgets" */;
+			buildPhases = (
+				4E50000000000000000000A7 /* Sources */,
+				4E50000000000000000000A5 /* Frameworks */,
+				4E50000000000000000000A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4E5000000000000000000008 /* PennantWidgets */,
+			);
+			name = PennantWidgets;
+			packageProductDependencies = (
+				4E5000000000000000000075 /* PennantGlance */,
+				4E5000000000000000000076 /* PennantDesign */,
+			);
+			productName = PennantWidgets;
+			productReference = 4E5000000000000000000012 /* PennantWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -162,6 +232,9 @@
 					4E5000000000000000000021 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = 4E5000000000000000000020;
+					};
+					4E5000000000000000000022 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -187,6 +260,7 @@
 			targets = (
 				4E5000000000000000000020 /* Pennant */,
 				4E5000000000000000000021 /* PennantUITests */,
+				4E5000000000000000000022 /* PennantWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -200,6 +274,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		4E5000000000000000000036 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E50000000000000000000A8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -247,6 +328,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4E50000000000000000000A7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -254,6 +342,11 @@
 			isa = PBXTargetDependency;
 			target = 4E5000000000000000000020 /* Pennant */;
 			targetProxy = 4E5000000000000000000040 /* PBXContainerItemProxy */;
+		};
+		4E50000000000000000000A6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E5000000000000000000022 /* PennantWidgets */;
+			targetProxy = 4E50000000000000000000A3 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -315,6 +408,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
+				PENNANT_APP_GROUP = "$(DEVELOPMENT_TEAM).group.com.dakotawise.pennant.dev";
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -376,6 +470,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				PENNANT_APP_GROUP = "$(DEVELOPMENT_TEAM).group.com.dakotawise.pennant";
 				SDKROOT = macosx;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -390,6 +485,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
+				CODE_SIGN_ENTITLEMENTS = Support/Pennant.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 6T7RV2A4DQ;
@@ -415,6 +511,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
+				CODE_SIGN_ENTITLEMENTS = Support/Pennant.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 6T7RV2A4DQ;
@@ -466,6 +563,56 @@
 			};
 			name = Release;
 		};
+		4E500000000000000000005A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_ENTITLEMENTS = Support/PennantWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6T7RV2A4DQ;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Support/PennantWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Pennant;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dakotawise.pennant.dev.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		4E500000000000000000005B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_ENTITLEMENTS = Support/PennantWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6T7RV2A4DQ;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Support/PennantWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Pennant;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dakotawise.pennant.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -492,6 +639,15 @@
 			buildConfigurations = (
 				4E5000000000000000000057 /* Debug */,
 				4E5000000000000000000058 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E5000000000000000000059 /* Build configuration list for PBXNativeTarget "PennantWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E500000000000000000005A /* Debug */,
+				4E500000000000000000005B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -537,6 +693,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4E5000000000000000000063 /* XCLocalSwiftPackageReference "Packages/PennantFeatures" */;
 			productName = PennantFeatures;
+		};
+		4E5000000000000000000074 /* PennantGlance */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E5000000000000000000060 /* XCLocalSwiftPackageReference "Packages/PennantKit" */;
+			productName = PennantGlance;
+		};
+		4E5000000000000000000075 /* PennantGlance */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E5000000000000000000060 /* XCLocalSwiftPackageReference "Packages/PennantKit" */;
+			productName = PennantGlance;
+		};
+		4E5000000000000000000076 /* PennantDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E5000000000000000000061 /* XCLocalSwiftPackageReference "Packages/PennantDesign" */;
+			productName = PennantDesign;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

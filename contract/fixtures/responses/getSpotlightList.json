@@ -1,0 +1,440 @@
+{
+  "orgId": 1,
+  "importStamp": null,
+  "players": [
+    {
+      "kind": "player",
+      "id": "1000",
+      "title": "P 1000",
+      "line": "3B · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1000,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1001",
+      "title": "P 1001",
+      "line": "2B · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1001,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1002",
+      "title": "P 1002",
+      "line": "CF · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1002,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1003",
+      "title": "P 1003",
+      "line": "SS · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1003,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1004",
+      "title": "P 1004",
+      "line": "3B · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1004,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1005",
+      "title": "P 1005",
+      "line": "CF · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1005,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1006",
+      "title": "P 1006",
+      "line": "1B · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1006,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1007",
+      "title": "P 1007",
+      "line": "LF · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1007,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1008",
+      "title": "P 1008",
+      "line": "DH · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1008,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1009",
+      "title": "P 1009",
+      "line": "LF · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1009,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1010",
+      "title": "P 1010",
+      "line": "1B · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1010,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1011",
+      "title": "P 1011",
+      "line": "3B · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1011,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1012",
+      "title": "P 1012",
+      "line": "C · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1012,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1013",
+      "title": "P 1013",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1013,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1014",
+      "title": "P 1014",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1014,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1015",
+      "title": "P 1015",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1015,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1016",
+      "title": "P 1016",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1016,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1017",
+      "title": "P 1017",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1017,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1018",
+      "title": "P 1018",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1018,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1019",
+      "title": "P 1019",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1019,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1020",
+      "title": "P 1020",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1020,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1021",
+      "title": "P 1021",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1021,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1022",
+      "title": "P 1022",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1022,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1023",
+      "title": "P 1023",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1023,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1024",
+      "title": "P 1024",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1024,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1025",
+      "title": "P 1025",
+      "line": "P · Club 1 N · Majors",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1025,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1104",
+      "title": "P 1104",
+      "line": "2B · Farm 1 F · Triple-A",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1104,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1105",
+      "title": "P 1105",
+      "line": "P · Farm 1 F · Triple-A",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1105,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1106",
+      "title": "P 1106",
+      "line": "SS · Farm 1 F · Triple-A",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1106,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1107",
+      "title": "P 1107",
+      "line": "P · Farm 1 F · Triple-A",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1107,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1108",
+      "title": "P 1108",
+      "line": "CF · Farm 1 F · Triple-A",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1108,
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "player",
+      "id": "1109",
+      "title": "P 1109",
+      "line": "P · Farm 1 F · Triple-A",
+      "followed": false,
+      "open": {
+        "kind": "player",
+        "playerId": 1109,
+        "teamId": 1
+      }
+    }
+  ],
+  "clubs": [
+    {
+      "kind": "club",
+      "id": "1",
+      "title": "Club 1 N",
+      "line": "C1 · East",
+      "followed": false,
+      "open": {
+        "kind": "club",
+        "teamId": 1
+      }
+    },
+    {
+      "kind": "club",
+      "id": "2",
+      "title": "Club 2 N",
+      "line": "C2 · East",
+      "followed": false,
+      "open": {
+        "kind": "club",
+        "teamId": 2
+      }
+    },
+    {
+      "kind": "club",
+      "id": "3",
+      "title": "Club 3 N",
+      "line": "C3 · East",
+      "followed": false,
+      "open": {
+        "kind": "club",
+        "teamId": 3
+      }
+    },
+    {
+      "kind": "club",
+      "id": "4",
+      "title": "Club 4 N",
+      "line": "C4 · East",
+      "followed": false,
+      "open": {
+        "kind": "club",
+        "teamId": 4
+      }
+    }
+  ],
+  "about": {
+    "display": "Your organization's players and the league's clubs",
+    "hint": "Names, positions and clubs only: no ratings or values"
+  }
+}

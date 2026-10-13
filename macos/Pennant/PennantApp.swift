@@ -11,12 +11,15 @@ import SwiftUI
 @main
 struct PennantApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    /// The menu bar extra (N14): off until the GM turns it on in Settings ▸ General.
+    @AppStorage(AppPreferences.showsMenuBarExtraKey) private var showsMenuBarExtra = false
 
     var body: some Scene {
         WindowGroup(id: SceneID.main) {
             MainWindowScene()
                 .environment(appDelegate.model)
                 .environment(appDelegate.routing)
+                .handsOverWindowOpening()
         }
         .defaultSize(width: 1280, height: 800)
         .commands {
@@ -39,6 +42,7 @@ struct PennantApp: App {
             ClubWindowScene(club: club.wrappedValue)
                 .environment(appDelegate.model)
                 .environment(appDelegate.routing)
+                .handsOverWindowOpening()
         }
         .defaultSize(width: 1180, height: 820)
         // A club window opens only for a club (never File ▸ New Club Window with none)
@@ -50,6 +54,7 @@ struct PennantApp: App {
             PlayerWindowScene(player: player.wrappedValue)
                 .environment(appDelegate.model)
                 .environment(appDelegate.routing)
+                .handsOverWindowOpening()
         }
         .defaultSize(width: 920, height: 780)
         // A player window opens only for a player (never File ▸ New Player Window with none)
@@ -89,6 +94,29 @@ struct PennantApp: App {
                 .environment(appDelegate.model)
                 .environment(appDelegate.routing)
         }
+
+        // The menu bar extra (N14, D-075): the served record, next game and desk, with Open Pennant
+        MenuBarExtra(isInserted: $showsMenuBarExtra) {
+            MenuBarScene()
+                .environment(appDelegate.model)
+                .handsOverWindowOpening()
+        } label: {
+            Label("Pennant", systemImage: "baseball")
+        }
+        .menuBarExtraStyle(.window)
+    }
+}
+
+/// The menu bar extra's window: Open Pennant brings the main window forward on the Morning Report (or opens one on it),
+/// as the Morning Report shortcut does.
+struct MenuBarScene: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        MenuBarGlanceView {
+            IntentRouter.shared.open(.morningReport)
+            dismiss()
+        }
     }
 }
 
@@ -99,6 +127,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let routing = AppRouting()
     /// The served notification when a new export is read, and the desk's count on the Dock icon (N7).
     private let outside: OutsideTheWindow
+    /// The widget's glance and Spotlight's list, kept current (N14).
+    private let integration: Integration
     private let quit: QuitCoordinator
     /// The app's own log (the quit's steps).
     private let appLog: @Sendable (String) -> Void
@@ -126,6 +156,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = model.serverController
         self.model = model
         outside = OutsideTheWindow(model: model)
+        let indexLog = controller.log
+        integration = Integration(
+            model: model,
+            glanceStore: AppConfiguration.glanceStore(),
+            spotlight: AppConfiguration.indexesSpotlight() ? SpotlightIndexer { indexLog.write($0, source: "app") } : nil
+        )
         let log = controller.log
         appLog = { log.write($0, source: "app") }
         // Each time a main window's ⌘K palette comes up or goes away, with why (PR #58)
@@ -143,6 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stop: { await controller.stop() }
         )
         super.init()
+        IntentRouter.shared.attach(model: model, routing: routing)
         // The server starts now, while the windows are built (the launch budget); `applicationDidFinishLaunching` follows it
         model.startEarly()
         model.noteLaunchStep("the app's model is made and the server started")
@@ -167,6 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         outside.start()
+        integration.start()
         Task { await model.start() }
         #if DEBUG
         // A Debug build launched by a script for window screenshots comes to the front (`-PennantDebugActivate YES`)

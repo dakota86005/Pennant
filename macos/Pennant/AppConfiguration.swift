@@ -1,4 +1,5 @@
 import Foundation
+import PennantGlance
 import PennantKit
 
 /// Where this build's server and data are.
@@ -34,5 +35,36 @@ enum AppConfiguration {
         if defaults.string(forKey: "PennantTestKeys") == "memory" { return MemoryKeyStore() }
         #endif
         return KeychainKeyStore(service: KeychainKeyStore.service(forBundleID: bundle.bundleIdentifier))
+    }
+
+    /// Where the widget's glance is written (N14, D-075): the App Group's container when this build's signature carries
+    /// the group (`AppGroup`), else nowhere. A Debug build can be given a scratch folder instead (`PENNANT_DEV_GLANCE_DIR`
+    /// or `-PennantDevGlanceFolder <folder>`; every UI test passes one). A Debug build the UI tests launched (they always
+    /// pass `-PennantTestKeys memory`) and given no folder writes nowhere: a test never reaches the Mac's App Group.
+    static func glanceStore(
+        bundle: Bundle = .main,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        defaults: UserDefaults = .standard
+    ) -> GlanceSnapshotStore {
+        #if DEBUG
+        return AppGroup.developmentGlanceStore(
+            folder: environment["PENNANT_DEV_GLANCE_DIR"] ?? defaults.string(forKey: "PennantDevGlanceFolder"),
+            launchedByTests: defaults.string(forKey: "PennantTestKeys") == "memory",
+            bundle: bundle
+        )
+        #else
+        return AppGroup.glanceStore(bundle: bundle)
+        #endif
+    }
+
+    /// Whether this build puts the served players and clubs in Spotlight (N14): a release build always; a Debug build
+    /// only when asked (`-PennantDevSpotlight YES`, by hand), so running a development build never fills a developer's
+    /// Spotlight with a scratch league. The UI tests never ask.
+    static func indexesSpotlight(defaults: UserDefaults = .standard) -> Bool {
+        #if DEBUG
+        return defaults.bool(forKey: "PennantDevSpotlight")
+        #else
+        return true
+        #endif
     }
 }

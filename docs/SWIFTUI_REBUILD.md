@@ -673,6 +673,8 @@ only words (additive, through the contract).
   read at 4.5:1 or better, with the measured ratio (the sidebar's system labels measured 9:1 to 19:1 while the audit
   named a different handful each run). Every other contrast finding fails. Also set aside: the Touch Bar's own keys
   ("emoji & symbols"), and a parent/child mismatch the audit attributes to no element (only with the ⌘K palette up).
+  Audits measure the key window (D-075's amendment of 2026-10-12): a finding on a window that is not key, which carries
+  the system's own de-emphasis, means the test isolates the window under audit; it is never set aside.
   Run locally for the first time (automation mode no longer needs a password), the audits found more, each fixed in the
   app: AppKit's full-window containers are named ("Content", "Content and Inspector", "Main Window", and the inspector
   column "Inspector"); the toolbar no longer draws the title and subtitle; a legend's and the palette footer's symbol
@@ -2400,6 +2402,69 @@ Report views show their served reports. `DepartmentModule.badge(from:)` reads th
 Snapshots: `morning-report-full`, `main-window-morning-report`, `main-window-major-league-report`, `report-<department>`
 and `staff-options`, light and dark.
 
+
+**As built at N14, Stage A (2026-10-10): Pennant outside its windows.** Branch `feature/swiftui-n14-integration`; D-075
+(BEHAVIOR_CASES.md "Pennant for Mac", the N14 rows).
+- **Served:** `GET /api/v2/glance/:org` (`Glance`: the Morning Report's record, next game, "as of" line and desk, the
+  count worded on the server, the first three items in the desk's order, and why a part is missing), read from the kept
+  summary; `GET /api/v2/spotlight/:org` (`SpotlightList`: our organization's players at every level the search index
+  holds and the league's major-league clubs, in the search's words), read from the search index. Both kept per import
+  by what they read; `glance.test.ts`, the contract test (fixtures `getGlance`, `getSpotlightList`).
+- **PennantKit:** a Foundation-only library, `PennantGlance` (the widget links it and PennantDesign, nothing else):
+  `GlanceSnapshot` (served strings and figures, the club card's served colour pairs), `GlanceSnapshotStore` (one JSON
+  file, written atomically), `AppGroup` (the group from the bundle's `PennantAppGroup`, from the `PENNANT_APP_GROUP` build
+  setting: `$(DEVELOPMENT_TEAM).group.com.dakotawise.pennant`, `….pennant.dev` in Debug; the container only when the
+  process's signature carries the group; `developmentGlanceStore` gives a UI-test launch with no scratch folder none),
+  `GlanceTimeline` (one entry: the snapshot is never called out of date) and `GlanceInk` (the system's primary and
+  secondary outside full colour, the served pair only where it reads). `IntegrationStore` on `AppModel.integration`
+  reads the glance on the store key and the desk's stamp, the list on the store key, hands each on (`onSnapshot`,
+  `onSpotlight`), removes what was outside the windows (`settle`, `onClear`: no save, the club question, another save or
+  club) and answers Shortcuts' entity queries from them and the served search, by entity ids that carry the save
+  (`"<saveId>:<id>"`; another save's or an unknown id is no entity).
+- **The app target:** `Integration` follows the store key, the desk's stamp, the club question and the club's colours,
+  writes the snapshot (then `WidgetCenter.reloadTimelines(ofKind:)`) and hands the list to `SpotlightIndexer`
+  (`CSSearchableIndex.default()`: delete Pennant's players and clubs, index the served ones, keep the list's stamp only
+  once that succeeded, then `PennantShortcuts.updateAppShortcutParameters()`; `clear` on `onClear`; a release build
+  always, a Debug build only with `-PennantDevSpotlight YES` by hand, never in a UI test). An entity query waits for the
+  server while it is coming up (at most 30 s), then for the list (10 s more). `PlayerEntity` and `ClubEntity` are
+  `AppEntity` and `IndexedEntity`, each holding its `PlayerRef` or `ClubRef` beside its entity id;
+  the intents are `OpenPlayerIntent` and `OpenClubIntent` (the `OpenIntent`s Spotlight's results use),
+  `OpenMorningReportIntent`, `AskStaffAboutPlayerIntent` (through `StaffRoomRouter`, as the Player menu), `RefreshDataIntent`
+  (as Club ▸ Refresh Data), offered by `PennantShortcuts`. `IntentRouter` holds the model and the first scene's
+  `openWindow` (a request made before a scene appears waits for it); a view asked for with every main window closed is
+  `AppRouting.requestRoute`, taken once by the next main window. The `MenuBarExtra` (window style) is inserted from the
+  app's defaults (`PennantShowsMenuBarExtra`, off), switched in Settings ▸ General ("Show Pennant in the Menu Bar"); its
+  view is Shell's `MenuBarGlanceView` (the served glance on `readablePage`, Open Pennant; "No save chosen" or the
+  served club question as the main window says them).
+- **The widget extension** `PennantWidgets` (`com.dakotawise.pennant[.dev].widgets`, sandboxed, the App Group its only
+  entitlement beside the sandbox; embedded by "Embed Foundation Extensions", which runs before "Embed the server"): one
+  `StaticConfiguration`, small and medium, its timeline `GlanceTimeline`'s with `.never` (the app asks for reloads). Its
+  catalog is its own (`PennantWidgets/Localizable.xcstrings`, checked by `stringCatalog.test.ts` like the app's).
+- **Signing:** the app gains `Support/Pennant.entitlements` (the App Group only; still no App Sandbox), the widget
+  `Support/PennantWidgets.entitlements`. CI builds unsigned (`CODE_SIGNING_ALLOWED=NO`): the extension is built and
+  embedded, carries no entitlement, and the app reaches no group container, so CI's UI tests write the glance to their
+  scratch folder (`-PennantDevGlanceFolder`, passed by every UI test launch). A widget that reads the app's glance needs both signed with the team (a
+  development build) or the Developer ID (the release, Stage B), which no CI run here proves.
+- **Verified:** `GlanceSnapshotTests`, `GlanceTimelineTests`, `IntegrationStoreTests` (PennantKit), `IntegrationFeatureTests`
+  and `IntegrationSnapshotTests` (`n14-menu-bar-extra-*`, skipped on CI), the XCUITest `testMenuBarExtra` (the snapshot
+  written to the test's folder, the switch, the extra's window with the served desk, audited, Open Pennant), assigned to
+  CI's shard 2. The panel is audited alone: Settings and the main window are closed with ⌘W first (with the main window
+  behind it, run 38116687375 measured the masthead under the panel against the panel's pixels), so Open Pennant takes
+  the path with no main window open. The audit reads the panel, a dialog in the tree, in its own pixels, as it reads a
+  window's (D-075's amendment: audits measure the key window; a finding on a window that is not key means the test
+  isolates the window under audit, never a set-aside). The panel, which the audit found with no description, is titled
+  "Pennant" once from inside it (`MenuBarPanelTitle`: `window.title`). The hosting view AppKit puts in it, a group no
+  SwiftUI modifier reaches, is still found unnamed with `.accessibilityLabel` on the glance's root container (run
+  38348239530), so the one unnamed group nearest the panel is labelled "Pennant", once; the earlier version labelled
+  every unnamed group up the chain and the panel's accessibility label (review N14A, L9). The test clicks the status item once and the Settings
+  switch only once it is scrolled wholly into reach (below the toolbar, above the Dock), each asserted, never retried.
+- **Review fixes (review N14A, 2026-10-12):** the UI tests never reach the App Group or Spotlight (M1, M2); the save and
+  club are followed outside the windows (M3, L2, L3, L6); intent descriptions are catalogued and the string-catalog test
+  finds them (M4); the widget states facts and reads in every rendering mode (M5, M6); a refused Refresh Data fails with
+  the served sentence (L4); Ask Staff is always listed, a deviation recorded in D-075 (L5); the menu bar extra's states
+  (L1) and its panel's name (L9); the menu bar test's clicks (L7, L8).
+- *Left for later:* "Show in Spotlight" in the context menus (D-075: no call opens Spotlight on an app's entity); the
+  widget's large family; a desk item in the menu bar extra opening its decision.
 ---
 
 ## 7. Coexistence and the way back
@@ -2563,7 +2628,7 @@ sizes, not dates.
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
 | **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
 | **N13** | AI surfaces, native | (*Stage A built: section 3.5, "As built at N13, Stage A"; Stage B built: "As built at N13, Stage B"*) Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
-| **N14** | macOS integration and release | (*Stage B pipeline built: section 9, "As built at N14, Stage B (pipeline)"*) App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
+| **N14** | macOS integration and release | (*Stage A built: section 6, "As built at N14, Stage A"; Stage B pipeline built: section 9, "As built at N14, Stage B (pipeline)"*) App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
 
 ### N3.5, Stage B1: the import, as built (2026-09-26)

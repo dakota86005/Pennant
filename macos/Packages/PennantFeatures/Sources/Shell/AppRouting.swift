@@ -24,6 +24,9 @@ public final class AppRouting {
     private var paletteRequestPending = false
     /// Go ▸ a department (⌘1 to ⌘9) with every main window closed: the main window that opens next goes there.
     private var shortcutRequestPending: Int?
+    /// A view asked for from outside the windows (Shortcuts, the menu bar extra; N14) with every main window closed: the
+    /// main window that opens next goes there.
+    private var routeRequestPending: AppRoute?
     /// Bumped each time something asks the Setup window to start again at the save step.
     public private(set) var setupRequest = 0
     /// A request to start again that the Setup window has not taken yet (it may open only after the request is made).
@@ -114,6 +117,17 @@ public final class AppRouting {
     /// Go ▸ ⌘`number` with no main window open: the next main window opens on that department.
     public func requestShortcut(_ number: Int) {
         shortcutRequestPending = number
+    }
+
+    /// A view asked for from outside the windows with no main window open: the next main window opens on it (N14).
+    public func requestRoute(_ route: AppRoute) {
+        routeRequestPending = route
+    }
+
+    /// The view asked for with no main window open, once: the next main window takes it.
+    public func takeRouteRequest() -> AppRoute? {
+        defer { routeRequestPending = nil }
+        return routeRequestPending
     }
 
     /// The department asked for with no main window open, once: the next main window takes it.

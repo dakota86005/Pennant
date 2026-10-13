@@ -100,6 +100,11 @@ final class PennantUITests: XCTestCase {
         scratch.appending(path: "saves/Synthetic League.lg", directoryHint: .isDirectory)
     }
 
+    /// Where every launch writes the widget's glance: the test's own folder.
+    private var glanceFolder: URL {
+        scratch.appending(path: "glance", directoryHint: .isDirectory)
+    }
+
     @MainActor
     private func launch(arguments: [String] = [], environment: [String: String] = [:], restoresState: Bool = false) -> XCUIApplication {
         // The last launch has quit (`quitCleanly`) or is ended now, never left beside this one
@@ -121,8 +126,10 @@ final class PennantUITests: XCTestCase {
         // AI keys in memory for every test, never the Keychain of the Mac running them: a key kept there would otherwise
         // reach a provider (review N13B, M2)
         let keys = ["-PennantTestKeys", "memory"]
+        // The widget's glance in the test's folder, never the Mac's App Group (review N14A, M1)
+        let glance = ["-PennantDevGlanceFolder", glanceFolder.path(percentEncoded: false)]
         // Each key equivalent the app receives, and the modifier keys held at launch, said in its log (PR #58)
-        app.launchArguments += state + fresh + keys + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
+        app.launchArguments += state + fresh + keys + glance + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
         app.launch()
         return app
     }
@@ -238,9 +245,12 @@ final class PennantUITests: XCTestCase {
         var pictured: [XCUIElement] = []
         // Each window with its own pixels, so an element is measured in the window that holds it
         let shots = app.windows.allElementsBoundByIndex.map { window in (frame: window.frame, shot: window.screenshot()) }
-        let windows = shots.map { (frame: $0.frame, pixels: WindowPixels($0.shot.image, frame: $0.frame)) }
+        // The menu bar extra's panel, which the tree lists as a dialog, never a window (N14): measured in its own pixels
+        // too, after the windows, so its text is never taken for text scrolled out of a window
+        let panels = app.dialogs.allElementsBoundByIndex.map { panel in (frame: panel.frame, shot: panel.screenshot()) }
+        let windows = (shots + panels).map { (frame: $0.frame, pixels: WindowPixels($0.shot.image, frame: $0.frame)) }
         // The window as the audit saw it, kept beside its findings
-        if let first = shots.first { keep(first.shot, named: "\(name)-window") }
+        if let first = (shots + panels).first { keep(first.shot, named: "\(name)-window") }
         let touchBar = app.touchBars.firstMatch
         let touchBarFrame = touchBar.exists ? touchBar.frame.insetBy(dx: -2, dy: -2) : nil
         let sidebar = app.outlines["sidebar"].firstMatch
@@ -249,7 +259,7 @@ final class PennantUITests: XCTestCase {
         // they sit in (on GitHub's runner the zoom button's menu view was reported where no button was found)
         let controls = [XCUIIdentifierCloseWindow, XCUIIdentifierMinimizeWindow, XCUIIdentifierZoomWindow].flatMap { id in
             app.buttons.matching(identifier: id).allElementsBoundByIndex.map { $0.frame.insetBy(dx: -2, dy: -2) }
-        } + windows.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: 90, height: 52) }
+        } + shots.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: 90, height: 52) }
         // The inspector column, where one is open: on a window too narrow for the sidebar, the report and the inspector
         // (GitHub's runner, a 1024-point-wide screen) the system lays the inspector over the report's trailing side
         let inspector = app.descendants(matching: .any)["inspector"].firstMatch
@@ -379,7 +389,7 @@ final class PennantUITests: XCTestCase {
                 let holder = windows.first { $0.frame.contains(frame) }
                 let ratio = holder?.pixels?.contrast(in: frame)
                 // Where no pixels were read, the windows as measured, so the line says why (PR #58: a finding with none)
-                let unread = " (no pixels read: windows " + shots.map { "\($0.frame) pictured \(Int($0.shot.image.size.width))×\(Int($0.shot.image.size.height))" }
+                let unread = " (no pixels read: windows " + (shots + panels).map { "\($0.frame) pictured \(Int($0.shot.image.size.width))×\(Int($0.shot.image.size.height))" }
                     .joined(separator: ", ") + (holder == nil ? "; none holds it)" : "; its window's picture is not at one scale)")
                 issues.append(line + (ratio.map { String(format: " (its own pixels read at %.1f:1)", $0) } ?? unread))
                 pictured.append(element)
@@ -2229,6 +2239,122 @@ final class PennantUITests: XCTestCase {
             up("Coaching Staff, round \(round)")
         }
         quitCleanly(app)
+    }
+
+    // MARK: Pennant outside its windows (N14, Stage A)
+
+    /// The widget's glance written after the first refresh (to the test's folder, as every launch's is, never the Mac's
+    /// App Group), and the menu bar extra: off by default, turned on in Settings ▸ General, its window opened from the menu
+    /// bar with the served record and desk, audited, and Open Pennant bringing the main window forward on the Morning
+    /// Report. Spotlight is not asked for: a Debug build indexes only with `-PennantDevSpotlight YES`, which no test passes,
+    /// so no test writes to the index of the Mac it runs on.
+    @MainActor
+    func testMenuBarExtra() throws {
+        let glance = glanceFolder
+        let app = launch()
+        waitForShell(app)
+        // Off until the GM turns it on
+        XCTAssertFalse(app.statusItems.firstMatch.exists, "the menu bar extra showed before it was turned on")
+
+        // The widget's snapshot: the served glance, written whole
+        let file = glance.appending(path: "glance.json")
+        let deadline = Date.now.addingTimeInterval(60)
+        while !FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) && Date.now < deadline {
+            RunLoop.current.run(until: Date.now.addingTimeInterval(0.25))
+        }
+        let data = try Data(contentsOf: file)
+        let snapshot = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let desk = try XCTUnwrap(snapshot["desk"] as? [String: Any])
+        XCTAssertNotNil(desk["count"] as? Int)
+        XCTAssertTrue((desk["line"] as? String)?.isEmpty == false)
+        print("[glance] \(methodName): the snapshot says \(desk["line"] ?? "?") and \((snapshot["record"] as? [String: Any])?["display"] ?? "no record")")
+
+        // Turned on in Settings ▸ General
+        app.typeKey(",", modifierFlags: .command)
+        let general = app.toolbars.buttons["General"].firstMatch
+        XCTAssertTrue(general.waitForExistence(timeout: 5), "no General tab")
+        general.click()
+        let toggle = element(app, "settings.menuBarExtra")
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "no menu bar switch in Settings ▸ General")
+        // The switch sits low in the form, and on the runner's 1024 × 768 screen the Dock covers the window's bottom: the
+        // form is scrolled, a little at a time, until the switch lies wholly where a click reaches it (inside the window,
+        // below its toolbar, above the Dock), and only then clicked
+        let form = element(app, "settings.general")
+        let settings = app.windows.firstMatch
+        let reach = reachable(settings)
+        let wheel = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        for _ in 0..<40 where !reach.contains(toggle.frame) {
+            wheel.scroll(byDeltaX: 0, deltaY: toggle.frame.maxY > reach.maxY ? -80 : 80)
+        }
+        print("[glance] \(methodName): the switch at \(toggle.frame) in Settings at \(settings.frame), reachable \(reach)")
+        XCTAssertTrue(reach.contains(toggle.frame), "the menu bar switch could not be scrolled where a click reaches it: \(toggle.frame) in \(reach)")
+        toggle.click()
+        XCTAssertTrue(waitForValue(toggle, on: true), "the menu bar switch did not turn on (value \(String(describing: toggle.value)))")
+        keep(settings.screenshot(), named: "n14-settings-menu-bar")
+        // Settings by its own identifier (`firstMatch` would be the next window once it closed)
+        let settingsWindow = app.windows.matching(identifier: settings.identifier).firstMatch
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(settingsWindow.waitForNonExistence(timeout: 5), "Settings did not close")
+
+        // The main window closed too (⌘W), so the extra's panel is audited alone, as a club's window is
+        // (`auditClubWindow`): run 38116687375 measured the main window's masthead under the panel against the panel's
+        // pixels. Open Pennant then opens a main window on the Morning Report, the path with none open.
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        XCTAssertTrue(main.waitForExistence(timeout: 5), "no main window behind Settings")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
+
+        // Its window, from the menu bar
+        let item = app.statusItems.firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 10), "the menu bar extra did not appear once turned on")
+        item.click()
+        let open = element(app, "menuBarExtra.openPennant")
+        XCTAssertTrue(open.waitForExistence(timeout: 10), "the menu bar extra's window did not open on a click on \(item.frame)")
+        XCTAssertTrue(element(app, "menuBarExtra.desk").waitForExistence(timeout: 30), "the menu bar extra did not show the served desk")
+        let panel = element(app, "menuBarExtra")
+        keep(panel.screenshot(), named: "n14-menu-bar-extra")
+        try audit(app, named: "accessibility-audit-menu-bar-extra")
+
+        // Open Pennant: the main window, on the Morning Report
+        XCTAssertTrue(open.exists, "the menu bar extra's window closed during its audit")
+        open.click()
+        XCTAssertTrue(element(app, "detail.frontOffice.morningReport").waitForExistence(timeout: 10), "Open Pennant did not show the Morning Report")
+        XCTAssertTrue(open.waitForNonExistence(timeout: 5), "the menu bar extra's window stayed open")
+
+        // What the app did outside its windows, as its log says
+        let log = (try? String(contentsOf: scratch.appending(path: "logs/server.log"), encoding: .utf8)) ?? ""
+        let outside = log.split(separator: "\n").filter { $0.contains("spotlight:") || $0.contains("glance:") }
+        print("[glance] \(methodName): \(outside.isEmpty ? "no line in the app's log" : outside.joined(separator: " | "))")
+        quitCleanly(app)
+    }
+
+    /// The part of a window a click reaches: inside its frame, below its toolbar, and within its screen's visible frame
+    /// (below the menu bar, above the Dock), in the screen coordinates of `XCUIElement.frame` (top-left origin).
+    @MainActor
+    private func reachable(_ window: XCUIElement) -> CGRect {
+        let frame = window.frame
+        guard let primary = NSScreen.screens.first else { return frame }
+        // AppKit's screen frames have their origin at the primary screen's bottom left
+        let flip = { (rect: CGRect) in CGRect(x: rect.minX, y: primary.frame.maxY - rect.maxY, width: rect.width, height: rect.height) }
+        let centre = CGPoint(x: frame.midX, y: frame.midY)
+        let screen = NSScreen.screens.first { flip($0.frame).contains(centre) } ?? primary
+        var reach = frame.intersection(flip(screen.visibleFrame))
+        // The toolbar (Settings' tabs) across the window's top
+        reach.origin.y += 60
+        reach.size.height -= 60 + 8
+        return reach
+    }
+
+    /// Waits for a switch to read on (or off); its value is 1 or 0, as a number or a string.
+    @MainActor
+    private func waitForValue(_ toggle: XCUIElement, on: Bool, timeout: TimeInterval = 5) -> Bool {
+        let deadline = Date.now.addingTimeInterval(timeout)
+        repeat {
+            let value = toggle.value.map { "\($0)" } ?? ""
+            if (value == "1" || value == "true") == on { return true }
+            RunLoop.current.run(until: Date.now.addingTimeInterval(0.2))
+        } while Date.now < deadline
+        return false
     }
 
     // MARK: The AI surfaces (N13)

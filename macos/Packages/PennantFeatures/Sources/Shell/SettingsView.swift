@@ -873,10 +873,11 @@ struct ClearsInitialFocus: NSViewRepresentable {
 
 /// What Pennant says outside its windows (N7): a notification when a new export has been read (only while Pennant is
 /// not in front), and the desk's open count on the Dock icon. Both are on until turned off; kept in the app's own
-/// defaults, never the data folder.
+/// defaults, never the data folder. N14: the menu bar extra (the record, the next game and the desk), off until turned on.
 struct OutsideTheWindowSection: View {
     @AppStorage(AppPreferences.notifiesNewExportKey) private var notifies = true
     @AppStorage(AppPreferences.showsDockBadgeKey) private var badge = true
+    @AppStorage(AppPreferences.showsMenuBarExtraKey) private var menuBar = false
 
     var body: some View {
         Section("Notifications") {
@@ -884,6 +885,8 @@ struct OutsideTheWindowSection: View {
                 .accessibilityIdentifier("settings.notifies")
             Toggle("Show Open Desk Items on the Dock Icon", isOn: $badge)
                 .accessibilityIdentifier("settings.dockBadge")
+            Toggle("Show Pennant in the Menu Bar", isOn: $menuBar)
+                .accessibilityIdentifier("settings.menuBarExtra")
         }
     }
 }

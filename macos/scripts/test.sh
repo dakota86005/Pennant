@@ -197,6 +197,8 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testStaffRoomAiOff configured '{"theme":"light"}'
   prepare_ui_test testStorylinesAndBriefingAiOff configured '{"theme":"dark"}'
   prepare_ui_test testStaffRoomAnswer configured '{"theme":"light","aiFeatures":{"chat":{"provider":"ollama","model":"stub"}}}'
+  # N14 Stage A: the widget's glance written to the test's folder, and the menu bar extra turned on and opened
+  prepare_ui_test testMenuBarExtra configured '{"theme":"light"}'
   # Which tests: PENNANT_TEST_ONLY's, else one CI shard's (its own, or for the catch-all every test the other shards
   # do not run), else all of them
   selection=()
@@ -236,7 +238,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   rm -rf "$HOME/Library/Saved Application State/com.dakotawise.pennant.dev.savedState"
   # What each accessibility audit set aside, and why, and any finding, and a quit that needed help or did not finish:
   # printed by the tests, repeated here for the CI log
-  grep -E "^\[(audit|quit|palette|focus)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
+  grep -E "^\[(audit|quit|palette|focus|glance|spotlight)\]" "$LOGS/xcodebuild-test.log" | sort -u || true
   # Each test's app log (the server's lines and the app's own: the launch, the quit's steps), kept with the run's logs
   # (the CI artifact): the synthetic league's only. With them, a hung main thread's stack (`hang-*.log`, PR #60)
   for log in "$UI_SCRATCH"/*/logs/server*.log "$UI_SCRATCH"/*/logs/hang-*.log; do
@@ -268,7 +270,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
         const fs = require("fs"), path = require("path");
         const dir = process.argv[1];
         const manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
-        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n9-|n10-|n11-|n12-|n12a-|n12b-|n12c-|n13-)/;
+        const keep = /^(main-window|setup-|department-|inspector-open|settings-|morning-report|major-league-report|accessibility-audit|glass-|design-|launch-|n7-|n8-|n9-|n10-|n11-|n12-|n12a-|n12b-|n12c-|n13-|n14-)/;
         const kept = new Set();
         for (const test of manifest) for (const a of test.attachments ?? []) {
           const name = a.suggestedHumanReadableName ?? "";
