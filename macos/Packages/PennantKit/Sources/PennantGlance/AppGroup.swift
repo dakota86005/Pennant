@@ -44,4 +44,13 @@ public enum AppGroup {
     public static func glanceStore(bundle: Bundle = .main) -> GlanceSnapshotStore {
         GlanceSnapshotStore(folder: container(identifier: identifier(in: bundle)))
     }
+
+    /// Where a development build keeps the glance: the scratch folder it was given (`-PennantDevGlanceFolder`); with
+    /// none, nowhere when the UI tests launched it (a test never reaches the Mac's App Group, review N14A M1), else the
+    /// development group's container as `glanceStore` finds it.
+    public static func developmentGlanceStore(folder: String?, launchedByTests: Bool, bundle: Bundle = .main) -> GlanceSnapshotStore {
+        if let folder, !folder.isEmpty { return GlanceSnapshotStore(folder: URL(fileURLWithPath: folder, isDirectory: true)) }
+        if launchedByTests { return GlanceSnapshotStore(folder: nil) }
+        return glanceStore(bundle: bundle)
+    }
 }

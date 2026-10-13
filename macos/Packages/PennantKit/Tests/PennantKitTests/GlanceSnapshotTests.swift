@@ -98,6 +98,16 @@ struct GlanceSnapshotTests {
         // The test runner carries no group: the real one is never reached from a test
         #expect(!AppGroup.entitledGroups().contains { $0.hasSuffix("group.com.dakotawise.pennant") || $0.hasSuffix("group.com.dakotawise.pennant.dev") })
     }
+
+    @Test("a development build the UI tests launched never reaches the App Group: their folder, else none (review N14A, M1)")
+    func developmentBuild() {
+        let given = AppGroup.developmentGlanceStore(folder: "/tmp/pennant-test/glance", launchedByTests: true)
+        #expect(given.folder?.path(percentEncoded: false).hasPrefix("/tmp/pennant-test/glance") == true)
+        #expect(AppGroup.developmentGlanceStore(folder: nil, launchedByTests: true).folder == nil)
+        #expect(AppGroup.developmentGlanceStore(folder: "", launchedByTests: true).folder == nil)
+        // By hand, with no folder: the development group, as this process's signature allows (none for the test runner)
+        #expect(AppGroup.developmentGlanceStore(folder: nil, launchedByTests: false).folder == AppGroup.glanceStore().folder)
+    }
 }
 
 /// The widget's timeline (N14, Stage A): what it shows now, and when a snapshot turns out of date.

@@ -100,6 +100,11 @@ final class PennantUITests: XCTestCase {
         scratch.appending(path: "saves/Synthetic League.lg", directoryHint: .isDirectory)
     }
 
+    /// Where every launch writes the widget's glance: the test's own folder.
+    private var glanceFolder: URL {
+        scratch.appending(path: "glance", directoryHint: .isDirectory)
+    }
+
     @MainActor
     private func launch(arguments: [String] = [], environment: [String: String] = [:], restoresState: Bool = false) -> XCUIApplication {
         // The last launch has quit (`quitCleanly`) or is ended now, never left beside this one
@@ -121,8 +126,10 @@ final class PennantUITests: XCTestCase {
         // AI keys in memory for every test, never the Keychain of the Mac running them: a key kept there would otherwise
         // reach a provider (review N13B, M2)
         let keys = ["-PennantTestKeys", "memory"]
+        // The widget's glance in the test's folder, never the Mac's App Group (review N14A, M1)
+        let glance = ["-PennantDevGlanceFolder", glanceFolder.path(percentEncoded: false)]
         // Each key equivalent the app receives, and the modifier keys held at launch, said in its log (PR #58)
-        app.launchArguments += state + fresh + keys + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
+        app.launchArguments += state + fresh + keys + glance + ["-PennantNotifiesNewExport", "NO", "-PennantTestLogKeys", "YES"] + capped(arguments)
         app.launch()
         return app
     }
@@ -2236,14 +2243,15 @@ final class PennantUITests: XCTestCase {
 
     // MARK: Pennant outside its windows (N14, Stage A)
 
-    /// The widget's glance written after the first refresh (to the test's folder, never the Mac's App Group), Spotlight
-    /// given the served list (on CI's throwaway runner only), and the menu bar extra: off by default, turned on in Settings
-    /// ▸ General, its window opened from the menu bar with the served record and desk, audited, and Open Pennant bringing
-    /// the main window forward on the Morning Report.
+    /// The widget's glance written after the first refresh (to the test's folder, as every launch's is, never the Mac's
+    /// App Group), and the menu bar extra: off by default, turned on in Settings ▸ General, its window opened from the menu
+    /// bar with the served record and desk, audited, and Open Pennant bringing the main window forward on the Morning
+    /// Report. Spotlight is not asked for: a Debug build indexes only with `-PennantDevSpotlight YES`, which no test passes,
+    /// so no test writes to the index of the Mac it runs on.
     @MainActor
     func testMenuBarExtra() throws {
-        let glance = scratch.appending(path: "glance", directoryHint: .isDirectory)
-        let app = launch(arguments: ["-PennantDevGlanceFolder", glance.path(percentEncoded: false), "-PennantDevSpotlight", "YES"])
+        let glance = glanceFolder
+        let app = launch()
         waitForShell(app)
         // Off until the GM turns it on
         XCTAssertFalse(app.statusItems.firstMatch.exists, "the menu bar extra showed before it was turned on")
@@ -2313,11 +2321,10 @@ final class PennantUITests: XCTestCase {
         XCTAssertTrue(element(app, "detail.frontOffice.morningReport").waitForExistence(timeout: 10), "Open Pennant did not show the Morning Report")
         XCTAssertTrue(open.waitForNonExistence(timeout: 5), "the menu bar extra's window stayed open")
 
-        // What the app did with Spotlight's list, as its log says (never asserted to succeed: an unsigned build may be
-        // refused by the index; the line says which)
+        // What the app did outside its windows, as its log says
         let log = (try? String(contentsOf: scratch.appending(path: "logs/server.log"), encoding: .utf8)) ?? ""
-        let spotlight = log.split(separator: "\n").filter { $0.contains("spotlight:") || $0.contains("glance:") }
-        print("[spotlight] \(methodName): \(spotlight.isEmpty ? "no line in the app's log" : spotlight.joined(separator: " | "))")
+        let outside = log.split(separator: "\n").filter { $0.contains("spotlight:") || $0.contains("glance:") }
+        print("[glance] \(methodName): \(outside.isEmpty ? "no line in the app's log" : outside.joined(separator: " | "))")
         quitCleanly(app)
     }
 
