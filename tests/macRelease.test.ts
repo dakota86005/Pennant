@@ -376,13 +376,25 @@ describe('each bundle\'s entitlements, with its build settings filled in', () =>
       settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant', CODE_SIGN_ENTITLEMENTS: 'App.entitlements', PENNANT_APP_GROUP: 'TEAM.group.com.dakotawise.pennant' }),
       settings({ WRAPPER_EXTENSION: 'xctest', FULL_PRODUCT_NAME: 'PennantUITests.xctest', TARGET_NAME: 'PennantUITests' }),
       settings({ WRAPPER_EXTENSION: 'appex', FULL_PRODUCT_NAME: 'Other.appex', TARGET_NAME: 'Other' }),
-      // -alltargets lists the app again as the UI tests' host: one row, never two
+      // -alltargets can list the app again, with the same settings: one row, never two
       settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant', CODE_SIGN_ENTITLEMENTS: 'App.entitlements', PENNANT_APP_GROUP: 'TEAM.group.com.dakotawise.pennant' }),
     ]);
     expect(r.status).toBe(0);
     const file = path.join(scratch, 'filled', 'Pennant.app.entitlements');
     expect(r.stdout).toBe(`Pennant.app\t${file}\nOther.appex\t\n`);
     expect(fs.readFileSync(file, 'utf8')).toBe('<string>TEAM.group.com.dakotawise.pennant</string><string>$(TeamIdentifierPrefix)x</string>');
+  });
+
+  it('stops on a product listed again with other entitlements', () => {
+    fs.writeFileSync(path.join(scratch, 'Twice.entitlements'), '<string>$(PENNANT_APP_GROUP)</string>');
+    const app = (group: string) => settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant',
+      CODE_SIGN_ENTITLEMENTS: 'Twice.entitlements', PENNANT_APP_GROUP: group });
+    const r = fill([app('TEAM.group.one'), app('TEAM.group.two')]);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('Pennant.app is listed more than once with different entitlements');
+    // Named once and unnamed once is different too
+    const bare = settings({ WRAPPER_EXTENSION: 'app', FULL_PRODUCT_NAME: 'Pennant.app', TARGET_NAME: 'Pennant' });
+    expect(fill([app('TEAM.group.one'), bare]).status).not.toBe(0);
   });
 
   it('stops on a setting the target does not define', () => {

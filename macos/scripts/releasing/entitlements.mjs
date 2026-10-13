@@ -16,26 +16,37 @@ if (!out) throw new Error('entitlements.mjs OUT_DIR');
 fs.mkdirSync(out, { recursive: true });
 const FROM_IDENTITY = new Set(['TeamIdentifierPrefix', 'AppIdentifierPrefix']);
 
-const targets = JSON.parse(fs.readFileSync(0, 'utf8'));
-// `-alltargets` can list a target twice (the app, once more as the UI tests' host), with the same settings: one row each
-const seen = new Set();
-for (const { buildSettings: b } of targets) {
-  if (!['app', 'appex'].includes(b.WRAPPER_EXTENSION)) continue;
-  if (seen.has(b.FULL_PRODUCT_NAME)) continue;
-  seen.add(b.FULL_PRODUCT_NAME);
-  const named = b.CODE_SIGN_ENTITLEMENTS ?? '';
-  if (!named) {
-    console.log(`${b.FULL_PRODUCT_NAME}\t`);
-    continue;
-  }
+/** A target's entitlements file as signed: its build settings filled in, the signing identity's left for sign-app.sh. */
+function filled(b, named) {
   const source = path.isAbsolute(named) ? named : path.join(b.SRCROOT, named);
-  const text = fs.readFileSync(source, 'utf8').replace(/\$[({](\w+)[)}]/g, (whole, name) => {
+  return fs.readFileSync(source, 'utf8').replace(/\$[({](\w+)[)}]/g, (whole, name) => {
     if (FROM_IDENTITY.has(name)) return whole;
     if (b[name] === undefined || b[name] === '') {
       throw new Error(`${named} uses $(${name}), which ${b.TARGET_NAME} does not define in this configuration.`);
     }
     return b[name];
   });
+}
+
+const targets = JSON.parse(fs.readFileSync(0, 'utf8'));
+// `-alltargets` can list a target more than once (the app has appeared twice, with identical settings): one row for each
+// product, and a product listed again with other entitlements stops the build, since it could be signed only one way
+const seen = new Map();
+for (const { buildSettings: b } of targets) {
+  if (!['app', 'appex'].includes(b.WRAPPER_EXTENSION)) continue;
+  const named = b.CODE_SIGN_ENTITLEMENTS ?? '';
+  const text = named ? filled(b, named) : '';
+  if (seen.has(b.FULL_PRODUCT_NAME)) {
+    if (seen.get(b.FULL_PRODUCT_NAME) !== text) {
+      throw new Error(`${b.FULL_PRODUCT_NAME} is listed more than once with different entitlements; it can be signed only one way.`);
+    }
+    continue;
+  }
+  seen.set(b.FULL_PRODUCT_NAME, text);
+  if (!named) {
+    console.log(`${b.FULL_PRODUCT_NAME}\t`);
+    continue;
+  }
   const file = path.join(out, `${b.FULL_PRODUCT_NAME}.entitlements`);
   fs.writeFileSync(file, text);
   console.log(`${b.FULL_PRODUCT_NAME}\t${file}`);
