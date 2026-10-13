@@ -89,27 +89,90 @@ describe('the feed is Pennant\'s own repository', () => {
   });
 });
 
+/** A job's steps, each with its name (or its `run`/`uses` line) and its text, comments left out */
+function steps(job: string): { name: string; text: string }[] {
+  const body = uncommented(job).slice(uncommented(job).indexOf('\n    steps:\n'));
+  return body.split(/\n(?= {6}- )/).slice(1).map((text) => ({
+    name: (/^ {6}- name: (.+)$/m.exec(text) ?? /^ {8}name: (.+)$/m.exec(text) ?? /^ {6}- (?:run|uses): (.+)$/m.exec(text))?.[1].trim() ?? '',
+    text,
+  }));
+}
+const uncommented = (text: string) => text.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+const TAG_GUARD = "startsWith(github.ref, 'refs/tags/pennant-v')";
+
 describe('release.yml: tags and secrets', () => {
   const workflow = read('.github/workflows/release.yml');
   const all = jobs(workflow);
 
-  it('triggers only on pennant-v* and checks the tag in every job that can see one', () => {
+  it('has these jobs', () => {
+    expect(Object.keys(all)).toEqual(['test', 'macos', 'pennant-mac', 'windows', 'release', 'pennant-mac-appcast']);
+  });
+
+  it('triggers only on pennant-v* and guards each job that can see a tag with the same prefix', () => {
     expect(workflow).toContain("tags: ['pennant-v*']");
     expect([...workflow.matchAll(/refs\/tags\/([\w-]*)'/g)].every((m) => m[1] === 'pennant-v')).toBe(true);
-    expect(all['pennant-mac']).toContain('version.sh --check-tag "${GITHUB_REF_NAME}"');
-    expect(all['pennant-mac-appcast']).toContain('version.sh --check-tag "${GITHUB_REF_NAME}"');
+    // Each guard, job by job: the tag checks in test, pennant-mac and the appcast job, and release's own condition
+    const guards = Object.fromEntries(Object.entries(all).map(([id, text]) => [id, text.split(TAG_GUARD).length - 1]));
+    expect(guards).toEqual({ test: 1, macos: 0, 'pennant-mac': 1, windows: 0, release: 1, 'pennant-mac-appcast': 1 });
+    for (const id of ['pennant-mac', 'pennant-mac-appcast']) {
+      const check = steps(all[id]).find((s) => s.name === 'Tag matches package.json');
+      expect(check?.text, id).toContain(`if: ${TAG_GUARD}`);
+      expect(check?.text, id).toContain('version.sh --check-tag "${GITHUB_REF_NAME}"');
+    }
+    expect(all.release).toContain(`if: github.event_name == 'push' && ${TAG_GUARD}`);
+  });
+
+  it('runs Pennant for Mac only by hand until N15, and never lets it block or join a release (D-076)', () => {
+    for (const id of ['pennant-mac', 'pennant-mac-appcast']) {
+      expect(all[id], id).toMatch(/^ {4}if: github\.event_name == 'workflow_dispatch'$/m);
+    }
+    expect(all['pennant-mac-appcast']).toMatch(/^ {4}needs: pennant-mac$/m);
+    expect(all.release).toMatch(/^ {4}needs: \[macos, windows\]$/m);
+    const downloads = [...all.release.matchAll(/download-artifact@v4\n\s+with:\n\s+name: ([\w-]+)/g)].map((m) => m[1]);
+    expect(downloads).toEqual(['macos', 'windows']);
+    expect(uncommented(all.release)).not.toMatch(/pennant-mac|Pennant-for-Mac|appcast/);
+    // The appcast is kept as an artifact, never attached
+    expect(uncommented(all['pennant-mac-appcast'])).not.toMatch(/gh release|GH_TOKEN|GITHUB_TOKEN/);
+    expect(all['pennant-mac-appcast']).toContain('name: pennant-mac-appcast');
+  });
+
+  it('can write only from the release job', () => {
+    expect(workflow).toMatch(/^permissions:\n {2}contents: read$/m);
+    expect(workflow.match(/contents: write/g)).toHaveLength(1);
+    expect(all.release).toMatch(/^ {4}permissions:\n {6}contents: write$/m);
   });
 
   it('gives the Apple and Sparkle secrets only to macOS jobs', () => {
     // The comment above the jobs says why: a Windows job that can see CSC_LINK signs .exe files with the Apple
     // certificate. The same holds for any job not on macOS.
-    expect(Object.keys(all)).toEqual(['test', 'macos', 'pennant-mac', 'windows', 'release', 'pennant-mac-appcast']);
     for (const [id, text] of Object.entries(all)) {
       const onMacRunner = /runs-on: macos-/.test(text);
-      if (!onMacRunner) expect(text, id).not.toMatch(/secrets\.(APPLE_|SPARKLE_)/);
+      if (!onMacRunner) expect(uncommented(text), id).not.toMatch(/secrets\.(APPLE_|SPARKLE_)/);
     }
     expect(all['pennant-mac-appcast']).not.toMatch(/secrets\.APPLE_/);
     expect(read('.github/workflows/ci.yml')).not.toMatch(/secrets\.(APPLE_|SPARKLE_)/);
+  });
+
+  it('gives each secret only to the steps that use it, never to a whole job', () => {
+    const body = uncommented(workflow);
+    expect(body).not.toMatch(/^env:/m);
+    for (const [id, text] of Object.entries(all)) {
+      expect(uncommented(text), id).not.toMatch(/^ {4}env:/m);
+      for (const step of steps(text)) {
+        // Nothing that installs, stages or tests code can read a secret
+        if (/npm ci|mac:stage|vitest/.test(step.text)) expect(step.text, `${id}: ${step.name}`).not.toContain('secrets.');
+      }
+    }
+    const withSecret = (id: string, prefix: string) => steps(all[id]).filter((s) => s.text.includes(`secrets.${prefix}`)).map((s) => s.name);
+    expect(withSecret('pennant-mac', 'APPLE_')).toEqual([
+      'Build the Release app (unsigned)',
+      'Check the signing and notarizing secrets',
+      'Load the Developer ID certificate into a throwaway keychain',
+      'Store the notarization account in the throwaway keychain',
+      'Sign inside out',
+    ]);
+    const sparkle = Object.keys(all).flatMap((id) => steps(all[id]).filter((s) => s.text.includes('SPARKLE_')).map((s) => `${id}: ${s.name}`));
+    expect(sparkle).toEqual(['pennant-mac-appcast: Write the appcast']);
   });
 
   it('never weakens the signed-and-notarized check', () => {
@@ -122,11 +185,13 @@ describe('release.yml: tags and secrets', () => {
     expect(all['pennant-mac']).toContain('xcrun stapler validate "$DMG"');
   });
 
-  it('publishes only the signed DMG, never the unsigned one, and needs the Mac app', () => {
-    expect(all.release).toMatch(/needs: \[macos, windows, pennant-mac\]/);
-    const downloads = [...all.release.matchAll(/download-artifact@v4\n\s+with:\n\s+name: ([\w-]+)/g)].map((m) => m[1]);
-    expect(downloads).toEqual(['macos', 'windows', 'pennant-mac']);
-    expect(all.release).toContain('"Pennant-for-Mac-${GITHUB_REF_NAME#pennant-v}.dmg"');
+  it('refuses an app that could never update itself before it verifies or keeps anything signed', () => {
+    const names = steps(all['pennant-mac']).map((s) => s.name);
+    const at = (name: string) => names.indexOf(name);
+    expect(at('Refuse an app that could never update itself')).toBeGreaterThan(at('Make, notarize and staple the DMG'));
+    expect(at('Refuse an app that could never update itself')).toBeLessThan(at('Verify the app is signed and notarized'));
+    expect(at('Refuse an app that could never update itself')).toBeLessThan(names.lastIndexOf('actions/upload-artifact@v4'));
+    expect(all['pennant-mac']).toContain('check-updater.sh build/mac-release/Pennant.app');
   });
 
   it('runs these tests before it builds', () => {

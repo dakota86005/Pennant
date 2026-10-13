@@ -6,7 +6,12 @@ name: Pennant release
 # are its own and its tags deliberately do NOT start with `v`: upstream's tags
 # (v0.1.0 … v0.40.1) are a different project's and must never trigger this workflow
 # or collide with these — see D-049.
-# Or trigger manually from the Actions tab to get installers without a release.
+# Or trigger manually from the Actions tab to get installers without a release: a run by
+# hand never publishes (the release job runs only on a pushed tag).
+#
+# Until the N15 cutover a tag releases the Electron app only. Pennant for Mac (pennant-mac,
+# pennant-mac-appcast) runs only by hand, leaving a signed, notarized DMG and a test appcast
+# as artifacts that are never attached to a release; D-076 says how N15 switches it on.
 #
 # Pull-request validation is ci.yml. Nothing here runs on a pull request.
 on:
@@ -14,8 +19,9 @@ on:
     tags: ['pennant-v*']
   workflow_dispatch:
 
+# Read-only by default; only the release job can write (create the draft, upload, publish)
 permissions:
-  contents: write
+  contents: read
 
 # Mac and Windows are separate jobs rather than a matrix on purpose: the Apple
 # signing credentials must reach ONLY the macOS job. electron-builder's CSC_LINK
@@ -101,13 +107,15 @@ jobs:
           if-no-files-found: error
 
   # Pennant for Mac, the SwiftUI app (D-076; DEVELOPMENT.md "Releasing Pennant for Mac"), beside the Electron app's
-  # job until the N15 cutover. The scripts in macos/scripts/releasing/ build the Release app unsigned, sign it inside
-  # out (SWIFTUI_REBUILD.md section 5.2), notarize and staple it, and pack, notarize and staple the DMG. The Apple
-  # secrets reach only this macOS job, each step getting only the ones it uses. Until they exist, the job builds
-  # and packs an unsigned DMG (the pennant-mac-unsigned artifact) and then fails at "Check the signing and
-  # notarizing secrets", naming every one missing; the verification is never weakened to pass.
+  # job until the N15 cutover, and run only by hand until then: a tag never starts it, and the release job does not
+  # wait on it, so it can never block or join an Electron release. The scripts in macos/scripts/releasing/ build the
+  # Release app unsigned, sign it inside out (SWIFTUI_REBUILD.md section 5.2), notarize and staple it, and pack,
+  # notarize and staple the DMG. The Apple secrets reach only this macOS job, each step getting only the ones it uses.
+  # Without them, the job builds and packs an unsigned DMG (the pennant-mac-unsigned artifact) and then fails at
+  # "Check the signing and notarizing secrets", naming every one missing; the verification is never weakened to pass.
   pennant-mac:
     needs: test
+    if: github.event_name == 'workflow_dispatch'
     name: Pennant for Mac
     runs-on: macos-26
     timeout-minutes: 120
@@ -179,6 +187,12 @@ jobs:
           macos/scripts/releasing/make-dmg.sh build/mac-release/Pennant.app "${dmg}" "${PENNANT_SIGN_IDENTITY}"
           macos/scripts/releasing/notarize.sh "${dmg}"
 
+      # An app that could never update itself strands every copy installed from it. Checked on the signed app, whose
+      # signature seals the Info.plist it reads, and before the verification and every artifact this job keeps, so a
+      # refused app leaves nothing behind (check-updater.sh).
+      - name: Refuse an app that could never update itself
+        run: macos/scripts/releasing/check-updater.sh build/mac-release/Pennant.app
+
       - name: Verify the app is signed and notarized
         run: |
           APP=build/mac-release/Pennant.app
@@ -233,13 +247,16 @@ jobs:
           if-no-files-found: error
 
   # Publishing happens once, after every build, so the jobs can't race each
-  # other and drop assets from the release. Only the artifacts meant for users
-  # are downloaded (never pennant-mac-unsigned).
+  # other and drop assets from the release. Only on a pushed tag: a run by hand
+  # never publishes, whatever ref it runs on. Until N15 it releases the Electron
+  # app only and never waits on Pennant for Mac (D-076).
   release:
     name: Publish release
-    needs: [macos, windows, pennant-mac]
-    if: startsWith(github.ref, 'refs/tags/pennant-v')
+    needs: [macos, windows]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/pennant-v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -249,10 +266,6 @@ jobs:
         with:
           name: windows
           path: artifacts/windows
-      - uses: actions/download-artifact@v4
-        with:
-          name: pennant-mac
-          path: artifacts/pennant-mac
 
       - name: Attach installers to the release
         env:
@@ -325,21 +338,21 @@ jobs:
           gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
             --json assets -q '.assets[].name' > published.txt
           cat published.txt
-          for f in latest-mac.yml latest.yml "Pennant-for-Mac-${GITHUB_REF_NAME#pennant-v}.dmg"; do
+          for f in latest-mac.yml latest.yml; do
             grep -qx "$f" published.txt \
               || { echo "::error::$f missing from the release — auto-update will not work"; exit 1; }
           done
 
-  # Pennant for Mac's update feed (D-076): generate_appcast, from the Sparkle
-  # release the app links (pinned by SHA-256), signs the notarized DMG with the
-  # owner's EdDSA key and writes appcast.xml, with the release's body as the
-  # update's notes, and attaches it to the release the job above made. The app
-  # reads it at .../releases/latest/download/appcast.xml. Without
-  # SPARKLE_ED_PRIVATE_KEY this fails naming it, and no feed is attached.
+  # Pennant for Mac's update feed (D-076), by hand only until N15, and never
+  # published: generate_appcast, from the Sparkle release the app links (pinned
+  # by SHA-256), signs the notarized DMG with the owner's EdDSA key and writes
+  # appcast.xml, kept as the pennant-mac-appcast artifact to inspect. Without
+  # SPARKLE_ED_PRIVATE_KEY this fails naming it. N15 attaches it to the draft
+  # release before it is published (DEVELOPMENT.md, "Releasing Pennant for Mac").
   pennant-mac-appcast:
     name: Pennant for Mac appcast
-    needs: release
-    if: startsWith(github.ref, 'refs/tags/pennant-v')
+    needs: pennant-mac
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -348,27 +361,22 @@ jobs:
           name: pennant-mac
           path: artifacts/pennant-mac
 
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/pennant-v')
+        run: macos/scripts/releasing/version.sh --check-tag "${GITHUB_REF_NAME}"
+
+      # A test build has no release body, so its notes say what it is; they still exercise the embedded notes
       - name: Write the appcast
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
-          macos/scripts/releasing/version.sh --check-tag "${GITHUB_REF_NAME}"
-          gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json body -q .body > notes.md
+          version="$(macos/scripts/releasing/version.sh)"
+          printf 'A test build of %s from %s, not a release.\n' "${GITHUB_SHA}" "${GITHUB_REF_NAME}" > notes.md
           macos/scripts/releasing/make-appcast.sh \
-            "artifacts/pennant-mac/Pennant-for-Mac-${GITHUB_REF_NAME#pennant-v}.dmg" notes.md appcast
+            "artifacts/pennant-mac/Pennant-for-Mac-${version}.dmg" notes.md appcast
 
-      - name: Attach the appcast
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          for attempt in 1 2 3 4 5; do
-            gh release upload "${GITHUB_REF_NAME}" appcast/appcast.xml \
-              --repo "${GITHUB_REPOSITORY}" --clobber && break
-            echo "Upload of appcast.xml failed (attempt ${attempt})"
-            if [ "${attempt}" = 5 ]; then echo "::error::Could not upload appcast.xml"; exit 1; fi
-            sleep $(( attempt * 15 ))
-          done
-          gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
-            --json assets -q '.assets[].name' | grep -qx appcast.xml \
-            || { echo "::error::appcast.xml missing from the release; Pennant for Mac will not see it"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pennant-mac-appcast
+          path: appcast/appcast.xml
+          if-no-files-found: error

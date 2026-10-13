@@ -135,10 +135,9 @@ describe('release tags are pennant-v<version>, never upstream\'s v<version> (D-0
     expect(workflow).toContain("tags: ['pennant-v*']");
     expect(workflow).not.toMatch(/tags:\s*\[\s*'v\*'/);
     expect(workflow).not.toContain("refs/tags/v'");
-    // Every tag check, the Electron jobs' and Pennant for Mac's (D-076), names the same prefix
-    const checked = [...workflow.matchAll(/refs\/tags\/([\w-]*)'/g)].map((m) => m[1]);
-    expect(checked.length).toBeGreaterThanOrEqual(2);
-    expect(new Set(checked)).toEqual(new Set(['pennant-v']));
+    // Every tag check names the same prefix: the tests' and the release's, and Pennant for Mac's two (D-076). A new
+    // one is added here on purpose, never by loosening this to "at least".
+    expect([...workflow.matchAll(/refs\/tags\/([\w-]*)'/g)].map((m) => m[1])).toEqual(['pennant-v', 'pennant-v', 'pennant-v', 'pennant-v']);
   });
 
   it('is guarded against package.json in the workflow with the same prefix', () => {
