@@ -32,6 +32,18 @@ struct IntegrationFeatureTests {
         #expect(model.integration.glance?.record?.value?.display == served.record?.value?.display)
     }
 
+    @Test("the menu bar extra says no save chosen, or the club question in the server's words, as the main window does")
+    func menuBarExtraState() throws {
+        #expect(MenuBarGlanceView.Shown.of(PreviewFixtures.ready(configured: false)) == .noSave)
+        let owed = Components.Schemas.ClubOwed(text: "You manage 2 clubs in this save. Choose the one to follow.", since: "2040-05-05T00:00:00Z")
+        let asked = PreviewFixtures.ready(clubOwed: owed)
+        #expect(MenuBarGlanceView.Shown.of(asked) == .clubOwed(owed.text))
+        let served = try #require(PreviewFixtures.glance)
+        #expect(MenuBarGlanceView.Shown.of(PreviewFixtures.ready()) == .glance(served))
+        let reading = PreviewFixtures.ready(integration: IntegrationStore.preview(glance: nil))
+        #expect(MenuBarGlanceView.Shown.of(reading) == .starting)
+    }
+
     @Test("entities by id are the served list's, in the order asked; another save's id, or one it does not hold, is none")
     func entitiesById() throws {
         let list = try #require(PreviewFixtures.spotlight)

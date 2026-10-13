@@ -7,8 +7,9 @@ import SwiftUI
 
 /// The menu bar extra's window (SWIFTUI_REBUILD.md section 3.1; N14, Stage A, D-075): off until the GM turns it on in
 /// Settings ▸ General, then the served record, next game and desk count with its first items, and Open Pennant. Every
-/// figure and sentence is the served glance (`IntegrationStore`); the help tags are the claims' own. Content on an
-/// opaque, checked page, as everywhere in Pennant; the menu bar's own panel is the controls layer around it.
+/// figure and sentence is the served glance (`IntegrationStore`); the help tags are the claims' own. With no save chosen
+/// or the club question open it says so as the main window does (review N14A, L1). Content on an opaque, checked page,
+/// as everywhere in Pennant; the menu bar's own panel is the controls layer around it.
 public struct MenuBarGlanceView: View {
     @Environment(AppModel.self) private var model
     /// Brings Pennant's main window forward (or opens one) on the Morning Report: the app's own routing.
@@ -30,18 +31,47 @@ public struct MenuBarGlanceView: View {
         .frame(width: 300, alignment: .leading)
         .foregroundStyle(Color(nsColor: .labelColor))
         .background(Color(nsColor: .readablePage))
-        .background(MenuBarPanelName())
-        // A container of its own, so its identifier names it and never replaces its children's
+        .background(MenuBarPanelTitle())
+        // A container of its own, named for VoiceOver, so its identifier names it and never replaces its children's
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(MenuBarPanelTitle.title))
         .accessibilityIdentifier("menuBarExtra")
     }
 
+    /// What the window shows, in the main window's order: no save chosen, the club question, the glance, why it could
+    /// not be read, or "Starting…" while it is on its way.
+    enum Shown: Equatable {
+        case noSave
+        case clubOwed(String)
+        case glance(Components.Schemas.Glance)
+        case problem(RequestProblem)
+        case starting
+
+        @MainActor
+        static func of(_ model: AppModel) -> Shown {
+            if model.status?.configured == false { return .noSave }
+            if let owed = model.clubOwed { return .clubOwed(owed.text) }
+            if let glance = model.integration.glance { return .glance(glance) }
+            if let problem = model.integration.problem { return .problem(problem) }
+            return .starting
+        }
+    }
+
     @ViewBuilder private var content: some View {
-        if let glance = model.integration.glance, model.clubOwed == nil {
+        switch Shown.of(model) {
+        case .noSave:
+            // As the main window says it (`NoSaveView`); Open Pennant leads to Setup
+            Label("No save chosen", systemImage: "externaldrive.badge.questionmark")
+                .accessibilityIdentifier("menuBarExtra.noSave")
+        case .clubOwed(let text):
+            // The server's sentence, as the main window's `ClubPendingView` shows it
+            Text(verbatim: text)
+                .accessibilityIdentifier("menuBarExtra.clubOwed")
+        case .glance(let glance):
             GlanceBody(glance: glance)
-        } else if let problem = model.integration.problem {
+        case .problem(let problem):
             ProblemLine(problem)
-        } else {
+        case .starting:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text("Starting…").foregroundStyle(.readableSecondary)
@@ -99,39 +129,21 @@ struct GlanceBody: View {
     }
 }
 
-/// Names the menu bar extra's panel and the hosting view that holds the glance for VoiceOver (run 38116687375: the
-/// accessibility audit on GitHub's runner found the panel, a dialog, and its hosting view, a group, each with no
-/// description). AppKit makes both for the `MenuBarExtra`, so no SwiftUI modifier reaches them. Walking up from the
-/// glance to the panel's content view, each view that vends itself as an unnamed group, and then the panel itself when
-/// it has no title, gets the structural name "Pennant". Only labels change, never children or roles.
-struct MenuBarPanelName: NSViewRepresentable {
-    static let name: LocalizedStringResource = "Pennant"
+/// Titles the menu bar extra's panel "Pennant", once, from inside it: the window AppKit makes for a `MenuBarExtra` has no
+/// title, and the accessibility audit on GitHub's runner found it, a dialog, with no description (run 38116687375). The
+/// title is the panel's own name, as any window's is; the glance inside is named by its container's
+/// `.accessibilityLabel` (review N14A, L9). Draws nothing.
+struct MenuBarPanelTitle: NSViewRepresentable {
+    static let title: LocalizedStringResource = "Pennant"
 
-    func makeNSView(context: Context) -> Finder { Finder() }
-    func updateNSView(_ view: Finder, context: Context) { view.name() }
+    func makeNSView(context: Context) -> TitlesItsWindow { TitlesItsWindow() }
+    func updateNSView(_ view: TitlesItsWindow, context: Context) {}
 
-    final class Finder: NSView {
+    final class TitlesItsWindow: NSView {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            name()
-        }
-
-        func name() {
-            guard let window else { return }
-            let name = String(localized: MenuBarPanelName.name)
-            var view = superview
-            while let current = view {
-                if current.isAccessibilityElement(), current.accessibilityRole() == .group,
-                   current.accessibilityLabel()?.isEmpty ?? true {
-                    current.setAccessibilityLabel(name)
-                }
-                if current === window.contentView { break }
-                view = current.superview
-            }
-            if window.title.isEmpty, window.accessibilityLabel()?.isEmpty ?? true {
-                window.setAccessibilityLabel(name)
-                window.setAccessibilityTitle(name)
-            }
+            guard let window, window.title.isEmpty else { return }
+            window.title = String(localized: MenuBarPanelTitle.title)
         }
 
         override func isAccessibilityElement() -> Bool { false }
