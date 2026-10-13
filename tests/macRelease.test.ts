@@ -121,14 +121,45 @@ describe('Sparkle in the app (N14 Stage B, step 2)', () => {
     expect(updater).not.toMatch(/SecItem|SecKeychain/);
   });
 
-  it('fetches packages without the Keychain wherever xcodebuild runs', () => {
-    for (const file of ['macos/scripts/releasing/build-app.sh', 'macos/scripts/test.sh', '.github/workflows/ci.yml']) {
-      const text = uncommented(read(file));
-      const calls = text.split(/\bxcodebuild\b/).length - 1;
-      expect(calls, file).toBeGreaterThan(0);
-      expect(text, file).toContain('-packageAuthorizationProvider netrc');
+  it('fetches packages without the Keychain in every xcodebuild that resolves them', () => {
+    const files = ['macos/scripts/releasing/build-app.sh', 'macos/scripts/test.sh', '.github/workflows/ci.yml', '.github/workflows/release.yml'];
+    let resolving = 0;
+    for (const file of files) {
+      const calls = xcodebuildCalls(read(file), file.endsWith('.yml'));
+      expect(calls.length, file).toBeGreaterThan(0);
+      for (const call of calls) {
+        // Only a call that opens the project resolves packages; the version and a prebuilt test run do not
+        if (/\s-version\b/.test(call) || /\s-xctestrun\b/.test(call)) {
+          expect(call, `${file}: ${call}`).not.toMatch(/\s-(project|workspace)\b/);
+          continue;
+        }
+        expect(call, `${file}: ${call}`).toMatch(/\s-(project|workspace)\b/);
+        expect(call, `${file}: ${call}`).toContain('-packageAuthorizationProvider netrc');
+        if (file.endsWith('build-app.sh')) expect(call, call).toContain('-onlyUsePackageVersionsFromResolvedFile');
+        resolving += 1;
+      }
     }
-    expect(read('macos/scripts/releasing/build-app.sh')).toContain('-onlyUsePackageVersionsFromResolvedFile');
+    // build-app.sh's build and settings, test.sh's build-for-testing and test, ci.yml's build-for-testing
+    expect(resolving).toBe(5);
+  });
+
+  it('finds each xcodebuild call whole, so one call without netrc is caught beside one with it', () => {
+    const script = [
+      'FLAGS=(-packageAuthorizationProvider netrc)',
+      'xcodebuild -project A.xcodeproj "${FLAGS[@]}" \\',
+      '  build',
+      'run x=(xcodebuild -project B.xcodeproj',
+      '  -scheme B test)',
+      'xcodebuild -version',
+    ].join('\n');
+    const calls = xcodebuildCalls(script, false);
+    expect(calls).toHaveLength(3);
+    expect(calls[0]).toContain('-packageAuthorizationProvider netrc');
+    expect(calls[0]).toContain('build');
+    expect(calls[1]).toContain('-scheme B test');
+    expect(calls[1]).not.toContain('netrc');
+    const yaml = ['      - run: >', '          xcodebuild -project C.xcodeproj', '          -packageAuthorizationProvider netrc build', '      - run: echo'].join('\n');
+    expect(xcodebuildCalls(yaml, true)).toEqual(['xcodebuild -project C.xcodeproj -packageAuthorizationProvider netrc build']);
   });
 
   it('checks the dry run\'s app as the workflow does, after signing', () => {
@@ -146,6 +177,51 @@ function steps(job: string): { name: string; text: string }[] {
   }));
 }
 const uncommented = (text: string) => text.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+
+/**
+ * Each xcodebuild command in a shell script or a workflow, whole and on one line: its lines continued with `\`, the rest
+ * of a bash array it opens (`x=(xcodebuild …)`, to the array's `)`), or in a workflow the following lines indented as far
+ * as it is (a folded `run: >` block). A bash array spread into it (`"${NAME[@]}"`) is replaced by the array's one-line
+ * definition in the same file. Comments, and the word inside a quoted message, are left out.
+ */
+function xcodebuildCalls(text: string, workflow: boolean): string[] {
+  const lines = uncommented(text).split('\n');
+  const arrays = new Map<string, string>();
+  for (const line of lines) {
+    const m = /^\s*([A-Z_][A-Z0-9_]*)=\((.*)\)\s*$/.exec(line);
+    if (m) arrays.set(m[1], m[2]);
+  }
+  const calls: string[] = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    // The command word itself, never a log's name or the word inside a message in quotes
+    const at = lines[i].search(/(?<![\w-])xcodebuild(?=\s|$)/);
+    if (at < 0) continue;
+    const before = lines[i].slice(0, at);
+    if (before.split('"').length % 2 === 0 || before.split("'").length % 2 === 0) continue;
+    const inArray = /=\(\s*$/.test(lines[i].slice(0, at));
+    const indent = lines[i].search(/\S/);
+    const parts = [lines[i].slice(at)];
+    const depth = () => parts.join(' ').split('(').length - parts.join(' ').split(')').length;
+    let j = i;
+    const more = () => {
+      const last = parts[parts.length - 1];
+      if (/\\\s*$/.test(last)) return true;
+      if (inArray) return depth() >= 0;
+      return workflow && at === indent && j + 1 < lines.length && lines[j + 1].trim() !== '' && lines[j + 1].search(/\S/) >= indent
+        && !lines[j + 1].trimStart().startsWith('- ');
+    };
+    while (more() && j + 1 < lines.length) {
+      j += 1;
+      parts.push(lines[j].trim());
+    }
+    let call = parts.map((p) => p.replace(/\\\s*$/, '').trim()).join(' ');
+    if (inArray) call = call.replace(/\)\s*$/, '');
+    call = call.replace(/"\$\{(\w+)\[@\]\}"/g, (whole, name: string) => arrays.get(name) ?? whole);
+    calls.push(call.replace(/\s+/g, ' ').trim());
+    i = j;
+  }
+  return calls;
+}
 const TAG_GUARD = "startsWith(github.ref, 'refs/tags/pennant-v')";
 
 describe('release.yml: tags and secrets', () => {
