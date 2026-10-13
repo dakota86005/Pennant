@@ -12,6 +12,7 @@
 		4E5000000000000000000082 /* PennantAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000072 /* PennantAPI */; };
 		4E5000000000000000000083 /* PennantFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000073 /* PennantFeatures */; };
 		4E5000000000000000000084 /* PennantGlance in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000074 /* PennantGlance */; };
+		4E50000000000000000000B0 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 4E50000000000000000000B1 /* Sparkle */; };
 		4E50000000000000000000A0 /* PennantWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E5000000000000000000012 /* PennantWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4E50000000000000000000A1 /* PennantGlance in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000075 /* PennantGlance */; };
 		4E50000000000000000000A2 /* PennantDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 4E5000000000000000000076 /* PennantDesign */; };
@@ -92,6 +93,7 @@
 				4E5000000000000000000082 /* PennantAPI in Frameworks */,
 				4E5000000000000000000083 /* PennantFeatures in Frameworks */,
 				4E5000000000000000000084 /* PennantGlance in Frameworks */,
+				4E50000000000000000000B0 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,6 +166,7 @@
 				4E5000000000000000000072 /* PennantAPI */,
 				4E5000000000000000000073 /* PennantFeatures */,
 				4E5000000000000000000074 /* PennantGlance */,
+				4E50000000000000000000B1 /* Sparkle */,
 			);
 			productName = Pennant;
 			productReference = 4E5000000000000000000010 /* Pennant.app */;
@@ -252,6 +255,7 @@
 				4E5000000000000000000061 /* XCLocalSwiftPackageReference "Packages/PennantDesign" */,
 				4E5000000000000000000062 /* XCLocalSwiftPackageReference "Packages/PennantAPI" */,
 				4E5000000000000000000063 /* XCLocalSwiftPackageReference "Packages/PennantFeatures" */,
+				4E50000000000000000000B2 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4E5000000000000000000003 /* Products */;
@@ -673,6 +677,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		4E50000000000000000000B2 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		4E5000000000000000000070 /* PennantKit */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -708,6 +723,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4E5000000000000000000061 /* XCLocalSwiftPackageReference "Packages/PennantDesign" */;
 			productName = PennantDesign;
+		};
+		4E50000000000000000000B1 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E50000000000000000000B2 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

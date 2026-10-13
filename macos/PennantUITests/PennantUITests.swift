@@ -264,11 +264,17 @@ final class PennantUITests: XCTestCase {
         // (GitHub's runner, a 1024-point-wide screen) the system lays the inspector over the report's trailing side
         let inspector = app.descendants(matching: .any)["inspector"].firstMatch
         let inspectorFrame = inspector.exists ? inspector.frame : nil
+        /// The inspector's own texts' frames, read from one snapshot of it the first time a finding meets it
+        var inspectorTexts: [CGRect]?
         /// Whether an element is text of the report under the inspector: its frame meets the inspector's, and it is not
         /// one of the inspector's own texts.
         func isUnderInspector(_ frame: CGRect) -> Bool {
             guard let inspectorFrame, inspectorFrame.intersects(frame) else { return false }
-            return !inspector.staticTexts.allElementsBoundByIndex.contains { $0.frame == frame }
+            if inspectorTexts == nil {
+                inspectorTexts = ((try? inspector.snapshot()).map { Self.descendants(of: $0) } ?? [])
+                    .filter { $0.elementType == .staticText }.map(\.frame)
+            }
+            return !(inspectorTexts ?? []).contains(frame)
         }
         /// The sidebar column's container: a window's full height, from its left edge to the sidebar's right edge.
         func isSidebarColumn(_ frame: CGRect) -> Bool {
@@ -302,25 +308,33 @@ final class PennantUITests: XCTestCase {
                 return (ScrollClip(scrollArea: snapshot.frame, window: window, scrollBars: bars), members)
             }
         /// The scroll area clipping an element of a served table, when the element lies wholly or partly outside it.
-        func clippingArea(_ element: XCUIElement, _ frame: CGRect) -> ScrollClip? {
-            let key = ScrollClip.Member(element.elementType, frame)
+        func clippingArea(_ type: XCUIElement.ElementType, _ frame: CGRect) -> ScrollClip? {
+            let key = ScrollClip.Member(type, frame)
             return tableClips.first { $0.members.contains(key) && $0.clip.clips(frame) }?.clip
         }
         try app.performAccessibilityAudit { issue in
-            let element = issue.element
-            let line = "\(issue.auditType): \(issue.compactDescription): "
-                + (element.map { "type \($0.elementType.rawValue) id='\($0.identifier)' label='\($0.label)' frame=\($0.frame)" } ?? "no element")
-            guard let element else {
+            let head = "\(issue.auditType): \(issue.compactDescription): "
+            guard let element = issue.element else {
                 // A parent/child mismatch the audit attributes to no element (seen only with the ⌘K palette up, on the
                 // runner and here): nothing it names can be found or measured, so it is listed, never hidden
                 if issue.auditType == .parentChild {
-                    setAside.append(line + " (the audit names no element)")
+                    setAside.append(head + "no element (the audit names no element)")
                 } else {
-                    issues.append(line)
+                    issues.append(head + "no element")
                 }
                 return true
             }
-            let frame = element.frame
+            // The element read once, as one snapshot: its type, identifier, label, frame and texts. Each read of an
+            // element's attribute is a query of the app's whole tree (2 s or more on the runner, where reading them one
+            // at a time made Player Search's audit of 82 cells take 30 to 50 minutes); the snapshot holds the same values
+            let shot: XCUIElementSnapshot
+            do { shot = try element.snapshot() } catch {
+                // Not readable: a finding, as reading its attributes one at a time failed the test
+                issues.append(head + "an element that could not be read (\(error.localizedDescription))")
+                return true
+            }
+            let line = head + "type \(shot.elementType.rawValue) id='\(shot.identifier)' label='\(shot.label)' frame=\(shot.frame)"
+            let frame = shot.frame
             if issue.auditType == .contrast, !windows.contains(where: { $0.frame.intersects(frame) }) {
                 // Scrolled wholly out of its window (a report longer than the window): none of its pixels are on the
                 // screen, so what the audit measured there is not its text
@@ -330,40 +344,40 @@ final class PennantUITests: XCTestCase {
                 // audit measures the whole line, of which only a sliver is on the screen
                 setAside.append(line + " (cut by its window's edge: partly scrolled out of view)")
             } else if issue.auditType == .contrast || issue.auditType == .sufficientElementDescription,
-                      let clip = clippingArea(element, frame) {
+                      let clip = clippingArea(shot.elementType, frame) {
                 // A row or column of a served table past its own scroll area's edge (under the detail pane, or past the
                 // trailing edge on a narrow window): the native table clips it there and VoiceOver scrolls to it, and
                 // what the audit measured on the screen is not its own. Only outside the visible rectangle measured from
                 // the tree; a cell inside it fails as before (`ScrollClipTests`)
                 setAside.append(line + " (clipped by its own table's scroll area, visible \(clip.visible))")
-            } else if element.elementType == .touchBar || (touchBarFrame.map { $0.contains(frame) } ?? false) {
+            } else if shot.elementType == .touchBar || (touchBarFrame.map { $0.contains(frame) } ?? false) {
                 setAside.append(line + " (the Touch Bar the system draws, or a key on it)")
-            } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
-                      element.identifier.isEmpty, element.label.isEmpty, isSidebarColumn(frame) {
+            } else if issue.auditType == .sufficientElementDescription, shot.elementType == .group,
+                      shot.identifier.isEmpty, shot.label.isEmpty, isSidebarColumn(frame) {
                 setAside.append(line + " (the sidebar column's own container)")
-            } else if issue.auditType == .sufficientElementDescription, element.elementType == .group,
-                      element.identifier.isEmpty, element.label.isEmpty, isInServedTable(frame),
-                      element.staticTexts.allElementsBoundByIndex.contains(where: { !$0.label.isEmpty || !(($0.value as? String) ?? "").isEmpty }) {
+            } else if issue.auditType == .sufficientElementDescription, shot.elementType == .group,
+                      shot.identifier.isEmpty, shot.label.isEmpty, isInServedTable(frame),
+                      Self.descendants(of: shot).contains(where: { $0.elementType == .staticText && (!$0.label.isEmpty || !(($0.value as? String) ?? "").isEmpty) }) {
                 // A served table's cell: AppKit's own container around the cell's text, which no SwiftUI modifier reaches
                 // (a label on the cell's content makes a second element inside it, and the container stays unnamed); the
                 // text inside it is named, and that is what VoiceOver reads
                 setAside.append(line + " (a served table's cell container; its text is named)")
-            } else if issue.auditType == .contrast, element.elementType == .staticText, isInServedTable(frame),
+            } else if issue.auditType == .contrast, shot.elementType == .staticText, isInServedTable(frame),
                       let ratio = windows.first(where: { $0.frame.contains(frame) })?.pixels?.contrast(in: frame), ratio >= 4.5 {
                 // A served table cell's short text (a hand, a share, a number): the audit reported glyphs of one to three
                 // characters in the label colour on the page as failing while their own pixels read at 8:1 to 15:1; the
                 // line carries the measured ratio, so it is checked, not muted, and below 4.5:1 it fails
                 setAside.append(line + String(format: " (a served table cell's text whose own pixels read at %.1f:1)", ratio))
-            } else if issue.auditType == .contrast, element.elementType == .staticText, frame.width <= 60, frame.height <= 24,
+            } else if issue.auditType == .contrast, shot.elementType == .staticText, frame.width <= 60, frame.height <= 24,
                       let ratio = windows.first(where: { $0.frame.contains(frame) })?.pixels?.contrast(in: frame), ratio >= 7 {
                 // A text of a few characters (a number such as "22", a chip's word such as "Now"): the audit reported such
                 // short texts in the label colour as failing or nearly passing while their own pixels read at 13:1 to 15:1
                 // (N8). Only at 7:1 or better by its pixels, the Increase Contrast bar; the line carries the ratio
                 setAside.append(line + String(format: " (a short text whose own pixels read at %.1f:1)", ratio))
-            } else if issue.auditType == .parentChild, element.elementType == .group, frame.width <= 16, frame.height <= 16,
+            } else if issue.auditType == .parentChild, shot.elementType == .group, frame.width <= 16, frame.height <= 16,
                       controls.contains(where: { $0.contains(frame) }) {
                 setAside.append(line + " (inside the window's own title-bar button)")
-            } else if issue.auditType == .contrast, element.identifier.hasPrefix("sidebar.") {
+            } else if issue.auditType == .contrast, shot.identifier.hasPrefix("sidebar.") {
                 let holder = windows.first { $0.frame.contains(frame) }
                 let visible = holder != nil && (sidebarFrame.map { $0.contains(frame) } ?? false)
                 let ratio = visible ? holder?.pixels?.contrast(in: frame) : nil
@@ -378,7 +392,7 @@ final class PennantUITests: XCTestCase {
                 // Covered, wholly or partly, by the inspector laid over the report: what the audit measured there is the
                 // inspector's pixels, not the text's
                 setAside.append(line + " (report text under the inspector laid over it on a narrow window)")
-            } else if issue.auditType == .contrast, element.elementType == .staticText,
+            } else if issue.auditType == .contrast, shot.elementType == .staticText,
                       let pixels = windows.first(where: { $0.frame.contains(frame) })?.pixels, pixels.scale < 1.5,
                       let ratio = pixels.contrast(in: frame), ratio >= 4.5 {
                 // Text on a 1× screen (GitHub's runner) whose own pixels read at 4.5:1 or better: there the audit's
@@ -409,6 +423,13 @@ final class PennantUITests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
         XCTAssertEqual(issues, [], "the accessibility audit found issues")
+    }
+
+    /// Every element under a snapshot, the snapshot itself not included: what `element.descendants(matching: .any)`
+    /// finds, read from the one snapshot instead of a query of the app's tree per element.
+    @MainActor
+    private static func descendants(of snapshot: XCUIElementSnapshot) -> [XCUIElementSnapshot] {
+        snapshot.children.flatMap { [$0] + descendants(of: $0) }
     }
 
     /// Scrolls a container (an element, never the screen) until the target is there and can be clicked: a report draws
@@ -650,6 +671,14 @@ final class PennantUITests: XCTestCase {
     func testDepartmentsInspectorAndSettings() throws {
         let app = launch()
         waitForShell(app)
+
+        // A development build makes no updater (D-076): Check for Updates… is in the app menu, and unavailable (read
+        // with the menu open, where AppKit validates its items)
+        app.menuBars.menuBarItems["Pennant"].click()
+        let check = app.menuBars.menuItems["Check for Updates…"].firstMatch
+        XCTAssertTrue(check.waitForExistence(timeout: 5), "no Check for Updates… in the app menu")
+        XCTAssertFalse(check.isEnabled, "Check for Updates… was available in a build with no updater")
+        app.typeKey(.escape, modifierFlags: [])
 
         let departments: [(key: String, id: String, first: String, last: String)] = [
             ("1", "frontOffice", "morningReport", "briefing"),
@@ -2325,6 +2354,63 @@ final class PennantUITests: XCTestCase {
         let log = (try? String(contentsOf: scratch.appending(path: "logs/server.log"), encoding: .utf8)) ?? ""
         let outside = log.split(separator: "\n").filter { $0.contains("spotlight:") || $0.contains("glance:") }
         print("[glance] \(methodName): \(outside.isEmpty ? "no line in the app's log" : outside.joined(separator: " | "))")
+        quitCleanly(app)
+    }
+
+    // MARK: Updates (N14, Stage B)
+
+    /// Check for Updates… in the app menu, below About, and Settings ▸ Updates' switch: off until the GM turns it on
+    /// (consent first), turned on, and the tab audited alone. The app runs with its updater in memory
+    /// (`-PennantTestUpdater memory`), never Sparkle, so nothing reaches the network; the menu item is found, never
+    /// clicked, since a Debug build has no feed.
+    @MainActor
+    func testUpdatesSettingsAndMenu() throws {
+        let app = launch(arguments: ["-PennantTestUpdater", "memory"])
+        waitForShell(app)
+
+        // The app menu's item, below About, without opening the menu
+        let check = app.menuBars.menuItems["Check for Updates…"].firstMatch
+        XCTAssertTrue(check.waitForExistence(timeout: 5), "no Check for Updates… in the app menu")
+        XCTAssertTrue(check.isEnabled, "Check for Updates… was unavailable with an updater")
+        let appMenu = app.menuBars.menuBarItems["Pennant"].menus.firstMatch
+        let titles = appMenu.menuItems.allElementsBoundByIndex.map(\.title).filter { !$0.isEmpty }
+        if let about = titles.firstIndex(where: { $0.hasPrefix("About") }), let at = titles.firstIndex(of: "Check for Updates…"),
+           let settings = titles.firstIndex(where: { $0.hasPrefix("Settings") }) {
+            XCTAssertTrue(about < at && at < settings, "Check for Updates… is not between About and Settings: \(titles)")
+        } else {
+            XCTFail("the app menu's items were \(titles)")
+        }
+
+        // Settings alone, so its audit measures only its own window (D-075): the main window closes first
+        let main = app.windows.matching(NSPredicate(format: "identifier BEGINSWITH 'main'")).firstMatch
+        XCTAssertTrue(main.waitForExistence(timeout: 5), "no main window")
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(main.waitForNonExistence(timeout: 5), "the main window did not close")
+        app.typeKey(",", modifierFlags: .command)
+        let tab = app.toolbars.buttons["Updates"].firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "no Updates tab")
+        tab.click()
+        XCTAssertTrue(element(app, "settings.updates").waitForExistence(timeout: 5), "Settings ▸ Updates did not show")
+        let toggle = element(app, "settings.updates.automatic")
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "no automatic-check switch in Settings ▸ Updates")
+        XCTAssertTrue(waitForValue(toggle, on: false), "automatic checks were on before the GM said yes")
+        XCTAssertTrue(element(app, "settings.updates.lastCheck").exists, "no last check in Settings ▸ Updates")
+        toggle.click()
+        XCTAssertTrue(waitForValue(toggle, on: true), "the automatic-check switch did not turn on (value \(String(describing: toggle.value)))")
+        keep(app.windows.firstMatch.screenshot(), named: "n14-settings-updates")
+        try audit(app, named: "accessibility-audit-settings-updates")
+        // The tab's name leaves with the tab: on General, no container outside the toolbar is still called Updates (the
+        // window and what holds every tab outlive the switch)
+        let general = app.toolbars.buttons["General"].firstMatch
+        XCTAssertTrue(general.waitForExistence(timeout: 5), "no General tab")
+        general.click()
+        XCTAssertTrue(element(app, "settings.general").waitForExistence(timeout: 5), "Settings ▸ General did not show")
+        let toolbar = app.toolbars.firstMatch.frame
+        let named = app.windows.firstMatch.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Updates"))
+            .allElementsBoundByIndex.filter { !toolbar.contains($0.frame) }
+            .map { "type \($0.elementType.rawValue) id='\($0.identifier)' frame=\($0.frame)" }
+        XCTAssertEqual(named, [], "Settings ▸ General still announces Updates")
+        app.typeKey("w", modifierFlags: .command)
         quitCleanly(app)
     }
 

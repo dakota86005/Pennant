@@ -89,7 +89,7 @@ if [ "${PENNANT_TEST_BUILD_ONLY:-0}" = "1" ]; then
   step "xcodebuild build-for-testing: the Pennant scheme (app, server, XCUITests), for the shard jobs"
   run xcodebuild-build "\*\* TEST BUILD" \
     xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS' \
-      -derivedDataPath "$OUT/DerivedData" -skipPackagePluginValidation ${signing[@]+"${signing[@]}"} \
+      -derivedDataPath "$OUT/DerivedData" -skipPackagePluginValidation -packageAuthorizationProvider netrc ${signing[@]+"${signing[@]}"} \
       build-for-testing || failed=1
 elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   step "xcodebuild test: the Pennant scheme (app, server, XCUITests)"
@@ -199,6 +199,8 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
   prepare_ui_test testStaffRoomAnswer configured '{"theme":"light","aiFeatures":{"chat":{"provider":"ollama","model":"stub"}}}'
   # N14 Stage A: the widget's glance written to the test's folder, and the menu bar extra turned on and opened
   prepare_ui_test testMenuBarExtra configured '{"theme":"light"}'
+  # N14 Stage B: Check for Updates… in the app menu and Settings ▸ Updates, with the updater in memory
+  prepare_ui_test testUpdatesSettingsAndMenu configured '{"theme":"light"}'
   # Which tests: PENNANT_TEST_ONLY's, else one CI shard's (its own, or for the catch-all every test the other shards
   # do not run), else all of them
   selection=()
@@ -215,7 +217,7 @@ elif [ "${PENNANT_TEST_NO_UI:-0}" != "1" ]; then
       ${selection[@]+"${selection[@]}"} test-without-building)
   else
     xcode=(xcodebuild -project "$ROOT/macos/Pennant.xcodeproj" -scheme Pennant -destination 'platform=macOS'
-      -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" -skipPackagePluginValidation
+      -derivedDataPath "$OUT/DerivedData" -resultBundlePath "$OUT/Pennant.xcresult" -skipPackagePluginValidation -packageAuthorizationProvider netrc
       ${signing[@]+"${signing[@]}"} ${selection[@]+"${selection[@]}"} test)
   fi
   # The stand-in AI provider (N13), on a free port of 127.0.0.1, for the Staff room's answering test; stopped below

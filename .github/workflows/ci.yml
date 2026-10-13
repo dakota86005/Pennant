@@ -96,7 +96,7 @@ jobs:
         run: >
           xcodebuild -project macos/Pennant.xcodeproj -scheme Pennant -destination 'platform=macOS'
           -derivedDataPath build/macos-ci/DerivedData -clonedSourcePackagesDirPath build/macos-ci/SourcePackages
-          -onlyUsePackageVersionsFromResolvedFile -skipPackagePluginValidation
+          -onlyUsePackageVersionsFromResolvedFile -packageAuthorizationProvider netrc -skipPackagePluginValidation
           CODE_SIGNING_ALLOWED=NO PENNANT_SKIP_SERVER=YES build-for-testing
 
   # The Keychain without a dialog (N13, D-074): the app's Keychain code, compiled into two differently signed copies,

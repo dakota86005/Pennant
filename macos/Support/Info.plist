@@ -6,6 +6,13 @@
 	<!-- The App Group the app shares with its widget (N14, D-075): from PENNANT_APP_GROUP, the release's or the development build's -->
 	<key>PennantAppGroup</key>
 	<string>$(PENNANT_APP_GROUP)</string>
+	<!-- Sparkle (N14 Stage B, D-076): updates are verified against the EdDSA key before they are unpacked, and never
+	     downloaded or installed by themselves. SUEnableAutomaticChecks is left out on purpose, so Sparkle asks the GM
+	     before its first automatic check (consent first). The feed and the key are Release-only (embed-server.sh). -->
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

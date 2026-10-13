@@ -6,7 +6,12 @@ name: Pennant release
 # are its own and its tags deliberately do NOT start with `v`: upstream's tags
 # (v0.1.0 … v0.40.1) are a different project's and must never trigger this workflow
 # or collide with these — see D-049.
-# Or trigger manually from the Actions tab to get installers without a release.
+# Or trigger manually from the Actions tab to get installers without a release: a run by
+# hand never publishes (the release job runs only on a pushed tag).
+#
+# Until the N15 cutover a tag releases the Electron app only. Pennant for Mac (pennant-mac,
+# pennant-mac-appcast) runs only by hand, leaving a signed, notarized DMG and a test appcast
+# as artifacts that are never attached to a release; D-076 says how N15 switches it on.
 #
 # Pull-request validation is ci.yml. Nothing here runs on a pull request.
 on:
@@ -14,14 +19,15 @@ on:
     tags: ['pennant-v*']
   workflow_dispatch:
 
+# Read-only by default; only the release job can write (create the draft, upload, publish)
 permissions:
-  contents: write
+  contents: read
 
 # Mac and Windows are separate jobs rather than a matrix on purpose: the Apple
-# signing credentials must reach ONLY the macOS job. electron-builder's CSC_LINK
-# is a generic code-signing variable, so a Windows job that can see it will sign
-# .exe files with the Apple certificate — producing an invalid Authenticode
-# signature that is worse for users than shipping unsigned.
+# signing credentials must reach ONLY the macOS jobs. electron-builder's CSC_LINK
+# is a generic code-signing variable, so a Windows job that can see the certificate
+# will sign .exe files with it — producing an invalid Authenticode signature that
+# is worse for users than shipping unsigned.
 jobs:
   # Gates the release. Both packaging jobs wait on it, so a regression caught
   # here never reaches an installer.
@@ -65,17 +71,38 @@ jobs:
       - run: npm run abi:electron
       - run: npm run desktop:build
 
-      # Until the Apple secrets exist this packages an UNSIGNED app and the
-      # verification step below cannot pass. That is intended: it is not weakened to
-      # turn CI green. What a signed release needs is in docs/DEVELOPMENT.md.
-      - name: Package (signed and notarized when secrets are present)
-        run: npx electron-builder --mac --publish never
+      # The certificate goes into the throwaway keychain Pennant for Mac uses
+      # (ci-keychain.sh), not electron-builder's own: given CSC_LINK, electron-builder
+      # 26 runs `security set-key-partition-list -k` with the certificate's password
+      # instead of its keychain's (app-builder-lib/out/codeSign/macCodeSign.js,
+      # importCerts), which fails with "SecKeychainUnlock: The user name or passphrase
+      # you entered is not correct" before anything is signed. The notarization
+      # account is stored in the same keychain, so the packaging step sees no secret.
+      # Without the secrets the first step fails, naming them; the verification below
+      # is never weakened to turn CI green. DEVELOPMENT.md has the one-time setup.
+      - name: Load the Developer ID certificate into a throwaway keychain
+        run: macos/scripts/releasing/ci-keychain.sh create >> "${GITHUB_ENV}"
         env:
-          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      - name: Store the notarization account in the throwaway keychain
+        run: macos/scripts/releasing/ci-keychain.sh notary >> "${GITHUB_ENV}"
+        env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # electron-builder signs with the identity in that keychain (CSC_KEYCHAIN, and
+      # CSC_NAME without the "Developer ID Application: " prefix, as it requires) and
+      # notarizes through the stored profile (APPLE_KEYCHAIN, APPLE_KEYCHAIN_PROFILE).
+      # forceCodeSigning makes a missing identity an error rather than a warning.
+      - name: Package, signed and notarized
+        run: |
+          export CSC_KEYCHAIN="${PENNANT_SIGN_KEYCHAIN}"
+          export CSC_NAME="${PENNANT_SIGN_IDENTITY#Developer ID Application: }"
+          export APPLE_KEYCHAIN="${PENNANT_SIGN_KEYCHAIN}"
+          export APPLE_KEYCHAIN_PROFILE="${PENNANT_NOTARY_PROFILE}"
+          npx electron-builder --mac --publish never -c.forceCodeSigning=true
 
       - name: Verify the app is signed and notarized
         run: |
@@ -85,6 +112,10 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP"
           # Fails the build if Gatekeeper would reject it on a user's machine
           spctl --assess --type execute --verbose=4 "$APP"
+
+      - name: Remove the signing keychain
+        if: always()
+        run: macos/scripts/releasing/ci-keychain.sh delete
 
       # latest-mac.yml is the update feed electron-updater reads; the zips are
       # what Squirrel.Mac installs from (it cannot install from a dmg); the
@@ -98,6 +129,115 @@ jobs:
             release/*.zip
             release/*.blockmap
             release/latest-mac.yml
+          if-no-files-found: error
+
+  # Pennant for Mac, the SwiftUI app (D-076; DEVELOPMENT.md "Releasing Pennant for Mac"), beside the Electron app's
+  # job until the N15 cutover, and run only by hand until then: a tag never starts it, and the release job does not
+  # wait on it, so it can never block or join an Electron release. The scripts in macos/scripts/releasing/ build the
+  # Release app unsigned, sign it inside out (SWIFTUI_REBUILD.md section 5.2), notarize and staple it, and pack,
+  # notarize and staple the DMG. The Apple secrets reach only this macOS job, each step getting only the ones it uses.
+  # Without them, the job builds and packs an unsigned DMG (the pennant-mac-unsigned artifact) and then fails at
+  # "Check the signing and notarizing secrets", naming every one missing; the verification is never weakened to pass.
+  pennant-mac:
+    needs: test
+    if: github.event_name == 'workflow_dispatch'
+    name: Pennant for Mac
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: xcodebuild -version
+      - run: npm ci
+
+      # Inside-out signing on a fake, ad-hoc-signed tree, the version derivation and this workflow's own rules
+      - name: Release script tests
+        run: npx vitest run tests/macRelease.test.ts
+
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/pennant-v')
+        run: macos/scripts/releasing/version.sh --check-tag "${GITHUB_REF_NAME}"
+
+      - run: npm run mac:stage
+      - name: Build the Release app (unsigned)
+        run: macos/scripts/releasing/build-app.sh build/mac-release
+        env:
+          # The signing team, so the App Group shared with the widget carries its prefix
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Pack the unsigned app (for inspection only)
+        run: >
+          macos/scripts/releasing/make-dmg.sh build/mac-release/Pennant.app
+          "build/mac-release/unsigned/Pennant-for-Mac-$(macos/scripts/releasing/version.sh)-unsigned.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pennant-mac-unsigned
+          path: build/mac-release/unsigned/*.dmg
+          if-no-files-found: error
+
+      - name: Check the signing and notarizing secrets
+        run: macos/scripts/releasing/check-secrets.sh sign
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Load the Developer ID certificate into a throwaway keychain
+        run: macos/scripts/releasing/ci-keychain.sh create >> "${GITHUB_ENV}"
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      # The account goes into the throwaway keychain once, checked with Apple, so notarize.sh never puts the password
+      # on a command line
+      - name: Store the notarization account in the throwaway keychain
+        run: macos/scripts/releasing/ci-keychain.sh notary >> "${GITHUB_ENV}"
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Sign inside out
+        run: >
+          macos/scripts/releasing/sign-app.sh build/mac-release/Pennant.app "${PENNANT_SIGN_IDENTITY}"
+          build/mac-release/entitlements.tsv
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Notarize and staple the app
+        run: macos/scripts/releasing/notarize.sh build/mac-release/Pennant.app
+      - name: Make, notarize and staple the DMG
+        run: |
+          dmg="build/mac-release/dmg/Pennant-for-Mac-$(macos/scripts/releasing/version.sh).dmg"
+          macos/scripts/releasing/make-dmg.sh build/mac-release/Pennant.app "${dmg}" "${PENNANT_SIGN_IDENTITY}"
+          macos/scripts/releasing/notarize.sh "${dmg}"
+
+      # An app that could never update itself strands every copy installed from it. Checked on the signed app, whose
+      # signature seals the Info.plist it reads, and before the verification and every artifact this job keeps, so a
+      # refused app leaves nothing behind (check-updater.sh).
+      - name: Refuse an app that could never update itself
+        run: macos/scripts/releasing/check-updater.sh build/mac-release/Pennant.app
+
+      - name: Verify the app is signed and notarized
+        run: |
+          APP=build/mac-release/Pennant.app
+          DMG=$(find build/mac-release/dmg -name '*.dmg' -print -quit)
+          if [ -z "$DMG" ]; then echo "No .dmg produced"; exit 1; fi
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          # Fails the build if Gatekeeper would reject it on a user's machine
+          spctl --assess --type execute --verbose=4 "$APP"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
+          xcrun stapler validate "$APP"
+          xcrun stapler validate "$DMG"
+
+      - name: Remove the signing keychain
+        if: always()
+        run: macos/scripts/releasing/ci-keychain.sh delete
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pennant-mac
+          path: build/mac-release/dmg/*.dmg
           if-no-files-found: error
 
   windows:
@@ -131,19 +271,33 @@ jobs:
             release/latest.yml
           if-no-files-found: error
 
-  # Publishing happens once, after both builds, so the two jobs can't race each
-  # other and drop assets from the release.
+  # Publishing happens once, after every build, so the jobs can't race each
+  # other and drop assets from the release. Only on a pushed tag: a run by hand
+  # never publishes, whatever ref it runs on. Until N15 it releases the Electron
+  # app only and never waits on Pennant for Mac (D-076).
   release:
     name: Publish release
     needs: [macos, windows]
-    if: startsWith(github.ref, 'refs/tags/pennant-v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/pennant-v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: macos
+          path: artifacts/macos
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+          path: artifacts/windows
 
-      - name: Attach installers to the release
+      # Draft first (D-076): the release is created as a draft, every asset is
+      # uploaded and checked, and only then is it published as the latest. A
+      # failure anywhere leaves a draft nobody sees, and the previous release
+      # stays the latest, so no client is ever offered a release missing an
+      # installer or a manifest. Re-running the failed run finishes the draft.
+      - name: Upload the installers to a draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -167,22 +321,28 @@ jobs:
           # and went on to upload twelve assets to a release that was never
           # created — twelve "release not found" lines and a red run holding a
           # perfectly good pair of installers. Retry the create; only an explicit
-          # "already exists" is a reason to skip it.
+          # "already exists" is a reason to skip it, and then only for a draft:
+          # a published release is never changed by a re-run.
           created=
           for attempt in 1 2 3 4 5; do
             if out=$(gh release create "${GITHUB_REF_NAME}" \
                        --repo "${GITHUB_REPOSITORY}" \
                        --title "Pennant ${GITHUB_REF_NAME#pennant-v}" \
-                       --generate-notes 2>&1); then
+                       --generate-notes --draft 2>&1); then
               created=yes
-              echo "Release created"
+              echo "Draft release created"
               break
             fi
             echo "${out}"
             case "${out}" in
               *already*exists*)
+                draft=$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft -q .isDraft)
+                if [ "${draft}" != "true" ]; then
+                  echo "::error::${GITHUB_REF_NAME} is already published; a re-run never changes a published release"
+                  exit 1
+                fi
                 created=yes
-                echo "Release already exists — uploading to it"
+                echo "The draft already exists — uploading to it"
                 break
                 ;;
             esac
@@ -190,7 +350,7 @@ jobs:
             sleep $(( attempt * 15 ))
           done
           if [ -z "${created}" ]; then
-            echo "::error::Could not create the release after 5 attempts"
+            echo "::error::Could not create the draft release after 5 attempts"
             exit 1
           fi
 
@@ -210,11 +370,81 @@ jobs:
             upload "${asset}" || exit 1
           done < assets.zero
 
-          # The manifests must be present or clients never learn a release exists
+      # Every file built is on the draft, at its size, and the manifests are
+      # there, or clients never learn a release exists
+      - name: Verify the draft's assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          draft=$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft -q .isDraft)
+          [ "${draft}" = "true" ] || { echo "::error::${GITHUB_REF_NAME} is not a draft"; exit 1; }
           gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
-            --json assets -q '.assets[].name' > published.txt
-          cat published.txt
+            --json assets -q '.assets[] | "\(.name)\t\(.size)"' | sort > published.tsv
+          cat published.tsv
+          while IFS= read -r -d '' asset; do
+            printf '%s\t%s\n' "$(basename "${asset}")" "$(stat -c %s "${asset}")"
+          done < assets.zero | sort > built.tsv
+          missing=$(comm -23 built.tsv published.tsv)
+          if [ -n "${missing}" ]; then
+            echo "::error::Not on the draft at the size built:"
+            echo "${missing}"
+            exit 1
+          fi
           for f in latest-mac.yml latest.yml; do
-            grep -qx "$f" published.txt \
+            cut -f1 published.tsv | grep -qx "$f" \
               || { echo "::error::$f missing from the release — auto-update will not work"; exit 1; }
           done
+
+      # Last, and only after the verification: the draft becomes the release
+      # and the latest one, which is what the updaters read
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --latest && break
+            echo "Publish failed (attempt ${attempt})"
+            if [ "${attempt}" = 5 ]; then echo "::error::Could not publish the release; it is still a draft"; exit 1; fi
+            sleep $(( attempt * 15 ))
+          done
+          draft=$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft -q .isDraft)
+          [ "${draft}" = "false" ] || { echo "::error::${GITHUB_REF_NAME} is still a draft"; exit 1; }
+          echo "Published ${GITHUB_REF_NAME} as the latest release"
+
+  # Pennant for Mac's update feed (D-076), by hand only until N15, and never
+  # published: generate_appcast, from the Sparkle release the app links (pinned
+  # by SHA-256), signs the notarized DMG with the owner's EdDSA key and writes
+  # appcast.xml, kept as the pennant-mac-appcast artifact to inspect. Without
+  # SPARKLE_ED_PRIVATE_KEY this fails naming it. N15 attaches it to the draft
+  # release before it is published (DEVELOPMENT.md, "Releasing Pennant for Mac").
+  pennant-mac-appcast:
+    name: Pennant for Mac appcast
+    needs: pennant-mac
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: pennant-mac
+          path: artifacts/pennant-mac
+
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/pennant-v')
+        run: macos/scripts/releasing/version.sh --check-tag "${GITHUB_REF_NAME}"
+
+      # A test build has no release body, so its notes say what it is; they still exercise the embedded notes
+      - name: Write the appcast
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          version="$(macos/scripts/releasing/version.sh)"
+          printf 'A test build of %s from %s, not a release.\n' "${GITHUB_SHA}" "${GITHUB_REF_NAME}" > notes.md
+          macos/scripts/releasing/make-appcast.sh \
+            "artifacts/pennant-mac/Pennant-for-Mac-${version}.dmg" notes.md appcast
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pennant-mac-appcast
+          path: appcast/appcast.xml
+          if-no-files-found: error

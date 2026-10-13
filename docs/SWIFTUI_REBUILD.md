@@ -1469,7 +1469,11 @@ D-071 (BEHAVIOR_CASES.md "Pennant for Mac", the `financeViews.test.ts` and `Offi
   thread (`XCTPerformOnMainRunLoop`, `_XCopyHierarchy`, the table's row views made and put away for them), at the test's
   "Get number of matches" and audit steps; at launch, the first Morning Report's first frame on a fresh runner (Metal
   compiling render pipelines with no shader cache, then SwiftUI's first layout). No stack held Pennant's own code, so no
-  GM's click is behind them; the stacks stay kept for the next run that finds one. Go's departments (⌘1 to ⌘9) work
+  GM's click is behind them; the stacks stay kept for the next run that finds one. (2026-10-13: those queries were
+  most of the audit's time. Each attribute of a finding's element was its own query of the whole tree, about 2 s on
+  the runner, ten or more per finding; the audit now reads the element once, as a snapshot, and Player Search's audit
+  of the same 82 cells fell from 1870 to 3040 s to under 530. The table is native and lazy: the tree holds the
+  page's row elements but cells only for the dozen rows on the screen.) Go's departments (⌘1 to ⌘9) work
   from a player's window (section 3.6's palette note). A UI test's fresh launch removes the saved windows where macOS 26
   keeps a non-sandboxed app's (`FreshTestState`: a daemon's container, by the app's signing identifier), as the old
   `Saved Application State` folder was empty at every launch; the pop-up's narrowest is an empty `NSPopUpButton`'s
@@ -2628,7 +2632,7 @@ sizes, not dates.
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
 | **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
 | **N13** | AI surfaces, native | (*Stage A built: section 3.5, "As built at N13, Stage A"; Stage B built: "As built at N13, Stage B"*) Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
-| **N14** | macOS integration and release | (*Stage A built: section 6, "As built at N14, Stage A"*) App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
+| **N14** | macOS integration and release | (*Stage A built: section 6, "As built at N14, Stage A"; Stage B built: section 9, "As built at N14, Stage B (pipeline)" and "(Sparkle)"*) App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
 
 ### N3.5, Stage B1: the import, as built (2026-09-26)
@@ -2735,6 +2739,64 @@ of one name share their history.
 **Total: about 51 working sessions.** The milestones are strictly ordered. There are two exceptions:
 - N1 and N2 can overlap.
 - After N7 the department ports (N8–N12) are independent and can be reordered by the owner's priority.
+
+### As built at N14, Stage B (pipeline) (2026-10-12)
+
+Branch `feature/swiftui-n14-release`; D-076; DEVELOPMENT.md, "Releasing Pennant for Mac", has the steps and the
+owner's one-time setup. Step 2 (Sparkle in the app) is the next note.
+
+- **Scripts** (`macos/scripts/releasing/`): the Release app built unsigned, then signed inside out by `sign-app.sh`
+  (section 5.2: every Mach-O file the server carries, the Node binary with V8's two entitlements, Sparkle's helpers
+  and the framework, each extension with its own entitlements, the app last), notarized through a keychain profile
+  and stapled, packed into `Pennant-for-Mac-<version>.dmg` with `hdiutil`, notarized and stapled again.
+  `check-updater.sh` refuses an app without Sparkle, the feed or the committed public key; `make-appcast.sh` writes the
+  appcast with Sparkle 2.10.0's `generate_appcast`, pinned by SHA-256.
+- **Jobs**, by the owner's decision of 2026-10-13: until N15 a `pennant-v*` tag releases the Electron app only.
+  `pennant-mac` and `pennant-mac-appcast` run only by hand and leave a signed, notarized DMG and a test appcast as
+  artifacts, never attached to a release. Every release is published draft first. N15 switches the Mac app on (D-076).
+- **Before step 2**, a run by hand signed and notarized the app and the DMG and then stopped at "Refuse an app that
+  could never update itself" ("Sparkle isn't in the app yet"), keeping no signed artifact (the owner's runs of
+  2026-10-13, the second of them 38406100433).
+- **Tests**: `tests/macRelease.test.ts` signs a fake tree ad hoc and verifies it deep and strict, checks the version,
+  the updater check, and the workflow's tag guards, secret scoping, permissions and draft-first order.
+
+### As built at N14, Stage B (Sparkle) (2026-10-13)
+
+Same branch, after Stage A merged (PR #67). D-076, "The updater in the app" and "The Keychain".
+
+- **The package**: Sparkle 2.10.0, a remote Swift package of the Xcode project pinned with `exactVersion` (and its
+  revision in `Package.resolved`), linked by the Pennant target only; the release tools pin the same version. Every
+  `xcodebuild` in the scripts and CI fetches packages with `-packageAuthorizationProvider netrc`, never the Keychain.
+- **The app**: `Updater.swift` makes `SPUStandardUpdaterController` behind PennantKit's `UpdaterDriving` only when the
+  Info.plist has an https `SUFeedURL` and a `SUPublicEDKey` (Release builds, from `embed-server.sh`); otherwise, and in
+  every Debug build, `Updates.off()`. A Debug build launched with `-PennantTestUpdater memory` gets `MemoryUpdater`.
+  The Info.plist adds `SUVerifyUpdateBeforeExtraction` (on) and `SUAllowsAutomaticUpdates` (off), and leaves out
+  `SUEnableAutomaticChecks`, so Sparkle asks the GM before its first automatic check.
+- **The UI**: Check for Updates… in the app menu, below About (`CommandGroup(after: .appInfo)`), unavailable without
+  an updater; Settings ▸ Updates (`UpdatesSettings`, a fourth tab) with the automatic-check switch and the last check,
+  and in a build without an updater the switch off and unavailable with "This build doesn't check for updates".
+- **Signing**: `sign-app.sh` signs Sparkle's `Updater.app`, `Downloader.xpc`, `Installer.xpc` and `Autoupdate` before
+  `Sparkle.framework`, then the widget extension and the app. Two pipeline bugs the first dry run with Sparkle and the
+  widget showed, fixed: the helpers had kept the entitlements they ship with (`Autoupdate`'s application identifier,
+  which a Developer ID signature without a profile cannot carry; now only `Downloader.xpc`'s are kept, as Sparkle's
+  instructions say), and `build-app.sh` read the scheme's build settings, which list the app alone, so the widget was
+  signed without its sandbox and App Group (now `-alltargets`, and an extension with no entitlements read stops the
+  signing). `dry-run.sh` now runs `check-updater.sh`, which passes on its app.
+- **Tests**: `UpdatesTests` (PennantKit: the feed check, consent first, Check for Updates…, a build that never
+  checks), the Updates tab in the Settings snapshots (light and dark, with an updater and without), and
+  `testUpdatesSettingsAndMenu` (the menu item found, never clicked; the switch off, then on; the tab audited alone, 0
+  findings on the runner, run 38429217123). The audit's first run found the last check in the system's secondary grey
+  (3.9:1; now `.readableSecondary`) and the Settings window's hosting group unnamed (now named as the sidebar's column
+  is, `SettingsPaneName`).
+- **Review fixes**: `SettingsPaneName` had named every unnamed group up to the window "Updates", and the window
+  outlives a switch of tab; it now names only the nearest group, never past the window's content view ("Updates"
+  inside a tab view's item, "Settings" for a container every tab shares), and `testUpdatesSettingsAndMenu` checks
+  that General then shows nothing called Updates outside the toolbar. `testDepartmentsInspectorAndSettings` (no
+  updater) asserts Check for Updates… is unavailable. The last check is also read again at the end of every update
+  cycle (Sparkle's header calls `lastUpdateCheckDate` nowhere KVO compliant). In the scripts' tests: Sparkle 2.10.0's
+  `Downloader.xpc` ships an empty set of entitlements, and the stand-in now does too; netrc is checked on each
+  package-resolving `xcodebuild` call, not each file; `entitlements.mjs` stops on a product listed twice with different
+  entitlements.
 
 ### Dependencies (approved by the owner, 2026-09-25)
 

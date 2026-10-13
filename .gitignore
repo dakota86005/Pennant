@@ -20,6 +20,9 @@ build/macos-server-install/
 build/macos-test/
 build/macos-snapshots/
 build/macos-ci/
+# Pennant for Mac's release: Sparkle's pinned tools (fetch-sparkle-tools.sh) and the release build (D-076)
+build/sparkle-tools/
+build/mac-release/
 release/
 
 # Local data — imported league database, rating history, AI caches

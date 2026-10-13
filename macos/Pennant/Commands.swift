@@ -12,6 +12,8 @@ struct PennantCommands: Commands {
     let model: AppModel
     let routing: AppRouting
     let registry: DepartmentRegistry
+    /// N14 Stage B: Check for Updates…, below About (D-076)
+    let updates: Updates
     @FocusedValue(\.mainWindow) private var window
     /// The desk item the keyboard focus is in (its context menu's actions, by key).
     @FocusedValue(\.deskItem) private var deskItem
@@ -77,6 +79,12 @@ struct PennantCommands: Commands {
     }
 
     var body: some Commands {
+        // The app menu, below About, as every Mac app with Sparkle has it; unavailable in a build that never checks
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates…") { updates.checkNow() }
+                .disabled(!updates.canCheck)
+        }
+
         SidebarCommands()
 
         CommandGroup(after: .sidebar) {

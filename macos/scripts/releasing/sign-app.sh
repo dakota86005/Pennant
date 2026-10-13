@@ -1,0 +1,137 @@
+#!/bin/bash
+# Signs Pennant.app inside out (SWIFTUI_REBUILD.md section 5.2, D-076):
+#
+#   sign-app.sh APP IDENTITY [ENTITLEMENTS_TSV]
+#
+#   1. every regular Mach-O file under Contents/Resources (each .node of the server's node_modules, and any other);
+#   2. the Node binary, Contents/Helpers/pennant-server, with only V8's two entitlements;
+#   3. each framework's helpers (Sparkle's XPC services, Autoupdate and Updater.app), then the framework, as Sparkle's
+#      own signing instructions do: no entitlements, but Downloader.xpc's kept (its sandbox, when Sparkle gives it one);
+#   4. each app extension (the widgets), with its own target's entitlements: an extension ENTITLEMENTS_TSV does not list
+#      stops the script, since a widget signed without its sandbox and App Group never loads;
+#   5. the app last: hardened runtime, no JIT entitlements, no App Sandbox.
+#
+# Every item gets the hardened runtime. IDENTITY "-" signs ad hoc, without a timestamp (the local dry run and the
+# tests); anything else is a Developer ID identity, signed with a secure timestamp. ENTITLEMENTS_TSV (build-app.sh)
+# names each bundle's entitlements file; $(TeamIdentifierPrefix) in one becomes APPLE_TEAM_ID + ".". The script ends
+# with codesign --verify --deep --strict and refuses an app whose own entitlements carry the sandbox, JIT or
+# get-task-allow. PENNANT_SIGN_KEYCHAIN, when set, is the keychain codesign finds the identity in.
+set -euo pipefail
+source "$(dirname "$0")/lib.sh"
+
+APP="${1:?an app bundle}"
+IDENTITY="${2:?a signing identity, or - for ad hoc}"
+TSV="${3:-}"
+CONTENTS="${APP}/Contents"
+NODE_ENTITLEMENTS="${RELEASE_REPO_ROOT}/macos/Support/pennant-server.entitlements"
+[ -d "${CONTENTS}" ] || release_fail "${APP} is not an app bundle."
+
+ARGS=(--force --options runtime --sign "${IDENTITY}")
+if [ "${IDENTITY}" = "-" ]; then ARGS+=(--timestamp=none); else ARGS+=(--timestamp); fi
+if [ -n "${PENNANT_SIGN_KEYCHAIN:-}" ]; then ARGS+=(--keychain "${PENNANT_SIGN_KEYCHAIN}"); fi
+SCRATCH="$(mktemp -d)"
+trap 'rm -rf "${SCRATCH}"' EXIT
+
+sign() {
+  local target="$1" out; shift
+  if [ "${target}" = "${APP}" ]; then echo "[sign] $(basename "${APP}")"; else echo "[sign] ${target#"${APP}/"}"; fi
+  out="$(/usr/bin/codesign "${ARGS[@]}" "$@" "${target}" 2>&1)" || { echo "${out}" >&2; release_fail "codesign refused ${target}"; }
+}
+
+# ENT: the codesign arguments for a bundle's entitlements (its target's file, the team prefix filled in), or none.
+# Set in this shell, never a subshell, so a missing file stops the script.
+ENT=()
+entitlements_for() {
+  local name="$1" required="${2:-}" file="" team="${APPLE_TEAM_ID:-}"
+  ENT=()
+  if [ -n "${TSV}" ] && [ -n "${required}" ] && ! awk -F '\t' -v n="${name}" '$1 == n { found = 1 } END { exit !found }' "${TSV}"; then
+    release_fail "${name} is not in ${TSV}: its target's entitlements were never read (build-app.sh), so it would be signed without them."
+  fi
+  if [ -n "${TSV}" ]; then file="$(awk -F '\t' -v n="${name}" '$1 == n { print $2; exit }' "${TSV}")"; fi
+  [ -n "${file}" ] || return 0
+  [ -f "${file}" ] || release_fail "${name}'s entitlements file ${file} is missing."
+  if grep -q 'TeamIdentifierPrefix\|AppIdentifierPrefix' "${file}" && [ -z "${team}" ]; then
+    [ "${IDENTITY}" = "-" ] || release_fail "${file} needs the team prefix; set APPLE_TEAM_ID."
+    team="ADHOC"
+  fi
+  sed -e "s/\$(TeamIdentifierPrefix)/${team}./g" -e "s/\$(AppIdentifierPrefix)/${team}./g" \
+    "${file}" > "${SCRATCH}/${name}.entitlements"
+  if grep -q '\$[({]' "${SCRATCH}/${name}.entitlements"; then
+    release_fail "${file} still holds a build setting to fill in; build with build-app.sh, which fills them in."
+  fi
+  # A Developer ID signature's team must be the App Group's prefix, or the app and its widget share nothing
+  if [ "${IDENTITY}" != "-" ]; then
+    local group
+    while IFS= read -r group; do
+      case "${group}" in "${APPLE_TEAM_ID:-}."*) ;; *) release_fail "${name}'s App Group ${group} is not team ${APPLE_TEAM_ID:-?}'s." ;; esac
+    done < <(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups' \
+      "${SCRATCH}/${name}.entitlements" 2>/dev/null | sed -e '1d' -e '$d' -e 's/^ *//')
+  fi
+  ENT=(--entitlements "${SCRATCH}/${name}.entitlements")
+}
+is_macho() { /usr/bin/file -b "$1" | grep -q '^Mach-O'; }
+
+# 1. Native code the server carries: every regular file that is Mach-O, whatever its name or mode (a prebuilt helper
+# without the executable bit is still code that notarization rejects unsigned). macho_files reads each file's magic
+# number in one pass (thin or universal; a Java class shares 0xcafebabe but has a version above 44 where a universal
+# binary has its few architectures), rather than one `file` run per file across the server's thousands.
+macho_files() {
+  /usr/bin/perl -0 -ne '
+    chomp; open(my $h, "<", $_) or die "cannot read $_: $!\n"; binmode $h; my $n = read($h, my $b, 8); close $h;
+    next if $n < 8; my ($m, $x) = unpack("N N", $b);
+    print "$_\0" if (grep { $m == $_ } 0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe)
+      || (($m == 0xcafebabe || $m == 0xcafebabf) && $x > 0 && $x < 45);'
+}
+if [ -d "${CONTENTS}/Resources" ]; then
+  # Listed first, in this shell, so a file that cannot be read stops the script (pipefail) instead of going unsigned
+  find "${CONTENTS}/Resources" -type f -print0 | sort -z | macho_files > "${SCRATCH}/resources.macho"
+  while IFS= read -r -d '' f; do
+    sign "${f}"
+  done < "${SCRATCH}/resources.macho"
+fi
+
+# 2. The Node binary
+[ -x "${CONTENTS}/Helpers/pennant-server" ] || release_fail "The app has no server (Contents/Helpers/pennant-server)."
+sign "${CONTENTS}/Helpers/pennant-server" --entitlements "${NODE_ENTITLEMENTS}"
+
+# 3. Frameworks: their helpers first. Sparkle's instructions sign each helper without entitlements but keep
+# Downloader.xpc's; a helper's other entitlements (Autoupdate arrives with an application identifier, which a Developer
+# ID signature without a provisioning profile cannot carry) are dropped.
+helper_entitlements() { if [ "$(basename "$1")" = "Downloader.xpc" ]; then echo "--preserve-metadata=entitlements"; fi; }
+if [ -d "${CONTENTS}/Frameworks" ]; then
+  while IFS= read -r -d '' fw; do
+    if [ -d "${fw}/Versions/Current" ]; then
+      current="${fw}/Versions/Current"
+      main="$(basename "${fw}" .framework)"
+      while IFS= read -r -d '' helper; do
+        sign "${helper}" $(helper_entitlements "${helper}")
+      done < <(find "${current}/" -mindepth 1 -maxdepth 2 \( -path '*/XPCServices/*.xpc' -o -name '*.app' \) -print0 | sort -z)
+      while IFS= read -r -d '' exe; do
+        if [ "$(basename "${exe}")" != "${main}" ] && is_macho "${exe}"; then
+          sign "${exe}"
+        fi
+      done < <(find "${current}/" -mindepth 1 -maxdepth 1 -type f -perm -u+x -print0 | sort -z)
+    fi
+    sign "${fw}"
+  done < <(find "${CONTENTS}/Frameworks" -mindepth 1 -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -print0 | sort -z)
+fi
+
+# 4. App extensions (the widgets)
+if [ -d "${CONTENTS}/PlugIns" ]; then
+  while IFS= read -r -d '' appex; do
+    entitlements_for "$(basename "${appex}")" required
+    sign "${appex}" ${ENT[@]+"${ENT[@]}"}
+  done < <(find "${CONTENTS}/PlugIns" -mindepth 1 -maxdepth 1 -name '*.appex' -print0 | sort -z)
+fi
+
+# 5. The app, last
+entitlements_for "$(basename "${APP}")"
+sign "${APP}" ${ENT[@]+"${ENT[@]}"}
+
+own="$(/usr/bin/codesign -d --entitlements - --xml "${APP}" 2>/dev/null || true)"
+for key in com.apple.security.app-sandbox com.apple.security.cs.allow-jit \
+  com.apple.security.cs.allow-unsigned-executable-memory com.apple.security.get-task-allow; do
+  if grep -q "${key}" <<<"${own}"; then release_fail "The app itself must not carry ${key} (section 5.2)."; fi
+done
+/usr/bin/codesign --verify --deep --strict "${APP}"
+echo "[sign] verified: codesign --verify --deep --strict ${APP}"

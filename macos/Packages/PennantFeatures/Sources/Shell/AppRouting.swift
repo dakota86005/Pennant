@@ -10,6 +10,8 @@ import Setup
 public final class AppRouting {
     public enum SettingsTab: String, Hashable, Sendable, CaseIterable {
         case general, appearance, ai
+        /// N14 Stage B (D-076): the automatic check and the last one
+        case updates
     }
 
     public enum SetupStart: Hashable, Sendable {

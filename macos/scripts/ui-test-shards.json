@@ -1,55 +1,56 @@
 {
   "about": "The XCUITests' parallel shards on CI (DEVELOPMENT.md, \"The Mac app's UI tests on CI\"): each shard's tests with the seconds each took on the runner. Shard catchAll also runs every test no shard lists. Rebalance with: node macos/scripts/ui-test-shards.mjs balance <xcodebuild-test.log> [count] [source]",
-  "measured": "PR #61's green run 37698959295 on 8f5704f (macos-26 runner, all 37 tests in one job): each test's seconds from xcodebuild-test.log",
+  "measured": "The slower of each test's two times in green runs 38469932293 and 38474081739 on 9dd752a (macos-26 runner, four shards): seconds from each shard's xcodebuild-test.log, after the audit read each finding's element once",
   "setupMinutes": 4,
-  "catchAll": 2,
+  "catchAll": 3,
   "shards": [
     {
-      "PennantUITests/testPlayerSearchFullPageAudit": 1015,
-      "PennantUITests/testFarmViewsDark": 197,
-      "PennantUITests/testDesignPaletteBasisAndInspector": 119,
-      "PennantUITests/testGlassShellClubColorsDark": 84,
-      "PennantUITests/testDesignArtPackLight": 55,
-      "PennantUITests/testPlayerNoteKeptOnLeaving": 45,
-      "PennantUITests/testClubOwedAfterSetupCloses": 19,
-      "PennantUITests/testSetupFlowOnAScratchFolder": 16,
-      "PennantUITests/testLaunchWithKeptPayload": 12,
-      "PennantUITests/testStaffRoomAnswer": 90
+      "PennantUITests/testClubhouseNarrowWindow": 743,
+      "PennantUITests/testDepartmentsInspectorAndSettings": 200,
+      "PennantUITests/testGlassShellClubColorsLight": 121,
+      "PennantUITests/testPlayerWindows": 95,
+      "PennantUITests/testCompareByMenuAndDrag": 71,
+      "PennantUITests/testStaffRoomAnswer": 39,
+      "PennantUITests/testGlassShellExamplePackLight": 38,
+      "PennantUITests/testStorylinesAndBriefingAiOff": 20,
+      "PennantUITests/testLaunchWithKeptPayload": 18
     },
     {
-      "PennantUITests/testClubhouseNarrowWindow": 971,
-      "PennantUITests/testMajorLeagueNarrowWindow": 202,
-      "PennantUITests/testTradesNarrowWindow": 189,
-      "PennantUITests/testGlassShellExamplePackDark": 79,
-      "PennantUITests/testGlassShellExamplePackLight": 53,
-      "PennantUITests/testClubhouseWideWindow": 45,
-      "PennantUITests/testPlayerWindowRestored": 16,
-      "ScrollClipTests": 0,
-      "PennantUITests/testStaffRoomAiOff": 60,
-      "PennantUITests/testMenuBarExtra": 45
-    },
-    {
-      "PennantUITests/testLeagueOfficeNarrowWindow": 701,
-      "PennantUITests/testFarmDeskToDecision": 262,
-      "PennantUITests/testFarmNarrowWindow": 227,
-      "PennantUITests/testPlayerNarrowWindow": 131,
-      "PennantUITests/testDesignArtPackDark": 87,
-      "PennantUITests/testDeskMarkAndUndo": 57,
-      "PennantUITests/testCompareByMenuAndDrag": 47,
+      "PennantUITests/testFinanceNarrowWindow": 585,
+      "PennantUITests/testTradesNarrowWindow": 210,
+      "PennantUITests/testFarmDeskToDecision": 180,
+      "PennantUITests/testDesignPaletteBasisAndInspector": 113,
+      "PennantUITests/testDeskMarkAndUndo": 78,
+      "PennantUITests/testDesignArtPackLight": 61,
       "PennantUITests/testFollowByDrag": 42,
-      "PennantUITests/testStartsTheServerAndQuitsCleanly": 7,
-      "PennantUITests/testStorylinesAndBriefingAiOff": 90
+      "PennantUITests/testMenuBarExtra": 39,
+      "PennantUITests/testPlayerWindowRestored": 20,
+      "PennantUITests/testZeroQuestionFirstRun": 12
     },
     {
-      "PennantUITests/testFinanceNarrowWindow": 519,
-      "PennantUITests/testMajorLeagueViews": 438,
-      "PennantUITests/testDepartmentsInspectorAndSettings": 260,
-      "PennantUITests/testGlassShellClubColorsLight": 95,
-      "PennantUITests/testPlayerWindows": 89,
-      "PennantUITests/testClubWindow": 66,
-      "PennantUITests/testClubhouseWideWindowDark": 45,
-      "PennantUITests/testSearchToClubWindow": 40,
-      "PennantUITests/testZeroQuestionFirstRun": 11
+      "PennantUITests/testLeagueOfficeNarrowWindow": 532,
+      "PennantUITests/testMajorLeagueViews": 257,
+      "PennantUITests/testMajorLeagueNarrowWindow": 195,
+      "PennantUITests/testDesignArtPackDark": 108,
+      "PennantUITests/testGlassShellClubColorsDark": 75,
+      "PennantUITests/testGlassShellExamplePackDark": 57,
+      "PennantUITests/testPlayerNoteKeptOnLeaving": 48,
+      "PennantUITests/testClubOwedAfterSetupCloses": 33,
+      "PennantUITests/testStaffRoomAiOff": 23,
+      "PennantUITests/testStartsTheServerAndQuitsCleanly": 9,
+      "ScrollClipTests": 0
+    },
+    {
+      "PennantUITests/testPlayerSearchFullPageAudit": 527,
+      "PennantUITests/testFarmNarrowWindow": 279,
+      "PennantUITests/testPlayerNarrowWindow": 130,
+      "PennantUITests/testFarmViewsDark": 130,
+      "PennantUITests/testClubWindow": 81,
+      "PennantUITests/testClubhouseWideWindowDark": 73,
+      "PennantUITests/testClubhouseWideWindow": 49,
+      "PennantUITests/testSearchToClubWindow": 35,
+      "PennantUITests/testSetupFlowOnAScratchFolder": 20,
+      "PennantUITests/testUpdatesSettingsAndMenu": 19
     }
   ]
 }

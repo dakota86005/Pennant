@@ -23,7 +23,7 @@ struct PennantApp: App {
         }
         .defaultSize(width: 1280, height: 800)
         .commands {
-            PennantCommands(model: appDelegate.model, routing: appDelegate.routing, registry: AppRegistry.shared)
+            PennantCommands(model: appDelegate.model, routing: appDelegate.routing, registry: AppRegistry.shared, updates: appDelegate.updates)
         }
 
         // A basis detached from its popover (SWIFTUI_REBUILD.md section 3.3): a floating panel the GM keeps open while
@@ -93,6 +93,7 @@ struct PennantApp: App {
             SettingsView()
                 .environment(appDelegate.model)
                 .environment(appDelegate.routing)
+                .environment(appDelegate.updates)
         }
 
         // The menu bar extra (N14, D-075): the served record, next game and desk, with Open Pennant
@@ -125,6 +126,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model: AppModel
     /// What the windows ask of each other (the Setup step, the Settings tab).
     let routing = AppRouting()
+    /// Sparkle's updater in a Release build with a feed; none in a Debug build, which never checks (N14 Stage B, D-076).
+    /// Made with the app's model, as Sparkle's SwiftUI guide makes its controller in the app's initialiser.
+    let updates: Updates
     /// The served notification when a new export is read, and the desk's count on the Dock icon (N7).
     private let outside: OutsideTheWindow
     /// The widget's glance and Spotlight's list, kept current (N14).
@@ -155,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = AppModel(configuration: AppConfiguration.server(), keys: AppConfiguration.keyStore())
         let controller = model.serverController
         self.model = model
+        updates = AppUpdater.make()
         outside = OutsideTheWindow(model: model)
         let indexLog = controller.log
         integration = Integration(

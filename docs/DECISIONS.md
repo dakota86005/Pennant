@@ -3367,3 +3367,97 @@ measure the key window. A window that is not key carries the system's own de-emp
 1.4.3's inactive exemption). An audit that finds it means the test isolates the window under audit; it is never set
 aside. So `testMenuBarExtra` closes Settings and the main window with ⌘W before auditing the extra's panel: what the
 audit found of the windows behind it (run 38116687375) is answered by that isolation, never by a set-aside rule.
+
+## D-076 — Pennant for Mac ships as a notarized DMG on Pennant's GitHub releases and updates itself with Sparkle 2
+
+**Status:** Proposed (N14 Stage B builder, 2026-10-10; step 2, Sparkle in the app, built 2026-10-13). Applies D-049
+(identity, tags, the one version) and D-055 (Developer ID without the App Sandbox) to the SwiftUI app's distribution.
+No baseball behaviour changes.
+**Implementation:** `macos/scripts/releasing/` (`build-app.sh`, `entitlements.mjs`, `sign-app.sh`, `notarize.sh`, `make-dmg.sh`,
+`check-updater.sh`, `fetch-sparkle-tools.sh`, `make-appcast.sh`, `check-secrets.sh`, `ci-keychain.sh`, `version.sh`,
+`dry-run.sh`), the updater (`macos/Pennant/Updater.swift`, PennantKit's `Updates`, Shell's `UpdatesSettings`, Sparkle
+in the Xcode project and `Package.resolved`), the `pennant-mac` and `pennant-mac-appcast` jobs and the draft-first `release` job in
+`.github/workflows/release.yml`, the Release-only feed and key in `macos/scripts/embed-server.sh`, and
+`tests/macRelease.test.ts`, `UpdatesTests` and `testUpdatesSettingsAndMenu`. DEVELOPMENT.md, "Releasing Pennant for Mac", has the steps and the owner's one-time setup;
+SWIFTUI_REBUILD.md section 9, "As built at N14, Stage B (pipeline)" and "As built at N14, Stage B (Sparkle)". The owner's decisions of 2026-10-13 (the two apps
+kept apart until N15; draft-first publishing) are recorded below.
+
+- **The two apps stay apart until the cutover** (the owner, 2026-10-13). A `pennant-v<version>` tag (pushed by the
+  owner, never by an agent) releases the Electron app only, as before; the release job does not wait on Pennant for
+  Mac, so a failure there can never block it. `pennant-mac` and `pennant-mac-appcast` run only by hand
+  (`workflow_dispatch`) and leave a signed, notarized DMG and a test appcast as artifacts for the owner and his
+  brother to test, never attached to a release. A run by hand never publishes: the release job runs only on a pushed
+  tag. At N15's cutover the Mac app becomes the release (below). The Mac app's DMG is
+  `Pennant-for-Mac-<version>.dmg`, so it never collides with the Electron DMG. The version is `package.json`'s, set in
+  every bundle at build time and checked against a tag.
+- **Draft first** (the owner, 2026-10-13). The release job creates the release as a draft, uploads every asset, checks
+  that each built file is on the draft at its size and that the update manifests are there, and only then publishes it
+  as the latest, in its last step. A failure leaves a draft nobody sees, and the previous release stays the latest; a
+  re-run finishes the draft and never changes a published release. A test holds the order.
+- **Signed by a script, inside out, never by Xcode.** The Release app is built unsigned and signed afterwards by
+  `sign-app.sh`: each Mach-O file the server carries, the Node binary with only V8's two entitlements, each
+  framework's helpers and then the framework (Sparkle, as its own instructions sign it: no entitlements but
+  `Downloader.xpc`'s, so `Autoupdate` loses the application identifier it ships with, which a Developer ID signature
+  without a provisioning profile cannot carry), each app extension with its own target's entitlements (read from every
+  target of the project, since the scheme's settings list the app alone; an extension with none read stops the
+  signing), and the app last with the hardened runtime and **no** JIT, sandbox or `get-task-allow` entitlement (refused if present).
+  Each target's entitlements are its own file with its build settings filled in; under a Developer ID, every App Group
+  must carry the signing team's prefix.
+  The signing identity therefore never reaches the Xcode project, the same code signs on CI and in the ad-hoc dry run,
+  and a test signs a fake tree ad hoc and verifies it with `codesign --verify --deep --strict`. The app and the DMG are
+  each notarized with `notarytool` (an app-specific password) and stapled.
+- **Secrets stay with the owner and with macOS jobs.** The five Apple secrets and `SPARKLE_ED_PRIVATE_KEY` are made
+  only by the owner (no agent sees the certificate, a password or the private key), reach only jobs on macOS runners,
+  and each step gets only the ones it uses, never a whole job; a test holds this. The certificate and the notarization
+  account live in a throwaway keychain for one run (the account as a `notarytool` profile, so no password is on a
+  command line while notarizing). The Electron app's macOS job uses the same keychain script and points
+  electron-builder at it, never at electron-builder's own keychain (`CSC_LINK`), whose 26.x import fails on the
+  runner (amended 2026-10-13, after the first dispatch with real secrets). Only the release job can write to the
+  repository. Without the secrets, the job
+  builds and packs an unsigned DMG for inspection (never published) and fails naming each missing secret; the
+  signed-and-notarized check is never weakened.
+- **An app that could never update is refused.** Before the verification and every artifact the job keeps,
+  `check-updater.sh` asserts the signed app holds `Sparkle.framework`, that `SUFeedURL` is the feed and that
+  `SUPublicEDKey` is the committed key (read by one function, `release_public_key` in `lib.sh`). A release without a
+  working updater would strand every copy installed from it. The dry run's app passes it now that Sparkle is in the
+  app (before step 2, the owner's run by hand of 2026-10-13 signed and notarized the app and the DMG and stopped there).
+- **Updates: Sparkle 2, EdDSA, an appcast on the newest release.** Sparkle is pinned exactly (2.10.0) in the release
+  tools, whose archive is checked against a pinned SHA-256 like the Node runtime, and the app links the same version
+  as a Swift package pinned exactly (`exactVersion` in the project, the revision in `Package.resolved`; Swift Package
+  Manager checks the binary's own checksum). Every `xcodebuild` the scripts and CI run fetches packages with
+  `-packageAuthorizationProvider netrc`, never the Keychain: Xcode's default looks up the download host's password
+  there, which on a developer's Mac can stop on a dialog (it stalled the first local resolve of Sparkle's binary). The appcast is written by
+  Sparkle's `generate_appcast`, which signs the DMG with the private key, and from N15 is attached to the release.
+  The app reads `https://github.com/dakota86005/Pennant/releases/latest/download/appcast.xml`. GitHub serves the newest published
+  release's asset at that address, so it never changes, needs no other hosting, and never points at a draft or
+  prerelease. Each appcast holds the one new version (Sparkle offers only the newest), without delta updates, and names
+  macOS 26 as its minimum (from the app's `LSMinimumSystemVersion`). The update's notes are embedded as Markdown
+  (Sparkle 2.9+); a run by hand embeds a line naming the test build. The public key is committed
+  (`macos/Support/sparkle-public-key.txt`) and goes into Release builds only; Debug builds have no feed and never check.
+- **The updater in the app: consent first.** Sparkle's `SPUStandardUpdaterController`, made as the app starts. The
+  Info.plist sets no `SUEnableAutomaticChecks`, so automatic checks are off until the GM answers Sparkle's own question
+  (asked at the second launch) or turns on Settings ▸ Updates' switch; `SUAllowsAutomaticUpdates` is off (nothing is
+  downloaded or installed by itself) and `SUVerifyUpdateBeforeExtraction` on (the EdDSA signature is checked before an
+  update is unpacked). Check for Updates… is in the app menu, below About; Settings ▸ Updates has the automatic-check
+  switch and the last check, in catalog words and the system's date format. The app makes an updater only when its
+  Info.plist names an https feed and a key (`Updates.feedConfigured`): a Debug build never does, so it never checks,
+  shows the switch off and unavailable with "This build doesn't check for updates", and a Release build missing either
+  gets the same rather than Sparkle's start-up error. PennantKit and the views never link Sparkle (the app target alone
+  does, behind `UpdaterDriving`), and the tests drive an updater in memory (`MemoryUpdater`; the UI test passes
+  `-PennantTestUpdater memory`), so no test reaches the network.
+- **The Keychain** (D-074, L3). With EdDSA, Sparkle reads and writes no Keychain item. Checked on 2026-10-13 against
+  the framework the app links (2.10.0 from Swift Package Manager), all five binaries (`Sparkle`, `Autoupdate`,
+  `Updater.app`, `Downloader.xpc`, `Installer.xpc`): none imports or names `SecItemCopyMatching`, `SecItemAdd`,
+  `SecItemUpdate`, `SecItemDelete`, any `SecKeychain…` function or `kSecClass`. Their Security imports are code-signing
+  checks (`SecCode…`, `SecStaticCode…`, `SecRequirement…`) and the legacy DSA verification (`SecItemImport` of a public
+  key into memory, no keychain, and the `SecTransform` digest and verify), which Pennant does not use. So nothing of
+  Sparkle's goes through `KeychainItems.exclusively`; any future Keychain use, by Sparkle or by Pennant's updater code,
+  must.
+- **How N15 switches the Mac app on.** `pennant-mac` and `pennant-mac-appcast` lose their `workflow_dispatch`-only
+  condition; the appcast's notes come from the version's CHANGELOG section instead of the test line; the release job
+  needs both, downloads the `pennant-mac` and `pennant-mac-appcast` artifacts with the others, and its verification
+  requires `Pennant-for-Mac-<version>.dmg` and `appcast.xml` as it requires the manifests today. Because publishing is
+  draft first, the appcast is on the release before it becomes the latest, so `releases/latest/download/appcast.xml`
+  is never missing. The Electron jobs and their manifests go in the same change.
+- **Not done here:** a designed DMG window (it needs a tool that is not approved), delta updates, automatic installs and
+  a prerelease channel (a prerelease version also breaks the Electron updater's tag handling, D-049).

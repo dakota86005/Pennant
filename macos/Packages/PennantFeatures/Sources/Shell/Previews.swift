@@ -57,5 +57,6 @@ private enum SampleDepartment: DepartmentModule {
     SettingsView()
         .environment(PreviewFixtures.ready())
         .environment(AppRouting())
+        .environment(Updates(driver: MemoryUpdater()))
 }
 #endif
