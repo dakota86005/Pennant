@@ -32,19 +32,21 @@ struct IntegrationFeatureTests {
         #expect(model.integration.glance?.record?.value?.display == served.record?.value?.display)
     }
 
-    @Test("entities by id are the served list's, in the order asked; an id it does not hold keeps only its id")
+    @Test("entities by id are the served list's, in the order asked; another save's id, or one it does not hold, is none")
     func entitiesById() throws {
         let list = try #require(PreviewFixtures.spotlight)
-        let store = IntegrationStore.preview(glance: nil, spotlight: list)
+        let store = IntegrationStore.preview(glance: nil, spotlight: list, save: "s1")
         let first = try #require(list.players.first), last = try #require(list.players.last)
         let lastId = try #require(Int(last.id)), firstId = try #require(Int(first.id))
-        let asked: [Int] = [lastId, 999_999, firstId]
+        let asked: [String] = [
+            IntegrationStore.entityID(save: "s1", number: lastId), "s1:999999",
+            IntegrationStore.entityID(save: "s2", number: firstId), IntegrationStore.entityID(save: "s1", number: firstId),
+        ]
         let resolved = store.entities(for: asked, kind: .player)
-        let ids: [Int] = resolved.map(\.id)
-        #expect(ids == asked)
-        let expected = IntegrationStore.EntityLine(id: lastId, name: last.title, line: last.line)
+        let ids: [String] = resolved.map(\.id)
+        #expect(ids == [asked[0], asked[3]])
+        let expected = IntegrationStore.EntityLine(save: "s1", number: lastId, name: last.title, line: last.line)
         #expect(resolved[0] == expected)
-        #expect(resolved[1] == IntegrationStore.EntityLine(id: 999_999, name: "", line: ""))
         let suggested: [String] = store.suggested(.club).map(\.name)
         let titles: [String] = list.clubs.map(\.title)
         #expect(suggested == titles)
@@ -54,11 +56,11 @@ struct IntegrationFeatureTests {
     func searchToEntities() throws {
         let answer = try #require(PreviewFixtures.decode(Components.Schemas.SearchAnswer.self, "search"))
         let results = answer.groups.flatMap(\.results)
-        let clubs = IntegrationStore.entityLines(results, kind: .club)
+        let clubs = IntegrationStore.entityLines(results, kind: .club, save: "s1")
         let servedClubs: Int = results.filter { $0.kind.value1 == .club }.count
         #expect(clubs.count == servedClubs)
-        let players = IntegrationStore.entityLines(results, kind: .player)
-        let positive: Bool = players.allSatisfy { $0.id > 0 }
+        let players = IntegrationStore.entityLines(results, kind: .player, save: "s1")
+        let positive: Bool = players.allSatisfy { $0.number > 0 && $0.id.hasPrefix("s1:") }
         #expect(positive)
         let servedPlayers: Int = results.filter { $0.kind.value1 == .player }.count
         #expect(players.count <= servedPlayers)

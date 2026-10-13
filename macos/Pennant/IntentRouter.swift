@@ -1,5 +1,6 @@
 import AppKit
 import FeatureCore
+import PennantAPI
 import PennantKit
 import Shell
 import SwiftUI
@@ -71,25 +72,48 @@ final class IntentRouter {
     /// Club ▸ Refresh Data, once the server is up (an intent may have launched Pennant a moment ago).
     func refresh() async {
         guard let model else { return }
-        for _ in 0..<300 where !model.isReady { try? await Task.sleep(for: .milliseconds(100)) }
+        await serverUp(model)
         guard model.isReady else { return }
         _ = await model.startImport()
     }
 
     // MARK: The entities' answers
 
-    /// Waits a little for the served list after a launch (a Spotlight result opened with Pennant not running), then
-    /// answers from it.
+    /// Waits for the server while it is still coming up (an intent may have launched Pennant a moment ago), at most 30 s;
+    /// a server that failed, is locked or stopped is not waited for.
+    private func serverUp(_ model: AppModel) async {
+        for _ in 0..<300 where Self.isComing(model.serverState) {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
+    private static func isComing(_ state: ServerState) -> Bool {
+        switch state {
+        case .idle, .starting, .restarting: true
+        case .ready, .failed, .locked, .stopping, .stopped: false
+        }
+    }
+
+    /// Answers from the served list once it is there (a Spotlight result opened with Pennant not running): the server
+    /// first, then the list, read on the store key once the settings are in, at most 10 s more (review N14A, L6). With no
+    /// save set or the club question open there is no list to wait for.
     private func listed() async -> IntegrationStore? {
         guard let model else { return nil }
-        for _ in 0..<50 where model.integration.spotlight == nil && model.integration.problem == nil {
+        await serverUp(model)
+        for _ in 0..<100 where model.isReady && Self.awaitsList(model) {
             try? await Task.sleep(for: .milliseconds(100))
         }
         return model.integration
     }
 
-    func resolve(_ ids: [Int], kind: IntegrationStore.EntityKind) async -> [IntegrationStore.EntityLine] {
-        guard let store = await listed() else { return ids.map { .init(id: $0, name: "", line: "") } }
+    private static func awaitsList(_ model: AppModel) -> Bool {
+        let store = model.integration
+        guard store.spotlight == nil, store.problem == nil, model.clubOwed == nil else { return false }
+        return model.status?.configured != false
+    }
+
+    func resolve(_ ids: [String], kind: IntegrationStore.EntityKind) async -> [IntegrationStore.EntityLine] {
+        guard let store = await listed() else { return [] }
         return store.entities(for: ids, kind: kind)
     }
 

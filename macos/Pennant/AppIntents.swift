@@ -18,7 +18,7 @@ struct OpenPlayerIntent: OpenIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        IntentRouter.shared.open(.player(target.id))
+        IntentRouter.shared.open(.player(target.ref.id))
         return .result()
     }
 }
@@ -33,7 +33,7 @@ struct OpenClubIntent: OpenIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        IntentRouter.shared.open(.club(target.id))
+        IntentRouter.shared.open(.club(target.ref.id))
         return .result()
     }
 }
@@ -63,7 +63,7 @@ struct AskStaffAboutPlayerIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        IntentRouter.shared.open(.askStaff(player.id))
+        IntentRouter.shared.open(.askStaff(player.ref.id))
         return .result()
     }
 }

@@ -7,7 +7,9 @@ import WidgetKit
 /// Pennant outside its windows, kept current (N14, Stage A, D-075): after each refresh (a new import, club, restore or
 /// build) and each desk change, the served glance is read and written to the App Group for the widget, and the served
 /// list is handed to Spotlight. The menu bar extra draws the same glance from the model. Nothing is read while the club
-/// question is open (the Dock badge shows nothing then either), and nothing here decides what matters.
+/// question is open or no save is set (the Dock badge shows nothing then either), and what was outside the windows is
+/// removed then, and when the save or club changes (`IntegrationStore.settle`; review N14A, M3). Nothing here decides
+/// what matters.
 @MainActor
 final class Integration {
     private let model: AppModel
@@ -38,7 +40,16 @@ final class Integration {
                 log("glance: could not write the widget's snapshot: \((error as NSError).domain) \((error as NSError).code)")
             }
         }
-        store.onSpotlight = { [spotlight] list in spotlight?.index(list) }
+        store.onSpotlight = { [spotlight, weak store] _ in
+            guard let spotlight, let store, let stamp = store.indexStamp else { return }
+            spotlight.index(players: store.suggested(.player), clubs: store.suggested(.club), stamp: stamp)
+        }
+        store.onClear = { [spotlight] in
+            glanceStore.remove()
+            WidgetCenter.shared.reloadTimelines(ofKind: GlanceTimeline.widgetKind)
+            spotlight?.clear()
+            log("glance: removed the widget's snapshot (no save or club to show, or another one)")
+        }
         log(glanceStore.folder == nil
             ? "glance: no App Group container this build can reach (unsigned, or not entitled): the widget gets no snapshot"
             : "glance: the widget's snapshot is kept in \(glanceStore.folder?.lastPathComponent ?? "")")
@@ -46,10 +57,12 @@ final class Integration {
         follow()
     }
 
-    /// What a refresh reads on: the store key, the desk's stamp, the club question, and the club's served colours.
+    /// What a refresh reads on: the store key, the desk's stamp, whether a save is set, the club question, and the club's
+    /// served colours.
     private struct Trigger: Equatable {
         var key: AppModel.StoreKey?
         var deskStamp: String?
+        var configured: Bool?
         var owed: Bool
         var colors: GlanceSnapshot.Colors?
     }
@@ -58,6 +71,7 @@ final class Integration {
         Trigger(
             key: model.storeKey,
             deskStamp: model.frontOffice.summary?.deskStamp,
+            configured: model.status?.configured,
             owed: model.clubOwed != nil,
             colors: IntegrationStore.colors(of: model.catalogClub?.theme, useTeamColors: model.settings?.settings.useTeamColors ?? true)
         )
@@ -72,10 +86,10 @@ final class Integration {
         guard now != last else { return }
         let before = last
         last = now
-        guard !now.owed, now.key != nil else { return }
+        guard model.integration.settle(key: now.key, configured: now.configured, owed: now.owed) == .load else { return }
         // Only the club's colours changed (team colours turned off, another theme): the same glance, written again
         if let before, before.key == now.key, before.deskStamp == now.deskStamp, before.owed == now.owed,
-           let glance = model.integration.glance {
+           before.configured == now.configured, let glance = model.integration.glance {
             model.integration.onSnapshot?(IntegrationStore.snapshot(of: glance, colors: now.colors, at: Date()))
             return
         }

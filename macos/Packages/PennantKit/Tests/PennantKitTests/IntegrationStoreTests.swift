@@ -90,22 +90,35 @@ struct IntegrationStoreTests {
         #expect(asked(transport, "/api/v2/glance/1") == 2)
     }
 
+    /// The model's key, for a save.
+    private func key(_ model: AppModel, save: String?, importStamp: String? = nil) throws -> AppModel.StoreKey {
+        var key = try #require(model.storeKey)
+        key.saveId = save
+        if let importStamp { key.importStamp = importStamp }
+        return key
+    }
+
     @Test("Shortcuts' entities: the served list's by id in the order asked, the served search's by kind")
     func entityResolution() async throws {
         let transport = try transport()
         transport.answer("/api/v2/search", with: try RoutedTransport.json("search"))
         let model = try await readyModel(transport)
         let store = model.integration
-        // Before the list is read: an id keeps only its id, and nothing is suggested
-        #expect(store.entities(for: [7], kind: .player) == [.init(id: 7, name: "", line: "")])
+        let a = try key(model, save: "saveA")
+        // Before the list is read: nothing resolves, and nothing is suggested
+        #expect(store.entities(for: ["saveA:7"], kind: .player).isEmpty)
         #expect(store.suggested(.player).isEmpty)
-        await store.load(client: model.client, key: model.storeKey, deskStamp: nil, colors: nil)
+        #expect(store.settle(key: a, configured: true, owed: false) == .load)
+        await store.load(client: model.client, key: a, deskStamp: nil, colors: nil)
         let list = try #require(store.spotlight)
         let first = try #require(list.players.first), second = try #require(list.players.dropFirst().first)
-        let asked = [Int(second.id)!, Int(first.id)!]
+        let asked = [
+            IntegrationStore.entityID(save: "saveA", number: Int(second.id)!),
+            IntegrationStore.entityID(save: "saveA", number: Int(first.id)!),
+        ]
         let names: [String] = store.entities(for: asked, kind: .player).map(\.name)
         #expect(names == [second.title, first.title])
-        let clubIds: [Int] = store.suggested(.club).map(\.id)
+        let clubIds: [Int] = store.suggested(.club).map(\.number)
         let servedIds: [Int] = list.clubs.compactMap { Int($0.id) }
         #expect(clubIds == servedIds)
         // The served search, players only: never a view or the "All in Player Search" line
@@ -115,8 +128,74 @@ struct IntegrationStoreTests {
         let clubTitles: [String] = results.filter { $0.kind.value1 == .club }.map(\.title)
         let foundNames: [String] = found.map(\.name)
         #expect(foundNames == clubTitles)
+        // One picked from the search resolves, as given
+        if let picked = found.last { #expect(store.entities(for: [picked.id], kind: .club) == [picked]) }
         let blank = await store.search("   ", kind: .player, client: model.client)
         #expect(blank.isEmpty)
+    }
+
+    @Test("an id of another save's, an unknown one, or no entity id at all resolves to nothing, never a nameless entity")
+    func foreignIds() async throws {
+        let transport = try transport()
+        let model = try await readyModel(transport)
+        let store = model.integration
+        let a = try key(model, save: "saveA")
+        #expect(store.settle(key: a, configured: true, owed: false) == .load)
+        await store.load(client: model.client, key: a, deskStamp: nil, colors: nil)
+        let player = try #require(store.spotlight?.players.first.flatMap { Int($0.id) })
+        #expect(store.entities(for: [IntegrationStore.entityID(save: "saveA", number: player)], kind: .player).count == 1)
+        #expect(store.entities(for: [IntegrationStore.entityID(save: "saveB", number: player)], kind: .player).isEmpty)
+        #expect(store.entities(for: ["saveA:999999", "\(player)", "", "saveA:"], kind: .player).isEmpty)
+        #expect(IntegrationStore.number(in: "saveA:12", save: "saveA") == 12)
+        #expect(IntegrationStore.number(in: "-:12", save: nil) == 12)
+        #expect(IntegrationStore.number(in: "saveA:12", save: nil) == nil)
+    }
+
+    @Test("another save or club, no save, or the club question open: the snapshot and Spotlight's entries are removed")
+    func clearedOnSwitch() async throws {
+        let transport = try transport()
+        let model = try await readyModel(transport)
+        let store = model.integration
+        let glanceStore = GlanceSnapshotStore(folder: try scratchFolder("integration-clear"))
+        var cleared = 0
+        store.onSnapshot = { try? glanceStore.write($0) }
+        store.onClear = {
+            glanceStore.remove()
+            cleared += 1
+        }
+        let a = try key(model, save: "saveA")
+        #expect(store.settle(key: nil, configured: nil, owed: false) == .waiting)
+        #expect(store.settle(key: a, configured: true, owed: false) == .load)
+        await store.load(client: model.client, key: a, deskStamp: "d", colors: nil)
+        #expect(glanceStore.read() != nil)
+        #expect(cleared == 0)
+        // The same save and club after an import, or its id not served for a moment: nothing removed
+        #expect(store.settle(key: try key(model, save: "saveA", importStamp: "next"), configured: true, owed: false) == .load)
+        #expect(store.settle(key: try key(model, save: nil), configured: true, owed: false) == .load)
+        #expect(cleared == 0)
+        #expect(glanceStore.read() != nil)
+        // Another save: the snapshot and the entries go, and the store forgets the first save's glance and list
+        let b = try key(model, save: "saveB")
+        #expect(store.settle(key: b, configured: true, owed: false) == .load)
+        #expect(cleared == 1)
+        #expect(glanceStore.read() == nil)
+        #expect(store.glance == nil)
+        #expect(store.suggested(.player).isEmpty)
+        await store.load(client: model.client, key: b, deskStamp: "d", colors: nil)
+        #expect(glanceStore.read() != nil)
+        // Another club of the same save
+        var otherClub = b
+        otherClub.club = ClubRef(id: 2)
+        #expect(store.settle(key: otherClub, configured: true, owed: false) == .load)
+        #expect(cleared == 2)
+        #expect(glanceStore.read() == nil)
+        await store.load(client: model.client, key: b, deskStamp: "d", colors: nil)
+        // The club question open, then no save set: removed once, nothing read
+        #expect(store.settle(key: b, configured: true, owed: true) == .cleared)
+        #expect(store.settle(key: b, configured: false, owed: false) == .cleared)
+        #expect(cleared == 3)
+        #expect(glanceStore.read() == nil)
+        #expect(store.spotlight == nil)
     }
 
     @Test("no server, no key: nothing is asked")
