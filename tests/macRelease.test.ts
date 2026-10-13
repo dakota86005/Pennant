@@ -203,6 +203,11 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     bin('Helpers/pennant-server');
     bin('Resources/server/node_modules/better-sqlite3/build/Release/better_sqlite3.node');
     fs.writeFileSync(path.join(c, 'Resources/server/server.cjs'), '// not code\n');
+    // A prebuilt helper with no extension and no executable bit is still Mach-O, and notarization rejects it unsigned
+    bin('Resources/server/node_modules/zz-prebuilt/bin/helper');
+    fs.chmodSync(path.join(c, 'Resources/server/node_modules/zz-prebuilt/bin/helper'), 0o644);
+    // A Java class shares a universal binary's magic number; it is not code to sign
+    fs.writeFileSync(path.join(c, 'Resources/server/node_modules/zz-prebuilt/Foo.class'), Buffer.from('cafebabe00000034', 'hex'));
     const fw = path.join(c, 'Frameworks/Sparkle.framework');
     const b = path.join(fw, 'Versions/B');
     for (const rel of ['Sparkle', 'Autoupdate', 'Updater.app/Contents/MacOS/Updater', 'XPCServices/Downloader.xpc/Contents/MacOS/Downloader']) {
@@ -250,6 +255,7 @@ describe.runIf(onMac)('signing inside out (SWIFTUI_REBUILD.md section 5.2)', () 
     const order = r.out.split('\n').filter((l) => l.startsWith('[sign] ') && !l.startsWith('[sign] verified')).map((l) => l.slice(7));
     expect(order).toEqual([
       'Contents/Resources/server/node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+      'Contents/Resources/server/node_modules/zz-prebuilt/bin/helper',
       'Contents/Helpers/pennant-server',
       'Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app',
       'Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Downloader.xpc',

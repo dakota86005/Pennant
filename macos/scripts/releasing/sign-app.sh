@@ -3,7 +3,7 @@
 #
 #   sign-app.sh APP IDENTITY [ENTITLEMENTS_TSV]
 #
-#   1. every Mach-O file under Contents/Resources (each .node of the server's node_modules);
+#   1. every regular Mach-O file under Contents/Resources (each .node of the server's node_modules, and any other);
 #   2. the Node binary, Contents/Helpers/pennant-server, with only V8's two entitlements;
 #   3. each framework's helpers (Sparkle's XPC services, Autoupdate and Updater.app), then the framework;
 #   4. each app extension (the widgets), with its own target's entitlements;
@@ -66,11 +66,23 @@ entitlements_for() {
 }
 is_macho() { /usr/bin/file -b "$1" | grep -q '^Mach-O'; }
 
-# 1. Native code the server carries
+# 1. Native code the server carries: every regular file that is Mach-O, whatever its name or mode (a prebuilt helper
+# without the executable bit is still code that notarization rejects unsigned). macho_files reads each file's magic
+# number in one pass (thin or universal; a Java class shares 0xcafebabe but has a version above 44 where a universal
+# binary has its few architectures), rather than one `file` run per file across the server's thousands.
+macho_files() {
+  /usr/bin/perl -0 -ne '
+    chomp; open(my $h, "<", $_) or die "cannot read $_: $!\n"; binmode $h; my $n = read($h, my $b, 8); close $h;
+    next if $n < 8; my ($m, $x) = unpack("N N", $b);
+    print "$_\0" if (grep { $m == $_ } 0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe)
+      || (($m == 0xcafebabe || $m == 0xcafebabf) && $x > 0 && $x < 45);'
+}
 if [ -d "${CONTENTS}/Resources" ]; then
+  # Listed first, in this shell, so a file that cannot be read stops the script (pipefail) instead of going unsigned
+  find "${CONTENTS}/Resources" -type f -print0 | sort -z | macho_files > "${SCRATCH}/resources.macho"
   while IFS= read -r -d '' f; do
-    if is_macho "${f}"; then sign "${f}"; fi
-  done < <(find "${CONTENTS}/Resources" -type f \( -name '*.node' -o -name '*.dylib' -o -perm -u+x \) -print0 | sort -z)
+    sign "${f}"
+  done < "${SCRATCH}/resources.macho"
 fi
 
 # 2. The Node binary
