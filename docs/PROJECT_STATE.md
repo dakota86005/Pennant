@@ -224,17 +224,17 @@ display.
   release has been published yet.
 - `.github/workflows/ci.yml` typechecks, tests and builds every pull request and
   push to `main`. `release.yml` (a `pennant-v<version>` tag matching `package.json`) does the same
-  on Linux, then builds macOS and Windows packages. macOS signing/notarization
-  needs Apple secrets the repository does not hold, so the macOS release job
-  cannot pass yet; Windows builds are intentionally unsigned
+  on Linux, then builds macOS and Windows packages and publishes the release
+  draft first (D-076). The Apple secrets were added on 2026-10-13, so the macOS
+  job signs and notarizes; Windows builds are intentionally unsigned
   ([DEVELOPMENT.md](DEVELOPMENT.md#releases)).
-- Pennant for Mac (the SwiftUI app) has its own release job beside the Electron
-  ones (`pennant-mac`, N14 Stage B, D-076): a Release build signed inside out,
-  notarized and stapled, a DMG (`Pennant-for-Mac-<version>.dmg`), and a Sparkle
-  appcast attached to the same release. The six secrets it needs are not in the
-  repository yet, so it packs an unsigned DMG for inspection and fails naming
-  them; an ad-hoc dry run on a Mac works (DEVELOPMENT.md, "Releasing Pennant for
-  Mac").
+- Pennant for Mac (the SwiftUI app) has its own jobs beside the Electron ones
+  (`pennant-mac`, `pennant-mac-appcast`, N14 Stage B, D-076), run only by hand
+  until N15: a Release build signed inside out, notarized and stapled, a DMG
+  (`Pennant-for-Mac-<version>.dmg`) and a test Sparkle appcast, kept as
+  artifacts and never attached to a release. Until Sparkle is in the app, a run
+  stops at the updater check; an ad-hoc dry run on a Mac works (DEVELOPMENT.md,
+  "Releasing Pennant for Mac").
 - Identity: product name, repository addresses and the version come from
   `server/project.ts` and `server/appInfo.ts` (D-049). The Electron `appId` is
   `com.dakotawise.pennant`, the package author is Dakota Wise, and release tags

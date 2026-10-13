@@ -2563,7 +2563,7 @@ sizes, not dates.
 | **N11** | Player windows and comparison | Dossier (Overview, Ratings, Value with Swift Charts ranges, Contract & rights, History, notes), Compare window, drag and drop | 3 |
 | **N12** | Finance, Trades, Scouting, Medical, League Office, Philosophy | Payroll (Charts plus budget rule), Contracts, Free agents, Horizon (*Track A built: section 3.5, "As built at N12, Track A"*); Trade builder (drop targets, range charts, existing AI evaluation); Draft and Search (tokens); Injuries; Standings (odds and posture with basis), Leaders, Org comparison, Franchise; Philosophy editor with the server-side identity endpoint; Coaching staff | 6 |
 | **N13** | AI surfaces, native | (*Stage A built: section 3.5, "As built at N13, Stage A"; Stage B built: "As built at N13, Stage B"*) Staff room (SSE streaming, markdown via `AttributedString`, server-provided player links), Storylines, GM Briefing; keys in the Keychain (decide then between the data-protection keychain, which needs an application-identifier entitlement and so a provisioning profile, and the login keychain, whose per-item access lists can prompt; N3 only reads). Behaviour unchanged | 2 |
-| **N14** | macOS integration and release | App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
+| **N14** | macOS integration and release | (*Stage B pipeline built: section 9, "As built at N14, Stage B (pipeline)"*) App Intents and Spotlight, widgets (App Group), menu bar extra (optional), Sparkle with appcast on GitHub Releases (`pennant-v*`), notarized DMG pipeline | 3 |
 | **N15** | Acceptance and cutover | Accessibility audit, Instruments pass, parity checklist against the React app (every field, every hover), acceptance by the owner and his brother; then the **cutover PR** (delete `src/`, `electron/`, the web tests and dependencies; docs), and merge to `main` with the owner's approval | 3 |
 
 ### N3.5, Stage B1: the import, as built (2026-09-26)
@@ -2670,6 +2670,25 @@ of one name share their history.
 **Total: about 51 working sessions.** The milestones are strictly ordered. There are two exceptions:
 - N1 and N2 can overlap.
 - After N7 the department ports (N8–N12) are independent and can be reordered by the owner's priority.
+
+### As built at N14, Stage B (pipeline) (2026-10-12)
+
+Branch `feature/swiftui-n14-release`; D-076; DEVELOPMENT.md, "Releasing Pennant for Mac", has the steps and the
+owner's one-time setup. Step 2 (Sparkle in the app) waits for Stage A's project changes to merge.
+
+- **Scripts** (`macos/scripts/releasing/`): the Release app built unsigned, then signed inside out by `sign-app.sh`
+  (section 5.2: every Mach-O file the server carries, the Node binary with V8's two entitlements, Sparkle's helpers
+  and the framework, each extension with its own entitlements, the app last), notarized through a keychain profile
+  and stapled, packed into `Pennant-for-Mac-<version>.dmg` with `hdiutil`, notarized and stapled again.
+  `check-updater.sh` refuses an app without Sparkle, the feed or the committed public key; `make-appcast.sh` writes the
+  appcast with Sparkle 2.10.0's `generate_appcast`, pinned by SHA-256.
+- **Jobs**, by the owner's decision of 2026-10-13: until N15 a `pennant-v*` tag releases the Electron app only.
+  `pennant-mac` and `pennant-mac-appcast` run only by hand and leave a signed, notarized DMG and a test appcast as
+  artifacts, never attached to a release. Every release is published draft first. N15 switches the Mac app on (D-076).
+- **Until step 2**, a run by hand signs and notarizes the app and the DMG and then stops at "Refuse an app that could
+  never update itself" ("Sparkle isn't in the app yet"), so it keeps no signed artifact.
+- **Tests**: `tests/macRelease.test.ts` signs a fake tree ad hoc and verifies it deep and strict, checks the version,
+  the updater check, and the workflow's tag guards, secret scoping, permissions and draft-first order.
 
 ### Dependencies (approved by the owner, 2026-09-25)
 
