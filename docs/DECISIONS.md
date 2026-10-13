@@ -3323,31 +3323,47 @@ scene; Shell's `MenuBarGlanceView` and the Settings switch; the `PennantWidgets`
 - **Spotlight is given the served list, exactly.** Our organization's players at every level the search index holds (the
   farm included) and the league's major-league clubs, by name, in the search's words: names, positions and clubs, never a
   rating or a value. After each import the app replaces what Spotlight holds of Pennant's with it (`deleteAppEntities`,
-  then `indexAppEntities`). A release build indexes by itself; a development build only when asked
-  (`-PennantDevSpotlight YES`), so a scratch league never fills a developer's Spotlight.
+  then `indexAppEntities`), and removes it, with the widget's snapshot, when no save is set, the club question is open,
+  or the save or club changes (`IntegrationStore.settle`). An entity's id carries the save (`"<saveId>:<id>"`): an entry
+  or a shortcut kept from another save, or an id neither the list nor the search Shortcuts was given holds, resolves to
+  nothing, never to a nameless entity. A release build indexes by itself; a development build only when asked by hand
+  (`-PennantDevSpotlight YES`, which no UI test passes), so a scratch league never fills a developer's Spotlight.
 - **Intents open and show; none decides or acts on OOTP (D-001).** Open Player and Open Club (`OpenIntent`s, which
   Spotlight uses for its results), Open the Morning Report, Ask Staff About a Player (Player ▸ Ask Staff About Him: the
   server words the question, and the Staff room asks only while AI is on; with AI off it shows the served line and asks
-  nothing) and Refresh Data (Club ▸ Refresh Data: an import of the export already on disk). Entities are resolved from the
-  served list and the served search; an id the list does not hold keeps only its id, since what opens a player is his id.
-  Titles and parameter names are structural labels in the String Catalog.
+  nothing) and Refresh Data (Club ▸ Refresh Data: an import of the export already on disk; an import that does not start
+  fails the action with the server's sentence, never a success). Entities are resolved from the served list and the served
+  search. Titles, descriptions and parameter names are structural labels in the String Catalog. *Deviation from the
+  brief:* Ask Staff was to be offered only while AI is on, but App Shortcuts are fixed when the app is built
+  (`AppShortcutsProvider` is static), so it is always listed; run with AI off, the Staff room shows the served line saying
+  AI is off and asks nothing.
 - **The widget draws the last served glance and never calls the server.** The app writes a small JSON snapshot (served
   strings and figures, and the club card's served colour pairs) to the App Group after each refresh and desk change,
-  whole or not at all, and asks WidgetKit to reload. With no snapshot the widget says so in its catalog's words; a
-  snapshot not refreshed for a day is drawn with its served words and marked "Out of date" (the app's own freshness rule
-  about its own file; the served "as of" says how current the data is). Colours are the served card pair only where it
-  reads at the server's bar (4.5:1, 7:1 with Increase Contrast), checked again as drawn, else Pennant's fixed, checked page
-  and text colours. Small and medium families.
+  whole or not at all, and asks WidgetKit to reload. With no snapshot the widget says so in its catalog's words. It never
+  calls a snapshot "out of date" (a glance the app has not rewritten may still be the latest there is): it states the
+  served "as of" and when the app wrote the glance, in the system's relative time ("Updated 3 hr ago"). In full colour,
+  colours are the served card pair only where it reads at the server's bar (4.5:1, 7:1 with Increase Contrast), checked
+  again as drawn, else Pennant's fixed, checked page and text colours; drawn tinted or vibrant, the text is the system's
+  primary and secondary. Small and medium families.
 - **The App Group is `<TEAMID>.group.com.dakotawise.pennant`, and `….pennant.dev` for a development build**, so a
   development build never writes the release widget's glance (as D-074 keeps one Keychain service per bundle id). The
   Team-ID prefix is the macOS-style group, which needs no provisioning profile and spares the person macOS 15's prompt
   about reaching another app's data. The app reaches the container only when its own signature carries the group
   (`SecTaskCopyValueForEntitlement`): an unsigned build (CI's) or one signed without it writes no snapshot, touches no
-  group folder and fails nowhere. Tests and the UI tests write to a scratch folder (`-PennantDevGlanceFolder`), never
-  the Mac's App Group.
+  group folder and fails nowhere. Tests write to a scratch folder; every UI test launch passes one
+  (`-PennantDevGlanceFolder`), and a development build the UI tests launched with none writes no glance, so a test never
+  reaches the Mac's App Group.
 - **The menu bar extra is off until the GM turns it on** (Settings ▸ General, "Show Pennant in the Menu Bar", the app's
   own defaults). Its window shows the served glance on an opaque, checked page and Open Pennant, which brings the main
-  window forward on the Morning Report (or opens one on it).
+  window forward on the Morning Report (or opens one on it). With no save chosen or the club question open it says so as
+  the main window does ("No save chosen", or the server's sentence).
 - **"Show in Spotlight" is not offered in the context menus.** macOS has no call that opens Spotlight on an app's
   entity; `NSWorkspace.showSearchResults(forQueryString:)` opens a Finder search of files, where indexed app entities do
   not appear, so the item would open an empty window. Spotlight finds the players and clubs by name as indexed.
+
+**Amendment (audits measure the key window, 2026-10-12; review N14A):** this governs every accessibility audit of the
+UI tests (SWIFTUI_REBUILD.md section 6, "The runner's accessibility audit"), not only the menu bar extra's. Audits
+measure the key window. A window that is not key carries the system's own de-emphasis, which is out of scope (WCAG
+1.4.3's inactive exemption). An audit that finds it means the test isolates the window under audit; it is never set
+aside. So `testMenuBarExtra` closes Settings and the main window with ⌘W before auditing the extra's panel: what the
+audit found of the windows behind it (run 38116687375) is answered by that isolation, never by a set-aside rule.

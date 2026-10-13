@@ -673,6 +673,8 @@ only words (additive, through the contract).
   read at 4.5:1 or better, with the measured ratio (the sidebar's system labels measured 9:1 to 19:1 while the audit
   named a different handful each run). Every other contrast finding fails. Also set aside: the Touch Bar's own keys
   ("emoji & symbols"), and a parent/child mismatch the audit attributes to no element (only with the ⌘K palette up).
+  Audits measure the key window (D-075's amendment of 2026-10-12): a finding on a window that is not key, which carries
+  the system's own de-emphasis, means the test isolates the window under audit; it is never set aside.
   Run locally for the first time (automation mode no longer needs a password), the audits found more, each fixed in the
   app: AppKit's full-window containers are named ("Content", "Content and Inspector", "Main Window", and the inspector
   column "Inspector"); the toolbar no longer draws the title and subtitle; a legend's and the palette footer's symbol
@@ -2412,21 +2414,28 @@ and `staff-options`, light and dark.
   `GlanceSnapshot` (served strings and figures, the club card's served colour pairs), `GlanceSnapshotStore` (one JSON
   file, written atomically), `AppGroup` (the group from the bundle's `PennantAppGroup`, from the `PENNANT_APP_GROUP` build
   setting: `$(DEVELOPMENT_TEAM).group.com.dakotawise.pennant`, `….pennant.dev` in Debug; the container only when the
-  process's signature carries the group) and `GlanceTimeline` (now, and the moment a snapshot turns out of date, a day
-  after it was written). `IntegrationStore` on `AppModel.integration` reads the glance on the store key and the desk's
-  stamp, the list on the store key, hands each on (`onSnapshot`, `onSpotlight`) and answers Shortcuts' entity queries
-  from them and the served search.
+  process's signature carries the group; `developmentGlanceStore` gives a UI-test launch with no scratch folder none),
+  `GlanceTimeline` (one entry: the snapshot is never called out of date) and `GlanceInk` (the system's primary and
+  secondary outside full colour, the served pair only where it reads). `IntegrationStore` on `AppModel.integration`
+  reads the glance on the store key and the desk's stamp, the list on the store key, hands each on (`onSnapshot`,
+  `onSpotlight`), removes what was outside the windows (`settle`, `onClear`: no save, the club question, another save or
+  club) and answers Shortcuts' entity queries from them and the served search, by entity ids that carry the save
+  (`"<saveId>:<id>"`; another save's or an unknown id is no entity).
 - **The app target:** `Integration` follows the store key, the desk's stamp, the club question and the club's colours,
   writes the snapshot (then `WidgetCenter.reloadTimelines(ofKind:)`) and hands the list to `SpotlightIndexer`
-  (`CSSearchableIndex.default()`: delete Pennant's players and clubs, index the served ones; a release build always, a
-  Debug build only with `-PennantDevSpotlight YES`). `PlayerEntity` and `ClubEntity` are `AppEntity` and `IndexedEntity`;
+  (`CSSearchableIndex.default()`: delete Pennant's players and clubs, index the served ones, keep the list's stamp only
+  once that succeeded, then `PennantShortcuts.updateAppShortcutParameters()`; `clear` on `onClear`; a release build
+  always, a Debug build only with `-PennantDevSpotlight YES` by hand, never in a UI test). An entity query waits for the
+  server while it is coming up (at most 30 s), then for the list (10 s more). `PlayerEntity` and `ClubEntity` are
+  `AppEntity` and `IndexedEntity`, each holding its `PlayerRef` or `ClubRef` beside its entity id;
   the intents are `OpenPlayerIntent` and `OpenClubIntent` (the `OpenIntent`s Spotlight's results use),
   `OpenMorningReportIntent`, `AskStaffAboutPlayerIntent` (through `StaffRoomRouter`, as the Player menu), `RefreshDataIntent`
   (as Club ▸ Refresh Data), offered by `PennantShortcuts`. `IntentRouter` holds the model and the first scene's
   `openWindow` (a request made before a scene appears waits for it); a view asked for with every main window closed is
   `AppRouting.requestRoute`, taken once by the next main window. The `MenuBarExtra` (window style) is inserted from the
   app's defaults (`PennantShowsMenuBarExtra`, off), switched in Settings ▸ General ("Show Pennant in the Menu Bar"); its
-  view is Shell's `MenuBarGlanceView` (the served glance on `readablePage`, Open Pennant).
+  view is Shell's `MenuBarGlanceView` (the served glance on `readablePage`, Open Pennant; "No save chosen" or the
+  served club question as the main window says them).
 - **The widget extension** `PennantWidgets` (`com.dakotawise.pennant[.dev].widgets`, sandboxed, the App Group its only
   entitlement beside the sandbox; embedded by "Embed Foundation Extensions", which runs before "Embed the server"): one
   `StaticConfiguration`, small and medium, its timeline `GlanceTimeline`'s with `.never` (the app asks for reloads). Its
@@ -2434,7 +2443,7 @@ and `staff-options`, light and dark.
 - **Signing:** the app gains `Support/Pennant.entitlements` (the App Group only; still no App Sandbox), the widget
   `Support/PennantWidgets.entitlements`. CI builds unsigned (`CODE_SIGNING_ALLOWED=NO`): the extension is built and
   embedded, carries no entitlement, and the app reaches no group container, so CI's UI tests write the glance to their
-  scratch folder (`-PennantDevGlanceFolder`). A widget that reads the app's glance needs both signed with the team (a
+  scratch folder (`-PennantDevGlanceFolder`, passed by every UI test launch). A widget that reads the app's glance needs both signed with the team (a
   development build) or the Developer ID (the release, Stage B), which no CI run here proves.
 - **Verified:** `GlanceSnapshotTests`, `GlanceTimelineTests`, `IntegrationStoreTests` (PennantKit), `IntegrationFeatureTests`
   and `IntegrationSnapshotTests` (`n14-menu-bar-extra-*`, skipped on CI), the XCUITest `testMenuBarExtra` (the snapshot
@@ -2442,8 +2451,16 @@ and `staff-options`, light and dark.
   CI's shard 2. The panel is audited alone: Settings and the main window are closed with ⌘W first (with the main window
   behind it, run 38116687375 measured the masthead under the panel against the panel's pixels), so Open Pennant takes
   the path with no main window open. The audit reads the panel, a dialog in the tree, in its own pixels, as it reads a
-  window's. AppKit's panel and the hosting view in it are named "Pennant" for VoiceOver (`MenuBarPanelName`, as the
-  sidebar's column is named), which the audit found with no description.
+  window's (D-075's amendment: audits measure the key window; a finding on a window that is not key means the test
+  isolates the window under audit, never a set-aside). The panel, which the audit found with no description, is titled
+  "Pennant" once from inside it (`MenuBarPanelTitle`), and the glance's root container carries `.accessibilityLabel`;
+  the earlier walk up AppKit's views is gone (review N14A, L9). The test clicks the status item once and the Settings
+  switch only once it is scrolled wholly into reach (below the toolbar, above the Dock), each asserted, never retried.
+- **Review fixes (review N14A, 2026-10-12):** the UI tests never reach the App Group or Spotlight (M1, M2); the save and
+  club are followed outside the windows (M3, L2, L3, L6); intent descriptions are catalogued and the string-catalog test
+  finds them (M4); the widget states facts and reads in every rendering mode (M5, M6); a refused Refresh Data fails with
+  the served sentence (L4); Ask Staff is always listed, a deviation recorded in D-075 (L5); the menu bar extra's states
+  (L1) and its panel's name (L9); the menu bar test's clicks (L7, L8).
 - *Left for later:* "Show in Spotlight" in the context menus (D-075: no call opens Spotlight on an app's entity); the
   widget's large family; a desk item in the menu bar extra opening its decision.
 ---
