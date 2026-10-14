@@ -19,6 +19,7 @@ Start with the four durable documents, then the subsystem document for the area 
 | [BEHAVIOR_CASES.md](BEHAVIOR_CASES.md) | The behavioral corpus: where new baseball behavior gets its case first. |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Running, testing, building and releasing Pennant. |
 | [SWIFTUI_REBUILD.md](SWIFTUI_REBUILD.md) | Pennant for Mac: the native SwiftUI rebuild over the same server (D-055 to D-062), its milestones and the way back. Design; built milestone by milestone on `feature/swiftui`. |
+| [polish/](polish/README.md) | Pennant for Mac's polish push (N15a): the verified bug list and its fix batches, every item's status, and the draft voice and phrasebook. |
 
 ## Historical design records
 

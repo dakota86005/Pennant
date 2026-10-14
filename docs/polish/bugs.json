@@ -1,0 +1,2012 @@
+{
+ "batches": [
+  {
+   "n": 1,
+   "title": "Unknown stays unknown",
+   "what": "Stop turning missing stats, unread clubs and unknown lists into zeros or green verdicts; fix the bench read that counts a lone catcher as his own backup.",
+   "items": [
+    "B-02",
+    "B-12",
+    "B-13",
+    "B-17"
+   ]
+  },
+  {
+   "n": 2,
+   "title": "No developer or code text on screen",
+   "what": "Give calibration stamps a GM-facing line separate from their provenance; never interpolate level ids, column names or enum values into served text.",
+   "items": [
+    "B-01",
+    "B-11"
+   ]
+  },
+  {
+   "n": 3,
+   "title": "One number and count formatter",
+   "what": "A single shared helper for counts, plurals, thousands, minus signs, dashes and innings (x.1/x.2), replacing the ~18 local copies.",
+   "items": [
+    "B-06",
+    "B-09"
+   ]
+  },
+  {
+   "n": 4,
+   "title": "Stores follow the save and never strand a view",
+   "what": "Every store resets on a save or club switch; the in-flight guard survives cancellation; errors clear on a good answer; page state survives navigation; inputs say why they were refused.",
+   "items": [
+    "B-07",
+    "B-08",
+    "B-36",
+    "B-48",
+    "B-49"
+   ]
+  },
+  {
+   "n": 5,
+   "title": "Sidebar and Mac behaviours",
+   "what": "Clickable, keyboard-reachable sidebar headers without the per-click rebuild; farm rows publish the focused player; palette, menu bar, badges and drag and drop behave like a Mac app; trim per-render work.",
+   "items": [
+    "B-03",
+    "B-37",
+    "B-38",
+    "B-41",
+    "B-42",
+    "B-45",
+    "B-54"
+   ]
+  },
+  {
+   "n": 6,
+   "title": "Settings, Setup and the transaction-log fix",
+   "what": "Data Status and every log-missing line point to the fix; a set AI key looks set; Settings exposes its choices and state; Setup counts clubs the way the club list does and explains exports.",
+   "items": [
+    "B-05",
+    "B-14",
+    "B-39",
+    "B-40"
+   ]
+  },
+  {
+   "n": 7,
+   "title": "Decision pages",
+   "what": "Dedupe the comparison, name the player in farm findings, compose each reason once, condition sentences on what's actually present, and make the clubhouse pages agree on position and grade.",
+   "items": [
+    "B-16",
+    "B-18",
+    "B-23",
+    "B-24",
+    "B-25",
+    "B-35"
+   ]
+  },
+  {
+   "n": 8,
+   "title": "Facts agree across pages",
+   "what": "One freshness and byline source; one payroll-room definition; one staff role vocabulary and a human-GM check; a current \"later version\" list; correct club links; trade validity; server-side draft sorting; the wire's injury.",
+   "items": [
+    "B-19",
+    "B-20",
+    "B-21",
+    "B-22",
+    "B-26",
+    "B-32",
+    "B-33",
+    "B-34",
+    "B-47",
+    "B-50"
+   ]
+  },
+  {
+   "n": 9,
+   "title": "Tables, heads and layout",
+   "what": "Per-column widths and full-text hovers in the shared tables; heads that wrap instead of truncating; roster-map z-order; empty-state cards; narrow and inspector layouts; charts; CI captures for the missing views.",
+   "items": [
+    "B-04",
+    "B-15",
+    "B-27",
+    "B-28",
+    "B-29",
+    "B-43",
+    "B-44",
+    "B-46",
+    "B-55",
+    "B-56"
+   ]
+  },
+  {
+   "n": 10,
+   "title": "Words, after the phrasebook",
+   "what": "Percentiles instead of \"on the 0–100 scale\", no department names as speakers, one caveat instead of one per row, consistent titles, no \"the\" before club names, and copy moved out of Swift.",
+   "items": [
+    "B-10",
+    "B-30",
+    "B-31",
+    "B-51",
+    "B-52",
+    "B-53"
+   ]
+  }
+ ],
+ "items": [
+  {
+   "id": "B-01",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Front Office",
+    "MLB Ops",
+    "Farm",
+    "Player windows",
+    "League Office",
+    "Trades"
+   ],
+   "size": "M",
+   "title": "Hover notes show developer details and a developer's local save",
+   "sees": "Value and roster-map hovers read \"fitted by production-3b.1 (playerValueProductionFit.ts) ... a developer's local save (its league id) ... npm run calibrate ... (D-053)\", 20 times per club report; Org Comparison and the farm's lines table show \"provisional ratings prior\", \"(a developer's local save, its export date)\", \"(Q-3)\".",
+   "cause": "Developer provenance kept in calibration stamps is served raw as the GM-facing basis: server/playerValueCalibration.ts:366-372, :458-463, :1533-1538, :2319-2325; server/developmentFit.ts:64-70; server/calibration.ts:42-44 (CALIBRATION_RUN, preferred by dossier.ts:57 and leagueHistoryViews.ts:35); carried by server/presentation/frontOffice/morning.ts:920, :961, trades/desk.ts:55, frontOffice/desk.ts:142, league/orgComparison.ts:130, farm/organization.ts:109-120; drawn verbatim by PD/Depth.swift:223-224. Other stamps with the same provenance: resultsMetrics.ts, toolsModel.ts, roleStandards.ts, roleReview.ts, mlbCalibrationFit.ts, mlbResultsFit.ts, mlbToolsFit.ts, mlbPlatoonFit.ts.",
+   "absorbs": [
+    {
+     "id": "FARM-10",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-15",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-13",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 2,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-02",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "MLB Ops",
+    "Scouting",
+    "League Office",
+    "Player windows",
+    "Trades"
+   ],
+   "size": "M",
+   "title": "Missing stats are shown as zero",
+   "sees": "Rosters, Lineup and Player Search show H 0, .000, 0.0%; Leaders ranks ten players 1-10 on .000 or \"Not known\"; the player overview says \"0 HR\" while History says \"—\"; History shows ERA 0.00 over 65 IP.",
+   "cause": "Blank counting stats coalesced to 0 before rates are computed: server/stats.ts:176, :233, :286-287 (computeBatting/computePitching, used by roster.ts, lineup.ts, pitching.ts, league.ts:424 Player Search, form.ts, trade.ts, tradingblock.ts); server/rosterops.ts:223-245 (leaders: h/ab with null h, nulls sort as 0); server/player.ts:190-199, :221-223 (`|| 0`, null arithmetic); server/presentation/player/dossier.ts:341 (`?? 0` HR). Also roleReview.ts:461 `d.pct ?? 0`, org.ts:837-852 career PA/IP.",
+   "absorbs": [
+    {
+     "id": "MLB-06",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-04",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-05",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-07",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-09",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 1,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-03",
+   "tier": 1,
+   "kind": "behaviour",
+   "departments": [
+    "Shell (every department)"
+   ],
+   "size": "M",
+   "title": "The sidebar doesn't respond like a Mac sidebar",
+   "sees": "Clicking a department header doesn't open it, there is no keyboard path, departments pile up open, Following rows need a double-click, and the highlight lags behind each click.",
+   "cause": "PF/Shell/SidebarView.swift:36-59 (untagged DisclosureGroup label in List(selection:), no tap toggle); PF/Shell/MainWindowModel.swift:98-101 (selection derived from route), :107, :121, :125 (expanded only grows); PF/Shell/MainWindowView.swift:410 (.id(window.route) rebuilds the detail on every click); AppKit namers walk views in updateNSView: SidebarView.swift:140, :172, :208, FollowingSection.swift:152; PF/FeatureCore/Attention.swift:246-254, :299 (double-click only names); PF/FrontOffice/AiWritingViews.swift:146.",
+   "absorbs": [
+    {
+     "id": "FO-01",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-02",
+     "verdict": "PLAUSIBLE"
+    },
+    {
+     "id": "FO-13",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-14",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-48",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 5,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-04",
+   "tier": 1,
+   "kind": "layout",
+   "departments": [
+    "Scouting",
+    "Finance",
+    "Medical",
+    "League Office",
+    "MLB Ops",
+    "Farm"
+   ],
+   "size": "M",
+   "title": "Table text is cut off and can't be read on hover",
+   "sees": "The Draft Board's Read column ends in \"…\", Us vs Them's two club columns both read \"Club…\", Lineup's \"Why here\" and Rosters' verdicts sit off-screen while #, B and Pos take 100+ pt, and the horizontal scroll bar covers the last row.",
+   "cause": "One width per column kind and lineLimit(1), with a tooltip only from cell.hint: PF/FeatureCore/OfficeKit.swift:474-482, :609, :613, :45; PF/MajorLeague/ServedTable.swift:71-81 (non-numeric ideal 104); word columns served as numeric at server/presentation/league/usVsThem.ts:171-172; Read cell served with no hint at server/presentation/scouting/draftBoard.ts:202; Level cell doubled at server/presentation/farm/assignments.ts:39.",
+   "absorbs": [
+    {
+     "id": "OFF-02",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-19",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-44",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "MLB-32",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-34",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-22",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-05",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Shell",
+    "Front Office",
+    "MLB Ops",
+    "Farm",
+    "Player windows",
+    "Settings"
+   ],
+   "size": "M",
+   "title": "\"Transaction history unavailable\" never says how to fix it",
+   "sees": "Data Status, the toolbar's permanent orange triangle, the MLB overview, player History and Rights, six identical rehab lines per affiliate and the Decision all name the problem; none points to Settings ▸ Transaction log.",
+   "cause": "server/presentation/dataStatusWords.ts:183 (ACTIONS.partial = null), :121, :158-163, :176, :196 (partial → caution triangle); server/dataFreshness.ts:188 (headline reused by server/presentation/majorLeague/views.ts:162); missing-log lines with no remedy at server/playerDossierBuild.ts:60, server/playerContext.ts:144, server/playerRights.ts:448, server/assignmentContext.ts:322 (repeated per player at server/presentation/farm/affiliates.ts:68-79, :130); PF/Shell/MainWindowView.swift:341-361.",
+   "absorbs": [
+    {
+     "id": "FO-04",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-23",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-24",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-37",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-35",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-13",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 6,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-06",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "All departments"
+   ],
+   "size": "M",
+   "title": "Counts and plurals read wrong (\"Started 1 games\", \"2076\")",
+   "sees": "\"Started 1 games\", \"what regular left fielders takes\", \"No glove to put in late, runner…\", \"17 points of it is still projection\", \"2076 draft-eligible players\" beside \"Show all 2,076\", \"-29\" beside \"−21\", \"0-15\" beside \"15–15\".",
+   "cause": "No shared count formatter: the plural helper never groups thousands at server/presentation/clubhouse/common.ts:112 (imported by 22 modules) and about 18 local copies (farm/words.ts:263, frontOffice/desk.ts:72, majorLeague/views.ts:37, player/words.ts:79, dataStatusWords.ts:74, officeTable.ts:368, trades/words.ts:52, mlbReport.ts:146, playingTime.ts:357, mlbNeeds.ts:127, playerValue.ts:755, dataFreshness.ts:100, franchise.ts:233, …); statText at clubhouse/common.ts:129; templates bypass plural at server/mlbEvidence.ts:450-451 and server/mlbExplain.ts:60-61 (plural labels from roleStandards.ts:109-117); server/rosterops.ts:670; server/presentation/majorLeague/views.ts:121; hyphen records at server/schedule.ts:228-229.",
+   "absorbs": [
+    {
+     "id": "OFF-01",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-48",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-08",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-09",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-39",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-27",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-46",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-36",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-33",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "OFF-39",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 3,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-07",
+   "tier": 1,
+   "kind": "behaviour",
+   "departments": [
+    "Farm",
+    "Player windows",
+    "League Office (club windows)"
+   ],
+   "size": "M",
+   "title": "Another save's farm, players and notes stay on screen after a switch",
+   "sees": "After a save or club switch the old farm, Decision, dossier and comparison stay up as \"Updating\"; a restored player window can show a different man with the same id; notes never reload after an import.",
+   "cause": "PK/AppModel.swift:829-837, :898-906 call follow() on nine stores but not FarmStore, PlayerStore, LeagueStore or FollowingStore; PK/PlayerStore.swift:9 claims otherwise, :93 loadNotes has no key; PK/Routing.swift:53-88 (window refs carry bare ids); PF/Player/PlayerNotesTab.swift:49.",
+   "absorbs": [
+    {
+     "id": "FARM-01",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-37",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 4,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-08",
+   "tier": 1,
+   "kind": "behaviour",
+   "departments": [
+    "Farm",
+    "MLB Ops",
+    "Finance",
+    "League Office",
+    "Scouting",
+    "Philosophy & Staff",
+    "Trades"
+   ],
+   "size": "M",
+   "title": "Pages can get stuck on Loading or keep an old error",
+   "sees": "Moving quickly between views can leave one on \"Loading\" until the next import; a failed trade weigh's error stays on a later good deal; a failed Free Agents detail shows nothing and can't be retried.",
+   "cause": "In-flight guard plus a dropped cancelled answer, with views remounted on every route: PK/FarmStore.swift:154, :164 (same pattern ClubhouseStore.swift:237/251, ScoutingStore.swift:270/281, LeagueOfficeStore.swift:152, OfficeStore.swift:214, PhilosophyStore.swift:101, TradesStore.swift:157/194); PF/Shell/MainWindowView.swift:410; PK/TradesStore.swift:193 (cache hit skips clearing the problem), PF/Trades/TradeDeskView.swift:136; PK/OfficeStore.swift:155-161 and PF/FeatureCore/OfficeKit.swift:810.",
+   "absorbs": [
+    {
+     "id": "FARM-02",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-11",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-26",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 4,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-09",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "MLB Ops",
+    "Player windows",
+    "Farm",
+    "Scouting",
+    "Trades"
+   ],
+   "size": "S",
+   "title": "Innings are written as decimals (10.7 instead of 10.2)",
+   "sees": "Pitching Availability \"33.7\", player History \"38.3 IP\", outings \"6.7\", the Decision's \"Season line (10.7 IP…)\", while the Morning Report writes \"12.1 innings\".",
+   "cause": "ip = outs/3 kept as a decimal and formatted dec1: server/stats.ts:288, :301; server/presentation/statCatalog.ts:59; server/presentation/clubhouse/common.ts:126; server/player.ts:217-221, :281 → server/presentation/player/dossier.ts:979, :1016; server/org.ts:662, :685; server/presentation/farm/prospects.ts:25; server/form.ts:129; server/tradingblock.ts:110; server/playingTime.ts:932; server/mlbEvidence.ts:170. The right formatter already exists at server/presentation/frontOffice/morning.ts:206.",
+   "absorbs": [
+    {
+     "id": "MLB-05",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-08",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 3,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-10",
+   "tier": 1,
+   "kind": "words",
+   "departments": [
+    "MLB Ops"
+   ],
+   "size": "M",
+   "title": "Walls of \"on the 0–100 scale\"",
+   "sees": "\"bat 74 on the 0–100 scale; glove 17 on the 0–100 scale…\" about 90 times in one Position players payload; one hover says \"77 is typical\" while the rest say \"50 is typical\"; glove shows two numbers; reasons start lower case.",
+   "cause": "server/roleStanding.ts:73 (onScale, used in 10 modules); server/presentation/majorLeague/words.ts:31, :43 (SCALE_HINT on every cell, Not known cells too); server/presentation/majorLeague/views.ts:196, :226, :233-238, :322; server/roleReview.ts:454-466.",
+   "absorbs": [
+    {
+     "id": "MLB-13",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-24",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-26",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-29",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 10,
+   "phrasebook": true,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-11",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "MLB Ops",
+    "Player windows",
+    "Finance",
+    "Farm"
+   ],
+   "size": "S",
+   "title": "Code words reach the screen (\"level 2\", column names)",
+   "sees": "\"Season line (55 PA, level 2)\", \"Recall, level 2\", the column name rules_minor_league_fa_minimum_years in Contract & Rights, \"Not known projected\" in 50 payroll cells (a raw protected_prospect on the farm Decision is tracked under FARM-20).",
+   "cause": "`level ${n}` interpolated: server/presentation/majorLeague/decision.ts:361, server/mlbResponses.ts:564, server/mlbReport.ts:382, :429, :435, :635, :743, server/playerValueRatings.ts:810-818, server/playerValueCone.ts:239-240; server/playerValueControl.ts:444, server/playerValueContract.ts:137; server/presentation/finance/payroll.ts:398; server/presentation/farm/words.ts:47, :77.",
+   "absorbs": [
+    {
+     "id": "MLB-04",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-27",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-14",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 2,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-12",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Farm",
+    "MLB Ops"
+   ],
+   "size": "M",
+   "title": "Pages say all is well when nothing has been read",
+   "sees": "Affiliates: \"Are its players developing? No issue found\" in green with 0 players read; Assignments: green \"Regular work\" for everyone at a club with 0 games; Game Plan: \"No history against this club yet\" beside 10 meetings.",
+   "cause": "Absence of findings read as good: server/presentation/farm/affiliates.ts:18-23; server/playingTime.ts:1083-1084 (readOpportunity defaults to regular_work; no conflict is built below the club-games minimum); server/gameplan.ts:103-121, :246-250 with server/presentation/clubhouse/schedule.ts:298 (a missing table or failed read prints \"no history\"; the join also uses the pitcher's current team).",
+   "absorbs": [
+    {
+     "id": "FARM-04",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-06",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-07",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 1,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-13",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Finance",
+    "Philosophy & Staff"
+   ],
+   "size": "M",
+   "title": "Counts show zero when the list isn't known, and unpriced contracts drop out of totals",
+   "sees": "\"Available now (0)\" when the export can't say who's available; \"0 affiliates\" on Coaching Staff when affiliate staff simply aren't exported; 2044 payroll \"Most likely +$4.1M (2 players)\" with 24 unpriced, then a green \"$150.0M free\".",
+   "cause": "server/presentation/finance/freeAgents.ts:200 with PF/Finance/FreeAgentsView.swift:92, :103; server/rosterops.ts:409-414 (inner join drops affiliates) with server/presentation/philosophy/staff.ts:229; server/presentation/finance/payroll.ts:90-101, :137 (unpriced count only shown when nothing is priced).",
+   "absorbs": [
+    {
+     "id": "OFF-09",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-25",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-06",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 1,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-14",
+   "tier": 1,
+   "kind": "behaviour",
+   "departments": [
+    "Settings",
+    "Front Office"
+   ],
+   "size": "S",
+   "title": "A saved AI key looks the same as no key",
+   "sees": "After Save the field empties back to \"Get a key at console.claude.com\" and \"Key set\" wears the same grey eye as \"No key\"; Ollama says ready without checking; with AI off the Briefing's fix sits only in a hover.",
+   "cause": "server/presentation/ai/keys.ts:36-43 (neutral tone for every state), :55 (keyless providers always configured); PD/Tone.swift:38 (neutral = eye.fill app-wide); PF/Shell/SettingsView.swift:774, :835; PF/FrontOffice/AiWritingViews.swift:115-133.",
+   "absorbs": [
+    {
+     "id": "FO-06",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-27",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-42",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-26",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 6,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-15",
+   "tier": 1,
+   "kind": "layout",
+   "departments": [
+    "Front Office",
+    "League Office (club windows)"
+   ],
+   "size": "S",
+   "title": "Roster map: the hovered player is drawn under other text",
+   "sees": "Hovering a plate grows it, and later plates, the legend and the staff cards paint over it; the catcher and DH plates spill under the legend.",
+   "cause": "PD/RosterDiagram.swift:198-211, :266-282 (centre-anchored .position in a fixed 540-pt ZStack, no zIndex); PF/FrontOffice/MorningReportView.swift:351-352; PF/FrontOffice/ClubReportView.swift:163-164.",
+   "absorbs": [
+    {
+     "id": "FO-03",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-36",
+     "verdict": "PLAUSIBLE"
+    },
+    {
+     "id": "FO-37",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-16",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "MLB Ops",
+    "Farm"
+   ],
+   "size": "S",
+   "title": "The same player appears twice on a Decision",
+   "sees": "On a \"replace\" Decision a bench man who has played the spot appears as both \"Current\" and \"On the bench\" (very likely Vargas on the Tawa LF page); the farm views would crash or misdraw on a duplicate row.",
+   "cause": "server/mlbReport.ts:621-629 (incumbents include every usage backup), server/mlbResponses.ts:547 (discover skips only regulars), server/mlbReport.ts:704 concatenates, :189 displayOrder never dedupes; PF/Farm/FarmDevelopmentView.swift:46 (Dictionary(uniqueKeysWithValues:) traps), PF/Farm/FarmDecisionView.swift:163, :270.",
+   "absorbs": [
+    {
+     "id": "MLB-01",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-40",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 7,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-17",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "MLB Ops"
+   ],
+   "size": "M",
+   "title": "The only catcher is counted as his own backup",
+   "sees": "The top need is \"1 healthy catcher … minimum of 2\", yet Bench & Backups says catcher is backed up by that same catcher, and no overview card mentions the shortage.",
+   "cause": "An unsettled spot puts its lone holder on the bench: server/lineupPicture.ts:97-101, :131-133; server/mlbReview.ts:135; server/benchReview.ts:178-183; glances read only reviews: server/presentation/majorLeague/views.ts:88-95, :118-121.",
+   "absorbs": [
+    {
+     "id": "MLB-03",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-38",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 1,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-18",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Farm"
+   ],
+   "size": "S",
+   "title": "Farm findings don't name the player",
+   "sees": "A finding's player shows as \"Farm 1 F, age 22\" with no name; VoiceOver reads the same.",
+   "cause": "server/presentation/farm/common.ts:72-73, :149 (the note replaces the name); PF/Farm/FarmCommon.swift:194.",
+   "absorbs": [
+    {
+     "id": "FARM-03",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 7,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-19",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Front Office"
+   ],
+   "size": "S",
+   "title": "The Morning Report says four departments \"come in a later version\"",
+   "sees": "Scouting, Trades, League and Philosophy are marked as coming later though their views exist, and the Front Office report counts \"4 of 8 departments reporting\".",
+   "cause": "server/presentation/frontOffice/desk.ts:451-454 (stale NOT_YET list, also drives :418 and :365).",
+   "absorbs": [
+    {
+     "id": "FO-05",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-20",
+   "tier": 1,
+   "kind": "behaviour",
+   "departments": [
+    "Player windows"
+   ],
+   "size": "M",
+   "title": "A farm player's club link opens the big-league club",
+   "sees": "The header says \"Farm 1 F (AAA)\" but the club name and \"Open His Club\" open Club 1 N.",
+   "cause": "server/presentation/player/dossier.ts:207, :214 (clubOpen = organizationId); PF/Player/PlayerWindowView.swift:97-98, :187-189; club windows are organization-level only.",
+   "absorbs": [
+    {
+     "id": "FARM-24",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-21",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Trades"
+   ],
+   "size": "S",
+   "title": "The Trade Desk weighs trades that can't happen",
+   "sees": "Sending another club's player for one of ours, or a three-club deal, gets a normal weighed answer.",
+   "cause": "Nothing checks who holds each player: server/tradeDeskService.ts:152-176, server/trade.ts:165, PK/TradesStore.swift:117-127.",
+   "absorbs": [
+    {
+     "id": "OFF-10",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-22",
+   "tier": 1,
+   "kind": "data",
+   "departments": [
+    "Scouting"
+   ],
+   "size": "M",
+   "title": "Draft Board sorting only sorts the first 300 players",
+   "sees": "Sorting by Now or Ceiling misses everyone below the first 300 of a 2,076-player class until \"Show all\".",
+   "cause": "server/presentation/scouting/draftBoard.ts:78, :360 (300-row page, no serverSorts); PF/FeatureCore/OfficeKit.swift:502-511 (client sort).",
+   "absorbs": [
+    {
+     "id": "OFF-23",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-23",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "MLB Ops",
+    "Farm",
+    "Player windows",
+    "Front Office"
+   ],
+   "size": "L",
+   "title": "Decision pages say the same thing two or three times",
+   "sees": "\"Player Development has not assessed him as durable major-league role\" three times, two \"Missing: transaction log\" lines, the affiliate's whole issue list under every candidate, the cascade stop twice, \"Value is in wins, and dollars are unknown\" twice in one note, \"26 of 26 (+1) (The active roster is full…)\"; on the Morning Report two overlapping gap sentences and \"Farm 1 F: …\" on every desk item.",
+   "cause": "Sections re-emit reasons their callers already include: server/presentation/majorLeague/decision.ts:283, :302, :306, :322-349, :377; server/mlbResponses.ts:406, :1235; server/mlbReport.ts:408; server/presentation/farm/decision.ts:119, server/presentation/farm/words.ts:162; server/playerValueSurplus.ts:499 and server/playerValueFinances.ts:555; Morning Report gaps at server/presentation/frontOffice/wire.ts:239-244; farm desk grouping plus single items at server/presentation/frontOffice/farm.ts:75, :126.",
+   "absorbs": [
+    {
+     "id": "MLB-12",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-15",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-16",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-17",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-21",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-26",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-18",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-21",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 7,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-24",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "MLB Ops",
+    "Farm"
+   ],
+   "size": "M",
+   "title": "Decision pages contradict themselves",
+   "sees": "\"Visible tool ratings: complete; not assessed: Contact…\", a shortstop-or-second need titled \"second baseman\", \"Too early to read\" beside \"24 under the first line\", \"Read from nothing yet\", \"1 Why his assignment is being reviewed\" for a player not in question, a raw protected_prospect, a bare \"28 · Current\", and the key \"Why Pennant says this\" block drawn smaller than the next heading.",
+   "cause": "server/presentation/majorLeague/decision.ts:164, :175, :356, :536; server/mlbReview.ts:164; server/roleReview.ts:466-475; server/presentation/majorLeague/views.ts:251, words.ts:203; PF/Farm/FarmDecisionView.swift:128; server/presentation/farm/words.ts:47, :77; PF/MajorLeague/DecisionView.swift:169.",
+   "absorbs": [
+    {
+     "id": "MLB-18",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-19",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-21",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-22",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-23",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-28",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-20",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 7,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-25",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "MLB Ops"
+   ],
+   "size": "M",
+   "title": "A Decision promises things that aren't there",
+   "sees": "\"The active roster is full: another player has to be moved first\" with no way-to-clear section; \"the candidates who do not are listed below\" with no candidates; an empty catcher picture with a \"What this comparison is\" disclosure and nobody compared.",
+   "cause": "server/mlbResponses.ts:621, :635, :644-647, :1201-1205 (clearing packet built only from established steps); server/mlbReport.ts:396, :407-408; server/presentation/majorLeague/decision.ts:129-179, :519-524 (no empty state).",
+   "absorbs": [
+    {
+     "id": "MLB-10",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-11",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-20",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 7,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-26",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "All departments"
+   ],
+   "size": "M",
+   "title": "Pages disagree on today's date and how fresh the data is",
+   "sees": "Finance and Medical say \"Through May 6\", Trades and Coaching Staff \"Through May 5\", League shows no byline; the same \"Not checked against your save\" is a grey ? in one department and an orange triangle in another; mastheads print two dates; the window subtitle is hidden.",
+   "cause": "Three freshness builders: server/presentation/officeTable.ts:333-340, server/presentation/trades/desk.ts:96-100, server/presentation/league/orgComparison.ts:267-272 (plus majorLeague/views.ts:169); bylines from two sources: officeTable.ts:353 (csv.currentDate) vs tradeDeskBuild.ts:37, philosophyViewService.ts:59, clubhouseViewsBuild.ts:92, farmViewsBuild.ts:69, frontOfficeBuild.ts:104 (simulatedThrough); PF/League/LeagueOfficeViews.swift:26; PF/FrontOffice/MorningReportDesign.swift:117; server/presentation/dataStatusWords.ts:237-238; PF/Shell/MainWindowView.swift:78, :82.",
+   "absorbs": [
+    {
+     "id": "OFF-15",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-16",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-22",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-39",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-43",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-27",
+   "tier": 2,
+   "kind": "layout",
+   "departments": [
+    "Finance",
+    "Medical",
+    "League Office",
+    "Philosophy & Staff",
+    "Farm",
+    "MLB Ops",
+    "Shell"
+   ],
+   "size": "M",
+   "title": "Page headings get cut off or run under the inspector",
+   "sees": "\"Payroll & Bud…\", \"Not checked ag…\", Coaching Staff and Us vs Them heads running past the edge (\"the seas\"), Decision titles \"Every candida…\", the menu bar's desk items cut to one line.",
+   "cause": "PD/TablePane.swift:72-88 (head squeezed vertically, no fixedSize), :110-113; PF/FeatureCore/OfficeKit.swift:309 (OfficeSectionPicker .fixedSize(), used by LeagueOfficeViews.swift:155, :259, :452 and CoachingStaffView.swift:24); PD/Typography.swift:69-71 (MagazineSection title); PF/Finance/FreeAgentsView.swift:45; PF/Shell/MenuBarGlanceView.swift:119-126.",
+   "absorbs": [
+    {
+     "id": "OFF-07",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-08",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-43",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-35",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-33",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-28",
+   "tier": 2,
+   "kind": "layout",
+   "departments": [
+    "MLB Ops",
+    "Farm",
+    "Finance",
+    "Shell"
+   ],
+   "size": "M",
+   "title": "Narrow windows and the inspector squeeze pages into uselessness",
+   "sees": "40-Man shows three rows at 1280; farm tables at 900 show three columns; the Horizon Board falls back to half-empty cards at 1024; glance cards stack; the inspector with nothing pinned still squeezes the page and offers a one-choice picker.",
+   "cause": "PF/MajorLeague/ClubhouseViews.swift:312 (detailShare 0.45); PF/Farm/FarmAssignmentsView.swift:56; PF/Finance/HorizonBoardView.swift:29 (minWidth 760); PF/MajorLeague/StandingViews.swift:81-84 (ViewThatFits on unwrapped widths); PF/Shell/MainWindowView.swift:507-510, :529.",
+   "absorbs": [
+    {
+     "id": "MLB-33",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-36",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-24",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-60",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-34",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-29",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "All departments"
+   ],
+   "size": "M",
+   "title": "Detail cards are empty, repeat their label, or sit under the wrong row",
+   "sees": "A franchise season or leader opens a blank card; \"4 of 8\" sits over \"4 OF 8 DEPARTMENTS REPORTING\"; our club's deadline read appears under Club 3's row; Injury Report keeps a full-height empty pane.",
+   "cause": "PF/FeatureCore/OfficeKit.swift:688, :698 (Card drawn for empty detail), :800-807 (page notes drawn under any chosen row); PF/FeatureCore/FrontOfficeViews.swift:370 (ReportFigures repeats a value contained in its label); server/presentation/league/standings.ts:293-355.",
+   "absorbs": [
+    {
+     "id": "FO-16",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-21",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-22",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-45",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-30",
+   "tier": 2,
+   "kind": "words",
+   "departments": [
+    "Farm",
+    "MLB Ops",
+    "Front Office",
+    "Player windows"
+   ],
+   "size": "M",
+   "title": "Department names and method terms speak on screen",
+   "sees": "\"Player Development says…\", \"MLB Operations' own cover read\", \"outside this module\", \"Clearly ahead of 1 · not separable from 1\", \"Closer · high stakes\", \"The Book … AND more PA\", \"(neutral 8.4 wins)\", \"held-out seasons\", \"work share\", \"Pennant's first-pass minimum\", \"Not yet\" reading as \"none\".",
+   "cause": "server/farmOrganization.ts:223; PF/Farm/FarmProspectsView.swift:68, :263; server/presentation/farm/assignments.ts:83; server/presentation/frontOffice/morning.ts:762, :832; server/presentation/majorLeague/views.ts:387; server/lineup.ts:82-90, :136; server/presentation/player/dossier.ts:690, :713; server/farmAffiliate.ts:694; server/mlbNeeds.ts:52, :176; server/presentation/farm/development.ts:214, :282, :301.",
+   "absorbs": [
+    {
+     "id": "FARM-16",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-20",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-30",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-31",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-25",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-49",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-49",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-19",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 10,
+   "phrasebook": true,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-31",
+   "tier": 2,
+   "kind": "words",
+   "departments": [
+    "MLB Ops",
+    "Farm",
+    "Player windows",
+    "League Office",
+    "Finance"
+   ],
+   "size": "M",
+   "title": "The same caveat is repeated row after row",
+   "sees": "The 60-day-refusal passage on all 32 40-man rows with \"(observed and documented)\" 58 times; 10 of 12 farm findings served open in red; \"not valued here\" six times on Compare; \"1 game to play\" 11 times on Us vs Them; Roster Moves rows that restate each other; the payroll \"costs\" wall.",
+   "cause": "server/playerRights.ts:775-779, server/presentation/majorLeague/words.ts:99; server/presentation/farm/common.ts:147-154 (expanded when critical); server/presentation/player/compare.ts:84, :128, player/words.ts:51; server/presentation/league/usVsThem.ts:184-199; server/presentation/player/dossier.ts:269-278.",
+   "absorbs": [
+    {
+     "id": "MLB-35",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-14",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-32",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-18",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-28",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-34",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 10,
+   "phrasebook": true,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-32",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "Finance",
+    "League Office"
+   ],
+   "size": "M",
+   "title": "Payroll room and payroll differ between Finance pages",
+   "sees": "Free Agents says \"Room now $60.0M / next season $90.0M\", Payroll says $65.9M / $101.0M free, Org Comparison says payroll $90.0M against $84.1M committed; Contracts says \"Free agent after 2046 or later\" beside \"Control not established\" for 2044-2046.",
+   "cause": "Two definitions under one name: server/presentation/finance/words.ts:175-193 (budget minus team_financials or OOTP's estimate, against today's budget) vs server/payroll.ts:305-309 and server/presentation/finance/payroll.ts:102, :138-140 (budget minus committed contracts); server/presentation/league/orgComparison.ts:152, :181, :239-245; server/presentation/finance/words.ts:141 vs contracts.ts:78-88.",
+   "absorbs": [
+    {
+     "id": "OFF-03",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-29",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-33",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "Philosophy & Staff",
+    "Front Office",
+    "All department mastheads"
+   ],
+   "size": "S",
+   "title": "Staff titles differ between pages, and the GM's report may be credited to someone else",
+   "sees": "Ana Frey is \"head trainer\" in the Staff room and \"team doctor\" on Medical; Terry Ellis is \"scout\" and \"head scout\"; the Front Office report is \"Prepared by Morgan Brock, general manager\" with no check that the GM isn't the user.",
+   "cause": "Two role vocabularies: server/staff.ts:105, :120 vs :506-507 (used by server/presentation/catalog.ts:169, :254); seatHolder has no human check at server/staff.ts:521-531 / catalog.ts:248-255, unlike tradeVoice at staff.ts:413-424.",
+   "absorbs": [
+    {
+     "id": "FO-09",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-17",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-34",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "Shell",
+    "Farm",
+    "Player windows"
+   ],
+   "size": "S",
+   "title": "\"Whose ratings\" reads Not known, with no way forward",
+   "sees": "Data Status's Ratings row says \"Not known\" without saying a fresh import fixes it; the player's Ratings tab is headed \"Not known\" above a full set of grades and mentions a snapshot set aside, while Development Tracking says no snapshots are kept.",
+   "cause": "server/presentation/dataStatusWords.ts:153; server/ratingMode.ts:142; server/presentation/farm/development.ts:282-315; server/history.ts:370 (raw unpadded dates).",
+   "absorbs": [
+    {
+     "id": "FO-25",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-29",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-18",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-35",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "MLB Ops"
+   ],
+   "size": "M",
+   "title": "Clubhouse pages disagree on who plays where and how good he is",
+   "sees": "Depth Chart's right field is \"Nobody listed here\" while Lineup bats P 1008 in RF; the \"Bat\" column shows the whole estimate when the bat is missing; a pitcher is \"Not known\" on Pitching staff but graded 73 on Depth.",
+   "cause": "server/presentation/clubhouse/depth.ts:22-31, :86-91 (listed position vs usage elsewhere); server/presentation/majorLeague/views.ts:323-336 (`batValue ?? value`); server/roleReview.ts:425 vs depth grades.",
+   "absorbs": [
+    {
+     "id": "MLB-40",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-25",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-41",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 7,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-36",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "MLB Ops",
+    "League Office",
+    "Finance",
+    "Player windows",
+    "Trades"
+   ],
+   "size": "M",
+   "title": "Pages forget or ignore where you were",
+   "sees": "A desk link to a 40-man player in the other section doesn't switch to it; Lineup choices, filters and sorts reset on return; Decision groups can reopen the wrong way after a re-read; History keeps the old sort after switching record; a failed game plan never retries.",
+   "cause": "PF/MajorLeague/ClubhouseViews.swift:285, :295 (`section ?? opened ?? first`), :92, :244, :340-341, :192-194; PF/MajorLeague/DecisionView.swift:35-53, :520-535 (state set once, keyed by offset); PF/Player/PlayerHistoryTab.swift:33, :97-105; PF/MajorLeague/ScheduleView.swift:93-101.",
+   "absorbs": [
+    {
+     "id": "MLB-42",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-53",
+     "verdict": "PLAUSIBLE"
+    },
+    {
+     "id": "MLB-58",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-54",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "MLB-56",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-43",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "FARM-48",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 4,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-37",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "Farm",
+    "Player windows"
+   ],
+   "size": "M",
+   "title": "Farm rows and player windows lack the usual Mac controls",
+   "sees": "Player ▸ Open, Compare and Follow are disabled on farm rows; Return opens the Decision, not the player; multi-select Compare takes one man; clicking a finding's sentence opens its basis instead of expanding it; no ⌘1-⌘6 for player sections; double-click does different things on different pages.",
+   "cause": "PF/Farm/FarmCommon.swift:208-238 (no focusedValue), :223-228, :158, :564 (ClaimText Button inside Fold label wins, PD/Depth.swift:62); PF/Farm/FarmAssignmentsView.swift:99-105, FarmProspectsView.swift:75-81, FarmDevelopmentView.swift:92-97; PF/Player/PlayerWindowView.swift:279-285; PF/Farm/FarmDecisionView.swift:44.",
+   "absorbs": [
+    {
+     "id": "FARM-11",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-12",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-41",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-50",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 5,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-38",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "Farm"
+   ],
+   "size": "S",
+   "title": "Farm pages open on empty filters",
+   "sees": "Prospects opens on \"Meetings · 0\" (\"No players match this view\"), Assignments on \"In Question Only\", and Prospects and Development show the first player's detail with nothing selected; the starters table's \"Spots\" column holds a sentence (a green \"Every man has a spot\" for an empty rotation).",
+   "cause": "PF/Farm/FarmProspectsView.swift:31, :45; PF/Farm/FarmAssignmentsView.swift:31; PF/Farm/FarmDevelopmentView.swift:53; PF/Farm/FarmOrganizationView.swift:84 with server/presentation/farm/organization.ts:92.",
+   "absorbs": [
+    {
+     "id": "FARM-17",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-23",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 5,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-39",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "Setup"
+   ],
+   "size": "M",
+   "title": "Setup contradicts itself and doesn't guide",
+   "sees": "\"You manage 2 clubs in this save\" with one club marked; \"No OOTP saves were found\" then \"None found\" with no word that OOTP's database must be exported first; some import failures say only \"did not finish\".",
+   "cause": "server/saveDiscovery.ts:452-487 counts human clubs at every level (also viewingOrganization.ts:29) while server/org.ts:68-70 lists level 1 only; PF/Setup/SetupView.swift:149, :313-314, :372; server/presentation/saveWords.ts:122, :191.",
+   "absorbs": [
+    {
+     "id": "FO-08",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-30",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-31",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 6,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-40",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "Settings",
+    "Shell"
+   ],
+   "size": "L",
+   "title": "Settings hides choices and state",
+   "sees": "No provider, model, AI features, auto-import or rounding choices; Updates has no Check Now, version or reason; notifications may never ask permission and show \"on\" when denied; the Transaction log field has no label; Appearance has a single-choice radio group.",
+   "cause": "PF/Shell/SettingsView.swift:670-706, :883-889, :194-221; server/presentation/ai/keys.ts:48, :79; PF/Shell/UpdatesSettings.swift:16-39; macos/Pennant/OutsideTheWindow.swift:37-39, :62-88 (no notification delegate).",
+   "absorbs": [
+    {
+     "id": "FO-07",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-32",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-15",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-40",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "FO-47",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 6,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-41",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "Shell"
+   ],
+   "size": "S",
+   "title": "Sidebar badges, the menu bar and the widget",
+   "sees": "Sidebar badges show while the club question is open (the Dock badge hides); menu bar items can't be clicked and there's no refresh; the widget may tick \"Updated 2 hours, 5 minutes ago\".",
+   "cause": "PF/FeatureCore/DepartmentModule.swift:64-68 (no clubOwed guard, unlike macos/Pennant/OutsideTheWindow.swift:55); PF/Shell/MenuBarGlanceView.swift:26, :119-126; macos/PennantWidgets/GlanceWidgetView.swift:103-104.",
+   "absorbs": [
+    {
+     "id": "FO-12",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-44",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 5,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-42",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "Shell"
+   ],
+   "size": "S",
+   "title": "Quick Open can open the wrong thing",
+   "sees": "⌘K's highlight can jump when late results arrive, so Return opens a different entry; only 12 results with no scroll; two different search fields; five views all called \"Report\".",
+   "cause": "PD/CommandPalette.swift:29, :45, :51, :161; PF/Shell/MainWindowView.swift:92-112; server/presentation/searchWords.ts:48-84; server/presentation/catalog.ts:148-169.",
+   "absorbs": [
+    {
+     "id": "FO-28",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-29",
+     "verdict": "PLAUSIBLE"
+    },
+    {
+     "id": "FO-46",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 5,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-43",
+   "tier": 2,
+   "kind": "layout",
+   "departments": [
+    "Finance",
+    "League Office",
+    "Player windows",
+    "MLB Ops"
+   ],
+   "size": "M",
+   "title": "Charts look broken or unexplained",
+   "sees": "Franchise History's single unknown season draws as a huge hollow block; the payroll \"could be\" bars have no legend; the value chart ignores the club colours and its pending band covers known seasons; Season Trends shows .500 as \"50%\".",
+   "cause": "PF/League/LeagueOfficeViews.swift:279-291; PF/Finance/PayrollView.swift:191; PF/Player/PlayerValueTab.swift:138-180; Season Trends payload charts[2].",
+   "absorbs": [
+    {
+     "id": "OFF-20",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-27",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-33",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-47",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-47",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-44",
+   "tier": 2,
+   "kind": "layout",
+   "departments": [
+    "Player windows"
+   ],
+   "size": "M",
+   "title": "Compare and History tables push content off-screen",
+   "sees": "A long value widens Compare's column and pushes the second player out of view; History's 13 fixed columns overflow, with W-L as \"—-—\" and teams as \"C1\"/\"F1\".",
+   "cause": "PF/Player/CompareWindowView.swift:165 (two-way ScrollView, text never wraps); server/presentation/player/dossier.ts:978, :1088; server/player.ts:207 (t.abbr).",
+   "absorbs": [
+    {
+     "id": "FARM-31",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-34",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-45",
+   "tier": 2,
+   "kind": "perf",
+   "departments": [
+    "Front Office",
+    "Scouting",
+    "Shell"
+   ],
+   "size": "M",
+   "title": "Heavy work on every redraw",
+   "sees": "The Morning Report rebuilds its whole design from a ~100 KB payload twice per redraw; Player Search and the Draft Board re-join, re-sort and re-search all rows on every keystroke (unprofiled; may explain the CI stalls).",
+   "cause": "PF/FrontOffice/MorningReportView.swift:173, :311 with MorningReportDesign.swift:99-103; PK/ScoutingStore.swift:108-112; PF/FeatureCore/OfficeKit.swift:503-511, :766-768.",
+   "absorbs": [
+    {
+     "id": "FO-35",
+     "verdict": "PLAUSIBLE"
+    },
+    {
+     "id": "OFF-31",
+     "verdict": "PLAUSIBLE"
+    }
+   ],
+   "batch": 5,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-46",
+   "tier": 2,
+   "kind": "layout",
+   "departments": [
+    "Front Office"
+   ],
+   "size": "S",
+   "title": "The Morning Report puts \"To decide\" last on ordinary windows",
+   "sees": "Below ~1,360-pt windows the desk comes after the map, staff and the league, one frame late; the Whole Desk button exists only here; \"The rest\" heads every row in a small league.",
+   "cause": "PF/FrontOffice/MorningReportView.swift:95-106, :301-324, :367, :377.",
+   "absorbs": [
+    {
+     "id": "FO-11",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-36",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FO-41",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-47",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "Philosophy & Staff"
+   ],
+   "size": "S",
+   "title": "The philosophy summary contradicts itself when nothing is set",
+   "sees": "With every setting at 50 it says both \"broadly balanced, without a strongly expressed lean\" and \"so this is a focused philosophy\".",
+   "cause": "server/presentation/philosophy/identity.ts:156, :186-193 (no branch for zero expressed settings).",
+   "absorbs": [
+    {
+     "id": "OFF-17",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-48",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "Finance"
+   ],
+   "size": "S",
+   "title": "The payroll budget box silently throws away what you type",
+   "sees": "\"150M\", \"$150\", \"150,000,000\" or \"150,5\" revert to the old value with no message; Return then losing focus may save twice.",
+   "cause": "PF/Finance/PayrollView.swift:312, :329-346 (Double() parse, silent revert).",
+   "absorbs": [
+    {
+     "id": "OFF-28",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 4,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-49",
+   "tier": 2,
+   "kind": "behaviour",
+   "departments": [
+    "Trades"
+   ],
+   "size": "S",
+   "title": "The GM's question disappears while the trade desk thinks",
+   "sees": "The draft is cleared on send and the question appears only when the answer arrives.",
+   "cause": "PF/Trades/TradeDeskView.swift:211-217; PK/TradesStore.swift:249.",
+   "absorbs": [
+    {
+     "id": "OFF-30",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 4,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-50",
+   "tier": 2,
+   "kind": "data",
+   "departments": [
+    "Front Office",
+    "League Office"
+   ],
+   "size": "S",
+   "title": "Wire injury lines name no injury",
+   "sees": "\"P 1053 was hurt\" with the basis \"Length, as the export records it: 12\" and no unit.",
+   "cause": "server/leagueWire.ts:320 reads only length and day_to_day (body_part and effect unused); server/presentation/frontOffice/wire.ts:108, :147.",
+   "absorbs": [
+    {
+     "id": "FO-10",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 8,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-51",
+   "tier": 3,
+   "kind": "words",
+   "departments": [
+    "All departments"
+   ],
+   "size": "S",
+   "title": "Titles, labels and column heads are inconsistent",
+   "sees": "\"Position players\" beside \"Pitching Availability\"; \"Also worth a look (1)\"; cryptic heads (T, P/3d, HLD, Brl%); \"Coming in less going out\"; \"−<0.1 wins\"; Every Contract keeps the payroll lede.",
+   "cause": "server/presentation/majorLeague/views.ts:69, :283, :401, :443; PF/Finance/PayrollView.swift:38; trades payloads.",
+   "absorbs": [
+    {
+     "id": "MLB-44",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-45",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "MLB-51",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-52",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "MLB-59",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "OFF-32",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-37",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "OFF-40",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "OFF-41",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-42",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "FARM-43",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 10,
+   "phrasebook": true,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-52",
+   "tier": 3,
+   "kind": "words",
+   "departments": [
+    "League Office",
+    "Trades",
+    "Staff room",
+    "Player windows"
+   ],
+   "size": "S",
+   "title": "\"the Club 1 N\" and \"him\" for everyone",
+   "sees": "\"Ask him about the Club 1 N\" (for Ana Frey too), \"Meetings with the Club 4 N\", \"The Club 1 N's philosophy\".",
+   "cause": "server/presentation/ai/staffRoom.ts:82; server/presentation/league/usVsThem.ts:193-200; server/presentation/player/dossier.ts:713.",
+   "absorbs": [
+    {
+     "id": "FO-39",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "OFF-38",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 10,
+   "phrasebook": true,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-53",
+   "tier": 3,
+   "kind": "words",
+   "departments": [
+    "Finance",
+    "MLB Ops"
+   ],
+   "size": "S",
+   "title": "Some words and numbers are written in the app instead of served",
+   "sees": "\"N of M\", \"$\", \"million\", \"Weighing\", \"Available now (N)\" and the depth plate's top-3 limit live in Swift.",
+   "cause": "PF/Finance/ContractsView.swift:53; PF/Finance/PayrollView.swift:305, :314; PF/MajorLeague/DepthChartView.swift:180 vs server/presentation/clubhouse/depth.ts:16.",
+   "absorbs": [
+    {
+     "id": "OFF-42",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-57",
+     "verdict": "CONFIRMED"
+    }
+   ],
+   "batch": 10,
+   "phrasebook": true,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-54",
+   "tier": 3,
+   "kind": "behaviour",
+   "departments": [
+    "Player windows",
+    "League Office (club windows)"
+   ],
+   "size": "S",
+   "title": "Drag and drop and \"Open in New Window\" fall short",
+   "sees": "Dropping a player into Notes or Mail gives nothing; clubs can't be dropped on Compare; \"Open in New Window\" brings the existing window forward; Compare chips start blank with a stray focus ring.",
+   "cause": "PK/Routing.swift:53-88 (private UTTypes only); PF/Player/CompareWindowView.swift:54; PF/FeatureCore/Attention.swift:256.",
+   "absorbs": [
+    {
+     "id": "FARM-38",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-45",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "FARM-44",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 5,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-55",
+   "tier": 3,
+   "kind": "layout",
+   "departments": [
+    "MLB Ops",
+    "Finance",
+    "League Office",
+    "Player windows"
+   ],
+   "size": "S",
+   "title": "Small layout slips",
+   "sees": "A Game Plan row with a missing cell shifts later cells into the wrong columns; a red \"What-if\" badge plus a \"Scenario\" badge; ratings bars 2 pt out of line; separate copies of the Office head with different spacing.",
+   "cause": "PF/MajorLeague/ScheduleView.swift:147-157; PF/Player/PlayerRatingsTab.swift:63; Coaching Staff / Trades heads.",
+   "absorbs": [
+    {
+     "id": "MLB-55",
+     "verdict": "CONFIRMED"
+    },
+    {
+     "id": "MLB-50",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "FARM-46",
+     "verdict": "UNCHECKED"
+    },
+    {
+     "id": "OFF-46",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  },
+  {
+   "id": "B-56",
+   "tier": 3,
+   "kind": "behaviour",
+   "departments": [
+    "Front Office"
+   ],
+   "size": "S",
+   "title": "No automated check captures the Front Office report or a narrow Morning Report",
+   "sees": "CI's Front Office screenshot shows the GM Briefing, so layout slips there go unseen.",
+   "cause": "macos UI tests (department-frontOffice.png capture).",
+   "absorbs": [
+    {
+     "id": "FO-38",
+     "verdict": "UNCHECKED"
+    }
+   ],
+   "batch": 9,
+   "phrasebook": false,
+   "status": "open",
+   "round": 1
+  }
+ ]
+}
