@@ -205,11 +205,11 @@ Department by department, with the owner's pain first. Each step ships on its ow
 - **Partial migration reads as two voices.** Migrate one surface at a time, whole, never half a page.
 - **Startup time.** Compiled functions, no parsing at run time. The sidecar's start budget is unaffected.
 
-## 6. Draft decision
+## 6. Draft decision (accepted as D-077; the final text is in `docs/DECISIONS.md`)
 
 > ## D-077 — Pennant writes like a person: the words are written content in one phrasebook, filled from typed facts
 >
-> **Status:** Proposed (N15, 2026-10-13), drafted from the owner's direction of 2026-10-14 and his approved Tim Tawa sample. Refines D-056 and D-065; D-001, D-018, D-023, D-031, D-034, D-052 and D-060 are unchanged. **Implementation:** not started (`server/phrasebook/`, `npm run phrasebook:build`; voice guide: `docs/VOICE.md`).
+> **Status:** Proposed (N15, 2026-10-13), drafted from the owner's direction of 2026-10-14 and their approved Tim Tawa sample. Refines D-056 and D-065; D-001, D-018, D-023, D-031, D-034, D-052 and D-060 are unchanged. **Implementation:** not started (`server/phrasebook/`, `npm run phrasebook:build`; voice guide: `docs/VOICE.md`).
 >
 > The owner found the first signed Mac build wordy and machine-like: sentences assembled from parts, "on the 0–100 scale" five times on one page, method words on the face, plurals by hand. He asked for Pennant to sound like a person, even if the philosophy of where the words come from changes.
 >

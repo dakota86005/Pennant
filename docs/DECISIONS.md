@@ -3461,3 +3461,26 @@ kept apart until N15; draft-first publishing) are recorded below.
   is never missing. The Electron jobs and their manifests go in the same change.
 - **Not done here:** a designed DMG window (it needs a tool that is not approved), delta updates, automatic installs and
   a prerelease channel (a prerelease version also breaks the Electron updater's tag handling, D-049).
+
+## D-077 — Pennant writes like a person: the words are written content in one phrasebook, filled from typed facts
+
+**Status:** Accepted by the owner, 2026-10-14 (N15a polish push), from their direction of that day and their approved Tim Tawa sample. Refines D-056 and D-065; D-001, D-018, D-023, D-031, D-034, D-052 and D-060 are unchanged. **Implementation:** not started (`server/phrasebook/`, `npm run phrasebook:build`; voice guide: `docs/polish/VOICE.md`; samples and design: `docs/polish/SAMPLES.md`, `docs/polish/PHRASEBOOK.md`).
+
+The owner found the first signed Mac build wordy and machine-like: sentences assembled from parts, "on the 0–100 scale" five times on one page, method words on the face, plurals by hand. The owner asked for Pennant to sound like a person, even if the philosophy of where the words come from changes.
+
+- **Facts stay deterministic; the words become written content.** Every judgement, eligibility, ranking and number is still computed by the specialists, and no LLM is in the path (D-001). What changes is that a specialist no longer writes English. It emits a typed finding (a kind and its values), and the words for each kind are **written** messages in one server-side phrasebook (`server/phrasebook/*.yaml`, ICU syntax, compiled to a typed module with a drift test), with placeholders, plurals, selects, variants and a short form.
+- **D-056 is refined, not reversed.** "The server writes every sentence" stays: the app, the widget, the menu bar, Shortcuts, Spotlight and the AI staff all receive served text in the same `Claim`, `Row` and `Cell` types. What ends is *composing* sentences from fragments in code, in the specialists and in `server/presentation/**`. Presentation picks the message and passes the facts; the phrasebook fills it.
+- **Scale numbers become baseball words on the face.** A place on the 0–100 scale is said as the role's category in words ("near the bottom of the league's regular left fielders"), and a true share of peers as a band word or a percentage ("among the best", "better than 29% of big-league hitters"). The raw number is kept once, in *Why?* or a hover. This replaces D-065's "said as one ('62 on the 0–100 scale')" on the face. D-065's other rule stays: a blended read is never said as a percentage.
+- **Wording bands decide nothing.** "Near the bottom", "among the best" and "a small sample" describe a judgement the code already made. The phrasebook never compares a number with a judgement line, its bands are stamped as wording (not calibrated, provisional or policy, D-041), and a boundary test keeps them out of every specialist.
+- **Show the basis, one click away.** Every claim still carries its basis, its unknowns and what would change it (D-018, D-031, D-056). It moves out of the body into *Why?* and the hover, written in the same voice.
+- **Options, never orders.** A move is offered ("If you want to make a change: …"), never commanded. The banned-verdict list grows to hold that.
+- **The voice is tested**: budgets (a headline of about 12 words, a body of 2 sentences, a card of 3 lines, a hover of 75 characters), repetition per page, banned method words on the face, placeholder and plural correctness, no orders, and the consistency of words with judgements.
+- **The React app reads the same phrasebook** through the old routes until cutover, so the two clients never disagree. React's own words are left to retire with it (D-055).
+- **The owner's wording calls (2026-10-14):**
+  - A sample size on the face is the real count. The code serves his plate appearances, innings or batters faced, never the recency-weighted sample. The weighted figure stays in *Why?*.
+  - Where a claim names one tool, the face describes the scouts' grade for it ("his glove is among the best there"). The blended figure that also counts his results is in *Why?*.
+  - A place against the role stays in the role's category words ("near the bottom of the league's regular left fielders"). No computed rank like "bottom 5%" is shown.
+  - On a save whose export uses the 20–80 scale, the face may give the grade as scouts say it ("a 70 glove"), as the export gives it (D-061).
+  - The phrasebook is YAML with ICU messages, compiled to TypeScript.
+  - Where a line has variants, the choice is fixed per player, so a page never changes on reload.
+

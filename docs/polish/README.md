@@ -8,9 +8,20 @@ The owner's instruction is that **every item here gets addressed**.
 |---|---|
 | [BUG_LIST.md](BUG_LIST.md) | The ranked bug list. Round 1 is a screen-and-payload hunt of every department (205 findings, each checked against the code, merged by root cause into B-01 to B-56). The deep code hunt adds its items from B-57. It also lists the refuted findings and the fix batches. |
 | [bugs.json](bugs.json) | The same items and batches, machine-readable, each with a `status`. |
-| [VOICE.md](VOICE.md) | How Pennant talks: the owner's approved anchor sample and the rules. A draft until the owner approves it. |
+| [VOICE.md](VOICE.md) | How Pennant talks: the owner's anchor sample and the rules. Approved 2026-10-14 (D-077). |
 | [SAMPLES.md](SAMPLES.md) | Six of the owner's screens rewritten in that voice, with the facts each rewrite needs from the deterministic code. |
-| [PHRASEBOOK.md](PHRASEBOOK.md) | The design for one server-side phrasebook: words as written content, facts still deterministic. It includes the draft D-077. |
+| [PHRASEBOOK.md](PHRASEBOOK.md) | The design for one server-side phrasebook: words as written content, facts still deterministic. Accepted as D-077. |
+
+## The owner's decisions (2026-10-14)
+
+- **The voice is approved** (D-077): facts stay deterministic, and the words become written content in one YAML/ICU phrasebook.
+- **Sample sizes** on the face are real counts (plate appearances, innings), never the weighted sample.
+- **A single tool** is described by the scouts' grade ("his glove is among the best there"); the blended figure is in *Why?*.
+- **A place against the role** stays "near the bottom of the league's regular left fielders". No computed "bottom 5%".
+- **On a 20–80 save,** the face may say "a 70 glove".
+- **The React app** gets the new words wherever they come from the shared server code, with no React-only work.
+- **Variant wording** is fixed per player.
+- **Testing on real data:** no OOTP save on the owner's Mac needs protecting during testing, so builders and fixers may use the real save. This is about test data only. The product rule is unchanged: Pennant never writes OOTP files (D-021).
 
 ## How an item is closed
 
