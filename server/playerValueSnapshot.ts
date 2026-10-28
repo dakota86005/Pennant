@@ -33,7 +33,7 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { parseGameDate } from './dataFreshness.js';
 import { historyDb } from './history.js';
-import { saveIdentity } from './playerValueFitStore.js';
+import { registerIdentityTable, saveIdentity } from './playerValueFitStore.js';
 import {
   contractBreaks, contractImports, contractPair, contractSnapshotAt, contractSnapshotRecorded, pruneContractSnapshots, recordContractPair,
   recordContractSnapshot, recordTimelineBreak, recordedEvent,
@@ -69,6 +69,7 @@ historyDb.exec(`
     PRIMARY KEY (save_name, league_id, game_date)
   );
 `);
+registerIdentityTable('value_market_snapshots');
 
 export interface MarketSnapshot {
   saveName: string;

@@ -2,6 +2,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Each fit runs the method once per rolling origin (owner, 2026-09-23): several seconds a synthetic league
 vi.setConfig({ testTimeout: 60_000 });
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { loadConfig, saveConfig } from '../server/config.js';
 import { db } from '../server/db.js';
 import {
   clearProductionCaches, fitProductionModel, fitRatingsModel, productionCalibration, productionModelFor, projectProduction, refitOffThread,
@@ -447,15 +451,28 @@ describe('the fit store keeps the fit in force honest (hardening, 2026-09-23)', 
     expect(recordProductionFit(run(true), { gameDate: '2031-04-03', fitMs: 1, force: true })).toBe(1);
   });
 
-  it('a new save under a reused name and league id never inherits the fit in force', () => {
+  it('a new save under a reused name and league id never inherits the fit in force; a renamed league keeps it (D-079)', () => {
     expect(productionModelFor(IDS.league).provenance.source).toBe('save_fit');
+    // The league renamed in OOTP is the same save: its fit stays in force (SRVINFRA-12)
     const name = (db.prepare(`SELECT name FROM leagues WHERE league_id = ?`).get(IDS.league) as { name: string }).name;
     db.prepare(`UPDATE leagues SET name = ? WHERE league_id = ?`).run('A Different League', IDS.league);
     try {
       clearProductionCaches();
-      expect(productionModelFor(IDS.league).provenance.source).toBe('fallback_prior');
+      expect(productionModelFor(IDS.league).provenance.source).toBe('save_fit');
     } finally {
       db.prepare(`UPDATE leagues SET name = ? WHERE league_id = ?`).run(name, IDS.league);
+      clearProductionCaches();
+    }
+    // Another save (another folder) under the very same name and league id inherits nothing
+    const config = loadConfig();
+    const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'pennant-reused-name-'));
+    saveConfig({ ...config, csvDir: elsewhere });
+    try {
+      clearProductionCaches();
+      expect(productionModelFor(IDS.league).provenance.source).toBe('fallback_prior');
+    } finally {
+      saveConfig(config);
+      fs.rmSync(elsewhere, { recursive: true, force: true });
       clearProductionCaches();
     }
     expect(productionModelFor(IDS.league).provenance.source).toBe('save_fit');
@@ -470,8 +487,9 @@ describe('the fit store keeps the fit in force honest (hardening, 2026-09-23)', 
     const thin = run(true, 2029);
     thin.record.label = 'not yet calibrated on this save (4 seasons): mostly the fallback prior';
     thin.record.priorWeight = { ...thin.record.priorWeight, overall: 0.8 };
-    // Only thin: make it the one in force by removing the others for this key range
-    historyDb.prepare(`DELETE FROM value_production_fits WHERE league_id = ? AND method = ? AND through_season >= 2030`).run(IDS.league, thin.record.method);
+    // Only thin: make it the one in force by removing the others for this key range (the save keeps its identity across
+    // the league's changes above since D-079, so the earlier tests' fit through 2029 is this save's too)
+    historyDb.prepare(`DELETE FROM value_production_fits WHERE league_id = ? AND method = ? AND through_season >= 2029`).run(IDS.league, thin.record.method);
     recordProductionFit(thin, { gameDate: '2030-04-01', fitMs: 1 });
     const inForce = productionModelFor(IDS.league);
     expect(inForce.provenance.source).toBe('save_fit');

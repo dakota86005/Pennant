@@ -8,7 +8,7 @@
  * winter's season was priced at. The next import is set against it: what changed between the two is what OOTP's clubs
  * did (`playerValueSignings.ts`).
  *
- *   - Keyed by the save's IDENTITY (`saveIdentity`: its configured name and the league's fingerprint, hardening F1),
+ *   - Keyed by the save's IDENTITY (`saveIdentity`: the served save's id, D-079; before it the configured name and the league's fingerprint),
  *     the league and the game date (`parseGameDate`), and the player: a new save under a reused name never reads
  *     another's contracts. Idempotent per key: a second capture of the same import finds its header and writes nothing.
  *   - Bounded per import: one row per player the market league's clubs hold, and per unsigned player whose production
@@ -35,7 +35,7 @@
 import { parseGameDate } from './dataFreshness.js';
 import { historyDb } from './history.js';
 import { SIGNINGS_POLICY } from './playerValueCalibration.js';
-import { saveIdentity } from './playerValueFitStore.js';
+import { registerIdentityTable, saveIdentity } from './playerValueFitStore.js';
 import { retainedImports, type ContractSnapshot, type ContractSnapshotRow, type TimelineBreak, type WinterPair } from './playerValueSignings.js';
 
 historyDb.exec(`
@@ -90,6 +90,7 @@ historyDb.exec(`
     PRIMARY KEY (save_name, league_id, seq, event)
   );
 `);
+for (const table of ['value_contract_imports', 'value_contract_snapshots', 'value_contract_pairs', 'value_contract_events']) registerIdentityTable(table);
 
 /** Counts writes in this process, so a reader's cache of the observed market knows when an import added one. */
 const writes = { version: 0 };

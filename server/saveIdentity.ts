@@ -2,19 +2,23 @@
  * The save's identity and its league's seasons: a neutral module (D-053, per-save calibration).
  *
  * Every subsystem that keeps a fit per save needs the same three answers, and none of them belongs to one
- * subsystem: which save this is (its configured name and a fingerprint of the league's own history, so a new
- * save under a reused name never inherits another's fits), which seasons the league has played and how long
+ * subsystem: which save this is (its id, D-079: the served save's folder, so a renamed save or league keeps its fits
+ * and a new save under a reused name never inherits another's), which seasons the league has played and how long
  * each was, and the last season the league has completed. They were first written for Player Value and moved
- * here unchanged (byte-identical identity: `tests/saveIdentity.test.ts`), so MLB Operations and the other
+ * here unchanged (the fingerprint is byte-identical: `tests/saveIdentity.test.ts`), so MLB Operations and the other
  * subsystems reach them without importing Player Value's files (`tests/saveCalibrationBoundary.test.ts`).
  *
  * Opens `league.db` read-only, every column checked before it is read (D-007). Reads no rating, no
- * `players_value` and no philosophy, and writes nothing. Dates are compared only through `parseGameDate`.
+ * `players_value` and no philosophy. Its only write is the one-time carry-over of rows filed under the identity before
+ * D-079 (`carryLegacyIdentity`). Dates are compared only through `parseGameDate`.
  */
 
 import { db, tableColumns, tableExists } from './db.js';
 import { parseGameDate } from './dataFreshness.js';
-import { currentSaveName } from './history.js';
+import { isMainThread } from 'node:worker_threads';
+import { loadConfig } from './config.js';
+import { historyDb } from './history.js';
+import { servedSaveKey, servedSource } from './servedSave.js';
 import { allLeagueRules, type LeagueRules } from './leagueRules.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
 
@@ -270,14 +274,173 @@ export function leagueFingerprint(leagueId: number): string {
 
 // ── the save's identity and the last completed season ─────────────────────────
 
+/**
+ * The tables in `history.db` that keep a save's fits and market records under its identity (in their `save_name`
+ * column, with `league_id` beside it), as each store registers its own when it loads, so the identity's one-time
+ * carry-over (below) reaches every one without this module naming another subsystem's tables.
+ */
+const identityTables = new Set<string>();
+
+/** A store keeps rows under the save's identity in `table` (`save_name`, `league_id`): they are carried over to its id once. */
+export function registerIdentityTable(table: string): void {
+  identityTables.add(table);
+}
+
+/* Which tables' rows were carried over to a save's id (D-079), so each is done once per save, league and table. */
+historyDb.exec(`
+  CREATE TABLE IF NOT EXISTS save_identity_carried (
+    identity TEXT NOT NULL,
+    league_id INTEGER NOT NULL,
+    table_name TEXT NOT NULL,
+    legacy TEXT NOT NULL,
+    rows INTEGER NOT NULL,
+    carried_at TEXT NOT NULL,
+    PRIMARY KEY (identity, league_id, table_name)
+  );
+`);
+
+/** The identity this build's predecessors filed a save's fits under: its configured name and the league's fingerprint. */
+export function legacySaveIdentity(leagueId: number, saveName: string | null): string {
+  return `${saveName ?? 'unknown'}|${leagueFingerprint(leagueId)}`;
+}
+
+/** The tables already carried (or found carried) for a league in this process. */
+const carriedHere = new Map<number, Set<string>>();
+
+/**
+ * Carries a save's fits and market records from the identity they were filed under before D-079 (the configured name and
+ * the league's fingerprint) to its id, once per save, league and table: rows are moved, never copied or deleted, and a
+ * row its id already has stays where it was. Only while the configuration names the served save (its configured name is
+ * then the name the rows were filed under); otherwise it is tried again later. Returns the rows moved.
+ */
+export function carryLegacyIdentity(leagueId: number, identity: string): number {
+  const done = carriedHere.get(leagueId) ?? new Set<string>();
+  carriedHere.set(leagueId, done);
+  const waiting = [...identityTables].filter((t) => !done.has(t));
+  if (waiting.length === 0) return 0;
+  const source = servedSource();
+  if (!source.csvDir || !source.configured || !tableExists('players')) return 0;
+  const present = new Set((historyDb.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as Array<{ name: string }>).map((r) => r.name));
+  let legacy: string | null = null;
+  const carry = historyDb.transaction((): number => {
+    let moved = 0;
+    for (const table of waiting) {
+      if (historyDb.prepare(`SELECT 1 FROM save_identity_carried WHERE identity = ? AND league_id = ? AND table_name = ?`).get(identity, leagueId, table)) continue;
+      legacy ??= legacySaveIdentity(leagueId, loadConfig().saveName);
+      const rows = present.has(table)
+        ? historyDb.prepare(`UPDATE OR IGNORE ${table} SET save_name = ? WHERE save_name = ? AND league_id = ?`).run(identity, legacy, leagueId).changes
+        : 0;
+      historyDb.prepare(`INSERT OR IGNORE INTO save_identity_carried (identity, league_id, table_name, legacy, rows, carried_at) VALUES (?, ?, ?, ?, ?, ?)`)
+        .run(identity, leagueId, table, legacy, rows, new Date().toISOString());
+      moved += rows;
+    }
+    return moved;
+  });
+  const moved = carry.immediate();
+  for (const t of waiting) done.add(t);
+  if (moved > 0 && isMainThread) console.log(`[calibration] carried ${moved} stored fit and market rows of league ${leagueId} from "${legacy}" to the save's id`);
+  return moved;
+}
+
+/**
+ * A different league in the same save folder (a save deleted and made again under its name, a league regenerated) must
+ * never inherit the fits and market records of the one before (D-01, F1). The save's id can't tell them apart, so each
+ * league in a save keeps the players it was first seen with: the first players (by id, with their birth dates) of its
+ * first season with major-league lines, as the fingerprint reads them. The test only ever refuses, on clear evidence
+ * (like D-064's): at least `minPlayers` on both sides and fewer than `sameShare` of them in common starts a new
+ * generation of the identity; too few to tell (day one) keeps it. A renamed league or save, or an old player leaving the
+ * export, keeps it. A policy line, not a fit.
+ */
+export const LINEAGE_POLICY = { minPlayers: 20, sameShare: 0.5 } as const;
+
+historyDb.exec(`
+  CREATE TABLE IF NOT EXISTS save_identity_leagues (
+    save_key TEXT NOT NULL,
+    league_id INTEGER NOT NULL,
+    generation INTEGER NOT NULL,
+    first_season INTEGER,
+    players TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (save_key, league_id, generation)
+  );
+`);
+
+/** The players a league's identity is anchored on: its first season with lines and that season's first players. */
+export function leagueAnchor(leagueId: number): { firstSeason: number | null; players: string[] } {
+  const first = firstLeagueSeason(leagueId);
+  if (first === null || !tableExists('players') || !new Set(tableColumns('players')).has('date_of_birth')) return { firstSeason: first, players: [] };
+  const level = marketLevels().get(leagueId) ?? 1;
+  const rows = db.prepare(
+    `SELECT p.player_id AS id, p.date_of_birth AS dob FROM players p WHERE p.player_id IN
+       (SELECT player_id FROM players_career_batting_stats WHERE level_id = ? AND league_id = ? AND year = ?)
+     ORDER BY p.player_id LIMIT 64`
+  ).all(level, leagueId, first) as Array<{ id: unknown; dob: unknown }>;
+  return { firstSeason: first, players: rows.map((r) => `${String(r.id)}@${parseGameDate(r.dob ?? null) ?? ''}`) };
+}
+
+/** Whether two anchors show different leagues: only on clear evidence, never for too few players to tell. */
+export function differentLeague(stored: readonly string[], now: readonly string[]): boolean {
+  if (stored.length < LINEAGE_POLICY.minPlayers || now.length < LINEAGE_POLICY.minPlayers) return false;
+  const have = new Set(stored);
+  const shared = now.filter((p) => have.has(p)).length;
+  return shared / Math.min(stored.length, now.length) < LINEAGE_POLICY.sameShare;
+}
+
+/** The identity of a save's league: its save key, with the generation after the first (`save:<id>#2`). */
+function resolveIdentity(leagueId: number): string {
+  const base = servedSaveKey();
+  const now = leagueAnchor(leagueId);
+  const resolve = historyDb.transaction((): string => {
+    const row = historyDb.prepare(`SELECT generation, players FROM save_identity_leagues WHERE save_key = ? AND league_id = ? ORDER BY generation DESC LIMIT 1`)
+      .get(base, leagueId) as { generation: number; players: string } | undefined;
+    const at = new Date().toISOString();
+    const insert = historyDb.prepare(`INSERT OR IGNORE INTO save_identity_leagues (save_key, league_id, generation, first_season, players, created_at) VALUES (?, ?, ?, ?, ?, ?)`);
+    if (!row) {
+      if (tableExists('players')) insert.run(base, leagueId, 1, now.firstSeason, JSON.stringify(now.players), at);
+      return base;
+    }
+    let stored: string[] = [];
+    try {
+      stored = JSON.parse(row.players) as string[];
+    } catch {
+      stored = [];
+    }
+    let generation = row.generation;
+    if (differentLeague(stored, now.players)) {
+      generation += 1;
+      insert.run(base, leagueId, generation, now.firstSeason, JSON.stringify(now.players), at);
+      if (isMainThread) console.log(`[calibration] league ${leagueId} in this save has other players than before: its fits start afresh (generation ${generation})`);
+    } else if (stored.length === 0 && now.players.length > 0) {
+      // Seen first before it had lines (day one): anchored once it has them
+      historyDb.prepare(`UPDATE save_identity_leagues SET first_season = ?, players = ? WHERE save_key = ? AND league_id = ? AND generation = ?`)
+        .run(now.firstSeason, JSON.stringify(now.players), base, leagueId, generation);
+    }
+    return generation === 1 ? base : `${base}#${generation}`;
+  });
+  return resolve.immediate();
+}
+
 const identities = new Map<number, string>();
 
-/** The save's identity for a league: its configured name and the league's fingerprint (cached until an import). */
+/**
+ * The save's identity for a league (D-053, D-079): the served save's id (`servedSaveKey`: its folder, as the save list
+ * and rating history identify it), and a generation when another league has since been made in that folder
+ * (`LINEAGE_POLICY`), cached until an import. The league id is kept beside it in every store. It no longer moves when
+ * the save is renamed, the league is renamed, an old player leaves the export or the first season's lines appear; what
+ * was filed under the old identity is carried over once, table by table as each store is loaded.
+ */
 export function saveIdentity(leagueId: number): string {
   let id = identities.get(leagueId);
   if (id === undefined) {
-    id = `${currentSaveName()}|${leagueFingerprint(leagueId)}`;
+    id = resolveIdentity(leagueId);
     identities.set(leagueId, id);
+  }
+  if ((carriedHere.get(leagueId)?.size ?? 0) < identityTables.size) {
+    try {
+      carryLegacyIdentity(leagueId, id);
+    } catch (err) {
+      console.warn('[calibration] the stored fits were not carried to the save\'s id this time:', (err as Error).message);
+    }
   }
   return id;
 }
@@ -285,6 +448,7 @@ export function saveIdentity(leagueId: number): string {
 /** Forget the cached identities: the export changed (an import), or a test rebuilt the league. */
 export function clearSaveIdentityCache(): void {
   identities.clear();
+  carriedHere.clear();
 }
 
 /** The games per club this season: the rules' schedule where exported, else the schedule itself (D-15). */

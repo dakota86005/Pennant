@@ -20,8 +20,9 @@ describe('the save identity is unchanged by the move to the neutral module', () 
     expect(valueSaveIdentity).toBe(neutral.saveIdentity);
   });
 
-  it('the identity is the configured save name and the fingerprint', () => {
-    expect(neutral.saveIdentity(100)).toMatch(/\|a814bd46$/);
+  it('the identity is the served save\'s id, never its name or its league\'s data (D-079)', () => {
+    expect(neutral.saveIdentity(100)).toMatch(/^save:/);
+    expect(neutral.saveIdentity(100)).not.toMatch(/a814bd46/);
   });
 
   it('the last completed season is established or null, never a guess', () => {

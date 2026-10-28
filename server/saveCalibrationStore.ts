@@ -9,7 +9,7 @@
  *
  *   - `basis` is what the fit rests on: the last completed season it was fitted through (`2025`), or the game date
  *     of the export it measured (`2026-05-16`). A re-import that brings nothing new finds its key and fits nothing.
- *   - Keyed by the save's IDENTITY (`saveIdentity.ts`): a new save under a reused name never finds another's fits.
+ *   - Keyed by the save's IDENTITY (`saveIdentity.ts`, its id since D-079): a new save under a reused name never finds another's fits.
  *   - A fit through a season the league has not completed is never served (a reverted save), and a refit that fails
  *     its gate never replaces an adopted row, even when forced.
  *   - Additive and idempotent, like every history.db table: CREATE TABLE IF NOT EXISTS, INSERT OR IGNORE; only a
@@ -20,7 +20,7 @@
 
 import { historyDb } from './history.js';
 import { parseGameDate } from './dataFreshness.js';
-import { saveIdentity } from './saveIdentity.js';
+import { registerIdentityTable, saveIdentity } from './saveIdentity.js';
 import { ratingSourceNamed, sameRatingSource } from './ratingMode.js';
 
 historyDb.exec(`
@@ -43,6 +43,7 @@ historyDb.exec(`
     PRIMARY KEY (save_name, league_id, subsystem, component, method, basis)
   );
 `);
+registerIdentityTable('save_calibration_fits');
 
 /*
  * A refit after a change of ratings source that was tried and not recorded (D-068, the owner's decision): it failed its gate
@@ -65,6 +66,7 @@ historyDb.exec(`
     PRIMARY KEY (save_name, league_id, subsystem, component, method, basis, rating_source)
   );
 `);
+registerIdentityTable('save_calibration_source_attempts');
 
 /** Where a refit after a change of source stands: the key, the source it was tried on and the export it was tried on. */
 export interface SourceAttempt {

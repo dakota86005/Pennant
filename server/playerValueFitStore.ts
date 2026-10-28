@@ -25,7 +25,7 @@
  */
 
 import { historyDb } from './history.js';
-import { clearSaveIdentityCache, saveIdentity as neutralSaveIdentity } from './saveIdentity.js';
+import { clearSaveIdentityCache, registerIdentityTable as neutralRegisterIdentityTable, saveIdentity as neutralSaveIdentity } from './saveIdentity.js';
 import type { ProductionModel } from './playerValueProduction.js';
 import type { FitRecord } from './playerValueProductionFit.js';
 
@@ -140,8 +140,13 @@ function parse<M, R>(row: Row | undefined): StoredFit<M, R> | null {
   }
 }
 
-/** The save's identity for a league (the neutral `saveIdentity.ts`): its configured name and the league's fingerprint. */
+/** The save's identity for a league (the neutral `saveIdentity.ts`): the served save's id (D-079). */
 export const saveIdentity = neutralSaveIdentity;
+
+/** A Player Value store keeps rows under the save's identity in this table: carried over to its id once (D-079). */
+export const registerIdentityTable = neutralRegisterIdentityTable;
+registerIdentityTable('value_production_fits');
+registerIdentityTable('value_fit_source_attempts');
 
 /** Forget the cached identities: the export changed (an import), or a test rebuilt the league. */
 export function clearFitStoreCaches(): void {
