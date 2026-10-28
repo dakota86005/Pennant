@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import fs from 'node:fs';
+import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { jobStatus, startJob } from './jobs.js';
 import { orgInjuries } from './dashboard.js';
@@ -20,7 +21,7 @@ import {
 import { tradingBlock } from './tradingblock.js';
 import { tradeVoice, type Persona } from './staff.js';
 import { freshnessCue } from './dataStatus.js';
-import { aiKeysNow, briefingNow, briefingPath, keyCheckNow, type ProviderReading } from './aiSurfacesService.js';
+import { aiFilesFolderMade, aiKeysNow, briefingNow, briefingPath, keyCheckNow, type ProviderReading } from './aiSurfacesService.js';
 import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 import { calendarBriefing, currentGameDate, rulesBriefing, seasonYear, teamFinances } from './valuation.js';
 
@@ -156,6 +157,8 @@ aiRoutes.get('/briefing/:orgId', (req, res) => {
 
 /** The generation itself, so both the route and the importer can start it. */
 async function generateBriefing(orgId: number): Promise<void> {
+  // The save it is written for, taken now: an import landing meanwhile never files it under another save (D-079)
+  const file = briefingPath(orgId);
   const context = briefingContext(orgId);
   // A model that had to be swapped is worth saying so on the page rather than
   // only in a log nobody opens
@@ -167,8 +170,9 @@ async function generateBriefing(orgId: number): Promise<void> {
     16000,
     (n) => { notice = n; }
   );
+  aiFilesFolderMade(path.dirname(file));
   fs.writeFileSync(
-    briefingPath(orgId),
+    file,
     JSON.stringify(
       { generatedAt: new Date().toISOString(), gameDate: context.gameDate, markdown, notice },
       null,

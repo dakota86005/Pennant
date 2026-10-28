@@ -18,6 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { historyDb } from './history.js';
+import { servedSaveKey } from './servedSave.js';
 import { BACKUP_DIR, currentHistoryKey, leaguePlayerNames, looseName, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 import type { DeptId } from './contract/presentation.js';
 
@@ -636,8 +637,8 @@ export interface WatchlistCopy {
 }
 
 /**
- * Copies the watchlist into Following (D-058): the watchlist rows filed under the served save's own name (the name the
- * Electron build files them under), for players this league has under the same name, with their notes and when they
+ * Copies the watchlist into Following (D-058): the watchlist rows filed under the served save's key (D-079), or under its
+ * own name (the name the Electron build files them under, and every build before D-079), for players this league has under the same name, with their notes and when they
  * were added. Each row is copied once per save (recorded), so a player the GM stops following is never copied back; the
  * watchlist itself is left exactly as it is. A row whose player this league doesn't have, or has under another name,
  * belongs to another save of the same name and is left where it is. Only while the league is certainly the save's own.
@@ -663,9 +664,10 @@ async function copyWatchlistNow(): Promise<WatchlistCopy> {
   if (name === null || !snapshotsAllowed()) return { copied: 0, notInLeague: 0, looked: false };
   const saveKey = memoryKey();
   const pending = historyDb.prepare(
-    `SELECT w.player_id, w.name, w.note, w.added_at, w.updated_at FROM watchlist w
-     WHERE w.save_name = ? AND NOT EXISTS (SELECT 1 FROM following_watchlist_copies c WHERE c.save_key = ? AND c.player_id = w.player_id)`,
-  ).all(name, saveKey) as Array<{ player_id: number; name: string | null; note: string | null; added_at: string | null; updated_at: string | null }>;
+    `SELECT w.player_id, MAX(w.name) AS name, MAX(w.note) AS note, MIN(w.added_at) AS added_at, MAX(w.updated_at) AS updated_at FROM watchlist w
+     WHERE w.save_name IN (?, ?) AND NOT EXISTS (SELECT 1 FROM following_watchlist_copies c WHERE c.save_key = ? AND c.player_id = w.player_id)
+     GROUP BY w.player_id`,
+  ).all(servedSaveKey(), name, saveKey) as Array<{ player_id: number; name: string | null; note: string | null; added_at: string | null; updated_at: string | null }>;
   if (!pending.length) return { copied: 0, notInLeague: 0, looked: true };
   const league = leaguePlayerNames();
   if (!league) return { copied: 0, notInLeague: 0, looked: false };

@@ -2,7 +2,8 @@ import Database from 'better-sqlite3';
 import { Router } from 'express';
 import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
-import { DATA_DIR, loadConfig } from './config.js';
+import { DATA_DIR } from './config.js';
+import { servedSaveKey } from './servedSave.js';
 import { evidenceRecord, isModeSwitch, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 import { evidenceRatingMode, inPopulationView, populationSource, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, releaseCarriedPopulation, rollbackName, servedLeagueCertain } from './historyIdentity.js';
@@ -411,14 +412,6 @@ export function otherSource(playerId: number, src: unknown): 'our_scouts' | 'osa
   if (!recorded || evidenceRatingMode() !== 'scouted-complete') return null;
   const now = ratingsFromOf(playerId);
   return now !== 'export' && now !== recorded ? recorded : null;
-}
-
-/**
- * The configured save's name. Rating history is no longer filed under it (D-064: `currentHistoryKey()`); the watchlist and
- * player notes still are, and the name-keyed rating history written before D-064 is looked up by it.
- */
-export function currentSaveName(): string {
-  return loadConfig().saveName ?? 'unknown';
 }
 
 /** The imported league's current game date, as the export writes it (the date a snapshot is filed under); null when none. */
@@ -1979,11 +1972,12 @@ historyRoutes.get('/development/:orgId', (req, res) => {
 });
 
 // ── Watchlist ───────────────────────────────────────────────────────────
+// Filed under the served save's key (D-079: `save_name` holds it), never the configured name or 'unknown'
 
 historyRoutes.get('/watchlist', (_req, res) => {
   const rows = historyDb
     .prepare(`SELECT * FROM watchlist WHERE save_name = ? ORDER BY updated_at DESC`)
-    .all(currentSaveName()) as Array<{ player_id: number; name: string; note: string; added_at: string }>;
+    .all(servedSaveKey()) as Array<{ player_id: number; name: string; note: string; added_at: string }>;
   // Enrich with live info from the current league DB
   const enriched = rows.map((w) => {
     const p = tableExists('players')
@@ -2016,21 +2010,21 @@ historyRoutes.post('/watchlist', (req, res) => {
        ON CONFLICT (save_name, player_id)
        DO UPDATE SET note = COALESCE(excluded.note, note), name = COALESCE(excluded.name, name), updated_at = excluded.updated_at`
     )
-    .run(currentSaveName(), player_id, name ?? null, note ?? '', now, now);
+    .run(servedSaveKey(), player_id, name ?? null, note ?? '', now, now);
   res.json({ ok: true });
 });
 
 historyRoutes.delete('/watchlist/:playerId', (req, res) => {
   historyDb
     .prepare(`DELETE FROM watchlist WHERE save_name = ? AND player_id = ?`)
-    .run(currentSaveName(), Number(req.params.playerId));
+    .run(servedSaveKey(), Number(req.params.playerId));
   res.json({ ok: true });
 });
 
 historyRoutes.get('/watchlist/:playerId', (req, res) => {
   const row = historyDb
     .prepare(`SELECT note FROM watchlist WHERE save_name = ? AND player_id = ?`)
-    .get(currentSaveName(), Number(req.params.playerId)) as { note: string } | undefined;
+    .get(servedSaveKey(), Number(req.params.playerId)) as { note: string } | undefined;
   res.json({ watched: !!row, note: row?.note ?? '' });
 });
 
@@ -2055,7 +2049,7 @@ export function staffNotesOf(playerId: number): StaffNoteRow[] {
        FROM player_notes WHERE save_name = ? AND player_id = ?
        ORDER BY id DESC`
     )
-    .all(currentSaveName(), playerId) as StaffNoteRow[];
+    .all(servedSaveKey(), playerId) as StaffNoteRow[];
 }
 
 /**
@@ -2069,7 +2063,7 @@ export function addStaffNote(note: { playerId: number; playerName: string | null
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
-      currentSaveName(),
+      servedSaveKey(),
       note.playerId,
       note.playerName,
       note.source ?? 'You',
@@ -2084,10 +2078,10 @@ export function addStaffNote(note: { playerId: number; playerName: string | null
 export function removeStaffNote(id: number): StaffNoteRow | null {
   const row = historyDb
     .prepare(`SELECT id, player_id, player_name, source, body, game_date, created_at FROM player_notes WHERE save_name = ? AND id = ?`)
-    .get(currentSaveName(), id) as StaffNoteRow | undefined;
+    .get(servedSaveKey(), id) as StaffNoteRow | undefined;
   historyDb
     .prepare(`DELETE FROM player_notes WHERE save_name = ? AND id = ?`)
-    .run(currentSaveName(), id);
+    .run(servedSaveKey(), id);
   return row ?? null;
 }
 

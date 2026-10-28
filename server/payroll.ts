@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, tableColumns, tableExists } from './db.js';
-import { loadSettings } from './settings.js';
+import { nextSeasonBudgetFor } from './settings.js';
 import { leagueRulesForLeague } from './leagueRules.js';
 import { controlAfterThisSeason, seasonCost, type SeasonCost } from './contracts.js';
 import { freshnessCue, getDataStatus, type DataStatus } from './dataStatus.js';
@@ -231,8 +231,7 @@ export function computePayroll(orgId: number, status: DataStatus = getDataStatus
   // What the owner is expected to allow next season. Only a number you have
   // entered counts — otherwise the flat assumption stands, and the response
   // says which of the two produced the headroom below.
-  const entered = loadSettings().nextSeasonBudget?.[String(orgId)];
-  const nextBudget = typeof entered === 'number' && entered > 0 ? entered : null;
+  const nextBudget = nextSeasonBudgetFor(orgId);
   const endingAfterThisYear = players.filter((p) => p.expiring && !p.deadMoney);
   // Genuinely leaving, against still held but about to cost more
   const leaving = endingAfterThisYear.filter((p) => p.control?.status === 'leaving');

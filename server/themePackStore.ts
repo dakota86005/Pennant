@@ -17,7 +17,7 @@ import { logoReference } from './logos.js';
 import { cell } from './presentation/claim.js';
 import type { TeamColors } from './presentation/palette.js';
 import { CLUB_COLORS_ID, PACK_ID, clubColorsPack, readPack } from './presentation/themePacks.js';
-import { loadSettings, saveThemePackChoice } from './settings.js';
+import { clubSettingKey, loadSettings, saveThemePackChoice } from './settings.js';
 
 /** Where installed packs live: the data folder's `theme-packs`. */
 export const themePacksFolder = (): string => path.join(DATA_DIR, 'theme-packs');
@@ -106,7 +106,7 @@ function fileSize(dir: string, file: string): number | null {
   }
 }
 
-/** Every club's chosen pack as settings.json has it (team id to pack id), read once for a request that needs several. */
+/** Every club's chosen pack as settings.json has it (`clubSettingKey` to pack id), read once for a request that needs several. */
 export type ChosenPacks = Readonly<Record<string, unknown>>;
 
 export function chosenPacks(): ChosenPacks {
@@ -116,7 +116,8 @@ export function chosenPacks(): ChosenPacks {
 
 /** The pack id a club was set to wear, or the club's own colours when none was chosen. */
 export function chosenPack(teamId: number, chosen: ChosenPacks = chosenPacks()): string {
-  const id = chosen[String(teamId)];
+  // Chosen for this club in the served save (D-079)
+  const id = chosen[clubSettingKey(teamId)];
   return typeof id === 'string' && id ? id : CLUB_COLORS_ID;
 }
 

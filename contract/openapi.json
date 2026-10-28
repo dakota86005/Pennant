@@ -19587,21 +19587,21 @@
             "additionalProperties": {
               "type": "number"
             },
-            "description": "What you expect the owner to hand you next season, per club, in dollars.\n\nOOTP does not publish a future budget — it is not set until the offseason — so future headroom had to assume this year's holds flat. On a club whose budget swings, that is the wrong number to plan against, and you are the one who knows which way the owner leans. Absent an entry, flat it stays."
+            "description": "What you expect the owner to hand you next season, per club, in dollars.\n\nOOTP does not publish a future budget — it is not set until the offseason — so future headroom had to assume this year's holds flat. On a club whose budget swings, that is the wrong number to plan against, and you are the one who knows which way the owner leans. Absent an entry, flat it stays. Kept per club of each save (`clubSettingKey`, D-079)."
           },
           "organizationPhilosophies": {
             "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/PhilosophyProfile"
             },
-            "description": "Organizational philosophy is saved per club. The string key is the OOTP organization/team id so different clubs and saves may think differently."
+            "description": "Organizational philosophy is saved per club of each save: the key is the save's key and the team id (`clubSettingKey`, D-079), so different clubs and saves may think differently."
           },
           "themePacks": {
             "type": "object",
             "additionalProperties": {
               "type": "string"
             },
-            "description": "The theme pack each club wears in the Mac app (D-062), by team id; a club left out wears its own colours. Written only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it."
+            "description": "The theme pack each club wears in the Mac app (D-062), per club of each save (`clubSettingKey`, D-079); a club left out wears its own colours. Written only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it."
           }
         },
         "required": [

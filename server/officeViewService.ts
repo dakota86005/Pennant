@@ -24,7 +24,7 @@ import type {
 } from './presentation/finance/types.js';
 import type { MedicalInjuryReportView } from './presentation/medical/injuryReport.js';
 import { budgetChange } from './presentation/finance/payroll.js';
-import { loadSettings, setNextSeasonBudget } from './settings.js';
+import { nextSeasonBudgetFor, setNextSeasonBudget } from './settings.js';
 import { currentOrganization } from './viewingOrganization.js';
 
 interface Kept {
@@ -148,7 +148,7 @@ export function setFinanceBudget(org: string, body: unknown): FinanceBudgetChang
   const orgId = resolveOrg(org);
   const raw = (body as { amount?: unknown } | null)?.amount;
   if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0 || raw > BUDGET_MAX) return { refused: BUDGET_REFUSED };
-  const before = loadSettings().nextSeasonBudget?.[String(orgId)] ?? null;
+  const before = nextSeasonBudgetFor(orgId);
   return budgetChange(setNextSeasonBudget(orgId, Math.round(raw)), before);
 }
 

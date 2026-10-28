@@ -189,7 +189,8 @@ describe('the presentation boundary', () => {
     // Held exactly (N13 review L8): its words come from presentation/, whether AI is on is handed in by the AI modules
     expect(valueImports('aiSurfacesService.ts').map(moduleName).sort()).toEqual([
       'claim', 'claim', 'config', 'db', 'jobs', 'keys', 'markdown', 'node:fs', 'node:path', 'orgParam', 'playerStateRoutes',
-      'staff', 'staffRoom', 'staffWords', 'valuation', 'writing',
+      // The served save's folder its files are kept in (D-079)
+      'servedSave', 'staff', 'staffRoom', 'staffWords', 'valuation', 'writing',
     ]);
   });
 

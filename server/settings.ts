@@ -111,18 +111,20 @@ export interface Settings {
    * OOTP does not publish a future budget — it is not set until the offseason —
    * so future headroom had to assume this year's holds flat. On a club whose
    * budget swings, that is the wrong number to plan against, and you are the
-   * one who knows which way the owner leans. Absent an entry, flat it stays.
+   * one who knows which way the owner leans. Absent an entry, flat it stays. Kept per club of each save
+   * (`clubSettingKey`, D-079).
    */
   nextSeasonBudget: Record<string, number>;
 
   /**
-   * Organizational philosophy is saved per club. The string key is the OOTP
-   * organization/team id so different clubs and saves may think differently.
+   * Organizational philosophy is saved per club of each save: the key is the save's key and the team id
+   * (`clubSettingKey`, D-079), so different clubs and saves may think differently.
    */
   organizationPhilosophies: Record<string, PhilosophyProfile>;
 
   /**
-   * The theme pack each club wears in the Mac app (D-062), by team id; a club left out wears its own colours. Written
+   * The theme pack each club wears in the Mac app (D-062), per club of each save (`clubSettingKey`, D-079); a club left
+   * out wears its own colours. Written
    * only by `POST /api/v2/theme-packs/:org` (`themePackStore.ts`); the React app ignores it.
    */
   themePacks: Record<string, string>;
@@ -260,14 +262,28 @@ function writeSettings(next: Settings): void {
 }
 
 /**
+ * The key a club's own settings are kept under (D-079): the served save's key and the team id (`save:<id>|3`). A team id
+ * belongs to one league (D-063), so club 3's philosophy, budget and theme in one save are never club 3's in another.
+ * Entries kept by team id alone before D-079 were given to the save configured at the one-time migration
+ * (`saveKeyMigration.ts`).
+ */
+export const clubSettingKey = (teamId: number, saveKey: string = servedSaveKey()): string => `${saveKey}|${Number(teamId)}`;
+
+/** The budget the GM expects next season for a club in the served save; null when he entered none (flat it stays). */
+export function nextSeasonBudgetFor(orgId: number, settings: Settings = loadSettings()): number | null {
+  const entered: unknown = settings.nextSeasonBudget?.[clubSettingKey(orgId)];
+  return typeof entered === 'number' && Number.isFinite(entered) && entered > 0 ? entered : null;
+}
+
+/**
  * Records the theme pack a club wears (D-062); null forgets the choice, so the club wears its own colours. The rest of
  * the settings are kept as they are.
  */
 export function saveThemePackChoice(teamId: number, packId: string | null): Settings {
   const current = loadSettings();
   const themePacks = { ...(current.themePacks ?? {}) };
-  if (packId === null) delete themePacks[String(teamId)];
-  else themePacks[String(teamId)] = packId;
+  if (packId === null) delete themePacks[clubSettingKey(teamId)];
+  else themePacks[clubSettingKey(teamId)] = packId;
   const next = { ...current, themePacks };
   writeSettings(next);
   return next;
@@ -275,7 +291,7 @@ export function saveThemePackChoice(teamId: number, packId: string | null): Sett
 
 /** The normalized philosophy currently attached to one organization. */
 export function philosophyForOrg(orgId: number): PhilosophyProfile {
-  const stored = loadSettings().organizationPhilosophies?.[String(orgId)];
+  const stored = loadSettings().organizationPhilosophies?.[clubSettingKey(orgId)];
   return normalizePhilosophyProfile(stored);
 }
 
@@ -286,8 +302,8 @@ export function philosophyForOrg(orgId: number): PhilosophyProfile {
 export function savePhilosophyForOrg(orgId: number, profile: PhilosophyProfile | null): PhilosophyProfile {
   const current = loadSettings();
   const next = { ...current.organizationPhilosophies };
-  if (profile === null) delete next[String(orgId)];
-  else next[String(orgId)] = profile;
+  if (profile === null) delete next[clubSettingKey(orgId)];
+  else next[clubSettingKey(orgId)] = profile;
   writeSettings({ ...current, organizationPhilosophies: next });
   return philosophyForOrg(orgId);
 }
@@ -606,7 +622,7 @@ settingsRoutes.delete('/settings/philosophy/:orgId', (req, res) => {
  * returns that club to assuming this year's budget holds flat.
  */
 export function setNextSeasonBudget(orgId: number, raw: unknown): number | null {
-  const key = String(Number(orgId));
+  const key = clubSettingKey(orgId);
   const amount = typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? raw : null;
   const current = loadSettings();
   const next = { ...current.nextSeasonBudget };

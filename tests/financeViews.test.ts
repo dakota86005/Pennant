@@ -23,7 +23,7 @@ import { injuryReportView } from '../server/presentation/medical/injuryReport.js
 import { cell } from '../server/presentation/claim.js';
 import type { OfficeContext } from '../server/presentation/officeTable.js';
 import { clearProductionCaches, playerValues } from '../server/playerValue.js';
-import { loadSettings } from '../server/settings.js';
+import { loadSettings, nextSeasonBudgetFor } from '../server/settings.js';
 import { BANNED_JARGON, BANNED_VERDICTS, bannedInPayload } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
 
@@ -197,7 +197,7 @@ describe('Payroll & Budget (N12)', () => {
     expect(after.seasons.filter((s) => s.season > after.seasons[0].season).every((s) => s.budget === 200_000_000)).toBe(true);
     expect(after.seasons[0].budget).toBe(before.seasons[0].budget);
     expect(setFinanceBudget(String(save.org), { amount: 0 })).toMatchObject({ nextSeasonBudget: null });
-    expect(loadSettings().nextSeasonBudget?.[String(save.org)]).toBeUndefined();
+    expect(nextSeasonBudgetFor(save.org)).toBeNull();
     expect(setFinanceBudget(String(save.org), { amount: 'lots' })).toEqual({ refused: expect.any(String) });
   });
 });
@@ -212,7 +212,7 @@ describe('the budget the GM expects next season (N12 review, M2)', () => {
       done: expect.objectContaining({ display: "Next season's budget set to $123.4567M; was today's budget held flat" }),
       undo: { amount: 0 },
     });
-    expect(loadSettings().nextSeasonBudget?.[org]).toBe(123_456_700);
+    expect(nextSeasonBudgetFor(Number(org))).toBe(123_456_700);
     const second = setFinanceBudget(org, { amount: 150_000_000 });
     expect(second).toMatchObject({ done: { display: "Next season's budget set to $150M; was $123.4567M" }, undo: { amount: 123_456_700 } });
     // Undone: the request it served puts the amount before back, and says so
@@ -229,7 +229,7 @@ describe('the budget the GM expects next season (N12 review, M2)', () => {
     setFinanceBudget(org, { amount: 180_000_000 });
     expect(setFinanceBudget(org, { amount: 1e13 })).toEqual({ refused: expect.stringMatching(/up to \$10 billion/) });
     expect(setFinanceBudget(org, { amount: Number.MAX_VALUE })).toEqual({ refused: expect.any(String) });
-    expect(loadSettings().nextSeasonBudget?.[org]).toBe(180_000_000);
+    expect(nextSeasonBudgetFor(Number(org))).toBe(180_000_000);
     setFinanceBudget(org, { amount: 0 });
   });
 

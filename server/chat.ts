@@ -11,7 +11,7 @@ import { calendarBriefing, currentGameDate, orgBriefing, seasonYear } from './va
 import { tradingBlock } from './tradingblock.js';
 import { personaBrief, personaById, personasFor, type Persona } from './staff.js';
 import {
-  StaffRoomAnswer, aboutQuestionFor, addressedIn, contextPath, conversationNow, historyPath, keepAside, personOn, personaId,
+  StaffRoomAnswer, aboutQuestionFor, aiFilesFolder, aiFilesFolderMade, addressedIn, contextPath, conversationNow, historyPath, keepAside, personOn, personaId,
   readConversation, staffFor, staffRoomCleared, staffRoomNow, writeConversation, writeJsonAtomic,
 } from './aiSurfacesService.js';
 import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
@@ -769,9 +769,9 @@ function stripThinking(messages: Anthropic.MessageParam[]): Anthropic.MessagePar
   });
 }
 
-function saveContext(orgId: number, persona: string, ctx: StoredContext): void {
+function saveContext(orgId: number, persona: string, ctx: StoredContext, folder: string = aiFilesFolder()): void {
   try {
-    fs.writeFileSync(contextPath(orgId, persona), JSON.stringify(ctx));
+    fs.writeFileSync(contextPath(orgId, persona, aiFilesFolderMade(folder)), JSON.stringify(ctx));
   } catch {
     // A thread that cannot be written to disk is still worth having in the window
   }
@@ -953,6 +953,8 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
       // Resume the stored transcript, tool results and all, when this thread is
       // the one it belongs to. Anything else — a cleared conversation, a thread
       // edited elsewhere — rebuilds from what the client sent.
+      // The save this thread is filed under, taken now: an import landing meanwhile never files it under another (D-079)
+      const folder = aiFilesFolder();
       const stored = loadContext(team, persona.id);
       const resuming = stored !== null && continuesThread(stored.visible, history);
       const messages: Anthropic.MessageParam[] = resuming ? trimTranscript(stored.messages) : [];
@@ -972,7 +974,7 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
       saveContext(team, persona.id, {
         visible: [...history, { role: 'assistant', content: answer }],
         messages: stripThinking(messages),
-      });
+      }, folder);
       send('done', {});
       return;
     }

@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
+import { servedSaveFolderOf } from './servedSave.js';
 import { databaseGeneration, db, tableColumns, tableExists } from './db.js';
 import { jobStatus } from './jobs.js';
 import { resolveOrg } from './orgParam.js';
@@ -37,12 +38,30 @@ import { currentGameDate } from './valuation.js';
 // ── The files the React app keeps (moved here from `chat.ts`, `storylines.ts` and `ai.ts`, unchanged) ────────────────
 
 const suffix = (persona: string) => (persona === 'analyst' ? '' : `-${persona}`);
+
+/**
+ * The folder a save's AI files are kept in (D-079): `saves/<the save's folder id>/` in the data folder, so another save's
+ * club with the same team id never reads them, shows them or sends them to the model. Before D-079 they were kept in the
+ * data folder itself, by team id only; the one-time migration moved them into the save configured then.
+ */
+export const aiFilesFolder = (folderId: string = servedSaveFolderOf().folderId): string => path.join(DATA_DIR, 'saves', folderId || 'none');
+
+const made = new Set<string>();
+/** The folder, made when first written to. */
+export function aiFilesFolderMade(folder: string): string {
+  if (!made.has(folder)) {
+    fs.mkdirSync(folder, { recursive: true });
+    made.add(folder);
+  }
+  return folder;
+}
+
 /** A conversation with one person (or the room) for one club. Peter keeps the original filename. */
-export const historyPath = (orgId: number, persona: string) => path.join(DATA_DIR, `chat-${orgId}${suffix(persona)}.json`);
+export const historyPath = (orgId: number, persona: string, folder: string = aiFilesFolder()) => path.join(folder, `chat-${orgId}${suffix(persona)}.json`);
 /** What the model has seen of that conversation, tool results and all (`chat.ts`'s stored transcript). */
-export const contextPath = (orgId: number, persona: string) => path.join(DATA_DIR, `chat-context-${orgId}${suffix(persona)}.json`);
-export const storylinesPath = (orgId: number) => path.join(DATA_DIR, `storylines-${orgId}.json`);
-export const briefingPath = (orgId: number) => path.join(DATA_DIR, `briefing-${orgId}.json`);
+export const contextPath = (orgId: number, persona: string, folder: string = aiFilesFolder()) => path.join(folder, `chat-context-${orgId}${suffix(persona)}.json`);
+export const storylinesPath = (orgId: number, folder: string = aiFilesFolder()) => path.join(folder, `storylines-${orgId}.json`);
+export const briefingPath = (orgId: number, folder: string = aiFilesFolder()) => path.join(folder, `briefing-${orgId}.json`);
 
 /** How many messages a conversation keeps (the React chat's own number). */
 export const KEEP_MESSAGES = 40;
@@ -66,6 +85,7 @@ let writes = 0;
 export function writeJsonAtomic(file: string, value: unknown): void {
   writes += 1;
   const temporary = `${file}.${process.pid}-${writes}.tmp`;
+  aiFilesFolderMade(path.dirname(file));
   try {
     fs.writeFileSync(temporary, JSON.stringify(value));
     fs.renameSync(temporary, file);

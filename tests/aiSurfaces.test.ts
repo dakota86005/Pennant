@@ -6,7 +6,7 @@ import { DATA_DIR } from '../server/config.js';
 import { resetFrontOfficeCache } from '../server/frontOfficeService.js';
 import { STAFF_ANSWER_LIMIT } from '../server/chat.js';
 import {
-  aiSurfaceStats, briefingPath, historyPath, linkIndexFor, readConversation, resetAiSurfaces, storylinesPath, writeConversation,
+  aiSurfaceStats, briefingPath, contextPath, historyPath, linkIndexFor, readConversation, resetAiSurfaces, storylinesPath, writeConversation,
 } from '../server/aiSurfacesService.js';
 import { bannedInPayload } from './bannedJargon';
 import { buildSave, type BuiltSave } from './syntheticSave';
@@ -132,7 +132,7 @@ beforeEach(() => {
   asked.length = 0;
   process.env.ANTHROPIC_API_KEY = KEY;
   for (const persona of ['analyst', 'room', 'manager']) fs.rmSync(historyPath(save.org, persona), { force: true });
-  for (const persona of ['analyst', 'room', 'manager']) fs.rmSync(path.join(DATA_DIR, `chat-context-${save.org}${persona === 'analyst' ? '' : `-${persona}`}.json`), { force: true });
+  for (const persona of ['analyst', 'room', 'manager']) fs.rmSync(contextPath(save.org, persona), { force: true });
   script = async (o) => {
     o.onTool('get_player');
     o.onText('## The read\n');
@@ -830,6 +830,8 @@ describe('the served markdown subset and its links (D-074)', () => {
 describe('the kept files and the league\'s names (review L8)', () => {
   it('writes the conversation whole or not at all, and keeps an unreadable file aside rather than overwrite it', async () => {
     const file = historyPath(save.org, 'manager');
+    // Kept in the save's own folder (D-079)
+    const folder = path.dirname(file);
     const first = [{ role: 'user' as const, content: 'Kept?', at: '2040-07-01T12:00:00.000Z' }];
     writeConversation(save.org, 'manager', first);
     // A write that dies part-way leaves the file as it was
@@ -844,7 +846,7 @@ describe('the kept files and the league\'s names (review L8)', () => {
       spy.mockRestore();
     }
     expect(readConversation(save.org, 'manager')).toEqual(first);
-    expect(fs.readdirSync(DATA_DIR).filter((f) => f.startsWith(path.basename(file)) && f !== path.basename(file))).toEqual([]);
+    expect(fs.readdirSync(folder).filter((f) => f.startsWith(path.basename(file)) && f !== path.basename(file))).toEqual([]);
     // An unreadable file is read as empty and kept aside, so the next write cannot wipe what it held
     fs.writeFileSync(file, '[{"role":"user","content":"half a convers');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -854,10 +856,10 @@ describe('the kept files and the league\'s names (review L8)', () => {
       warn.mockRestore();
     }
     writeConversation(save.org, 'manager', first);
-    const aside = fs.readdirSync(DATA_DIR).filter((f) => f.startsWith(`${path.basename(file)}.unreadable-`));
+    const aside = fs.readdirSync(folder).filter((f) => f.startsWith(`${path.basename(file)}.unreadable-`));
     expect(aside).toHaveLength(1);
-    expect(fs.readFileSync(path.join(DATA_DIR, aside[0]), 'utf8')).toBe('[{"role":"user","content":"half a convers');
-    fs.rmSync(path.join(DATA_DIR, aside[0]));
+    expect(fs.readFileSync(path.join(folder, aside[0]), 'utf8')).toBe('[{"role":"user","content":"half a convers');
+    fs.rmSync(path.join(folder, aside[0]));
   });
 
   it('keeps the league\'s names per club, so asking for another club does not drop ours', () => {

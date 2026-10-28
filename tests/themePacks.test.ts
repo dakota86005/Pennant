@@ -12,7 +12,7 @@ import {
   contrastRatio, readPack, worstBlend,
 } from '../server/presentation/themePacks.js';
 import type { ThemeChoices, ThemeTokens, ThemeVariants } from '../server/contract/themePack.js';
-import { loadSettings } from '../server/settings.js';
+import { clubSettingKey, loadSettings } from '../server/settings.js';
 import { activePack, chooseTheme, installedPacks, themeChoices, themePacksFolder } from '../server/themePackStore.js';
 import { buildSave } from './syntheticSave.js';
 import { IDS } from './fixture';
@@ -185,7 +185,8 @@ describe('which pack each club wears', () => {
     install('sunset-series', example());
     const chosen = chooseTheme(club, 'sunset-series');
     expect(chosen.active).toBe('sunset-series');
-    expect(loadSettings().themePacks).toEqual({ [String(IDS.mlbTeam)]: 'sunset-series' });
+    // Kept for the club in this save (D-079)
+    expect(loadSettings().themePacks).toEqual({ [clubSettingKey(IDS.mlbTeam)]: 'sunset-series' });
     expect(activePack(club).pack.id).toBe('sunset-series');
     // Another club is untouched
     expect(activePack(other).pack.id).toBe(CLUB_COLORS_ID);

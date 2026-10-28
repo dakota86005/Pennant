@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'node:fs';
 import { switchPending } from './servedSave.js';
+import { migrateToSaveKeys } from './saveKeyMigration.js';
 import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
@@ -112,6 +113,12 @@ function bootstrapData(): void {
     needsUpgrade = prepareLeagueDatabase().needsUpgrade;
   } catch (err) {
     console.error('[import] could not tidy the league database:', err);
+  }
+  // The GM's inputs kept by name or bare team id before D-079 go to the save configured now, once, before any answer
+  try {
+    migrateToSaveKeys();
+  } catch (err) {
+    console.error('[migration] the GM\'s inputs were not moved to the save this time (tried again at the next start):', err);
   }
   // What the status serves about the served save: remembered for this very league and configuration, else worked out
   // now, as before (the first start after an import or on a new build). Either way its live log is found now, before

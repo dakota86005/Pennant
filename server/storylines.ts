@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import fs from 'node:fs';
+import path from 'node:path';
 import { db, tableExists } from './db.js';
 import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, providerFor, type FallbackNotice } from './providers.js';
@@ -9,7 +10,7 @@ import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
 import { LEVEL_NAMES, currentGameDate, seasonYear, teamFinances, rulesBriefing } from './valuation.js';
 import { jobStatus, startJob } from './jobs.js';
-import { storylinesNow, storylinesPath } from './aiSurfacesService.js';
+import { aiFilesFolderMade, storylinesNow, storylinesPath } from './aiSurfacesService.js';
 import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 
 export const storylineRoutes = Router();
@@ -226,6 +227,8 @@ export function usableStoryline(s: Storyline): boolean {
 }
 
 async function generateStorylines(orgId: number): Promise<StorylineCache> {
+  // The save it is written for, taken now: an import landing meanwhile never files it under another save (D-079)
+  const file = cachePath(orgId);
   const context = assembleContext(orgId);
   const provider = featureProvider('storylines');
   const model = featureModel('storylines');
@@ -333,7 +336,8 @@ async function generateStorylines(orgId: number): Promise<StorylineCache> {
     storylines,
     notice,
   };
-  fs.writeFileSync(cachePath(orgId), JSON.stringify(cache, null, 2));
+  aiFilesFolderMade(path.dirname(file));
+  fs.writeFileSync(file, JSON.stringify(cache, null, 2));
   return cache;
 }
 
