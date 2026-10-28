@@ -3484,3 +3484,17 @@ The owner found the first signed Mac build wordy and machine-like: sentences ass
   - The phrasebook is YAML with ICU messages, compiled to TypeScript.
   - Where a line has variants, the choice is fixed per player, so a page never changes on reload.
 
+
+## D-078 — One number formatter: counts, money, places, signs, dashes and innings are written one way, by one leaf module
+
+**Status:** Accepted, 2026-10-28 (N15a polish, batch 10: B-06, B-09; SRVHEALTH-05, SRVHEALTH-19, SRVVALUE-13). Builder's call within D-056 and D-077; no owner decision was needed. Changes no judgement and no figure: only how a figure is written.
+
+The owner's first signed build wrote "Started 1 games", "2076" beside "2,076", "21th", "$-3.2M free", "$1000K", and innings as decimals ("10.7" for ten and two-thirds). The cause was about forty private copies of `plural`, `ordinal`, `pct`, `money` and `signed` across the presentation layer and the specialists that write served text, each with its own rule.
+
+- **One module, `server/numberWords.ts`, writes every number the server serves:** a count grouped ("2,076") and singular only for one; an ordinal right past ten ("21st", "112th"), or in words to tenth; a percentage from a share; a signed change with a real minus sign (U+2212) and no sign on zero; a record or range with an en dash ("0–15", "88–74–1"); a list as a sentence ("a, b and c").
+- **One money rule:** whole dollars under $1K, whole thousands under $1M ("$780K"), millions to two places under $10M and one place from $10M, trailing zeros dropped ("$2.35M", "$8.5M", "$12.5M", "$28M"). A rounding carries into the next unit ($999,600 is "$1M"). The sign goes before the dollar sign ("−$3.2M"), and a club over its budget is "$3.2M over", never "free". A range whose ends would print alike takes places until they part. A budget the GM typed is echoed exactly (`budgetWords`), and a contract's exact salary in a basis stays exact.
+- **Innings are written from outs in baseball notation** ("10.2", "0.1", "12.1 innings", "1 inning"). The served stat block keeps innings as a decimal for sorting and arithmetic; the catalog's format `ip` (beside `int`, `avg3`, `dec1`, `dec2`, `pct`, `plus`) says how it is written, and the React app's `formatStat` reads it too.
+- **It is a leaf:** it imports nothing (`tests/numberWords.test.ts`, `tests/playerValueBoundary.test.ts`), so it can reach no rating, philosophy, tier, odds or judgement. That is why the boundary tests name it, by its exact path, beside the modules a Player Value module and a Front Office or farm adapter may import; no other allowance changed. A builder held to an exact import list (`morningReport.ts`, `tradeDeskService.ts`, `playerDossierBuild.ts`) writes its one plural inline instead.
+- **A walk over every captured payload** (`tests/servedNumbers.test.ts`) fails on "$-", an uncarried "$1000K", "(s)", "1 games", an ungrouped count over 999, and innings ending .3 to .9.
+- **D-077 is unchanged.** When the phrasebook arrives, its ICU plurals and number formats replace these helpers' use in sentences; the money rule and the innings notation carry over as its number formats.
+- **Left for batch 15 (B-61):** the Mac app's own few formatters (`ServedFormat`, `OfficeKit`, `ShownCount`) format only plain counts the server does not word.

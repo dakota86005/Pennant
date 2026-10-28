@@ -691,7 +691,7 @@
    ],
    "batch": 3,
    "phrasebook": false,
-   "status": "open",
+   "status": "fixed (batch 10)",
    "round": 1
   },
   {
@@ -809,7 +809,7 @@
    ],
    "batch": 3,
    "phrasebook": false,
-   "status": "open",
+   "status": "fixed (batch 10)",
    "round": 1
   },
   {

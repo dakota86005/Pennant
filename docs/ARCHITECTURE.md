@@ -96,6 +96,10 @@ start and after each import, and stamped (`reportStamp`) so the Mac app reloads 
 requests: MINOR_LEAGUE_OPERATIONS.md section 7.8's "nothing cached across requests" still holds for the specialists
 themselves, and the Front Office's key moves whenever an input they read can.
 
+Every number in served text (a count, plural, ordinal, money, percentage, signed change, record, range or innings) is
+written by one leaf module, `server/numberWords.ts` (D-078), which the presentation layer and the specialists that word
+their own answers both import; it imports nothing.
+
 The Morning Report's own parts (N6, Stage A; D-057, D-060) ride in the same build. `server/frontOffice/` (a landing
 folder: nothing in it reaches the odds or the posture) reads the club's league as the export states it
 (`teamSeason.ts`: standings, the clubs' season totals, the games, the projected starters, the per-game log, the trade

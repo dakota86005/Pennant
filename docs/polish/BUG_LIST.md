@@ -59,7 +59,7 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 - Absorbs: FO-04 (confirmed), FO-23 (confirmed), FO-24 (confirmed), MLB-37 (confirmed), FARM-35 (confirmed), FARM-13 (confirmed)
 
 **B-06 · Counts and plurals read wrong ("Started 1 games", "2076")**
-- Status: open
+- Status: fixed (batch 10)
 - Tier 1 · data · All departments · size M · batch 3
 - The GM sees: "Started 1 games", "what regular left fielders takes", "No glove to put in late, runner…", "17 points of it is still projection", "2076 draft-eligible players" beside "Show all 2,076", "-29" beside "−21", "0-15" beside "15–15".
 - Cause: No shared count formatter: the plural helper never groups thousands at server/presentation/clubhouse/common.ts:112 (imported by 22 modules) and about 18 local copies (farm/words.ts:263, frontOffice/desk.ts:72, majorLeague/views.ts:37, player/words.ts:79, dataStatusWords.ts:74, officeTable.ts:368, trades/words.ts:52, mlbReport.ts:146, playingTime.ts:357, mlbNeeds.ts:127, playerValue.ts:755, dataFreshness.ts:100, franchise.ts:233, …); statText at clubhouse/common.ts:129; templates bypass plural at server/mlbEvidence.ts:450-451 and server/mlbExplain.ts:60-61 (plural labels from roleStandards.ts:109-117); server/rosterops.ts:670; server/presentation/majorLeague/views.ts:121; hyphen records at server/schedule.ts:228-229.
@@ -80,7 +80,7 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 - Absorbs: FARM-02 (confirmed), OFF-11 (confirmed), OFF-26 (confirmed)
 
 **B-09 · Innings are written as decimals (10.7 instead of 10.2)**
-- Status: open
+- Status: fixed (batch 10)
 - Tier 1 · data · MLB Ops, Player windows, Farm, Scouting, Trades · size S · batch 3
 - The GM sees: Pitching Availability "33.7", player History "38.3 IP", outings "6.7", the Decision's "Season line (10.7 IP…)", while the Morning Report writes "12.1 innings".
 - Cause: ip = outs/3 kept as a decimal and formatted dec1: server/stats.ts:288, :301; server/presentation/statCatalog.ts:59; server/presentation/clubhouse/common.ts:126; server/player.ts:217-221, :281 → server/presentation/player/dossier.ts:979, :1016; server/org.ts:662, :685; server/presentation/farm/prospects.ts:25; server/form.ts:129; server/tradingblock.ts:110; server/playingTime.ts:932; server/mlbEvidence.ts:170. The right formatter already exists at server/presentation/frontOffice/morning.ts:206.
