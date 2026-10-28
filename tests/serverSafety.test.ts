@@ -143,13 +143,21 @@ describe("the Staff room's checks before the stream (B-75, SRVHEALTH-01)", () =>
   });
 
   it('a failure in a check before the stream is answered in words, never thrown out of the handler', async () => {
-    db.exec('ALTER TABLE players RENAME TO players_gone');
+    // "Ask about him" reads the player's name before the stream starts: a save whose players table lacks it fails that
+    // check (resolving the club, which reads neither column, still succeeds). The handler's own try and `asyncRoute` each
+    // hand such a failure to the /v2 error handler, so this answer holds while either does; with neither, the request is
+    // left hanging and this times out. The router walk above pins `asyncRoute`
+    db.exec('ALTER TABLE players RENAME COLUMN first_name TO first_name_gone');
     try {
-      const res = await json('POST', `/api/v2/staff-room/${IDS.mlbTeam}/ask`, { with: 'room', question: 'Who plays short?' });
-      expect(res.status).toBeGreaterThanOrEqual(400);
-      expect(res.status).toBeLessThan(600);
+      const res = await json('POST', `/api/v2/staff-room/${IDS.mlbTeam}/ask`, { with: 'room', about: { playerId: IDS.tradedAway } });
+      const body = await res.json();
+      expect(res.status).toBe(500);
+      expect(body.error).toBe(V2_FAILED);
+      expect(body.detail).toMatch(/^server log [0-9a-f]{8}$/);
+      expect(JSON.stringify(body)).not.toMatch(/sqlite|no such column|first_name/i);
+      expect(res.headers.get('content-type')).toMatch(/^application\/json/);
     } finally {
-      db.exec('ALTER TABLE players_gone RENAME TO players');
+      db.exec('ALTER TABLE players RENAME COLUMN first_name_gone TO first_name');
     }
     await stillAlive();
   });
