@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, hasColumns, tableExists } from './db.js';
-import { ratingFillOf, ratingFrom } from './scoutedEvidence.js';
+import { keptGrades, ratingFillOf } from './scoutedEvidence.js';
 import { LEVEL_NAMES, seasonYear } from './valuation.js';
 import { positionNeeds } from './positionNeeds.js';
 import { leagueRulesForOrganization } from './leagueRules.js';
@@ -840,29 +840,19 @@ export function computeDraft(orgId: number): Computed<DraftBoard> {
 
   const pool = draftPool(league);
 
-  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
-  const battingFrom = ratingFrom('batting')?.from ?? 'players_batting';
-  const pitchingFrom = ratingFrom('pitching')?.from ?? 'players_pitching';
-  const rows = db
+  // The class as the export describes it, then each man's grades as the evidence reads them: our scouts' full reports
+  // when the export carries them (D-067); every one unknown under "Show no player ratings" (D-061) or where the export
+  // has no ratings table, never the main tables' (deep hunt SRVDEV-01, -05)
+  const members = db
     .prepare(
       `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.age, p.position, p.role,
-              p.bats, p.throws, p.college,
-              b.batting_ratings_overall_contact AS con, b.batting_ratings_overall_gap AS gap,
-              b.batting_ratings_overall_power AS pow, b.batting_ratings_overall_eye AS eye,
-              b.batting_ratings_overall_strikeouts AS avk, b.running_ratings_speed AS spd,
-              b.batting_ratings_talent_contact AS conP, b.batting_ratings_talent_gap AS gapP,
-              b.batting_ratings_talent_power AS powP, b.batting_ratings_talent_eye AS eyeP,
-              b.batting_ratings_talent_strikeouts AS avkP,
-              pi.pitching_ratings_overall_stuff AS stu, pi.pitching_ratings_overall_movement AS mov,
-              pi.pitching_ratings_overall_control AS ctl,
-              pi.pitching_ratings_talent_stuff AS stuP, pi.pitching_ratings_talent_movement AS movP,
-              pi.pitching_ratings_talent_control AS ctlP
+              p.bats, p.throws, p.college
        FROM players p
-       LEFT JOIN ${battingFrom} b ON b.player_id = p.player_id
-       LEFT JOIN ${pitchingFrom} pi ON pi.player_id = p.player_id
        WHERE ${pool.where}`
     )
     .all(league.league_id) as Array<Record<string, number | string | null>>;
+  const grades = keptGrades(members.map((m) => Number(m.player_id)));
+  const rows = members.map((m) => ({ ...m, ...grades.get(Number(m.player_id)) }));
 
   const avg = (vals: Array<number | string | null>): number | null => {
     const nums = vals.filter((v): v is number => typeof v === 'number' && v > 0);

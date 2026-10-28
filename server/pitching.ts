@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { ratingFillOf, ratingFrom } from './scoutedEvidence.js';
+import { displayGrades, ratingFillOf } from './scoutedEvidence.js';
 import { countsAsPitcherSql } from './twoway.js';
 import { healthOf, type Health } from './health.js';
 import { computePitching, leagueBaseline } from './stats.js';
@@ -127,35 +127,29 @@ export function computePitchingStaff(teamId: number): Computed<PitchingStaff> {
 }
 
 function staffOf(teamId: number, team: { league_id: number; level: number }) {
-  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
-  const pitchingFrom = ratingFrom('pitching')?.from ?? 'players_pitching';
-
   const todayKey = currentDateKey(team.league_id);
 
-  const roster = db
+  const rows = db
     .prepare(
       `SELECT p.player_id, p.first_name, p.last_name, p.age, p.role, p.throws,
-              pi.pitching_ratings_misc_stamina AS stamina,
-              pi.pitching_ratings_overall_stuff AS stuff,
-              pi.pitching_ratings_overall_control AS control,
-              pi.pitching_ratings_overall_movement AS movement,
-              pi.pitching_ratings_misc_velocity AS velocity,
               p.injury_is_injured, p.injury_dtd_injury, p.injury_left,
               rs.is_on_dl, rs.is_on_dl60, rs.is_active
        FROM players p
-       LEFT JOIN ${pitchingFrom} pi ON pi.player_id = p.player_id
        LEFT JOIN players_roster_status rs ON rs.player_id = p.player_id
        -- A two-way man's innings belong on the staff page as much as anyone's
        WHERE p.team_id = ? AND ${countsAsPitcherSql()} AND p.retired = 0 AND ${ON_ROSTER}`
     )
     .all(teamId) as Array<{
     player_id: number; first_name: string; last_name: string; age: number; role: number;
-    throws: number; stamina: number | null; stuff: number | null; control: number | null;
-    movement: number | null; velocity: number | null;
+    throws: number;
     injury_is_injured: number | null; injury_dtd_injury: number | null; injury_left: number | null;
     is_on_dl: number | null; is_on_dl60: number | null; is_active: number | null;
   }>;
-  if (roster.length === 0) return null;
+  if (rows.length === 0) return null;
+  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067); every one
+  // unknown under "Show no player ratings" (D-061) or where the export has no pitching ratings, never the main table's
+  const grades = displayGrades(rows.map((r) => r.player_id), ['stamina', 'stuff', 'control', 'movement', 'velocity'] as const);
+  const roster = rows.map((r) => ({ ...r, ...grades.get(r.player_id)! }));
 
   const ids = roster.map((r) => r.player_id);
   const holes = ids.map(() => '?').join(',');

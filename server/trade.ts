@@ -14,6 +14,7 @@ import { viewingOrganization } from './ourViewRoutes.js';
 import { padDate } from './rosterops.js';
 import { contactProfiles } from './battedball.js';
 import { POSITION_CODES, glovesLine } from './gloves.js';
+import { scoutedGloves } from './scoutedEvidence.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { blockedIds } from './tradingblock.js';
 
@@ -662,7 +663,8 @@ function tradePlayer(id: number, statYear: number | null, reading: { row: TradeR
      * on their bats alone — and said so when asked whether a second baseman
      * could be moved to short, which is exactly the question a trade raises.
      */
-    fielding: glovesLine(id),
+    // Our scouts' grades, as the evidence reads them (D-067; none under "Show no player ratings"), never the main table's
+    fielding: glovesLine(scoutedGloves(id)),
     fieldingStats: fieldingRecord(id, statYear),
   };
 }

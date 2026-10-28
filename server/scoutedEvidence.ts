@@ -39,8 +39,8 @@
 
 import type { Statement } from 'better-sqlite3';
 import { databaseGeneration, db, importRecord, tableColumns, tableExists } from './db.js';
-import { ratingScaleMax } from './valuation.js';
-import { gloves, glovesFromRow, type Gloves, type PositionRating } from './gloves.js';
+import { ratingScaleMax } from './ratingScaleProbe.js';
+import { glovesFromRow, type Gloves, type PositionRating } from './gloves.js';
 import { parseGameDate } from './dataFreshness.js';
 import { currentRatingMode, historyDb, modeFilter, otherSource, snapshotModes } from './history.js';
 import { currentHistoryKey } from './historyIdentity.js';
@@ -215,6 +215,13 @@ interface FileViews {
 
 const NO_VIEWS: FileViews = { ours: null, osaPlayers: null, filled: new Set(), osaEvidence: false, noOursReason: null };
 
+/**
+ * The kinds whose main tables may hold true ratings: "real" says so, and an unknown kind can't rule it out (the settings
+ * changed after the export, or couldn't be read). With OSA's rows in the file and none of ours, judgments read OSA's view
+ * rather than risk true ratings (D-067's exception, review L6, extended to the unknown kind by deep hunt SRVDEV-09).
+ */
+const MAIN_TABLES_MAY_BE_TRUE: ReadonlySet<RatingMode> = new Set<RatingMode>(['real', 'unknown']);
+
 function findViews(record: Record<string, unknown> | null): FileViews {
   // "Show no player ratings" withholds every rating, this file's included: what OOTP writes in it then isn't established
   if (ratingsWithheld() || !tableExists(OUR_SCOUTS_TABLE) || keptFromEarlierImport(record)) return NO_VIEWS;
@@ -236,7 +243,9 @@ function findViews(record: Record<string, unknown> | null): FileViews {
     ).all(ours.teamId) as Array<{ id: number }>;
     for (const r of rows) filled.add(Number(r.id));
   }
-  const osaEvidence = !ours && osa > 0 && exportRatingMode().mode === 'real';
+  // The main tables may be true ratings (a "real" export, or one whose kind isn't known): OSA's rows are the scouted view
+  // the export offers, so they are the evidence (review L6; deep hunt SRVDEV-09 for the unknown kind)
+  const osaEvidence = !ours && osa > 0 && MAIN_TABLES_MAY_BE_TRUE.has(exportRatingMode().mode);
   const noOursReason = ours ? null : teamId === null ? 'viewer_unresolved' : 'no_rows';
   return { ours, osaPlayers: osa > 0 ? osa : null, filled, osaEvidence, noOursReason };
 }
@@ -246,7 +255,10 @@ function osaEvidenceText(): string {
   const why = fileViews().noOursReason === 'viewer_unresolved'
     ? 'Pennant couldn\'t tell which club is yours, so your scouts\' reports can\'t be picked out'
     : 'the export carries no full reports from your scouts';
-  return `The ratings are OSA's view, the league's shared scouting service, from the export's complete scouted ratings: the export's main ratings are true ratings, and ${why}.`;
+  const main = exportRatingMode().mode === 'real'
+    ? 'the export\'s main ratings are true ratings'
+    : 'which kind of ratings the export\'s main tables carry isn\'t known, so they may be true ratings';
+  return `The ratings are OSA's view, the league's shared scouting service, from the export's complete scouted ratings: ${main}, and ${why}.`;
 }
 
 let viewsCache: { generation: number; conn: unknown; record: unknown; value: FileViews } | null = null;
@@ -360,6 +372,8 @@ function mainTableFrom(kind: RatingTable): { from: string; columns: Set<string> 
  * haven't rated (`UNRATED_BY_OUR_SCOUTS`), otherwise the main table; null when absent.
  */
 export function ratingFrom(kind: RatingTable): { from: string; columns: Set<string> } | null {
+  // "Show no player ratings": no family has a source, so every grade read through it is unknown (D-061, deep hunt SRVDEV-01)
+  if (ratingsWithheld()) return null;
   const views = fileViews();
   // Worked out once per served import, view and family (review M3)
   const key = `${kind}:${inPopulation() ? populationPolicy : 'evidence'}`;
@@ -416,6 +430,8 @@ const RATING_COLUMN = /^(batting_ratings_|running_ratings_|pitching_ratings_|fie
  * exported. `ratingFillOf` says whether it is OSA's view.
  */
 export function scoutedRatingRow(kind: RatingTable, playerId: number): Record<string, unknown> | undefined {
+  // "Show no player ratings": the row as exported with every rating column unknown, never a grade (D-061)
+  if (ratingsWithheld()) return ratingRowWith(kind, playerId, null);
   const views = fileViews();
   return ratingRowWith(kind, playerId, fileIsEvidence(views) ? evidenceFileRow(playerId, kind) ?? null : undefined);
 }
@@ -937,7 +953,7 @@ const scalePosition = (rating: PositionRating, scale: RatingScale): PositionRati
 /**
  * A player's revealed fielding grades, on the 20-80 scale.
  *
- * `gloves()` already applies the visibility rule (a current grade above zero
+ * `glovesFromRow()` already applies the visibility rule (a current grade above zero
  * is the only signal the game has shown the position; the ceiling behind a
  * dash is withheld). This wraps it so scale normalization and the boundary are
  * in one place. Whether fielding grades share the tool ratings' display scale
@@ -954,7 +970,7 @@ export function scoutedGloves(playerId: number): Gloves | null {
     const scouts = evidenceFileRow(playerId, 'fielding');
     profile = scouts ? glovesFromRow(ratingRowWith('fielding', playerId, scouts)) : null;
   } else {
-    profile = gloves(playerId);
+    profile = glovesFromRow(ratingRowWith('fielding', playerId, undefined));
   }
   if (!profile) return null;
   const scale = ratingScale();
@@ -1007,7 +1023,7 @@ const majorLeaguerArgs = (leagueId: number): number[] => (tableColumns('players'
  * The revealed fielding grades of a league's major-league players listed at a
  * position, on the 20-80 scale, ascending: the peers a defensive grade at that
  * position is ranked against. Only grades the game shows (current above zero)
- * are used, for the same reason `gloves()` uses them; a player listed elsewhere
+ * are used, for the same reason `glovesFromRow()` uses them; a player listed elsewhere
  * with a stray grade here is not a peer.
  */
 export function scoutedFieldingPopulation(leagueId: number, position: number): number[] {
@@ -1174,7 +1190,7 @@ export function scoutedHitterPopulation(leagueId: number): ScoutedHitterProfile[
 /**
  * A player's revealed fielding grade at the position he is listed at, current and potential, on the
  * 20-80 scale: the "glove at the position he plays" of D-033, for a league-wide reader (Player Value)
- * that cannot afford one `gloves()` call per player. The visibility rule is `gloves()`'s own: a
+ * that cannot afford one `scoutedGloves()` call per player. The visibility rule is `glovesFromRow()`'s own: a
  * current grade above zero is the only sign the game has shown the position; behind a dash nothing is
  * read, and the grade is unknown, never assumed bad (D-018). A pitcher, or a listed position with no
  * fielding column (a designated hitter), has no glove at his position: absent.
@@ -1352,5 +1368,240 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
     }
   }
   for (const list of out.values()) list.sort((a, b) => (a.gameDate < b.gameDate ? -1 : a.gameDate > b.gameDate ? 1 : 0));
+  return out;
+}
+
+// ── The grades a page shows, on the export's own scale ───────────────────
+
+/*
+ * The player card, the roster grid, the pitching staff, the draft board and the rating snapshot show (or keep) grades as
+ * the export writes them, on its own display scale. They used to name the rating columns themselves, joined to whatever
+ * `ratingFrom` handed them, and fell back to the main tables when it handed nothing: "Show no player ratings" still showed
+ * grades, and an export without a ratings table failed the page (deep hunt SRVDEV-01, -05, -06). The columns are named
+ * here, read from the evidence's rows (our scouts' full reports when the export carries them, D-067), every one unknown
+ * (null) when the export withholds ratings or carries no table for the family, and never a main-table fallback.
+ */
+
+/** A grade a page shows, by name, and where it is read from (its family and the export's column). */
+const DISPLAY_GRADE = {
+  contact: ['batting', 'batting_ratings_overall_contact'],
+  contactPot: ['batting', 'batting_ratings_talent_contact'],
+  gap: ['batting', 'batting_ratings_overall_gap'],
+  gapPot: ['batting', 'batting_ratings_talent_gap'],
+  power: ['batting', 'batting_ratings_overall_power'],
+  powerPot: ['batting', 'batting_ratings_talent_power'],
+  eye: ['batting', 'batting_ratings_overall_eye'],
+  eyePot: ['batting', 'batting_ratings_talent_eye'],
+  avoidK: ['batting', 'batting_ratings_overall_strikeouts'],
+  avoidKPot: ['batting', 'batting_ratings_talent_strikeouts'],
+  speed: ['batting', 'running_ratings_speed'],
+  stealing: ['batting', 'running_ratings_stealing'],
+  baserunning: ['batting', 'running_ratings_baserunning'],
+  stuff: ['pitching', 'pitching_ratings_overall_stuff'],
+  stuffPot: ['pitching', 'pitching_ratings_talent_stuff'],
+  movement: ['pitching', 'pitching_ratings_overall_movement'],
+  movementPot: ['pitching', 'pitching_ratings_talent_movement'],
+  control: ['pitching', 'pitching_ratings_overall_control'],
+  controlPot: ['pitching', 'pitching_ratings_talent_control'],
+  stamina: ['pitching', 'pitching_ratings_misc_stamina'],
+  velocity: ['pitching', 'pitching_ratings_misc_velocity'],
+} as const satisfies Record<string, readonly [RatingTable, string]>;
+
+export type DisplayGrade = keyof typeof DISPLAY_GRADE;
+
+/** A grade as the export wrote it: a number, or null where there is none (a blank cell, or no row). */
+const asGrade = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * These players' grades, on the export's own scale, keyed by name: every player asked about has a record, and a grade the
+ * evidence can't give (withheld, no table, no column, no row) is null. Our scouts' rows when they are the evidence, with
+ * OSA's filling in for a player they haven't rated (`ratingFillOf` says so).
+ */
+export function displayGrades<K extends DisplayGrade>(playerIds: Iterable<number>, keys: readonly K[]): Map<number, Record<K, number | null>> {
+  const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
+  const out = new Map<number, Record<K, number | null>>();
+  for (const id of ids) out.set(id, Object.fromEntries(keys.map((k) => [k, null])) as Record<K, number | null>);
+  if (ids.length === 0 || ratingsWithheld()) return out;
+  for (const family of ['batting', 'pitching'] as const) {
+    const wanted = keys.filter((k) => DISPLAY_GRADE[k][0] === family);
+    const source = wanted.length ? ratingFrom(family) : null;
+    if (!source || !source.columns.has('player_id')) continue;
+    const select = wanted.map((k) => (source.columns.has(DISPLAY_GRADE[k][1]) ? `r."${DISPLAY_GRADE[k][1]}" AS "${k}"` : `NULL AS "${k}"`)).join(', ');
+    for (let at = 0; at < ids.length; at += CHUNK) {
+      const chunk = ids.slice(at, at + CHUNK);
+      const rows = prepared(`SELECT r.player_id AS player_id, ${select} FROM ${source.from} r WHERE r.player_id IN (${chunk.map(() => '?').join(', ')})`)
+        .all(...chunk) as Array<Record<string, unknown>>;
+      for (const row of rows) {
+        const record = out.get(Number(row.player_id));
+        if (record) for (const k of wanted) record[k] = asGrade(row[k]);
+      }
+    }
+  }
+  return out;
+}
+
+/** Which of these grades the evidence can read in this export at all (none under "Show no player ratings"), in order. */
+export function displayGradesOffered<K extends DisplayGrade>(keys: readonly K[]): K[] {
+  if (ratingsWithheld()) return [];
+  const sources = { batting: ratingFrom('batting'), pitching: ratingFrom('pitching') };
+  return keys.filter((k) => sources[DISPLAY_GRADE[k][0] as 'batting' | 'pitching']?.columns.has(DISPLAY_GRADE[k][1]) ?? false);
+}
+
+const CARD_PITCHES = [
+  'fastball', 'sinker', 'cutter', 'slider', 'curveball', 'changeup', 'splitter',
+  'forkball', 'screwball', 'circlechange', 'knucklecurve', 'knuckleball',
+] as const;
+
+const CARD_FIELDING = {
+  infieldRange: 'fielding_ratings_infield_range',
+  infieldArm: 'fielding_ratings_infield_arm',
+  turnDP: 'fielding_ratings_turn_doubleplay',
+  outfieldRange: 'fielding_ratings_outfield_range',
+  outfieldArm: 'fielding_ratings_outfield_arm',
+  catcherArm: 'fielding_ratings_catcher_arm',
+  catcherAbility: 'fielding_ratings_catcher_ability',
+} as const;
+
+type Pair = [number | null, number | null];
+
+/** Everything the player card shows of his grades, on the export's own scale; a family with no row is null. */
+export interface CardGrades {
+  batting: Record<'contact' | 'gap' | 'power' | 'eye' | 'avoidK' | 'speed' | 'stealing' | 'baserunning', Pair> | null;
+  pitching: Record<'stuff' | 'movement' | 'control' | 'stamina', Pair> | null;
+  velocity: number | null;
+  pitches: Array<{ name: string; rating: number; talent: number }>;
+  /** The positions OOTP has rated him at (the dash rule, `glovesFromRow`). */
+  positions: PositionRating[];
+  fielding: Record<keyof typeof CARD_FIELDING, number | null> | null;
+}
+
+/**
+ * One player's grades for his card, read as the evidence reads them (`scoutedRatingRow`): our scouts' full reports when
+ * the export carries them, every grade unknown under "Show no player ratings" (D-061) and where no source rates him.
+ */
+export function cardGrades(playerId: number): CardGrades {
+  const batting = scoutedRatingRow('batting', playerId);
+  const pitching = scoutedRatingRow('pitching', playerId);
+  const fielding = scoutedRatingRow('fielding', playerId);
+  const g = (row: Record<string, unknown>, column: string): number | null => asGrade(row[column]);
+  const pair = (row: Record<string, unknown>, now: string, ceiling: string): Pair => [g(row, now), g(row, ceiling)];
+  const tool = (key: HitterTool | PitcherTool) => [...HITTER_TOOLS, ...PITCHER_TOOLS].find((t) => t.key === key)!;
+  const pitches: CardGrades['pitches'] = [];
+  if (pitching) {
+    for (const name of CARD_PITCHES) {
+      const rating = g(pitching, `pitching_ratings_pitches_${name}`) ?? 0;
+      if (rating > 0) pitches.push({ name, rating, talent: g(pitching, `pitching_ratings_pitches_talent_${name}`) ?? rating });
+    }
+  }
+  return {
+    batting: batting
+      ? {
+        contact: pair(batting, tool('contact').current, tool('contact').potential),
+        gap: pair(batting, tool('gap').current, tool('gap').potential),
+        power: pair(batting, tool('power').current, tool('power').potential),
+        eye: pair(batting, tool('eye').current, tool('eye').potential),
+        avoidK: pair(batting, tool('avoidK').current, tool('avoidK').potential),
+        speed: pair(batting, RUNNING_COLUMN.speed, RUNNING_COLUMN.speed),
+        stealing: pair(batting, RUNNING_COLUMN.stealing, RUNNING_COLUMN.stealing),
+        baserunning: pair(batting, RUNNING_COLUMN.baserunning, RUNNING_COLUMN.baserunning),
+      }
+      : null,
+    pitching: pitching
+      ? {
+        stuff: pair(pitching, tool('stuff').current, tool('stuff').potential),
+        movement: pair(pitching, tool('movement').current, tool('movement').potential),
+        control: pair(pitching, tool('control').current, tool('control').potential),
+        stamina: pair(pitching, STAMINA_COLUMN, STAMINA_COLUMN),
+      }
+      : null,
+    velocity: pitching ? g(pitching, DISPLAY_GRADE.velocity[1]) : null,
+    pitches,
+    positions: glovesFromRow(fielding)?.positions ?? [],
+    fielding: fielding
+      ? Object.fromEntries(Object.entries(CARD_FIELDING).map(([k, column]) => [k, g(fielding, column)])) as Record<keyof typeof CARD_FIELDING, number | null>
+      : null,
+  };
+}
+
+// ── The grades a rating snapshot and the draft board keep ────────────────
+
+/** A snapshot's short name for each grade it keeps, and the export's column (`history.ts` stores them under these names). */
+const KEPT_GRADE_COLUMNS: ReadonlyArray<readonly [string, RatingTable, string]> = [
+  ['con', 'batting', 'batting_ratings_overall_contact'], ['gap', 'batting', 'batting_ratings_overall_gap'],
+  ['pow', 'batting', 'batting_ratings_overall_power'], ['eye', 'batting', 'batting_ratings_overall_eye'],
+  ['avk', 'batting', 'batting_ratings_overall_strikeouts'], ['spd', 'batting', 'running_ratings_speed'],
+  ['conP', 'batting', 'batting_ratings_talent_contact'], ['gapP', 'batting', 'batting_ratings_talent_gap'],
+  ['powP', 'batting', 'batting_ratings_talent_power'], ['eyeP', 'batting', 'batting_ratings_talent_eye'],
+  ['avkP', 'batting', 'batting_ratings_talent_strikeouts'],
+  ['stu', 'pitching', 'pitching_ratings_overall_stuff'], ['mov', 'pitching', 'pitching_ratings_overall_movement'],
+  ['ctl', 'pitching', 'pitching_ratings_overall_control'],
+  ['stuP', 'pitching', 'pitching_ratings_talent_stuff'], ['movP', 'pitching', 'pitching_ratings_talent_movement'],
+  ['ctlP', 'pitching', 'pitching_ratings_talent_control'],
+  // A hitter's splits and his baserunning and stealing (D-035, cycle 4 of D-053): where the export has them, else unknown
+  ...(['vsLeft', 'vsRight'] as const).flatMap((side) => HITTER_TOOL_KEYS.map((k) =>
+    [`${side === 'vsLeft' ? 'l' : 'r'}${SNAPSHOT_TOOL_COLUMN[k]}`, 'batting', `${SPLIT_PREFIX[side]}${SPLIT_SUFFIX[k]}`] as const)),
+  ['brn', 'batting', RUNNING_COLUMN.baserunning], ['stl', 'batting', RUNNING_COLUMN.stealing],
+];
+
+/** The SELECT list of the kept grades over `b` (batting) and `pi` (pitching); a family or column the source lacks is NULL. */
+function keptSelect(batting: { columns: Set<string> } | null, pitching: { columns: Set<string> } | null): string {
+  return KEPT_GRADE_COLUMNS.map(([as, family, column]) => {
+    const source = family === 'batting' ? batting : pitching;
+    return source && source.columns.has(column) ? `${family === 'batting' ? 'b' : 'pi'}."${column}" AS ${as}` : `NULL AS ${as}`;
+  }).join(', ');
+}
+
+const NO_ROWS = '(SELECT NULL AS player_id WHERE 0)';
+
+/**
+ * The rows a rating snapshot keeps for every rostered player, under the snapshot's own names: the evidence's grades
+ * (`'evidence'`) or the league's population view (`'population'`, OSA's when it is the yardstick, D-068). Null when the
+ * export carries no ratings to keep ("Show no player ratings", or no batting ratings at all).
+ */
+export function snapshotRatingRows(view: 'evidence' | 'population'): Array<Record<string, number | string | null>> | null {
+  const read = () => {
+    const batting = ratingFrom('batting');
+    if (!tableExists('players') || !tableExists('teams') || !batting) return null;
+    const pitching = ratingFrom('pitching');
+    return db.prepare(
+      `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.team_id,
+              p.organization_id AS org_id, t.level, p.position, p.age,
+              ${keptSelect(batting, pitching)}
+       FROM players p
+       JOIN teams t ON t.team_id = p.team_id
+       LEFT JOIN ${batting.from} b ON b.player_id = p.player_id
+       LEFT JOIN ${pitching?.from ?? NO_ROWS} pi ON pi.player_id = p.player_id
+       WHERE p.retired = 0 AND p.team_id > 0`
+    ).all() as Array<Record<string, number | string | null>>;
+  };
+  return view === 'population' ? inPopulationView(read) : read();
+}
+
+/** The snapshot's grades for these players (the draft board's class), under the same names; every grade null where none. */
+export function keptGrades(playerIds: Iterable<number>): Map<number, Record<string, number | null>> {
+  const ids = [...new Set(playerIds)].filter((id) => Number.isFinite(id));
+  const out = new Map<number, Record<string, number | null>>();
+  for (const id of ids) out.set(id, Object.fromEntries(KEPT_GRADE_COLUMNS.map(([as]) => [as, null])));
+  const batting = ratingFrom('batting');
+  const pitching = ratingFrom('pitching');
+  if (ids.length === 0 || (!batting && !pitching) || !tableExists('players')) return out;
+  for (let at = 0; at < ids.length; at += CHUNK) {
+    const chunk = ids.slice(at, at + CHUNK);
+    const rows = prepared(
+      `SELECT p.player_id AS player_id, ${keptSelect(batting, pitching)}
+       FROM players p
+       LEFT JOIN ${batting?.from ?? NO_ROWS} b ON b.player_id = p.player_id
+       LEFT JOIN ${pitching?.from ?? NO_ROWS} pi ON pi.player_id = p.player_id
+       WHERE p.player_id IN (${chunk.map(() => '?').join(', ')})`
+    ).all(...chunk) as Array<Record<string, unknown>>;
+    for (const row of rows) {
+      const record = out.get(Number(row.player_id));
+      if (record) for (const [as] of KEPT_GRADE_COLUMNS) record[as] = asGrade(row[as]);
+    }
+  }
   return out;
 }

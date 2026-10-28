@@ -3,37 +3,23 @@
  * view (SWIFTUI_REBUILD.md N9) reads exactly what the route serves. Ratings are read as the evidence reads them (our
  * scouts' full reports when the export carries them, D-067), the one scouting figure through `loadScoutedAbilities`.
  */
-import { db, locateColumn, tableColumns, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { assignmentContextsFor } from './playerContext.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
-import { loadScoutedAbilities, ratingFillOf, ratingFrom, type RatingTable } from './scoutedEvidence.js';
+import { displayGrades, displayGradesOffered, loadScoutedAbilities, ratingFillOf, type DisplayGrade } from './scoutedEvidence.js';
 import { contactProfiles } from './battedball.js';
 import { standingOf, type StandingFields } from './health.js';
 import { answer, refuse, type Computed } from './computed.js';
 
-/** Rating fields we surface, with candidate locations per OOTP schema version. */
-const RATING_SPECS: Array<{ key: string; candidates: Array<[string, string]> }> = [
-  { key: 'contact', candidates: [['players_batting', 'batting_ratings_overall_contact']] },
-  { key: 'gap', candidates: [['players_batting', 'batting_ratings_overall_gap']] },
-  { key: 'power', candidates: [['players_batting', 'batting_ratings_overall_power']] },
-  { key: 'eye', candidates: [['players_batting', 'batting_ratings_overall_eye']] },
-  { key: 'avoidK', candidates: [['players_batting', 'batting_ratings_overall_strikeouts']] },
-  { key: 'contactPot', candidates: [['players_batting', 'batting_ratings_talent_contact']] },
-  { key: 'powerPot', candidates: [['players_batting', 'batting_ratings_talent_power']] },
-  { key: 'eyePot', candidates: [['players_batting', 'batting_ratings_talent_eye']] },
-  { key: 'stuff', candidates: [['players_pitching', 'pitching_ratings_overall_stuff']] },
-  { key: 'movement', candidates: [['players_pitching', 'pitching_ratings_overall_movement']] },
-  { key: 'control', candidates: [['players_pitching', 'pitching_ratings_overall_control']] },
-  { key: 'stuffPot', candidates: [['players_pitching', 'pitching_ratings_talent_stuff']] },
-  { key: 'movementPot', candidates: [['players_pitching', 'pitching_ratings_talent_movement']] },
-  { key: 'controlPot', candidates: [['players_pitching', 'pitching_ratings_talent_control']] },
-  {
-    key: 'speed',
-    candidates: [
-      ['players_batting', 'running_ratings_speed'],
-      ['players', 'running_ratings_speed'],
-    ],
-  },
+/**
+ * The grades a roster row shows, on the export's own scale. They are read through the evidence adapter
+ * (`displayGrades`): our scouts' full reports when the export carries them (D-067), every one unknown under "Show no
+ * player ratings" (D-061) or where the export has no ratings table, never a main-table fallback (deep hunt SRVDEV-01,
+ * -06). An earlier version located each column itself, with a `players` fallback for speed.
+ */
+const ROSTER_GRADES: readonly DisplayGrade[] = [
+  'contact', 'gap', 'power', 'eye', 'avoidK', 'contactPot', 'powerPot', 'eyePot',
+  'stuff', 'movement', 'control', 'stuffPot', 'movementPot', 'controlPot', 'speed',
 ];
 
 const POSITION_NAMES: Record<number, string> = {
@@ -106,17 +92,6 @@ function rosterOf(teamId: number) {
     )
     .all(teamId) as Array<RosterRow & Record<string, unknown>>;
 
-  // Attach ratings from wherever they live in this export's schema
-  const ratingSources = new Map<string, [string, string]>();
-  for (const spec of RATING_SPECS) {
-    const loc = locateColumn(spec.candidates);
-    if (loc) ratingSources.set(spec.key, loc);
-  }
-  const byTable = new Map<string, Array<{ key: string; column: string }>>();
-  for (const [key, [table, column]] of ratingSources) {
-    if (!byTable.has(table)) byTable.set(table, []);
-    byTable.get(table)!.push({ key, column });
-  }
   /**
    * Only this roster's men. The stat blocks below were being computed for every
    * player in the league — some twelve thousand rows and as many calls into the
@@ -125,29 +100,8 @@ function rosterOf(teamId: number) {
   const rosterIds = players.map((p) => p.player_id as number);
   const idFilter = rosterIds.length > 0 ? `AND player_id IN (${rosterIds.map(() => '?').join(',')})` : '';
 
-  const ratingsByPlayer = new Map<number, Record<string, unknown>>();
-  for (const [table, specs] of byTable) {
-    if (!tableColumns(table).includes('player_id')) continue;
-    // A ratings table is read as the evidence reads it: our scouts' full reports when the export carries them (D-067);
-    // a grade their file lacks is unknown, never the main table's
-    const family = ({ players_batting: 'batting', players_pitching: 'pitching', players_fielding: 'fielding' } as Record<string, RatingTable>)[table];
-    const source = family ? ratingFrom(family) : null;
-    const from = source?.from ?? `"${table}"`;
-    const sel = specs.map((s) => (source && !source.columns.has(s.column) ? `NULL AS "${s.key}"` : `"${s.column}" AS "${s.key}"`)).join(', ');
-    // Every ratings table was being read whole — every player in the save,
-    // several times over — to fill in one roster
-    const rows = db
-      .prepare(`SELECT player_id, ${sel} FROM ${from} WHERE player_id IN (${rosterIds.map(() => '?').join(',')})`)
-      .all(...rosterIds) as Array<Record<string, unknown> & { player_id: number }>;
-    for (const row of rows) {
-      const { player_id, ...rest } = row;
-      // Mutated in place rather than rebuilt: the spread was copying the whole
-      // accumulated object once per row
-      const existing = ratingsByPlayer.get(player_id);
-      if (existing) Object.assign(existing, rest);
-      else ratingsByPlayer.set(player_id, rest);
-    }
-  }
+  // Each man's grades as the evidence reads them (every one unknown where it can't be read)
+  const ratingsByPlayer = displayGrades(rosterIds, ROSTER_GRADES);
 
   // Current-season stats. Rate and league-relative stats (OPS+, wRC+, ERA+)
   // are computed server-side so every page shares one source of truth.
@@ -333,5 +287,5 @@ function rosterOf(teamId: number) {
     };
   });
 
-  return { players: roster, ratingMax, ratingKeys: [...ratingSources.keys()] };
+  return { players: roster, ratingMax, ratingKeys: displayGradesOffered(ROSTER_GRADES) };
 }

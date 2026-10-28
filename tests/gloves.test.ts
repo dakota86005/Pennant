@@ -1,6 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { db } from '../server/db.js';
-import { gloves, glovesLine } from '../server/gloves.js';
+import { glovesLine } from '../server/gloves.js';
+import { clearFieldingPopulationCache, scoutedGloves } from '../server/scoutedEvidence.js';
+
+// The profile is the evidence's (`scoutedGloves`): the raw reader that used to live beside the line is gone (deep hunt
+// SRVSTATS-01), so a line is only ever written from what the adapter read
+const gloves = (id: number) => scoutedGloves(id);
+const line = (id: number) => glovesLine(scoutedGloves(id));
 
 /**
  * What a man can play, and how well.
@@ -56,34 +62,35 @@ beforeAll(() => {
     fielding_rating_pos1: 70, fielding_rating_pos1_pot: 70,
     fielding_ratings_catcher_framing: 20,
   });
+  clearFieldingPopulationCache();
 });
 
 describe('a second baseman asked about shortstop', () => {
   it('reports both, current and ceiling', () => {
-    const line = glovesLine(STOTT)!;
-    expect(line).toContain('60 at 2B');
-    expect(line).toContain('35 at SS (ceiling 55)');
+    const text = line(STOTT)!;
+    expect(text).toContain('60 at 2B');
+    expect(text).toContain('35 at SS (ceiling 55)');
   });
 
   it('says nothing about a position the game has not revealed', () => {
     // 3B carries a 60 ceiling and 200 experience, and OOTP still prints a dash
     const g = gloves(STOTT)!;
     expect(g.positions.some((p) => p.code === '3B')).toBe(false);
-    expect(glovesLine(STOTT)).not.toContain('3B');
+    expect(line(STOTT)).not.toContain('3B');
   });
 
   it('never calls a position player a pitcher', () => {
     // The 80 he carries there is a default, and unrevealed besides
     const g = gloves(STOTT)!;
     expect(g.positions.some((p) => p.code === 'P')).toBe(false);
-    expect(glovesLine(STOTT)).not.toContain('at P');
+    expect(line(STOTT)).not.toContain('at P');
   });
 
   it('leaks no withheld ceiling into the line at all', () => {
     // The ceilings behind the dashes: 60 at third, 80 as a pitcher
-    const line = glovesLine(STOTT)!;
-    expect(line).not.toContain('80');
-    expect(line).not.toContain('unrated');
+    const text = line(STOTT)!;
+    expect(text).not.toContain('80');
+    expect(text).not.toContain('unrated');
   });
 
   it('leads with the position he is listed at', () => {
@@ -104,7 +111,7 @@ describe('the other shapes', () => {
   });
 
   it('keeps the pitcher slot for an actual pitcher', () => {
-    expect(glovesLine(PITCHER)).toContain('70 at P');
+    expect(line(PITCHER)).toContain('70 at P');
   });
 
   it('does not hand a pitcher a catcher’s framing', () => {
@@ -113,6 +120,6 @@ describe('the other shapes', () => {
 
   it('says nothing at all about a man with no fielding row', () => {
     expect(gloves(99_999_999)).toBeNull();
-    expect(glovesLine(99_999_999)).toBeNull();
+    expect(line(99_999_999)).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { evidenceRecord, isModeSwitch, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
-import { evidenceRatingMode, inPopulationView, populationSource, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
+import { evidenceRatingMode, populationSource, ratingsFromOf, snapshotRatingRows } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, releaseCarriedPopulation, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
@@ -454,47 +454,12 @@ export function noteSnapshotsWritten(): void {
   snapshotWrites += 1;
 }
 
-/** The ratings a snapshot keeps for every rostered player, read from the given sources (the evidence's or the league's population view). */
-function snapshotRows(
-  battingFrom: { from: string; columns: Set<string> },
-  pitchingFrom: { from: string; columns: Set<string> } | null,
-): Array<Record<string, number | string | null>> {
-  // The split and running columns are read where the export has them; a missing one is stored as unknown (NULL), never guessed
-  const battingColumns = battingFrom.columns;
-  const optional = (column: string, as: string) => (battingColumns.has(column) ? `b.${column} AS ${as}` : `NULL AS ${as}`);
-  const splitSelect = (['l', 'r'] as const).flatMap((side) => (['contact', 'gap', 'power', 'eye', 'strikeouts'] as const).map((tool, i) =>
-    optional(`batting_ratings_vs${side}_${tool}`, `${side}${['con', 'gap', 'pow', 'eye', 'avk'][i]}`)));
-  const runningSelect = [optional('running_ratings_baserunning', 'brn'), optional('running_ratings_stealing', 'stl')];
-  return leagueDb
-    .prepare(
-      `SELECT p.player_id, p.first_name || ' ' || p.last_name AS name, p.team_id,
-              p.organization_id AS org_id, t.level, p.position, p.age,
-              b.batting_ratings_overall_contact AS con, b.batting_ratings_overall_gap AS gap,
-              b.batting_ratings_overall_power AS pow, b.batting_ratings_overall_eye AS eye,
-              b.batting_ratings_overall_strikeouts AS avk, b.running_ratings_speed AS spd,
-              b.batting_ratings_talent_contact AS conP, b.batting_ratings_talent_gap AS gapP,
-              b.batting_ratings_talent_power AS powP, b.batting_ratings_talent_eye AS eyeP,
-              b.batting_ratings_talent_strikeouts AS avkP,
-              pi.pitching_ratings_overall_stuff AS stu, pi.pitching_ratings_overall_movement AS mov,
-              pi.pitching_ratings_overall_control AS ctl,
-              pi.pitching_ratings_talent_stuff AS stuP, pi.pitching_ratings_talent_movement AS movP,
-              pi.pitching_ratings_talent_control AS ctlP,
-              ${[...splitSelect, ...runningSelect].join(', ')}
-       FROM players p
-       JOIN teams t ON t.team_id = p.team_id
-       LEFT JOIN ${battingFrom.from} b ON b.player_id = p.player_id
-       LEFT JOIN ${pitchingFrom?.from ?? '(SELECT NULL AS player_id WHERE 0)'} pi ON pi.player_id = p.player_id
-       WHERE p.retired = 0 AND p.team_id > 0`
-    )
-    .all() as Array<Record<string, number | string | null>>;
-}
-
 /** Capture a ratings snapshot of every rostered player. Idempotent per game date. */
 export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean; evidenceMode: RatingMode | null } | null {
-  // The ratings the evidence reads: our scouts' full reports when the export carries them (D-067), else the main tables
-  const battingFrom = ratingFrom('batting');
-  const pitchingFrom = ratingFrom('pitching');
-  if (!tableExists('players') || !battingFrom) return null;
+  // The ratings the evidence reads: our scouts' full reports when the export carries them (D-067), else the main tables;
+  // none at all under "Show no player ratings" (D-061), and then no snapshot. Read through the adapter (deep hunt SRVDEV-06)
+  const rows = snapshotRatingRows('evidence');
+  if (!rows) return null;
   // The kind the evidence is read in (our scouts' reports, OSA's view in place of true ratings, else the export's): the stamp
   const evidenceMode = evidenceRatingMode();
   const ourScouts = evidenceMode === 'scouted-complete';
@@ -503,16 +468,10 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
   const resolved = currentHistoryKey();
   const saveName = rollbackName();
 
-  const rows = snapshotRows(battingFrom, pitchingFrom);
   // OSA's view of every player too, when it is the league's yardstick and differs from the evidence (D-068): the fits'
   // history, kept apart so the evidence's snapshots stay in one source
   const population = populationSource();
-  const populationRows = population.id === 'osa_file'
-    ? inPopulationView(() => {
-      const b = ratingFrom('batting');
-      return b ? snapshotRows(b, ratingFrom('pitching')) : [];
-    })
-    : [];
+  const populationRows = population.id === 'osa_file' ? snapshotRatingRows('population') ?? [] : [];
 
   const insertInto = (table: string, keyColumn: string) => historyDb.prepare(
     `INSERT OR REPLACE INTO ${table}

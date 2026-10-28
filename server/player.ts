@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { db, tableExists } from './db.js';
-import { glovesFromRow } from './gloves.js';
 import { contactLeague, contactProfiles, situationalSplits } from './battedball.js';
 import { contractSummaryOf, controlAfterThisSeason, valueSummaryOf } from './contracts.js';
 import { freshnessCue, getDataStatus, type FreshnessCue } from './dataStatus.js';
@@ -11,7 +10,7 @@ import type { AssignmentContext } from './assignmentContext.js';
 import type { PlayerRights } from './playerRights.js';
 import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
-import { loadScoutedAbilities, ratingFillOf, scoutedRatingRow, type ScoutedAbility } from './scoutedEvidence.js';
+import { cardGrades, loadScoutedAbilities, ratingFillOf, type ScoutedAbility } from './scoutedEvidence.js';
 import { twoWayBatters, twoWayPitchers } from './twoway.js';
 
 export const playerRoutes = Router();
@@ -157,10 +156,9 @@ export function computePlayerDossier(id: number, shared?: DossierShared) {
     .get(id) as Record<string, unknown> | undefined;
   if (!p) return refuse<never>(404, 'Player not found');
 
-  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067)
-  const batting = scoutedRatingRow('batting', id) as Record<string, number> | undefined;
-  const pitching = scoutedRatingRow('pitching', id) as Record<string, number> | undefined;
-  const fielding = scoutedRatingRow('fielding', id) as Record<string, number> | undefined;
+  // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067); every one
+  // unknown under "Show no player ratings" (D-061) and where no source rates him, never a main-table fallback
+  const grades = cardGrades(id);
   const rosterStatus = tableExists('players_roster_status')
     ? (db.prepare(`SELECT * FROM players_roster_status WHERE player_id = ?`).get(id) as
         | Record<string, number>
@@ -312,20 +310,6 @@ export function computePlayerDossier(id: number, shared?: DossierShared) {
   const ability = given.ability(id);
   const rights = given.rights(id);
 
-  const pitches: Array<{ name: string; rating: number; talent: number }> = [];
-  if (pitching) {
-    const names = [
-      'fastball', 'sinker', 'cutter', 'slider', 'curveball', 'changeup', 'splitter',
-      'forkball', 'screwball', 'circlechange', 'knucklecurve', 'knuckleball',
-    ];
-    for (const n of names) {
-      const r = pitching[`pitching_ratings_pitches_${n}`] ?? 0;
-      if (r > 0) {
-        pitches.push({ name: n, rating: r, talent: pitching[`pitching_ratings_pitches_talent_${n}`] ?? r });
-      }
-    }
-  }
-
   // ── Fielding, by position and season ──────────────────────────────────
   // The card showed scouted fielding ratings but never what the player has
   // actually done in the field, which is the one half of the game the app was
@@ -472,46 +456,18 @@ export function computePlayerDossier(id: number, shared?: DossierShared) {
     isPitcher,
     // OSA's view filling in for our scouts (D-067): every grade below is OSA's, and the card says so; null otherwise
     ratingsFill: ratingFillOf(id),
-    battingRatings: batting
-      ? {
-          contact: [batting.batting_ratings_overall_contact, batting.batting_ratings_talent_contact],
-          gap: [batting.batting_ratings_overall_gap, batting.batting_ratings_talent_gap],
-          power: [batting.batting_ratings_overall_power, batting.batting_ratings_talent_power],
-          eye: [batting.batting_ratings_overall_eye, batting.batting_ratings_talent_eye],
-          avoidK: [batting.batting_ratings_overall_strikeouts, batting.batting_ratings_talent_strikeouts],
-          speed: [batting.running_ratings_speed, batting.running_ratings_speed],
-          stealing: [batting.running_ratings_stealing, batting.running_ratings_stealing],
-          baserunning: [batting.running_ratings_baserunning, batting.running_ratings_baserunning],
-        }
-      : null,
-    pitchingRatings: pitching
-      ? {
-          stuff: [pitching.pitching_ratings_overall_stuff, pitching.pitching_ratings_talent_stuff],
-          movement: [pitching.pitching_ratings_overall_movement, pitching.pitching_ratings_talent_movement],
-          control: [pitching.pitching_ratings_overall_control, pitching.pitching_ratings_talent_control],
-          stamina: [pitching.pitching_ratings_misc_stamina, pitching.pitching_ratings_misc_stamina],
-        }
-      : null,
-    velocity: veloLabel(pitching?.pitching_ratings_misc_velocity ?? null),
-    pitches,
+    battingRatings: grades.batting,
+    pitchingRatings: grades.pitching,
+    velocity: veloLabel(grades.velocity),
+    pitches: grades.pitches,
     /*
      * Where he can play, and how well, on the same 20-80 scale as the
      * overalls. The card carried the component ratings — range, arm, hands —
      * but never the per-position grades those add up to, which are what a
      * coach actually reads before moving somebody.
      */
-    positionRatings: glovesFromRow(fielding)?.positions ?? [],
-    fieldingRatings: fielding
-      ? {
-          infieldRange: fielding.fielding_ratings_infield_range,
-          infieldArm: fielding.fielding_ratings_infield_arm,
-          turnDP: fielding.fielding_ratings_turn_doubleplay,
-          outfieldRange: fielding.fielding_ratings_outfield_range,
-          outfieldArm: fielding.fielding_ratings_outfield_arm,
-          catcherArm: fielding.fielding_ratings_catcher_arm,
-          catcherAbility: fielding.fielding_ratings_catcher_ability,
-        }
-      : null,
+    positionRatings: grades.positions,
+    fieldingRatings: grades.fielding,
     contract: valuation && summary && summary.standing === 'signed'
       ? {
           salaryNow: summary.salaryNow,

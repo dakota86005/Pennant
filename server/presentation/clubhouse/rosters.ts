@@ -59,7 +59,7 @@ const statsFor = (pitching: boolean): StatDef[] => (pitching ? [...PITCHING_STAT
 function section(v: ClubhouseContext, roster: ClubRoster, pitching: boolean): MlbTableSection {
   const orgId = v.ctx.build.orgId;
   const players = roster.players.filter((p) => (p.position === 1) === pitching);
-  const ratings = (pitching ? PITCHER_RATINGS : BATTER_RATINGS).filter(([k]) => roster.ratingKeys.includes(k));
+  const ratings = (pitching ? PITCHER_RATINGS : BATTER_RATINGS).filter(([k]) => (roster.ratingKeys as readonly string[]).includes(k));
   const defs = statsFor(pitching);
   const shown = new Set(pitching ? DEFAULT_PITCHING : DEFAULT_BATTING);
   const columns: MlbColumn[] = [
@@ -86,7 +86,7 @@ function section(v: ClubhouseContext, roster: ClubRoster, pitching: boolean): Ml
       bt: `${p.batsName}/${p.throwsName}`, standing: standing.sort, scouted: scouted.sort,
     };
     for (const [k] of ratings) {
-      const value = p.ratings[k] as number | null | undefined;
+      const value = (p.ratings as Record<string, number | null>)[k];
       cells[`rating.${k}`] = typeof value === 'number' ? cell(String(value)) : cell('Not graded', { tone: 'unknown' });
       sort[`rating.${k}`] = typeof value === 'number' ? value : null;
     }

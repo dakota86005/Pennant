@@ -118,6 +118,63 @@ const RATING_COLUMNS = [
   /running_ratings_/,
 ];
 
+/**
+ * The only modules that may name a raw rating column or a main ratings table (deep hunt SRVDEV-06, B-66): the evidence
+ * adapter, the fielding-profile helper it hands rows to (`gloves.ts`, which reads nothing itself) and the display-scale
+ * probe. Every other server module, the presentation and contract folders included, gets its grades from the adapter's
+ * typed readers (`cardGrades`, `displayGrades`, `keptGrades`, `snapshotRatingRows`, `scoutedGloves`, ...).
+ */
+const RAW_RATING_READERS = new Set(['scoutedEvidence.ts', 'gloves.ts', 'ratingScaleProbe.ts']);
+
+/** The adapter's doors that hand a raw table expression or a raw row on: no module outside it may import them. */
+const RAW_DOORS = /\b(ratingFrom|scoutedRatingRow|glovesFromRow)\b/;
+
+describe('the evidence boundary, across the whole server (B-66)', () => {
+  it('no module outside the allow-list names a raw rating column', () => {
+    const offenders = serverSources().filter((f) => !RAW_RATING_READERS.has(f) && RATING_COLUMNS.some((pattern) => pattern.test(code(f))));
+    expect(offenders).toEqual([]);
+  });
+
+  it('no module outside the allow-list names a main ratings table (a sentence about a missing file is words, not a read)', () => {
+    const offenders = serverSources().filter((f) => !RAW_RATING_READERS.has(f) && f !== 'presentation/importWords.ts'
+      && /\bplayers_(batting|pitching|fielding)\b/.test(code(f)));
+    expect(offenders).toEqual([]);
+    // ...and that one names them only as keys of a table of words
+    expect(code('presentation/importWords.ts')).not.toMatch(/(FROM|JOIN)\s+"?players_(batting|pitching|fielding)/i);
+  });
+
+  it('no module falls back to a main ratings table when the evidence has no source (`?? \'players_*\'`)', () => {
+    const offenders = serverSources().filter((f) => /\?\?\s*[`'"]\\?"?players_(batting|pitching|fielding|scouted_ratings)\b/.test(code(f))
+      || /\?\?\s*`"\$\{table\}"`/.test(code(f)));
+    expect(offenders).toEqual([]);
+  });
+
+  it('no module outside the adapter imports a door that hands raw ratings on (ratingFrom, scoutedRatingRow, glovesFromRow)', () => {
+    const offenders: string[] = [];
+    for (const file of serverSources().filter((f) => f !== 'scoutedEvidence.ts')) {
+      for (const m of code(file).matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+'([^']+)'/g)) {
+        if (RAW_DOORS.test(m[1])) offenders.push(`${file} imports ${m[1].trim()} from ${m[2]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('the fielding-profile helper reads nothing: no database, no raw reader to wrap (glovesLine takes the evidence\'s profile)', () => {
+    const source = code('gloves.ts');
+    expect(source).not.toMatch(/from '\.\/db\.js'/);
+    expect(source).not.toMatch(/\.prepare\(|SELECT\s/i);
+    expect(source).toMatch(/export function glovesLine\(g: Gloves \| null\)/);
+    // and no module reaches a raw fielding reader by any name
+    const offenders = serverSources().filter((f) => !RAW_RATING_READERS.has(f) && /\bgloves\s*\(/.test(code(f)));
+    expect(offenders).toEqual([]);
+  });
+
+  it('the scale probe reads the scale and nothing else', () => {
+    const exported = [...code('ratingScaleProbe.ts').matchAll(/export\s+(?:function|const|let)\s+(\w+)/g)].map((m) => m[1]).sort();
+    expect(exported).toEqual(['clearScaleCache', 'ratingScaleMax']);
+  });
+});
+
 describe('the evidence boundary', () => {
   it.each(GUARDED)('%s never reads a prohibited value field', (file) => {
     const source = code(file);
@@ -153,8 +210,9 @@ describe('the evidence boundary', () => {
   it('keeps players_value out of the adapter itself', () => {
     const source = code('scoutedEvidence.ts');
     for (const pattern of PROHIBITED) expect(source, `adapter matches ${pattern}`).not.toMatch(pattern);
-    // ...and it imports only the scale detector, not the value readers, from valuation.ts
-    expect(source).toMatch(/import \{ ratingScaleMax \} from '\.\/valuation\.js'/);
+    // ...and it imports only the scale detector (the probe, no longer valuation.ts) and nothing from the value readers
+    expect(source).toMatch(/import \{ ratingScaleMax \} from '\.\/ratingScaleProbe\.js'/);
+    expect(source).not.toMatch(/from '\.\/valuation\.js'/);
   });
 
   it('no server module reads players_value, and the list can never grow (phase 6e: the allow-list is empty)', () => {

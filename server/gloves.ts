@@ -1,5 +1,3 @@
-import { db, tableExists } from './db.js';
-
 /**
  * What a man can actually play, and how well.
  *
@@ -26,6 +24,11 @@ import { db, tableExists } from './db.js';
  * The cost of the alternative is worth stating: showing a ceiling the game has
  * withheld would hand you a scouting report you have not earned, in an app
  * whose whole purpose is to read your save rather than to play it for you.
+ *
+ * This module reads nothing: it turns a fielding row into a profile and a profile into a line. The row is the evidence's
+ * (`scoutedGloves` in `scoutedEvidence.ts`: our scouts' full reports when the export carries them, D-067; none under
+ * "Show no player ratings", D-061), so no page or prompt is ever handed the main table's grades behind the adapter's back
+ * (deep hunt SRVSTATS-01: the trade desk was, through a raw reader here).
  */
 
 export const POSITION_CODES = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'] as const;
@@ -94,18 +97,6 @@ function componentsFor(row: Record<string, unknown>, positions: PositionRating[]
 }
 
 /**
- * One player's defensive profile, or null when the save carries no fielding
- * data for him — which is normal for an amateur who has never taken the field.
- */
-export function gloves(playerId: number): Gloves | null {
-  if (!tableExists('players_fielding')) return null;
-  const row = db.prepare(`SELECT * FROM players_fielding WHERE player_id = ?`).get(playerId) as
-    | Record<string, unknown>
-    | undefined;
-  return glovesFromRow(row);
-}
-
-/**
  * The same profile from a fielding row already read: the evidence adapter hands it our scouts' row when their full
  * reports are the evidence (D-067), so the visibility rule here applies to whichever row it is given.
  */
@@ -142,14 +133,14 @@ export function glovesFromRow(row: Record<string, unknown> | undefined): Gloves 
 }
 
 /**
- * The same profile written as one line, for a prompt rather than a page.
+ * A profile written as one line, for a prompt rather than a page: the profile the evidence read
+ * (`scoutedGloves`), never a row of its own.
  *
  * "60 at 2B, 35 at SS (ceiling 55)" is the answer to the question that
  * prompted all of this, and it is short enough to carry for every man in a
  * trade without crowding out the bats.
  */
-export function glovesLine(playerId: number): string | null {
-  const g = gloves(playerId);
+export function glovesLine(g: Gloves | null): string | null {
   if (!g || g.positions.length === 0) return null;
   const parts = g.positions
     .filter((p) => p.current > 0 || p.potential > 0)
