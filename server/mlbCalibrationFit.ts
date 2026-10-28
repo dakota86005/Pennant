@@ -42,7 +42,12 @@ export const MLB_CALIBRATION_SUBSYSTEM = 'mlb_operations';
 export const STANDARDS_METHOD = 'standards-2';
 export const STANDARDS_METHOD_BEFORE_LINES = 'standards-1';
 export const AGING_METHOD = 'aging-3';
-export const DEFENSE_METHOD = 'defense-1';
+/**
+ * `defense-2` (B-67, deep hunt SRVMLB-10; the owner's decision of 2026-10-28: "under the detector, like aging"): the glove weights replace
+ * the starting ones only when clearly better on held-out seasons (`calibrationDetector.decide`), never on "no worse". A `defense-1` fit,
+ * adopted on the old rule, is not read: the next refit decides again under the detector.
+ */
+export const DEFENSE_METHOD = 'defense-2';
 
 export const ROSTER_REVIEW_FIT_STAMP: CalibrationStamp = policy(
   'What the roster review\'s per-save fits are asked to achieve and when they may be trusted: sample minimums, the hold-out rules, the shrinkage strengths and the adoption tolerances. Chosen, stated and changed by decision, never fitted (D-041, D-053).'
@@ -377,7 +382,8 @@ export function measureStandards(
     priorShare.roles.w += (1 - t.weight) * xs.length;
     priorShare.roles.n += xs.length;
   }
-  for (const [role, p] of Object.entries(prior.roles)) if (!servedRoles[role]) servedRoles[role] = p;
+  // A role with too few holders to measure serves the starting value, marked so: never labelled the league's own (B-67, SRVMLB-11)
+  for (const [role, p] of Object.entries(prior.roles)) if (!servedRoles[role]) servedRoles[role] = { ...p, source: 'starting' };
   const gaps = { ...prior.gaps };
   const byPart: Record<string, number> = {};
   for (const g of ['hitter', 'starter', 'reliever'] as StandardGroup[]) {
@@ -708,9 +714,15 @@ export interface DefenseSeason {
 }
 
 export interface DefenseModel {
+  /** The weights served: the save's own where the detector adopted them (`serve`), else the starting weights. */
   weights: Record<number, number>;
   /** Per position: season pairs read, the measured weight before shrinkage, and the weight it carries. */
   positions: Record<number, { pairs: number; measured: number | null; weight: number }>;
+  /** The weights fitted on the league's seasons, whichever serves (absent on a bare fit, `fitDefenseWeights`). */
+  fitted?: Record<number, number>;
+  /** What serves after this refit: the save's own weights only when clearly better on held-out seasons, like aging (D-053). */
+  serve?: ServedSource;
+  decision?: DetectorDecision;
 }
 
 const covariance = (a: number[], b: number[]): number => {
@@ -800,8 +812,35 @@ function defenseCheck(season: DefenseSeason, next: DefenseSeason, fitted: Record
   return out;
 }
 
+/**
+ * The held-out cases the detector judges the weights on (B-67): each regular at a position in season s, the blend's percentile among
+ * them under the fitted weight (candidate) and under the starting weight (rival), each against the percentile of what he produced the
+ * season after. The squared difference is the loss: summed over a position's regulars it is Spearman's rank distance, the statistic
+ * `defenseCheck` reads, so the detector judges the same thing case by case, clustered by player.
+ */
+function defenseCases(season: DefenseSeason, next: DefenseSeason, fitted: Record<number, number>, prior: Record<number, number>, policyIn = ROSTER_REVIEW_FIT_POLICY.defense): HeldOutCase[] {
+  const out: HeldOutCase[] = [];
+  const after = new Map(next.lines.map((l) => [`${l.playerId}:${l.position}`, l]));
+  for (const pos of POSITIONS) {
+    const rows = season.lines.filter((l) => l.position === pos && l.pa >= policyIn.minPa && l.innings >= policyIn.minInnings && after.has(`${l.playerId}:${pos}`));
+    if (rows.length < policyIn.minFielders) continue;
+    const pct = (xs: number[]) => xs.map((x) => xs.filter((y) => y < x).length / xs.length * 100);
+    const batPct = pct(rows.map((r) => r.batRuns600));
+    const glovePct = pct(rows.map((r) => r.fieldRuns1300));
+    const outcome = pct(rows.map((r) => { const a = after.get(`${r.playerId}:${pos}`) as DefenseLine; return a.batRuns600 + a.fieldRuns1300; }));
+    const blend = (w: number) => pct(rows.map((_, i) => (1 - w) * batPct[i] + w * glovePct[i]));
+    const f = blend(fitted[pos] ?? 0);
+    const p = blend(prior[pos] ?? 0);
+    rows.forEach((r, i) => out.push({ cluster: r.playerId, origin: season.season, weight: 1, candidate: (f[i] - outcome[i]) ** 2, rival: (p[i] - outcome[i]) ** 2 }));
+  }
+  return out;
+}
+
 /** Fit and check the glove weights on the seasons whose fielding rows carry zone rating. */
-export function fitDefense(seasons: DefenseSeason[], basis: FitBasis, prior: Record<number, number> = DEFENSE_WEIGHT, policyIn = ROSTER_REVIEW_FIT_POLICY.defense): CalibrationRun<DefenseModel | null> {
+export function fitDefense(
+  seasons: DefenseSeason[], basis: FitBasis, prior: Record<number, number> = DEFENSE_WEIGHT, policyIn = ROSTER_REVIEW_FIT_POLICY.defense,
+  previous: DefenseModel | null = null, detector: DetectorPolicy = DETECTOR_POLICY,
+): CalibrationRun<DefenseModel | null> {
   const sorted = [...seasons].filter((s) => basis.throughSeason === null || s.season <= basis.throughSeason).sort((a, b) => a.season - b.season);
   const base = { leagueId: basis.leagueId, subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'defense', method: DEFENSE_METHOD, basis: { throughSeason: basis.throughSeason, gameDate: basis.gameDate }, priorSource: PRIOR_SOURCE.defense };
   const window = { seasons: sorted.map((s) => s.season), skipped: [], sample: sorted.reduce((n, s) => n + s.lines.length, 0), unit: 'player-seasons with fielding runs' };
@@ -814,21 +853,55 @@ export function fitDefense(seasons: DefenseSeason[], basis: FitBasis, prior: Rec
         notes: ['Past seasons of this league carry no zone rating, and its WAR carries no fielding runs, so the glove weights stay the starting values.'] },
     };
   }
-  const model = fitDefenseWeights(sorted, prior, policyIn);
-  // held out: each season with a next one, fitted on the pairs before it
+  const fit = fitDefenseWeights(sorted, prior, policyIn);
+  // held out: each season with a next one, fitted on the pairs before it; scored as served (shrunk) and unshrunk, like aging
   const heldOut: CalibrationCheck[] = [];
+  const served: HeldOutCase[] = [];
+  const unshrunk: HeldOutCase[] = [];
   for (let i = 1; i < sorted.length - 1; i += 1) {
     if (sorted[i].season !== sorted[i - 1].season + 1 || sorted[i + 1].season !== sorted[i].season + 1) continue;
     const trained = fitDefenseWeights(sorted.slice(0, i + 1), prior, policyIn);
+    // Unshrunk: the measured weight itself (no pull toward the starting weight), so the check is out of sample on any league
+    const raw = fitDefenseWeights(sorted.slice(0, i + 1), prior, { ...policyIn, priorStrength: 0 } as unknown as typeof policyIn);
     heldOut.push(...defenseCheck(sorted[i], sorted[i + 1], trained.weights, prior, policyIn));
+    served.push(...defenseCases(sorted[i], sorted[i + 1], trained.weights, prior, policyIn));
+    unshrunk.push(...defenseCases(sorted[i], sorted[i + 1], raw.weights, prior, policyIn));
   }
   const extra = heldOut.every((c) => c.passed === null) ? ['no_later_season: no later season to check the glove weights on yet'] : [];
+  // Clearly better than the starting weights? The same rule as aging and the other tuning values (D-053 amendment, 2026-09-25), with
+  // hysteresis: "no worse" (the position checks, the gate) keeps a fit sane; only the detector lets it replace the starting weights
+  const decision = decide({ unshrunk, served, previous: previous?.serve ?? 'starting', streak: previous?.decision?.streak ?? 0 }, detector);
+  for (const [label, c] of [['unshrunk', decision.unshrunk], ['served', decision.served]] as const) {
+    heldOut.push({
+      kind: 'detector', part: `defense:${label}`, n: c.cases, expected: c.rivalLoss, observed: c.candidateLoss, se: c.se, prior: c.rivalLoss,
+      passed: c.failures.includes('origins') ? null : c.clearlyBetter,
+      note: `against the starting weights: ${describeComparison(c)}${c.failures.length ? ` (not clearly better: ${c.failures.join(', ')})` : ''}`,
+    });
+  }
+  const serve = decision.serve;
+  const weights = serve === 'save' ? fit.weights : { ...prior, 10: 0 };
   const byPart: Record<string, number> = {};
-  for (const [pos, v] of Object.entries(model.positions)) byPart[`position:${pos}`] = 1 - v.weight;
+  for (const [pos, v] of Object.entries(fit.positions)) byPart[`position:${pos}`] = serve === 'save' ? 1 - v.weight : 1;
   const parts = Object.values(byPart);
+  const gate = gateOf(heldOut.filter((c) => c.kind !== 'detector'), extra);
+  const verdict = gate.passed
+    ? {
+      ...gate,
+      reason: serve === 'save'
+        ? 'Checked on held-out seasons: this league\'s own glove weights were clearly better than the starting ones, so they serve.'
+        : decision.streak > 0
+          ? 'Checked on held-out seasons: this league\'s own glove weights were clearly better at this refit; the starting ones serve until the next refit confirms it.'
+          : 'Checked on held-out seasons: the starting glove weights held up (this league\'s own were not clearly better), so they serve.',
+    }
+    : gate;
   return {
-    model,
-    record: { ...base, window, heldOut, gate: gateOf(heldOut, extra), priorWeight: { overall: parts.length ? parts.reduce((s, x) => s + x, 0) / parts.length : 1, byPart }, notes: [] },
+    model: { weights, positions: fit.positions, fitted: fit.weights, serve, decision },
+    record: {
+      ...base, window, heldOut, gate: verdict, priorWeight: { overall: parts.length ? parts.reduce((s, x) => s + x, 0) / parts.length : 1, byPart },
+      notes: [
+        `The glove weights replace the starting ones only when clearly better on the held-out seasons (${ruleText(detector)}). ${decision.reason}`,
+      ],
+    },
   };
 }
 

@@ -16,7 +16,7 @@ import { populationSource } from './scoutedEvidence.js';
 import { sameRatingSource } from './ratingMode.js';
 import { onCalibrationRecorded } from './saveCalibration.js';
 import { completedThrough, leagueGameDate } from './saveIdentity.js';
-import { standardsFrom, type RoleStandardsSet } from './roleStandards.js';
+import { standardsFrom, type ServedStandards, type RoleStandardsSet } from './roleStandards.js';
 import type { ReviewCalibration } from './roleReview.js';
 import { RESULTS_PRIOR, type ResultsParams } from './resultsMetrics.js';
 import { PLATOON_PRIOR, type PlatoonParams } from './platoon.js';
@@ -136,6 +136,8 @@ export function servesOwn(key: YardstickKey, stored: StoredCalibration | null): 
   if (key === 'platoon') return (stored.model as PlatoonModel | null)?.source === 'save';
   if (key === 'bullpen') return (stored.model as StandardsModel | null)?.bullpen?.lines.source === 'save';
   if (key === 'tools') return (stored.model as ToolsModel | null)?.bat?.source === 'save' || (stored.model as ToolsModel | null)?.blend?.source === 'save';
+  // The glove weights are a tuning value with a rival, judged by the detector (B-67): adopted, they serve only when clearly better
+  if (key === 'defense') return (stored.model as DefenseModel | null)?.serve === 'save';
   return true;
 }
 
@@ -149,6 +151,10 @@ function keptReason(key: YardstickKey, stored: StoredCalibration): StartingReaso
   if (key === 'results') {
     const parts = REQUIRED_PARTS.map((p) => (stored.model as ResultsModel).parts?.[p]?.reason);
     return parts.includes('returned') ? 'returned' : parts.includes('confirming') ? 'confirming' : 'kept';
+  }
+  if (key === 'defense') {
+    const d = (stored.model as DefenseModel | null)?.decision;
+    return d?.previous === 'save' ? 'returned' : (d?.streak ?? 0) > 0 ? 'confirming' : 'kept';
   }
   if (key === 'platoon') {
     const r = (stored.model as PlatoonModel | null)?.reason;
@@ -269,7 +275,20 @@ function describeTools(s: StoredCalibration<ToolsModel>): string {
 }
 
 function describeDefense(s: StoredCalibration<DefenseModel>): string {
-  return `From how steady each position's fielding runs were from one season to the next in this league (${s.record.window.seasons.join(', ')}), checked on the season after.`;
+  return `From how steady each position's fielding runs were from one season to the next in this league (${s.record.window.seasons.join(', ')}): clearly better than the starting weights on the seasons after.`;
+}
+
+/**
+ * A save's standards as served, each role marked with where its numbers come from: a role the measurement had no holders for (absent
+ * from its `roles`) is the starting value, whether or not the record marked it (a measurement stored before the mark, B-67).
+ */
+function servedOf(model: StandardsModel | undefined): ServedStandards | undefined {
+  if (!model?.served || model.served.source !== 'save') return model?.served;
+  const measured = model.roles ?? {};
+  return {
+    ...model.served,
+    roles: Object.fromEntries(Object.entries(model.served.roles).map(([key, role]) => [key, measured[key] ? role : { ...role, source: 'starting' as const }])),
+  };
 }
 
 /** The yardsticks fitted on ratings (`readsRatings`): served only on today's ratings source (D-068). */
@@ -431,8 +450,8 @@ function assemble(
   ].join('\n\n');
   return {
     leagueId,
-    standards: standardsFrom(standards?.model.served),
-    review: { aging: servesOwn('aging', aging) ? (aging as StoredCalibration<AgingModel>).model.table : null, defenseWeights: defense?.model.weights ?? null },
+    standards: standardsFrom(servedOf(standards?.model)),
+    review: { aging: servesOwn('aging', aging) ? (aging as StoredCalibration<AgingModel>).model.table : null, defenseWeights: servesOwn('defense', defense) ? (defense as StoredCalibration<DefenseModel>).model.weights : null },
     results: withToolsWeight(servesOwn('results', results) ? paramsOf((results as StoredCalibration<ResultsModel>).model, (results as StoredCalibration<ResultsModel>).basis) : RESULTS_PRIOR, leagueId),
     platoon: servesOwn('platoon', platoon)
       ? { ...PLATOON_PRIOR, shrinkAroundLeague: (platoon as StoredCalibration<PlatoonModel>).model.served, source: 'save' }

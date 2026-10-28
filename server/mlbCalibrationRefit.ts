@@ -38,7 +38,7 @@ import { loadClubView } from './mlbRoster.js';
 import { reviewPorts } from './mlbOperations.js';
 import {
   AGING_METHOD, DEFENSE_METHOD, fitAging, fitDefense, measureStandards, rekeyRelievers, MLB_CALIBRATION_SUBSYSTEM, ROSTER_REVIEW_FIT_POLICY, STANDARDS_METHOD,
-  type AgingInput, type AgingModel, type AgingPair, type DefenseSeason, type ResultsLensSeason, type StandardHolder, type StandardsSample,
+  type AgingInput, type AgingModel, type AgingPair, type DefenseModel, type DefenseSeason, type ResultsLensSeason, type StandardHolder, type StandardsSample,
 } from './mlbCalibrationFit.js';
 
 const has = (table: string, cols: string[]) => tableExists(table) && cols.every((c) => new Set(tableColumns(table)).has(c));
@@ -810,7 +810,16 @@ registerCalibration({
 
 registerCalibration({
   subsystem: MLB_CALIBRATION_SUBSYSTEM, component: 'defense', method: DEFENSE_METHOD, trigger: 'completed_season',
-  compute: (b) => (need(b) === null ? { skip: 'No completed season.' } : fitDefense(defenseSeasons(b.leagueId, b.throughSeason as number), b)),
+  compute: (b) => {
+    if (need(b) === null) return { skip: 'No completed season.' };
+    const through = b.throughSeason as number;
+    // Hysteresis, like aging: what served before this refit, its confirmation counting only from the season before (B-67)
+    const previous = adoptedCalibration<DefenseModel>(b.leagueId, MLB_CALIBRATION_SUBSYSTEM, 'defense', DEFENSE_METHOD, { throughMax: through - 1 });
+    const prior = previous?.model
+      ? (previous.throughSeason === through - 1 || !previous.model.decision ? previous.model : { ...previous.model, decision: { ...previous.model.decision, streak: 0 } })
+      : null;
+    return fitDefense(defenseSeasons(b.leagueId, through), b, undefined, undefined, prior);
+  },
 });
 
 /** Loaded for its registrations; the worker and the harness import it. */

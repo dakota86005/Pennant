@@ -93,7 +93,11 @@ export const groupOfRole = (key: string): StandardGroup => (key.startsWith('pos'
  */
 export interface ServedStandards {
   source: 'save' | 'starting';
-  roles: Record<string, { typical: number; bat?: number }>;
+  /**
+   * Each role's numbers. In a save's set a role it had too few holders to measure is filled from the starting values and marked
+   * `source: 'starting'`, so it is never labelled the league's own (B-67, deep hunt SRVMLB-11); unmarked, it follows the set.
+   */
+  roles: Record<string, { typical: number; bat?: number; source?: 'save' | 'starting' }>;
   gaps: Record<StandardGroup, { floor: number; deep: number }>;
   /** Each lens's own typical per role and floor gap per group; null for a lens not measured. */
   lenses: { tools: ServedLens | null; results: ServedLens | null };
@@ -157,7 +161,8 @@ export interface RoleStandardsSet {
 /** Build the lookups from a served set (the save's measurement once adopted, else the built-in starting values). */
 export function standardsFrom(served: ServedStandards = STARTING_STANDARDS): RoleStandardsSet {
   const make = (label: string, key: string, fallback: { typical: number; bat?: number }): RoleStandard => {
-    const role = served.roles[key] ?? fallback;
+    const measured = served.roles[key];
+    const role = measured ?? fallback;
     const group = groupOfRole(key);
     const gap = served.gaps[group] ?? STARTING_STANDARDS.gaps[group];
     const lensTypical = key.startsWith('pos') ? role.bat ?? fallback.bat ?? role.typical : role.typical;
@@ -169,7 +174,9 @@ export function standardsFrom(served: ServedStandards = STARTING_STANDARDS): Rol
     };
     return {
       label, typical: role.typical, floor: role.typical + gap.floor, deepFloor: role.typical + gap.deep, lensFloor,
-      lensFloors: { tools: lensLine(served.lenses.tools), results: lensLine(served.lenses.results) }, source: served.source,
+      lensFloors: { tools: lensLine(served.lenses.tools), results: lensLine(served.lenses.results) },
+      // The save's own only where this role was measured: a role filled from the starting values is the starting yardstick
+      source: served.source === 'save' && measured !== undefined && measured.source !== 'starting' ? 'save' : 'starting',
     };
   };
   return {

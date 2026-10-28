@@ -65,7 +65,8 @@ const linesModel = (source: 'save' | 'starting', reason: 'relievers' | 'check_fa
 });
 const ownStandardsWithLine = () => recordCalibration({ model: linesModel('save', null), record: rec('standards', 'standards-2', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
 const standardsTooFewRelievers = () => recordCalibration({ model: linesModel('starting', 'relievers'), record: rec('standards', 'standards-2', true, { gameDate: '2000-01-02' }) }, { fitMs: 1 });
-const ownDefense = () => recordCalibration({ model: { weights: DEFENSE_WEIGHT, positions: {} }, record: rec('defense', 'defense-1', true, { throughSeason: 1991 }) }, { fitMs: 1 });
+// Glove weights serve as the league's own only when the detector adopted them (B-67, `defense-2`)
+const ownDefense = () => recordCalibration({ model: { weights: DEFENSE_WEIGHT, positions: {}, serve: 'save' }, record: rec('defense', 'defense-2', true, { throughSeason: 1991 }) }, { fitMs: 1 });
 
 function state(setup: Array<() => unknown>, league: number | null = L) {
   historyDb.exec(`DELETE FROM save_calibration_fits`);
