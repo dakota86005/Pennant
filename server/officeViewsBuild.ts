@@ -74,8 +74,9 @@ function contextFor(request: OfficeViewsRequest, department: DeptId, freshness: 
 }
 
 /**
- * A part read on its own. A refusal the route itself words (a missing table, an unknown club: an error with a
- * `status`, or one of the routes' own sentences) is answered as worded; anything else is logged and said plainly.
+ * A part read on its own. A refusal the route itself words (a missing table, an unknown club: an error thrown with a
+ * `status`) is answered as worded; anything else is logged and said plainly. A message is never taken as worded from
+ * how it starts: a raw "No such column" or "Unknown ..." from a library would reach the app (B-75, SRVPRES-14).
  */
 function partOf<T>(failed: string[], ms: Record<string, number>, name: string, what: string, read: () => T): OfficePart<T> {
   const started = performance.now();
@@ -83,7 +84,7 @@ function partOf<T>(failed: string[], ms: Record<string, number>, name: string, w
     return { ok: true, view: read() };
   } catch (err) {
     const e = err as Error & { status?: number };
-    const worded = typeof e.status === 'number' || /^(No |Unknown |The league's current season|The export's)/.test(e.message ?? '');
+    const worded = typeof e.status === 'number' && e.status >= 400 && e.status < 500 && typeof e.message === 'string';
     if (!worded) {
       console.error(`[finance] ${name} could not be read:`, err);
       failed.push(name);

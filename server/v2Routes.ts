@@ -7,6 +7,7 @@
  * A request that fails here answers in words: an `ApiError` whose `error` is a sentence for the GM and whose `detail`
  * is the raw message for the log and a help tag, never a stack or a bare status line.
  */
+import { randomBytes } from 'node:crypto';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import type { ApiError } from './api.js';
 import { getDataStatus } from './dataStatus.js';
@@ -367,9 +368,17 @@ v2Routes.use((_req, res: Response<ApiError>) => {
   res.status(404).json({ error: V2_UNKNOWN });
 });
 
-v2Routes.use((err: unknown, req: Request, res: Response<ApiError>, _next: NextFunction) => {
-  const message = err instanceof Error ? err.message : String(err);
-  console.error(`[api] ${req.method} ${req.originalUrl} failed:`, err);
+/**
+ * A `/v2` failure: the whole error goes to the server log, and the app is told in words, with a reference to that line. The raw message (a SQLite
+ * error, a path, a column name) never reaches it (B-75, SRVPRES-14). The React routes' handler (`api.ts`) answers the
+ * same way for any `/v2` path registered outside this router.
+ */
+export function v2Failed(err: unknown, req: Request, res: Response<ApiError>, _next: NextFunction): void {
+  // A short reference, in the log line and the answer, so the app's own log can be matched to the server's
+  const reference = randomBytes(4).toString('hex');
+  console.error(`[api] ${req.method} ${req.originalUrl} failed (${reference}):`, err);
   if (res.headersSent) return;
-  res.status(500).json({ error: V2_FAILED, detail: message });
-});
+  res.status(500).json({ error: V2_FAILED, detail: `server log ${reference}` });
+}
+
+v2Routes.use(v2Failed);

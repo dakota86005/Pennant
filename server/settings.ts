@@ -1,3 +1,4 @@
+import { asyncRoute } from './asyncRoute.js';
 import { Router, type Response } from 'express';
 import { clearClubOwed, clubOwed, type ClubOwed } from './clubOwed.js';
 import fs from 'node:fs';
@@ -765,10 +766,10 @@ export function keyStorageKind(): 'keychain' | 'stored' | 'env' {
 }
 
 /** Verifies a key against the API before saving, so a typo is caught here. */
-settingsRoutes.post('/settings/api-key', async (req, res) => {
-  const { key, provider: raw } = req.body as { key?: string; provider?: string };
+settingsRoutes.post('/settings/api-key', asyncRoute(async (req, res) => {
+  const { key, provider: raw } = (req.body ?? {}) as { key?: unknown; provider?: unknown };
   const provider: ProviderId = isProviderId(raw) ? raw : 'anthropic';
-  if (!key?.trim()) return res.status(400).json({ ok: false, error: 'Enter a key first.' });
+  if (typeof key !== 'string' || !key.trim()) return res.status(400).json({ ok: false, error: 'Enter a key first.' });
   const candidate = key.trim();
   const shape = KEY_SHAPE[provider];
   if (!shape) {
@@ -798,7 +799,7 @@ settingsRoutes.post('/settings/api-key', async (req, res) => {
   // of the reasons somebody changes key in the first place
   forgetUnusable(provider);
   res.json({ ok: true, apiKey: apiKeyStatus(), keys: allKeyStatus() });
-});
+}));
 
 settingsRoutes.delete('/settings/api-key', (req, res) => {
   const raw = (req.query.provider ?? req.body?.provider) as string | undefined;

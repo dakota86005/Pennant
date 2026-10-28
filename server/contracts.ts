@@ -420,11 +420,12 @@ export function computeContracts(orgId: number, status: DataStatus = getDataStat
   const org = db.prepare(`SELECT league_id, name, nickname FROM teams WHERE team_id = ?`).get(orgId) as
     | { league_id: number; name: string | null; nickname: string | null }
     | undefined;
-  if (!org) throw new Error('Unknown org');
+  // Refusals carry their status, which is what marks a message as worded for the reader (`officeViewsBuild.ts` partOf)
+  if (!org) throw Object.assign(new Error('Unknown org'), { status: 404 });
   // The season is the league's own, as exported; never the wall-clock year (D-022)
   const rules = leagueRulesForLeague(org.league_id).contract;
   const year = rules.season.value;
-  if (year === null) throw new Error(`The league's current season is not in the export: ${rules.season.note ?? 'no source states it'}`);
+  if (year === null) throw Object.assign(new Error(`The league's current season is not in the export: ${rules.season.note ?? 'no source states it'}`), { status: 400 });
   const cue = freshnessCue(status);
 
   // What each man has done this season, as a fact beside his value (the assistants read it too)

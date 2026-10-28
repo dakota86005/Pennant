@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
-import { databaseGeneration, db, tableColumns, tableExists } from './db.js';
+import { databaseGeneration, db, hasColumns, tableColumns, tableExists } from './db.js';
 import { jobStatus } from './jobs.js';
 import { resolveOrg } from './orgParam.js';
 import { importedAt } from './playerStateRoutes.js';
@@ -185,9 +185,12 @@ export { addressedIn } from './presentation/ai/staffWords.js';
 /** "Ask about him": the question a player dragged into the Staff room puts; null when the save has no such player. */
 export function aboutQuestionFor(orgId: number, playerId: number): string | null {
   if (!Number.isInteger(playerId) || playerId <= 0 || !tableExists('players')) return null;
+  // The club's nickname is optional in an export (`viewingOrganization.ts` reads it the same way): without it the other
+  // club is simply not named (B-75)
+  const club = tableExists('teams') && hasColumns('teams', 'nickname') ? 't.nickname' : 'NULL';
   const p = db.prepare(
-    `SELECT p.first_name || ' ' || p.last_name AS name, p.position, p.organization_id AS org, t.nickname AS club
-     FROM players p LEFT JOIN teams t ON t.team_id = p.organization_id WHERE p.player_id = ?`,
+    `SELECT p.first_name || ' ' || p.last_name AS name, p.position, p.organization_id AS org, ${club} AS club
+     FROM players p ${club === 'NULL' ? '' : 'LEFT JOIN teams t ON t.team_id = p.organization_id'} WHERE p.player_id = ?`,
   ).get(playerId) as { name: string | null; position: number | null; org: number | null; club: string | null } | undefined;
   if (!p?.name?.trim()) return null;
   const ours = p.org === orgId;
