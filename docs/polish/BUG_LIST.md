@@ -455,14 +455,14 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 ### Tier 1
 
 **B-57 · Choosing another save mixes the two saves' moves, dates and club**
-- Status: open
+- Status: fixed (batch 1)
 - Tier 1 · data · All departments, Settings, Setup · size M · batch 1
 - The GM sees: After picking another save (and before, or without, a successful import), the league on screen shows the other save's transactions, dates and save name; the followed club can carry over; a hand-picked save folder is ignored while Settings says it is in use; export watching switches itself on.
 - Cause: The server locates 'the save' from settings, not from the import being served: server/api.ts:822-834, :840, :851 (chooseSave writes config first, returns early, starts the watcher unconditionally); server/dataStatus.ts:171-183, :411-429 (save location and live log from loadConfig()); server/history.ts:420 (currentSaveName from config) keying server/saveIdentity.ts:276-283; server/playerContext.ts:97, :127, :141; server/frontOfficeService.ts:288 (import key on config.json's stat); server/settings.ts:219-237 and server/clubOwed.ts:37 (club-forgotten and owed flags are process variables); server/ootpSave.ts:127-162 with server/api.ts:765 (hand-named folder tried last).
 - Absorbs: SRVINFRA-01 (confirmed), SRVINFRA-04 (confirmed), SRVINFRA-19 (confirmed), SRVINFRA-25 (confirmed)
 
 **B-59 · Notes, philosophy, budgets and AI writing are filed by club number, so they leak into another save**
-- Status: open
+- Status: fixed (batch 1)
 - Tier 1 · data · Front Office, Philosophy & Staff, Player windows, Staff room, Finance · size L · batch 1
 - The GM sees: Staff notes and the watchlist can appear on a different player in another save; a club's philosophy, next-season budget and theme carry over to the same-numbered club elsewhere; another save's briefing, storylines and Staff room chats appear and are sent to the AI; renaming the league makes Pennant forget the save's fitted history.
 - Cause: server/history.ts:2025-2088, :420 (notes and watchlist keyed by the config's save name or 'unknown'); server/settings.ts:110-122 (philosophy, budget, theme keyed by String(teamId)); server/aiSurfacesService.ts:40-44 (AI files named by org id only); server/saveIdentity.ts:245-283 (identity = config name + hash of league name, first season and first 64 players). Re-keying needs a one-time data migration (owner decision).

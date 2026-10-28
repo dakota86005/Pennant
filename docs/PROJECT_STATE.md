@@ -664,8 +664,8 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   less playing time, the rest of this season is measured on this season's games.
   The gate reads subgroups and bias as fitted; the held-out seasons are projected
   by refits of the method and the model served is refit through the last
-  completed season; fits are keyed by the save's identity (name and a
-  fingerprint of the league's history), never through a season not completed,
+  completed season; fits are keyed by the save's identity (its id since
+  D-079; before it the name and a fingerprint of the league's history), never through a season not completed,
   never replaced by a failing refit, and refitted in a worker thread (12 s in
   the worker, the event loop never held over 3 ms). On the Arizona import the
   method is within 5 points of both coverage targets pooled and in every
@@ -1137,9 +1137,13 @@ resolution across all organization-specific features is future work.
 
 ## Known gaps and constraints
 
-- Rating history per save (D-064) left for later: the watchlist and player notes are still filed under the save's name
-  (two saves of one name share them); the per-save fits keep D-053's identity (the name and a league fingerprint), so
-  two saves named alike and started from the same real-life database share their fits; a save renamed before D-064
+- The served save is the only save (D-079, N15a batch 1): the save's place, live log, date, logos and folder are read
+  from the served import; while a chosen save's import has not landed, league requests wait (409, `awaitingImport`).
+  The watchlist, notes, club settings, chosen club, AI files and D-053's fits are filed under the save's key, after a
+  one-time migration to the save configured then. Left: a save copied to a new folder by an OOTP upgrade is a new save
+  for these (only rating history offers a carry-over); notes and watchlist rows under another save's name are left
+  unused; an Electron build reading the folder no longer finds the re-keyed inputs (their copies are in `backups/`).
+- Rating history per save (D-064): a save renamed before D-064
   leaves its earlier history under the old name, unused; a save deleted and made again in the same folder from the same
   real-life database, at no earlier a date, continues the folder's history; the Electron-era certainty rule rests on
   file times (a restored `config.json`, coarse file-system times).

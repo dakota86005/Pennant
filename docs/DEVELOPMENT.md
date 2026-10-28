@@ -180,6 +180,17 @@ as `history.db` (removing any `history.db-wal` and `history.db-shm` beside it). 
 restore, and neither does anything written since (the Mac app's snapshots, fits and notes); the next start reviews the
 earlier history again.
 
+The GM's inputs are kept per save since D-079 (N15a batch 1). At its first start with a save chosen, the server moves
+the watchlist rows and player notes filed under that save's name, every club's philosophy, next-season budget and theme
+kept by bare team id (now `save:<id>|<team id>` in `settings.json`), the chosen club (stamped `defaultOrgSave`) and the
+AI's files (`chat-*`, `chat-context-*`, `storylines-*`, `briefing-*`, now in `saves/<id>/`) to that save, once
+(`save-key-migration.json` records it; a run cut short finishes at the next start). Rows under another save's name are
+left where they are. Before it changes anything it writes `backups/gm-inputs-before-save-key-<time>.json` (the rows it
+re-files) and `backups/settings-before-save-key-<time>.json`. The Electron app no longer finds what was moved; to give it
+back to an Electron build, quit both apps, copy the settings file back as `settings.json`, and put the AI files back in
+the data folder. The per-save fits and market records are carried over to the save's id the first time each store reads
+them (`save_identity_carried` in `history.db`); nothing is deleted.
+
 Undoing the cutover after it merges is `git revert` of that one PR.
 
 ### The sidecar

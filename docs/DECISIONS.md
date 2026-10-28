@@ -2422,7 +2422,9 @@ Mac can hold saves under several OOTP versions and locations.
   last import's folder) keeps the club the GM chose; choosing another save follows its one human club, or, with none,
   several or not said, forgets the club chosen before and the app asks. The forgetting is written when the new save's
   import lands, never when it is chosen, so an import that fails leaves the club as it was; a club the GM saves
-  meanwhile cancels it. The settings file keeps its shape (`defaultOrgId`, shared with the Electron app).
+  meanwhile cancels it. The settings file keeps its shape (`defaultOrgId`, shared with the Electron app). *Amended 2026-10-28
+  (D-079):* the chosen club is stamped with its save (`defaultOrgSave`), so it is never followed in another save, after a
+  relaunch too, and what a chosen save's import owes the club is kept on disk until it lands.
 - **Played since.** When another save (or a newer OOTP version's) has been played since the chosen one, the status says
   so with that save's id and one sentence, once OOTP has finished saving it (its times still for a minute). Pennant never
   switches by itself: the GM chooses with one click.
@@ -2546,6 +2548,8 @@ overwrote part of the other's.
 
 Not changed: the watchlist and player notes are still filed under the save's name, and the per-save fits keep D-053's
 identity (PROJECT_STATE lists both as known gaps).
+
+*Amended 2026-10-28 (D-079):* both are now filed under the save's key (its folder id); D-053's identity is that key.
 
 ## D-065 — A department's views are served one payload per view, worded with its report; a decision is built when opened
 
@@ -3484,3 +3488,69 @@ The owner found the first signed Mac build wordy and machine-like: sentences ass
   - The phrasebook is YAML with ICU messages, compiled to TypeScript.
   - Where a line has variants, the choice is fixed per player, so a page never changes on reload.
 
+
+## D-079 — The served save is the only save: everything save-specific is read from the served import and filed under the save's id
+
+**Status:** Accepted (owner, 2026-10-28: the N15a polish's recommended decisions 7 and 8, "re-key notes, the watchlist,
+philosophy, budgets, themes and AI files by save id, with a one-time migration; existing data goes to the save configured
+at migration time" and "move the save identity off the save name and player fingerprint onto a stable save id; the
+migration must carry the stored fits and market records across rather than orphan them"). The waiting rule, the club's
+save stamp and the refusal-only league check are the builder's, stated for review. **Implementation:** N15a batch 1
+(B-57, B-59): `server/servedSave.ts` (the served save, the pending switch, the save key), `server/saveKeyMigration.ts`
+(the one-time migration), `server/saveIdentity.ts` (the identity, the carry-over, `LINEAGE_POLICY`), `awaitingImportGate`
+and `awaitingImport` on `/api/status` (`server/api.ts`), `defaultOrgSave` and `clubSettingKey` (`server/settings.ts`),
+`club-pending.json` (`server/clubOwed.ts`), the AI files' folder (`aiFilesFolder`, `server/aiSurfacesService.ts`).
+Refines D-021, D-053, D-062, D-063 and D-064; amends D-063's club rule and D-064's closing note.
+
+Choosing a save wrote the configuration at once, but the league stays the old save's until the chosen save's import
+lands (or never, when it has no export or its import fails). Readers that took "the save" from the configuration mixed
+the two: the served league's players got the chosen save's transactions (player ids recur across saves), freshness
+compared one save's export with the other's date, and the GM's notes, watchlist, philosophies, budgets, themes and the
+AI's writing were filed by a name OOTP gives every new league ("New Game") or a team id every league reuses.
+
+- **The save is the served import's.** The save's place, its live log, its date, its logos and its folder are read from
+  the export folder the served import recorded, never from the configuration; the configuration's name and hand-named
+  folder count only while it names that same save. An earlier build's import records no folder: for it the configuration
+  is the only word, until the next import (D-064's limit).
+- **A chosen save is waited for, never stood in for.** While a chosen save's import has not landed, nothing of the league
+  held is shown or written: every league request answers 409 with one sentence (`awaitingImport` on the status: importing,
+  no export yet, a failed import, or waiting), and the status serves no save id, no save folder and no club. Choosing a
+  save, the import, the status and the app's own settings and keys still answer. A start-up imports a chosen save whose
+  import never landed, and a settled export of it is imported whatever "import automatically" says (the GM asked for it
+  by choosing it). The chosen save is watched only when "Watch for new exports" is on, even before it has an export.
+- **A hand-named save folder** is used where the export names no save of its own, ahead of a save found only by its name;
+  a name two saves share finds neither. Beside an export that sits in another save's folder it is set aside (with a note)
+  and refused in a sentence when named, since the log and date would be another save's.
+- **The save's key** is `save:<id>`, the id D-063's save list and D-064's history use (the save folder's real path,
+  hashed), never its name. The GM's notes and watchlist (`save_name` holds the key), each club's philosophy, next-season
+  budget and theme pack (`<key>|<team id>` in `settings.json`), and the AI's kept writing (`saves/<id>/` in the data
+  folder) are filed under it. A generation of the AI's writing takes its folder when it starts, so an import landing
+  meanwhile never files it under another save.
+- **A club belongs to its save.** The chosen club is stamped with the save it was chosen in (`defaultOrgSave`); in
+  another save it is not chosen, so that save's own club is followed or the GM is asked (D-063's rule now holds across a
+  relaunch). What a chosen save's import owes the club is kept on disk (`club-pending.json`) until it lands.
+- **D-053's identity is the save's key** (with the league id beside it in every store), no longer the configured name and
+  a fingerprint of the league's data: renaming the save or the league, an old player leaving the export or the first
+  season's lines appearing keep a save's fits and market records. A different league made in the same folder still never
+  inherits them (D-053's F1): each league in a save keeps the first-season players it was first seen with, and the check
+  only ever refuses, on clear evidence (`LINEAGE_POLICY`: at least 20 players on both sides and fewer than half in common,
+  a policy line, not a fit), starting a new generation (`save:<id>#2`); too few to tell keeps it.
+- **Nothing is orphaned.** Each store registers its tables; the rows filed under the earlier identity (the configured
+  name and the fingerprint of that moment) are moved to the key once per save, league and table, only while the
+  configuration names the served save, recorded in `save_identity_carried`; a row the key already has is never written
+  over. Rows filed under an earlier fingerprint were already orphaned and stay so.
+- **The one-time migration of the GM's inputs** runs at start, before any answer, once a save is configured: the
+  watchlist rows and notes filed under the configured name, every club setting kept by a bare team id, the chosen club
+  and the AI's files in the data folder go to the save configured then. Rows under any other name belong to another save
+  and are left where they are, unused, counted in the log. The rows and `settings.json` are copied into `backups/` first;
+  every step is a move of what is still in the old form, so a run cut short finishes at the next start and a finished one
+  (`save-key-migration.json`) does nothing.
+
+What it cannot tell apart, or keeps: a save copied by an OOTP upgrade to a new folder is a new save for the GM's inputs
+and fits (rating history's carry-over offer, D-064, is unchanged); a different league made in the same folder from the
+same real-life database reads as the same league (as for D-064). An earlier (Electron) build reading this data folder no
+longer finds the re-keyed notes, watchlist or club settings under the name or bare team id; the copies in `backups/` hold
+them as they were.
+
+D-064's closing note ("the watchlist and player notes are still filed under the save's name, and the per-save fits keep
+D-053's identity") no longer holds: both are filed under the save's key.

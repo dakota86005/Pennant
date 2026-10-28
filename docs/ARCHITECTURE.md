@@ -224,8 +224,11 @@ undone. A snapshot is filed only
 when the league served is certainly the configured save's (`servedLeagueCertain`).
 History filed under a save's name before D-064 is brought over only where it is certainly
 that save's, after a copy of `history.db` is made in `backups/`, and what is left unused
-is said on the data status (`history`). The watchlist, player notes and per-save fits keep
-their own keys. The N7 tables (`report_snapshot_imports`, `report_snapshots`,
+is said on the data status (`history`). The watchlist, player notes, each club's settings, the
+AI's kept writing and the per-save fits are filed under the served save's key (D-079,
+`servedSave.ts`: its folder id), and every reader of the save's place, live log and date takes
+the save from the served import, never the configuration; while a chosen save's import has not
+landed, league requests wait (`awaitingImportGate`). The N7 tables (`report_snapshot_imports`, `report_snapshots`,
 `report_snapshot_figures`, `standings_snapshots`, `desk_items`, `following`,
 `following_watchlist_copies`) are keyed by the save's history key and filed only while the
 league served is certainly the save's; `history.db` is copied into `backups/` once before
@@ -778,7 +781,8 @@ routes and the three older farm pages are gone: there is one farm implementation
 Calibration belongs to the save. Three subsystem-neutral modules carry every subsystem's per-save fits except Player Value's
 (which predates them and keeps `value_production_fits`, not migrated):
 
-- `saveIdentity.ts`: the save's identity (its configured name and a fingerprint of the league's own history), the league's
+- `saveIdentity.ts`: the save's identity (the served save's key since D-079, with a refusal-only check that another league
+  made in the same folder starts afresh; rows filed under the earlier name-and-fingerprint identity are carried over once), the league's
   seasons and schedules, and the last completed season, moved unchanged from Player Value (byte-identical fingerprint,
   `tests/saveIdentity.test.ts`); Player Value re-exports them.
 - `saveCalibrationStore.ts`: `history.db` `save_calibration_fits`, keyed by save identity, league, subsystem, component, method

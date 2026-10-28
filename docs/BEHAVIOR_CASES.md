@@ -420,6 +420,20 @@ GM meets first: which save.
 | `savePlayedElsewhere.test.ts` | When another save (in this OOTP or a newer one) has been played since the chosen one, the status says so with that save, in one sentence, and never switches by itself. It says so only once OOTP has finished saving it (the times stay still for a minute), so it never flickers while OOTP writes. When the chosen save has gone (renamed or moved in OOTP), it names the save played most recently. |
 
 
+## The served save is the only save (D-079)
+
+Written for the N15a polish's batch 1 (B-57, B-59), before the fixes. None is a baseball judgment; each keeps the roster
+evidence (D-020, D-021, D-023) and the GM's own inputs tied to the one save whose league is served, so nothing of one
+save is read as another's.
+
+| File | What it protects |
+|---|---|
+| `servedSaveSwitch.test.ts` | A save chosen and not yet imported never lends the league held its transactions, its date or its name: the live log, the save's date and folder and the logos are the served import's save's until the chosen save's import lands, and then all of them move together. Meanwhile nothing of the league held is shown or written: every league request answers with one sentence saying the app is waiting for the chosen save's import, the status serves that sentence and no save id, folder or club. |
+| `servedSaveSwitch.test.ts` | A save folder named by hand is never used beside an export that sits in another save's folder (it is set aside and said so, and refused in a sentence when named); it wins over a save found only by its name, and a name two saves share finds neither. The chosen save is watched for an export only when the GM watches for exports, even before it has one. |
+| `servedSaveSwitch.test.ts` | The club chosen in one save is never followed in another, after a relaunch too: a team id belongs to one league. What a chosen save's import owes the club (forgetting the old one, asking which club) survives a relaunch before the import lands. |
+| `saveIdentityCarry.test.ts` | A save's fitted history and market records belong to the save, not to its name or its league's data: renaming the save or the league, or an old player leaving the export, keeps them; a different league made in the same folder starts afresh, only on clear evidence. What was filed under the earlier identity is carried over once, never copied, deleted or written over. |
+| `saveKeyMigration.test.ts` | The GM's notes, watchlist, each club's philosophy, budget and theme, and the AI's kept writing belong to the save: another save of the same name with the same team ids never shows, reads, writes or sends them. What was kept by name or team id before goes once to the save configured then; another save's rows are left where they are; the run is safe to repeat and copies what it changes first. |
+
 ## Rating history belongs to the save (D-064)
 
 Written before the code that holds them (and revised with it after the reviews of 2026-09-27). None is a baseball
