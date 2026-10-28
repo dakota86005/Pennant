@@ -9,7 +9,7 @@
 import type { BasisLine, Cell, DeptId, Tone } from '../../contract/presentation.js';
 import { gameDateWords } from '../../dataStatus.js';
 import { parseGameDate } from '../../dataFreshness.js';
-import { basis, cell, claim, row, servedValue, stampWords, target, unknownValue } from '../claim.js';
+import { basis, cell, claim, row, servableDetail, servedValue, stampWords, target, unknownValue } from '../claim.js';
 import { plain, plainAll, ratingText, type RatingDisplay } from '../farm/words.js';
 import type { DossierInput } from './input.js';
 import type {
@@ -23,7 +23,6 @@ import {
   listSeasons, money, notValuedLine, ordinal, perWin, plural, rangeText, rate3, salaryLine, scaleLow, scaleWords, seasonsText, sentence,
   signedMoney, signedTenths, termLine, totalHeadline, usageText, winsText, type SeasonInput, type TotalInput, type ViewInput,
 } from './words.js';
-
 
 type Body = DossierInput['body'];
 
@@ -795,8 +794,12 @@ function cone(ctx: DossierInput): PlayerConeView {
     checked: claim({
       text: checked ? "Checked against this save's own seasons" : "Not yet checked against this save's own seasons",
       tone: checked ? 'neutral' : 'caution',
-      // The model's own label is the developer's record of the fit (its method and gate), never served (B-01)
-      basis: valueBasis(ctx, lines([['The ranges', words.tip], ['How it is fitted', plain(c.calibration.status)]])),
+      // The model's own label, in plain words, where it reads as words; where it carries the developer's record of the
+      // fit (its method, file or gate) it is left out (B-01; batch 13 review, L3)
+      basis: valueBasis(ctx, lines([
+        ['The ranges', words.tip], ['How it is fitted', plain(c.calibration.status)],
+        ['Detail', c.calibration.detail ? servableDetail(plain(c.calibration.detail)) : null],
+      ])),
     }),
     notes: [...(c.control.note ? [cell(plain(c.control.note))] : [])],
     summary: `Expected wins above replacement per season. ${summarized.join('. ')}.`,

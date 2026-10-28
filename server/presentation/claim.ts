@@ -71,6 +71,28 @@ export function stampWords(stamp: StampLike): string {
   return STAMP_WORDS.stated;
 }
 
+/**
+ * The developer's record, as a pattern (B-01, B-11): a file or a command, a decision's, question's or research id, a
+ * method's or fit table's own name, a column or constant name, a quantile's code. A server-side guard for a line the
+ * presenter takes from a model's own label; `tests/bannedJargon.ts` (`PROVENANCE`, `CODE_TEXT`) holds every served
+ * string to the full lists.
+ */
+const DEVELOPER_RECORD: readonly RegExp[] = [
+  /\bnpm\b/i, /\.tsx?\b/, /\.md\b/, /`/, /\b[DQRAB]-\d/, /\bphase \d/i, /\bhold-out\b/i, /developer/i, /\bOwner decision\b/i, /\(owner\b/i, /\bby the owner\b/i,
+  /\b(?:production|ratings|results|tools)-\d+[a-z]?\.\d/, /\b[a-z][a-z0-9]*(?:_[a-z0-9*]+)+\b/, /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/,
+  /\bp(?:10|25|50|75|90)\b/, /\blevel \d+\b/i,
+];
+
+/**
+ * A model's own explanation, served in a breakdown only where it reads as words (batch 13 review, L3): the line as given,
+ * or null where it carries the developer's record, so the basis keeps a plain explanation and never the record.
+ */
+export function servableDetail(text: string | null | undefined): string | null {
+  const t = text?.trim();
+  if (!t) return null;
+  return DEVELOPER_RECORD.some((p) => p.test(t)) ? null : t;
+}
+
 /** The HIG's help tag: one line, at most about 75 characters (SWIFTUI_REBUILD.md section 3.3). */
 export const HINT_MAX = 75;
 

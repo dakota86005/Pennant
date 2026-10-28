@@ -1480,6 +1480,10 @@
             {
               "label": "How it is fitted",
               "value": "Not yet calibrated on this save (0 seasons)"
+            },
+            {
+              "label": "Detail",
+              "value": "not yet calibrated on this save (0 seasons): the starting fallback prior, rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: hitter mean 1.70, starter mean 1.12, reliever mean -1.15); no fit has been made on this save yet"
             }
           ],
           "source": {
