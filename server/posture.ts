@@ -1,9 +1,15 @@
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
+import { seasonWhere } from './frontOffice/teamSeason.js';
 import { playoffPicture, type PlayoffPicture } from './playoffs.js';
 import { currentGameDate } from './valuation.js';
 
 /**
  * Buy, hold or sell — and the arithmetic behind it.
+ *
+ * D-060 (amended 2026-10-28): League Office's Standings is its one reader. It moves no advice (Major League Ops and
+ * Player Value do not read it) and no AI surface is handed it. It reads the regular season only: the games left are the
+ * club's regular-season games (`game_type = 0`), and its runs are its one row at the major league this season, as
+ * `frontOffice/teamSeason.ts` reads them; runs that are not established leave the model unread, never a level club.
  *
  * The question a deadline actually poses is not "are we good" but "can we
  * still get there from here", and those come apart badly. A club five games
@@ -57,14 +63,31 @@ function normalCdf(z: number): number {
   return z > 0 ? 1 - p : p;
 }
 
-function runsFor(teamId: number): { rs: number; ra: number } {
-  const rs = tableExists('team_batting_stats')
-    ? Number((db.prepare(`SELECT SUM(r) AS r FROM team_batting_stats WHERE team_id = ?`).get(teamId) as { r: number | null })?.r ?? 0)
-    : 0;
-  // `r` is runs allowed here; `ra` is a different measure entirely
-  const ra = tableExists('team_pitching_stats')
-    ? Number((db.prepare(`SELECT SUM(r) AS r FROM team_pitching_stats WHERE team_id = ?`).get(teamId) as { r: number | null })?.r ?? 0)
-    : 0;
+/**
+ * The club's runs scored and allowed this season: its one row at the major league in the league's season (the team tables
+ * carry every level and placeholder rows), read as `teamSeason.ts` reads them. Null with the reason where they are not
+ * established: no such table or row, or two rows for the club.
+ */
+function runsFor(teamId: number, leagueId: number): { rs: number; ra: number } | { reason: string } {
+  const season = tableExists('leagues') && tableColumns('leagues').includes('season_year')
+    ? (db.prepare(`SELECT season_year AS y FROM leagues WHERE league_id = ?`).get(leagueId) as { y?: unknown } | undefined)?.y
+    : null;
+  const read = (table: string): number | string => {
+    if (!tableExists(table)) return `The export has no ${table} table, so the club's runs this season are not known.`;
+    const cols = new Set(tableColumns(table));
+    if (!cols.has('team_id') || !cols.has('r')) return `The export's ${table} has no runs column, so the club's runs this season are not known.`;
+    const where = seasonWhere(cols, leagueId, typeof season === 'number' ? season : null);
+    if (!where) return "The league's season is not in the export, so the club's runs this season are not known.";
+    // `r` is runs scored on the batting side and runs allowed on the pitching side
+    const rows = db.prepare(`SELECT r FROM "${table}" WHERE team_id = ? AND ${where.sql}`).all(teamId, ...where.params) as Array<{ r: unknown }>;
+    if (rows.length > 1) return `The export gives the club ${rows.length} rows in ${table} this season, so its runs are not established.`;
+    const r = rows[0]?.r;
+    return typeof r === 'number' && Number.isFinite(r) ? r : `The export gives the club no runs in ${table} this season.`;
+  };
+  const rs = read('team_batting_stats');
+  if (typeof rs === 'string') return { reason: rs };
+  const ra = read('team_pitching_stats');
+  if (typeof ra === 'string') return { reason: ra };
   return { rs, ra };
 }
 
@@ -84,8 +107,8 @@ export const RIVAL_TALENT = 0.52;
 
 /**
  * The odds model's inputs for one club, as the deadline read uses them: its record, its runs (the talent they imply),
- * the games left on its schedule, and the gap in games to a playoff place (negative: a cushion). Player Value reads the
- * club's value of a win on the same model (PLAYER_VALUE.md Part 4.5).
+ * the games left on its schedule, and the gap in games to a playoff place (negative: a cushion). Standings is its one
+ * reader (D-060, amended 2026-10-28).
  */
 export interface OddsModel {
   teamId: number;
@@ -132,14 +155,18 @@ export function oddsModelOf(teamId: number): { model: OddsModel; reason: null } 
     return { model: null, reason: "No game has been played yet this season: the odds model reads the club's strength from this season's runs." };
   }
 
+  // The club's regular season only: spring training, the All-Star game and the postseason are not games left (D-060)
+  const regular = tableExists('games') && tableColumns('games').includes('game_type') ? 'AND COALESCE(game_type, 0) = 0' : '';
   const scheduled = tableExists('games')
     ? Number((db
-        .prepare(`SELECT COUNT(*) AS n FROM games WHERE home_team = ? OR away_team = ?`)
+        .prepare(`SELECT COUNT(*) AS n FROM games WHERE (home_team = ? OR away_team = ?) ${regular}`)
         .get(teamId, teamId) as { n: number }).n)
     : 162;
   const gamesLeft = Math.max(0, scheduled - played);
 
-  const { rs, ra } = runsFor(teamId);
+  const runs = runsFor(teamId, team.league_id);
+  if ('reason' in runs) return { model: null, reason: runs.reason };
+  const { rs, ra } = runs;
   const talent = pythag(rs, ra);
   const picture = playoffPicture(teamId);
 
