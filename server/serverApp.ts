@@ -30,8 +30,12 @@ import { releaseAfterFirstAnswers } from './startupWork.js';
  *
  * The defence is the Host header: a rebound request carries the attacker's
  * hostname, never `localhost` or a loopback IP. Only the hostname is checked,
- * not the port, so the Vite dev proxy (which forwards the original
- * `localhost:5173`) keeps working.
+ * not the port. Under `npm run dev` the request arrives through Vite's proxy,
+ * which passes the page's own Host (`localhost:5173`) through because
+ * `vite.config.ts` sets `changeOrigin: false`: that Host is a loopback name, and
+ * it is what the other-site check (`sameOrigin.ts`) compares the browser's
+ * `Origin` with. Vite's string shorthand would turn `changeOrigin` on and every
+ * write from the page would be refused (`tests/devProxy.test.ts`).
  */
 // `0.0.0.0` is not a loopback name (a browser can be pointed at it from any page), so it is answered only when the server
 // is opened to the network and it is one of the machine's addresses (SRVINFRA-07)

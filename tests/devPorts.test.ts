@@ -46,7 +46,7 @@ describe('resolveDevPorts', () => {
 });
 
 describe('the dev wiring', () => {
-  const cfg = viteConfig as { server?: { port?: number; strictPort?: boolean; proxy?: Record<string, string> } };
+  const cfg = viteConfig as { server?: { port?: number; strictPort?: boolean; proxy?: Record<string, string | { target?: string; changeOrigin?: boolean }> } };
   const ports = resolveDevPorts(process.env);
 
   it('serves the page on the web port and fails loudly rather than moving off it', () => {
@@ -55,8 +55,8 @@ describe('the dev wiring', () => {
   });
 
   it('proxies /api to the API port, not to itself', () => {
-    const target = cfg.server?.proxy?.['/api'];
-    expect(target).toBe(`http://127.0.0.1:${ports.api}`);
+    const entry = cfg.server?.proxy?.['/api'];
+    expect(typeof entry === 'object' ? entry.target : entry).toBe(`http://127.0.0.1:${ports.api}`);
     expect(ports.api).not.toBe(cfg.server?.port);
   });
 
