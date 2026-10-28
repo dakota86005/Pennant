@@ -1,4 +1,4 @@
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { leagueRulesForLeague } from './leagueRules.js';
 import { rememberFact, rememberedFact } from './servedFacts.js';
 
@@ -302,35 +302,34 @@ export function currentGameDate(leagueId: number): string | null {
   return row?.d ?? null;
 }
 
+/** The club's money for the AI writers, as exported. A figure the export doesn't give is null, never zero (D-018). */
 export interface TeamFinances {
-  budget: number;
-  payroll: number;
-  payrollNextSeason: number;
-  cash: number;
-  market: number;
-  fanInterest: number;
+  budget: number | null;
+  payroll: number | null;
+  payrollNextSeason: number | null;
+  cash: number | null;
+  market: number | null;
+  fanInterest: number | null;
 }
 
 export function teamFinances(teamId: number): TeamFinances | null {
   if (!tableExists('team_financials')) return null;
-  const r = db
-    .prepare(
-      `SELECT budget, player_payroll, player_payroll_next_season, cash,
-              cash_trades_available, market, fan_interest
-       FROM team_financials WHERE team_id = ?`
-    )
-    .get(teamId) as Record<string, number> | undefined;
+  const cols = new Set(tableColumns('team_financials'));
+  if (!cols.has('team_id')) return null;
+  const wanted = ['budget', 'player_payroll', 'player_payroll_next_season', 'cash_trades_available', 'market', 'fan_interest'].filter((c) => cols.has(c));
+  const r = (wanted.length
+    ? db.prepare(`SELECT ${wanted.join(', ')} FROM team_financials WHERE team_id = ?`).get(teamId)
+    : db.prepare(`SELECT team_id FROM team_financials WHERE team_id = ?`).get(teamId)) as Record<string, unknown> | undefined;
   if (!r) return null;
+  const n = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
   return {
-    budget: r.budget ?? 0,
-    payroll: r.player_payroll ?? 0,
-    payrollNextSeason: r.player_payroll_next_season ?? 0,
-    // OOTP exports `cash` as zero for every team; the money a club can
-    // actually spend is cash_trades_available. Reporting the dead field made
-    // the GM briefing and storylines announce "zero cash on hand" to clubs
-    // sitting on millions.
-    cash: r.cash_trades_available ?? r.cash ?? 0,
-    market: r.market ?? 0,
-    fanInterest: r.fan_interest ?? 0,
+    budget: n(r.budget),
+    payroll: n(r.player_payroll),
+    payrollNextSeason: n(r.player_payroll_next_season),
+    // OOTP exports `cash` as zero for every team; the money a club can actually spend is cash_trades_available. Without
+    // that column the cash is not known: the dead field is never read as the club's money
+    cash: n(r.cash_trades_available),
+    market: n(r.market),
+    fanInterest: n(r.fan_interest),
   };
 }

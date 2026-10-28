@@ -4,8 +4,8 @@ import { db, tableExists } from './db.js';
 import { featureModel, featureProvider, providerCredential } from './settings.js';
 import { describeError, providerFor, type FallbackNotice } from './providers.js';
 import { noKeyMessage } from './chat.js';
-import { computeProspects } from './org.js';
 import { farmBriefing } from './farmOperations.js';
+import { WRITER_GUARDRAILS } from './aiGuardrails.js';
 import { computeContracts } from './contracts.js';
 import { LEVEL_NAMES, currentGameDate, seasonYear, teamFinances, rulesBriefing } from './valuation.js';
 import { jobStatus, startJob } from './jobs.js';
@@ -113,7 +113,6 @@ export function assembleContext(orgId: number) {
     )
     .all(orgId, year, level) as Array<Record<string, unknown>>;
 
-  const prospects = computeProspects(orgId);
   const contracts = computeContracts(orgId);
 
   return {
@@ -142,8 +141,8 @@ export function assembleContext(orgId: number) {
         era: (p.ip as number) > 0 ? Number((((p.er as number) / (p.ip as number)) * 9).toFixed(2)) : null,
       })),
     },
-    /* The farm as Minor League Operations describes it, not an alphabetical head of the prospect list. */
-    farm: farmBriefing(orgId, prospects),
+    /* The farm as Minor League Operations and the farm review describe it, not an alphabetical head of the prospect list. */
+    farm: farmBriefing(orgId),
     contractSituations: contracts.players
       .filter((p) => p.group === 'leaving' || p.group === 'option' || p.group === 'arbitration' || p.group === 'reserve')
       .slice(0, 12),
@@ -225,6 +224,38 @@ export function usableStoryline(s: Storyline): boolean {
   return storylineFault(s) === null;
 }
 
+/**
+ * The storylines' system prompt: who is writing, what the save is, and the writers' shared rules (`aiGuardrails.ts`):
+ * the farm's, the contracts', null means not known, and no advice and no promotion verdict of its own (B-63, D-001).
+ */
+export function storylinesSystem(organization: string, leagueRules: string): string {
+  return (
+    // The league is a simulation and the events are the save's, not the
+    // world's. Saying so plainly is both accurate and necessary: without it
+    // the request reads as inventing news about real, named public figures,
+    // and the model has good reason to decline that. The assistant's own
+    // prompt has always carried this framing and has never refused; this one
+    // never did, and refused.
+    `You are the in-universe beat writer for the ${organization} in a saved game of Out ` +
+    `of the Park Baseball — a text simulation. Everything below happened inside this player's ` +
+    `save file: the standings, the statistics, the injuries and the contracts are all outcomes ` +
+    `the simulation generated, and they do not correspond to real events. The names come from ` +
+    `the game's database. Write about the simulated season only, entirely from the numbers ` +
+    `provided, and never about anything outside the save.\n\n` +
+    `Write sharp, engaging storylines from the perspective of the club's front office, like a ` +
+    `team-site feature page. Ground every claim in the data given (records, stats, the farm, ` +
+    `contracts) and cite the figures. Have a point of view on what the data shows: what the recent ` +
+    `results mean, which contract questions are coming, what the farm review says about a player. ` +
+    `Treat small samples with caution. Do not invent quotations or attribute statements to anyone — you are ` +
+    `describing what the numbers show, not reporting interviews.\n\n` +
+    `Write 6-8 storylines across a mix of categories. Every headline and body must be about this ` +
+    `club and cite figures from the data — never filler, placeholder or example text. If a ` +
+    `category has nothing behind it, leave it out and write about one that does.\n\n` +
+    `LEAGUE RULES: ${leagueRules} Write within these rules — this may not be the modern game.\n\n` +
+    WRITER_GUARDRAILS
+  );
+}
+
 async function generateStorylines(orgId: number): Promise<StorylineCache> {
   const context = assembleContext(orgId);
   const provider = featureProvider('storylines');
@@ -244,29 +275,7 @@ async function generateStorylines(orgId: number): Promise<StorylineCache> {
     maxTokens: 16000,
     schema: STORYLINE_SCHEMA,
     onFallback: (n) => { notice = n; },
-    system:
-      // The league is a simulation and the events are the save's, not the
-      // world's. Saying so plainly is both accurate and necessary: without it
-      // the request reads as inventing news about real, named public figures,
-      // and the model has good reason to decline that. The assistant's own
-      // prompt has always carried this framing and has never refused; this one
-      // never did, and refused.
-      `You are the in-universe beat writer for the ${context.organization} in a saved game of Out ` +
-      `of the Park Baseball — a text simulation. Everything below happened inside this player's ` +
-      `save file: the standings, the statistics, the injuries and the contracts are all outcomes ` +
-      `the simulation generated, and they do not correspond to real events. The names come from ` +
-      `the game's database. Write about the simulated season only, entirely from the numbers ` +
-      `provided, and never about anything outside the save.\n\n` +
-      `Write sharp, engaging storylines from the perspective of the club's front office, like a ` +
-      `team-site feature page. Ground every claim in the data given (records, stats, prospects, ` +
-      `contracts) and cite the figures. Be opinionated where the data supports it: who is earning ` +
-      `a promotion, which contract decisions loom, what the recent results mean. Treat small ` +
-      `samples with caution. Do not invent quotations or attribute statements to anyone — you are ` +
-      `describing what the numbers show, not reporting interviews.\n\n` +
-      `Write 6-8 storylines across a mix of categories. Every headline and body must be about this ` +
-      `club and cite figures from the data — never filler, placeholder or example text. If a ` +
-      `category has nothing behind it, leave it out and write about one that does.\n\n` +
-      `LEAGUE RULES: ${context.leagueRules} Write within these rules — this may not be the modern game.`,
+    system: storylinesSystem(context.organization, context.leagueRules),
     messages: [
       {
         role: 'user',

@@ -18,16 +18,9 @@ import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 
 export const chatRoutes = Router();
 
-/**
- * What the assistants are told about Pennant's value figures (Player Value phase 6c, D-001, D-052), in place of the old
- * note on OOTP's value percentiles, which no context carries any more. Shared by the briefing and the staff chat.
- */
-export const VALUE_FIGURES_NOTE =
-  "VALUE FIGURES: expected wins, a season's cost, contract value, the value of keeping him and a free agent's cost at the " +
-  "market are Pennant's own readings (Player Value), each a most likely figure with the range it could be; a null means " +
-  'not known, and its reason says why. Quote them as ranges and say when one is not known. You never produce a value ' +
-  'number of your own: no dollar figure, rating, rank or score for a player that is not in the data. They describe; they ' +
-  'recommend nothing, so never present one as advice to sign, keep, trade or release anyone: the GM decides.';
+/** What the assistants are told about Pennant's value figures: one note, shared with the writers (`aiGuardrails.ts`). */
+export { VALUE_FIGURES_NOTE } from './aiGuardrails.js';
+import { VALUE_FIGURES_NOTE } from './aiGuardrails.js';
 
 /**
  * The conversation lives on disk beside the rest of the app's data.
@@ -287,7 +280,10 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'get_prospects',
-    description: 'Minor leaguers ranked by promotion signal, with the reasoning behind each ranking.',
+    description:
+      "Minor leaguers with enough of a line at their level: each one's season line, his scouted tools and Player " +
+      "Development's read. Listed by name: it is not a ranking, so never present its order as a top-prospect list, " +
+      'and never make a promotion or call-up call of your own from it: the GM decides.',
     input_schema: {
       type: 'object',
       properties: { team_id: { type: 'number' } },
@@ -311,24 +307,10 @@ export const TOOLS: Anthropic.Tool[] = [
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   /*
-   * The four below reach analysis the app already does and the chat could not.
-   * Asked whether to buy or sell — the question a GM asks most — it had the
-   * standings and had to reason from them, while the dashboard beside it was
-   * carrying a worked postseason probability the whole time.
+   * The three below reach analysis the app already does. The dashboard tool that stood beside them served the
+   * postseason odds and the buy/hold/sell read; it is retired (D-060, amended 2026-10-28: no AI surface is handed the
+   * odds, the deadline posture or a playoff chance, and the race is answered from the standings' facts).
    */
-  {
-    name: 'get_dashboard',
-    description:
-      'The club at a glance: playoff picture (games back, wild-card rank, magic number), the ' +
-      'buy/hold/sell read with the postseason odds behind it and days to the deadline, recent ' +
-      'and upcoming games, hot and cold players, injuries. Call this for "how are we doing", ' +
-      '"should we buy or sell", or anything about the race.',
-    input_schema: {
-      type: 'object',
-      properties: { team_id: { type: 'number' } },
-      required: ['team_id'],
-    },
-  },
   {
     name: 'get_contracts',
     description:
@@ -425,7 +407,15 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
        * about, and the seasons are trimmed to the ones asked for.
        */
       const wanted = Number.isFinite(since) ? seasons.filter((s) => s.year >= since) : seasons;
-      return cap({ summary: history.summary, seasons: wanted.slice(0, 60) });
+      /*
+       * The past's postseason appearances, a count of history, named so: no AI tool payload carries a key named for the
+       * odds, the deadline posture or the playoffs (D-060, amended 2026-10-28; `tests/aiOddsBoundary.test.ts`).
+       */
+      const { playoffs, ...summary } = (history.summary ?? {}) as { playoffs?: number } & Record<string, unknown>;
+      return cap({
+        summary: history.summary ? { ...summary, postseasonAppearances: playoffs ?? null } : history.summary,
+        seasons: wanted.slice(0, 60),
+      });
     }
     case 'get_standings':
       return cap(await callOwnApi(`standings/${defaultOrgId()}`));
@@ -478,8 +468,6 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       return cap(await callOwnApi(`leaderboards/${Number(input.team_id)}`));
     case 'get_teams':
       return cap(await callOwnApi('teams'));
-    case 'get_dashboard':
-      return cap(await callOwnApi(`dashboard/${Number(input.team_id) || defaultOrgId()}`));
     case 'get_contracts':
       return cap(await callOwnApi(`contracts/${Number(input.team_id) || defaultOrgId()}`));
     case 'get_free_agents': {

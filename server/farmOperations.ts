@@ -1276,33 +1276,43 @@ export interface FarmBriefing {
   scope: { players: number; affiliates: number; assessed: number; notAssessable: number };
   /** What needs a decision, most pressing first, as the workspace lists it. */
   attention: Array<{ kind: string; severity: string; headline: string; detail: string }>;
-  /** Player Development's promotion-direction recommendations: one affiliate level, never a call-up. */
-  promotionDirection: Array<{ name: string; age: number; level: string; team: string; recommendation: string }>;
+  /**
+   * The farm review's conclusion where a more demanding assignment is developmentally defensible: what it found, and at
+   * which levels. A conclusion about his development, never a call-up or a promotion verdict; an unknown age is null.
+   */
+  promotionDirection: Array<{ name: string; age: number | null; level: string; team: string; review: string; defensibleAt: string[] }>;
   affiliates: Array<{ label: string; level: string; operational: string; games: number }>;
 }
 
 /**
- * The farm for the AI briefing and the storylines: the authoritative engine's own conclusions, with
- * their structure, so the model is not handed a superseded label and asked to correct the
- * architecture in prose.
+ * The farm review's conclusions where a more demanding assignment is developmentally defensible, as the AI writers are
+ * handed them (B-63): what the review found and at which levels, by name. Never a legacy recommendation code, a
+ * call-up or a verdict; an unknown age is null, never 0 (D-018).
  */
-export function farmBriefing(
-  orgId: number,
-  prospects: { batters: unknown[]; pitchers: unknown[] },
-  limit = 8
-): FarmBriefing {
+export function promotionDirectionOf(assignments: readonly AssignmentReview[]): FarmBriefing['promotionDirection'] {
+  return assignments
+    .filter((r) => r.conclusion === 'promotion_direction_defensible')
+    .map((r) => ({
+      name: r.name,
+      age: typeof r.age === 'number' && Number.isFinite(r.age) && r.age > 0 ? r.age : null,
+      level: r.levelName,
+      team: r.team,
+      review: summarizeReview(r),
+      defensibleAt: [...new Set(r.alternatives
+        .filter((a) => a.direction === 'promotion' && a.judgment === 'defensible')
+        .map((a) => a.levelName))],
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The farm for the AI briefing and the storylines: the farm review's own conclusions (`view.assignments`), with their
+ * structure, so the model is not handed a superseded label or a legacy recommendation code (B-63) and asked to correct
+ * the architecture in prose.
+ */
+export function farmBriefing(orgId: number, limit = 8): FarmBriefing {
   const view = computeFarmSystem(orgId);
-  const PROMOTION_DIRECTION = new Set(['consider_promotion', 'strong_promotion_case', 'mlb_ready_discussion']);
-  type Row = { name?: string; age?: number; levelName?: string; team?: string; decision?: { recommendation?: string | null } | null };
-  const promotionDirection = [...(prospects.batters as Row[]), ...(prospects.pitchers as Row[])]
-    .filter((p) => PROMOTION_DIRECTION.has(String(p.decision?.recommendation ?? '')))
-    .map((p) => ({
-      name: String(p.name ?? ''),
-      age: Number(p.age ?? 0),
-      level: String(p.levelName ?? ''),
-      team: String(p.team ?? ''),
-      recommendation: String(p.decision?.recommendation),
-    }));
+  const promotionDirection = promotionDirectionOf(view.assignments);
   return {
     scope: {
       players: view.organization.scope.players,

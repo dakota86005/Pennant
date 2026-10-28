@@ -192,7 +192,7 @@ export function analyzeTrade(
     ...(viewer.orgId !== null ? [viewer.orgId] : []),
     ...[...sentRows, ...receivedRows].map((r) => r.organizationId).filter((o): o is number => o !== null),
   ].filter((o, i, all) => all.indexOf(o) === i);
-  // The Mac app's Trade Desk leaves the club's value of a win to the standings (D-060), so it is not read for it
+  // Not established for any club (D-060, amended 2026-10-28); the Mac app's Trade Desk and the AI desk do not read it
   const winValues = options.winValues === false ? [] : clubs.slice(0, 4).map((c) => clubWinValue(c));
 
   return {
@@ -740,13 +740,14 @@ function differenceForDesk(d: TradeDifference) {
  * displace, plus where the club is weakest; the deal itself is Player Value's reading, both sides and the difference as a
  * band with its parts (the same figures the page shows), which the desk explains and never replaces (D-001).
  */
-export function tradeContext(orgId: number, giveIds: number[], getIds: number[], options: { winValues?: boolean } = {}) {
+export function tradeContext(orgId: number, giveIds: number[], getIds: number[]) {
   const statYear = hasColumns('players_career_batting_stats', 'year')
     ? ((db.prepare(`SELECT MAX(year) AS y FROM players_career_batting_stats`).get() as { y: number | null }).y ?? null)
     : null;
 
   const viewer = viewerFor(orgId || undefined);
-  const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy }, undefined, options);
+  // No AI surface is handed the club's value of a win, or anything read from the odds (D-060, amended 2026-10-28)
+  const analysis = analyzeTrade(giveIds, getIds, { orgId: orgId || viewer.orgId, philosophy: viewer.philosophy }, undefined, { winValues: false });
   const cue = analysis.freshness;
   const readingOf = (id: number) => ({
     row: [...analysis.sent, ...analysis.received].find((r) => r.playerId === id)!,
@@ -834,10 +835,6 @@ export function tradeContext(orgId: number, giveIds: number[], getIds: number[],
       basis: analysis.value.basis,
     },
     salaryThisSeason: analysis.salary,
-    // The Mac app's desk is never handed the club's value of a win (D-060: odds belong to the standings), not even as a key
-    ...(options.winValues === false
-      ? {}
-      : { clubValueOfAWin: analysis.winValues.map((w) => ({ club: w.club, status: w.status, text: w.text, reason: w.reason })) }),
     whoTheyWouldDisplace: incumbents,
     /** Named here are the men their own clubs have listed for trade. */
     onTheBlock,

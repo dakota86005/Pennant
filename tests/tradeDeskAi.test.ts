@@ -71,7 +71,7 @@ beforeEach(() => {
 });
 
 describe('the AI desk with AI on (N12; D-001, D-060)', () => {
-  it('hands the Mac app\'s desk no value of a win and no odds, while the React page\'s routes are as they were', async () => {
+  it('hands no desk, the Mac app\'s or the React page\'s, a value of a win or the odds (D-060, amended 2026-10-28)', async () => {
     const deal = { sent: [save.regular], received: [theirs()[0]] };
     const mac = await call(`/api/v2/views/${save.org}/trades/ask`, { ...deal, thread: [] });
     expect(mac.status).toBe(200);
@@ -82,19 +82,19 @@ describe('the AI desk with AI on (N12; D-001, D-060)', () => {
     for (const re of ODDS) expect(everything(asked[1]), String(re)).not.toMatch(re);
     expect(asked[1].messages.at(-1)).toEqual({ role: 'user', content: 'Who plays second?' });
 
-    // The React page's routes are unchanged: still handed the value of a win, in their own shapes
+    // The React page's routes keep their own shapes, and are handed no value of a win and no odds either
     const evalBody = { orgId: save.org, sideA: deal.sent, sideB: deal.received, orgLabel: 'the club' };
     const read = await call('/api/trade/ai-eval', evalBody);
     expect(read.status).toBe(200);
     expect(Object.keys(read.json)).toEqual(['verdict', 'voice', 'notice']);
     expect(read.json.verdict).toMatch(/^\*\*Read:\*\*/);
-    expect(everything(asked[2])).toMatch(/clubValueOfAWin/);
+    for (const re of ODDS) expect(everything(asked[2]), String(re)).not.toMatch(re);
     const reply = await call('/api/trade/ai-reply', { ...evalBody, message: ' Who plays second? ', thread: [] });
     expect(reply.status).toBe(200);
     expect(Object.keys(reply.json)).toEqual(['reply', 'voice', 'notice']);
     expect(asked[3].messages.at(-1)).toEqual({ role: 'user', content: 'Who plays second?' });
-    // One desk: the Mac app's opening read is the React page's brief (after the line naming the club), less the value of a win
-    const brief = (a: Asked) => a.system.split('\n').slice(1).join('\n').replace(/ "clubValueOfAWin"[^\n]*/, '');
+    // One desk: the Mac app's opening read is the React page's brief (after the line naming the club)
+    const brief = (a: Asked) => a.system.split('\n').slice(1).join('\n');
     expect(brief(asked[0])).toBe(brief(asked[2]));
   });
 
