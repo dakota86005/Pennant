@@ -163,10 +163,10 @@ function salaryOf(table: string, row: ContractRow, present: Set<string>, index: 
   const source = `${table}.${column}`;
   // A term longer than the export's salary slots (salary0..salary14) has no column for the later seasons
   if (!present.has(column)) {
-    return unknownBecause('not_exported_by_ootp', source, `${table} has no ${column} column.`);
+    return unknownBecause('not_exported_by_ootp', source, 'The export carries no salary for this season of the contract.');
   }
   const n = numberOrNull(row[column]);
-  if (n === null) return unknownBecause('not_exported_by_ootp', source, `${column} is blank in the export.`);
+  if (n === null) return unknownBecause('not_exported_by_ootp', source, "This season's salary is blank in the export.");
   if (n <= 0) {
     return unknownBecause('not_exported_by_ootp', source, minorLeague
       ? 'A minor-league contract with a salary of 0: whether that is unpaid, not exported or off the major-league payroll is unresolved, so the cost is unknown, never $0.'

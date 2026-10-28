@@ -704,16 +704,24 @@ function isPlaceholder(row: Record<string, unknown>, present: Set<string>): bool
   return money.length > 0 && money.every((c) => numberOrNull(row[c]) === 0);
 }
 
+/** Each finance table in words, for a served note (B-11): the table's name stays in the source, the developer's locator. */
+const FINANCE_TABLE_WORDS: Readonly<Record<string, string>> = {
+  team_financials: "This season's club finances",
+  team_history_financials: "The club's past finances",
+  team_last_financials: "Last season's club finances",
+};
+
 function financeReader(table: string, t: FinanceTable | { present: Set<string> | null; row: Record<string, unknown> | null }) {
+  const words = FINANCE_TABLE_WORDS[table] ?? "The club's finances";
   const placeholder = t.present !== null && t.row !== null && isPlaceholder(t.row, t.present);
   return (column: string, note?: string): Sourced<number> => {
     const source = `${table}.${column}`;
-    if (t.present === null) return unknownBecause('source_unavailable', source, `${table} is not in the export.`);
-    if (t.row === null) return unknownBecause('not_exported_by_ootp', source, `${table} has no row for this club.`);
-    if (!t.present.has(column)) return unknownBecause('not_exported_by_ootp', source, `${table} has no ${column} column.`);
+    if (t.present === null) return unknownBecause('source_unavailable', source, `${words} are not in the export.`);
+    if (t.row === null) return unknownBecause('not_exported_by_ootp', source, `${words} have no row for this club.`);
+    if (!t.present.has(column)) return unknownBecause('not_exported_by_ootp', source, 'The export does not carry this figure.');
     if (placeholder) return unknownBecause('not_exported_by_ootp', source, PLACEHOLDER_NOTE);
     const n = numberOrNull(t.row[column]);
-    if (n === null) return unknownBecause('not_exported_by_ootp', source, `${column} is blank in the export.`);
+    if (n === null) return unknownBecause('not_exported_by_ootp', source, 'This figure is blank in the export.');
     return note ? { ...fromExport(n, source), note } : fromExport(n, source);
   };
 }

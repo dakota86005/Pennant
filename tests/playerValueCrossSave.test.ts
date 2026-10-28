@@ -1107,7 +1107,7 @@ describe('cross-save: league structure', () => {
       for (const s of v.control.seasons) texts.push(s.basis, ...s.reasons, s.cost?.note ?? '', s.cost?.reason ?? '');
       texts.push(...(v.control.notes ?? []), v.production.reason ?? '');
     }
-    expect(texts.some((t) => /No leagues row/.test(t)), 'the case is exercised').toBe(true);
+    expect(texts.some((t) => /no settings row for this club's league/.test(t)), 'the case is exercised').toBe(true);
     expect(texts.filter((t) => /[^.]\.\.(\s|$)/.test(t))).toEqual([]);
   }, SLOW);
 
@@ -1257,7 +1257,7 @@ describe('cross-save: environment and export shape', () => {
     sideIn(r, save.regular, base.season + 1);
     const pitcher = r.values.get(save.pitchers[0])!.production;
     expect(pitcher.status).toBe('unknown');
-    expect(pitcher.reason).toMatch(/players_career_pitching_stats has no bf column/);
+    expect(pitcher.reason).toMatch(/career pitching lines lack a figure needed to read them/);
   }, SLOW);
 
   it('D-15 (F1): with no schedule length or standings history, the calibration label says how many seasons of lines exist and why none is usable, never "(0 seasons)"', () => {

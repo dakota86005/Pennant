@@ -216,15 +216,18 @@ function unavailable(reason: UnknownKind, note: string): LeagueRules {
   };
 }
 
-/** Reads one column of one row, keeping a missing column and a blank value apart. */
+/**
+ * Reads one column of one row, keeping a missing column and a blank value apart. The column stays in the source, the
+ * developer's locator; the note is said in words, since it is served (B-11).
+ */
 function reader(row: LeagueRuleRow, present: Set<string>, note?: string) {
   return <T>(column: Column, convert: (n: number) => T | null, invalid?: string): Sourced<T> => {
     const source = `leagues.${column}`;
-    if (!present.has(column)) return unknownBecause<T>('not_exported_by_ootp', source, `leagues has no ${column} column.`);
+    if (!present.has(column)) return unknownBecause<T>('not_exported_by_ootp', source, 'The export does not carry this league setting.');
     const n = numberOrNull(row[column]);
-    if (n === null) return unknownBecause<T>('not_exported_by_ootp', source, `${column} is blank in the export.`);
+    if (n === null) return unknownBecause<T>('not_exported_by_ootp', source, 'This league setting is blank in the export.');
     const value = convert(n);
-    if (value === null) return unknownBecause<T>('not_exported_by_ootp', source, invalid ?? `${column} = ${n} is not a usable value.`);
+    if (value === null) return unknownBecause<T>('not_exported_by_ootp', source, invalid ?? `This league setting is exported as ${n}, which is not a usable value.`);
     return note ? { ...fromExport(value, source), note } : fromExport(value, source);
   };
 }
@@ -246,22 +249,22 @@ function regimeRow(
   row: LeagueRuleRow, present: Set<string>, lookup: LeagueRowLookup
 ): { row: LeagueRuleRow; viaParent: boolean } | { unknown: string } {
   if (!present.has('parent_league_id')) {
-    return { unknown: 'leagues has no parent_league_id column, so whether this league\'s contract rules are its own or a parent league\'s cannot be established (a minor league exports zeros for them).' };
+    return { unknown: 'The export does not say which league each league answers to, so whether this league\'s contract rules are its own or a parent league\'s cannot be established (a minor league exports zeros for them).' };
   }
   let at = row;
   const seen = new Set<number>();
   for (let depth = 0; depth <= MAX_PARENT_DEPTH; depth += 1) {
     const id = numberOrNull(at.league_id);
     const parent = numberOrNull(at.parent_league_id);
-    if (parent === null) return { unknown: `parent_league_id is blank for league ${id ?? '?'}, so its contract regime cannot be established.` };
+    if (parent === null) return { unknown: 'The league this one answers to is blank in the export, so whose contract rules apply cannot be established.' };
     if (parent === 0 || parent === id) return { row: at, viaParent: at !== row };
     if (id !== null) seen.add(id);
-    if (seen.has(parent)) return { unknown: `The parent_league_id chain loops at league ${parent}.` };
+    if (seen.has(parent)) return { unknown: 'The leagues the export says this one answers to loop back on themselves, so whose contract rules apply cannot be established.' };
     const next = lookup(parent);
-    if (next === null) return { unknown: `League ${id ?? '?'} names parent league ${parent}, which has no leagues row.` };
+    if (next === null) return { unknown: 'This league answers to a league the export carries no row for, so whose contract rules apply cannot be established.' };
     at = next;
   }
-  return { unknown: 'The parent_league_id chain is deeper than any export has.' };
+  return { unknown: 'The leagues this one answers to run deeper than any export has, so whose contract rules apply cannot be established.' };
 }
 
 /**
@@ -292,7 +295,7 @@ function regimeRulesFrom(
   const read = reader(regime.row, present, note);
   const raw = (column: Column): Uninterpreted<number> => uninterpreted(read(column, asIs), MEANING_NOT_ESTABLISHED);
   const regimeLeagueId: Sourced<number> = regimeId === null
-    ? unknownBecause('not_exported_by_ootp', 'leagues.league_id', 'The regime league has no league_id.')
+    ? unknownBecause('not_exported_by_ootp', 'leagues.league_id', 'The league whose contract rules apply has no id in the export.')
     : note ? { ...fromExport(regimeId, 'leagues.parent_league_id'), note } : fromExport(regimeId, 'leagues.league_id');
   const financials = read('rules_financials', flag);
   const freeAgencyYears = read('rules_fa_minimum_years', nonNegative);
@@ -345,8 +348,8 @@ function regimeRulesFrom(
 export function leagueRulesFromRow(
   row: LeagueRuleRow | null, present: Set<string> | null, lookup: LeagueRowLookup = noLookup
 ): LeagueRules {
-  if (present === null) return unavailable('source_unavailable', 'leagues is not in the export.');
-  if (row === null) return unavailable('not_exported_by_ootp', 'No leagues row for this club.');
+  if (present === null) return unavailable('source_unavailable', "The leagues' settings are not in the export.");
+  if (row === null) return unavailable('not_exported_by_ootp', "The export has no settings row for this club's league.");
   const read = reader(row, present);
   const regime = regimeRulesFrom(row, present, lookup);
   return {
