@@ -172,7 +172,10 @@ export function overviewView(v: OverviewContext): MlbOverviewView {
     inbox: inbox(o.needs),
     inboxEmpty: o.needs.length
       ? null
-      : cell('Nothing needs your attention: no role is below its minimum and the scouting review raises no case.', { hint: hintIf(floors ? `Minimums: ${floors}` : undefined) }),
+      : o.coverage.basis === 'indeterminate'
+        // No minimum is set where the league's active limit isn't known (B-89): never "no role is below its minimum"
+        ? cell('Nothing needs your attention from the scouting review.', { hint: hintIf(`No staff minimums: ${o.coverage.source.charAt(0).toLowerCase()}${o.coverage.source.slice(1)}.`) })
+        : cell('Nothing needs your attention: no role is below its minimum and the scouting review raises no case.', { hint: hintIf(floors ? `Minimums: ${floors}` : undefined) }),
     whatIf: {
       title: cell('Ask a what-if'),
       prompt: cell('If this player is unavailable…'),

@@ -16,7 +16,7 @@ import {
   coverReads, crossRoleSupport, farmConsequence, hitterUsage, holderEvidence, performanceLine, platoonInputs, playableCovers, roleFitEvidence, teamGamesPlayed, topAffiliateTeamId,
 } from './mlbEvidence.js';
 import { reviewClub, reviewNeedById, reviewNeeds, type ReviewPorts, type RoleGroupReview } from './mlbReview.js';
-import { DEFAULT_COVERAGE_FLOORS, detectNeeds, whatIfNeed, type CoverageFloors, type MlbNeed } from './mlbNeeds.js';
+import { coverageFloorsFor, detectNeeds, whatIfNeed, type CoverageFloors, type MlbNeed } from './mlbNeeds.js';
 import { CONTEXT_PROFILES, type MlbAssignmentContext } from './mlbAssignmentContext.js';
 import { buildResponsePacket, type ResponsePacket, type ResponsePorts } from './mlbResponses.js';
 import { activeMembers, loadClubView, type ClubView, type RoleRef } from './mlbRoster.js';
@@ -57,7 +57,7 @@ export function yardsticksFor(orgId: number): RosterReviewCalibration {
   return rosterReviewCalibration(league);
 }
 
-function realPorts(orgId: number, floors: CoverageFloors = DEFAULT_COVERAGE_FLOORS): ResponsePorts {
+function realPorts(orgId: number, floors: CoverageFloors): ResponsePorts {
   const philosophy = resolvePhilosophy(philosophyForOrg(orgId));
   const status = getDataStatus();
   let farm: FarmSession | null = null;
@@ -133,7 +133,7 @@ export interface MlbOverview {
     injuredList: number;
   };
   /** Minimum role-coverage floors in force. Floors, not ideal roster targets. */
-  coverage: { basis: 'minimum_floor'; source: string; floors: Array<{ role: string; count: number; label: string }> };
+  coverage: { basis: CoverageFloors['basis']; source: string; floors: Array<{ role: string; count: number; label: string }> };
   needs: MlbNeed[];
   /** The organization's window and the season, and how they lean on the advice below. Null when nothing is known. */
   context: ContextRead | null;
@@ -179,11 +179,11 @@ export function mlbOverview(orgId: number, view: ClubView = loadClubView(orgId))
       fortyMan: { count: view.counts.fortyMan, limit: view.limits.fortyMan },
       injuredList: view.members.filter((m) => m.level === 1 && m.onInjuredList === true).length,
     },
-    coverage: {
-      basis: DEFAULT_COVERAGE_FLOORS.basis,
-      source: DEFAULT_COVERAGE_FLOORS.source,
-      floors: Object.entries(DEFAULT_COVERAGE_FLOORS.floors).map(([role, f]) => ({ role, count: f!.count, label: f!.label })),
-    },
+    // The floors at this league's own active-roster limit; none where the limit is unknown (B-89)
+    coverage: (() => {
+      const floors = coverageFloorsFor(view.limits.active);
+      return { basis: floors.basis, source: floors.source, floors: Object.entries(floors.floors).map(([role, f]) => ({ role, count: f!.count, label: f!.label })) };
+    })(),
     needs: label === null ? [] : [...detectNeeds(view), ...reviewNeeds(view, review, context)],
     context,
     review,
@@ -197,7 +197,7 @@ export function mlbOverview(orgId: number, view: ClubView = loadClubView(orgId))
 
 /** Resolve a need by id from the current state (observed needs) or a what-if id. */
 export function resolveNeed(
-  view: ClubView, needId: string, assumedDays: number | null = null, floors: CoverageFloors = DEFAULT_COVERAGE_FLOORS,
+  view: ClubView, needId: string, assumedDays: number | null = null, floors: CoverageFloors = coverageFloorsFor(view.limits.active),
   ports?: ReviewPorts
 ): MlbNeed | null {
   const whatIf = /^mlb:what_if:(\d+)$/.exec(needId);
@@ -227,7 +227,7 @@ export interface ResponseOptions {
 }
 
 export function mlbResponses(orgId: number, needId: string, options: ResponseOptions = {}, view: ClubView = loadClubView(orgId)): ResponsePacket | null {
-  const floors = options.floors ?? DEFAULT_COVERAGE_FLOORS;
+  const floors = options.floors ?? coverageFloorsFor(view.limits.active);
   const ports = realPorts(orgId, floors);
   const need = resolveNeed(view, needId, options.days ?? null, floors, reviewPorts(orgId));
   if (!need) return null;

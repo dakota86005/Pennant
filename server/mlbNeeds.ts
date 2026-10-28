@@ -27,8 +27,9 @@ import { withUnavailable, activeMembers, type ClubView, type RoleKind, type Role
  * Minimum role-coverage FLOORS: the fewest healthy active players in a role
  * below which Pennant says the roster has a problem. They are floors, not ideal
  * roster targets: a club above them may still want more depth, and nothing here
- * says how a roster should be built. They are Pennant's first-pass assumption,
- * not a league rule, and are shown to the GM with every need.
+ * says how a roster should be built. They are Pennant's rule, scaled to the
+ * league's active-roster limit, not a league rule, and are shown to the GM with
+ * every need.
  *
  * They are data, not doctrine. A six-man rotation, a different pitching staff or
  * a usage-specific requirement is a different `CoverageFloors` handed to the
@@ -41,21 +42,61 @@ export interface CoverageFloor {
 }
 
 export interface CoverageFloors {
-  basis: 'minimum_floor';
+  /** `minimum_floor` when the floors are set; `indeterminate` when the league's active limit isn't known, and no floor is set. */
+  basis: 'minimum_floor' | 'indeterminate';
   /** Where the numbers come from, shown to the GM. */
   source: string;
   floors: Partial<Record<RoleKind, CoverageFloor>>;
 }
 
+/**
+ * POLICY. Pennant's minimum for a 26-man active roster (the modern major-league limit): five starters, seven relievers, two catchers.
+ * Every league's floors are this set scaled to its own active-roster limit (`coverageFloorsFor`).
+ */
+export const REFERENCE_ACTIVE_LIMIT = 26;
+const REFERENCE_FLOORS: Record<'starting_pitcher' | 'relief_pitcher' | 'catcher', { count: number; noun: string }> = {
+  starting_pitcher: { count: 5, noun: 'starting pitcher' },
+  relief_pitcher: { count: 7, noun: 'relief pitcher' },
+  catcher: { count: 2, noun: 'catcher' },
+};
+
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const counted = (n: number, noun: string): string => `${NUMBER_WORDS[n] ?? String(n)} healthy ${noun}${n === 1 ? '' : 's'}`;
+
+/** The floors at a 26-man active limit: the reference set (what `coverageFloorsFor(26)` gives). */
 export const DEFAULT_COVERAGE_FLOORS: CoverageFloors = {
   basis: 'minimum_floor',
-  source: "Pennant's first-pass minimum, not a league rule or an ideal roster",
-  floors: {
-    starting_pitcher: { count: 5, label: 'five healthy starting pitchers' },
-    relief_pitcher: { count: 7, label: 'seven healthy relief pitchers' },
-    catcher: { count: 2, label: 'two healthy catchers' },
-  },
+  source: "Pennant's minimum for a 26-man active roster, not a league rule or an ideal roster",
+  floors: Object.fromEntries(Object.entries(REFERENCE_FLOORS).map(([kind, f]) => [kind, { count: f.count, label: counted(f.count, f.noun) }])),
 };
+
+/**
+ * The floors for a league with this active-roster limit (B-89, deep hunt SRVMLB-08; the owner's decision of 2026-10-28: derive them
+ * from the league's own limit now, a rule rather than a fit, indeterminate when the limit is unknown, measured per save later). The
+ * reference set's share of a 26-man roster, at the league's limit, to the nearest whole player and never below one: a 21-man league
+ * of the 1930s is held to four starters, six relievers and two catchers, not to a modern staff. A limit the export doesn't give sets
+ * no floor at all: a shortfall against an unknown standard is not a need (D-018).
+ */
+export function coverageFloorsFor(activeLimit: number | null): CoverageFloors {
+  if (activeLimit === null || !Number.isFinite(activeLimit) || activeLimit <= 0) {
+    return {
+      basis: 'indeterminate',
+      source: 'The league\'s active-roster limit isn\'t in the export, so Pennant sets no minimum number of starters, relievers or catchers',
+      floors: {},
+    };
+  }
+  if (activeLimit === REFERENCE_ACTIVE_LIMIT) return DEFAULT_COVERAGE_FLOORS;
+  const floors: CoverageFloors['floors'] = {};
+  for (const [kind, f] of Object.entries(REFERENCE_FLOORS) as Array<[keyof typeof REFERENCE_FLOORS, { count: number; noun: string }]>) {
+    const count = Math.max(1, Math.round((f.count * activeLimit) / REFERENCE_ACTIVE_LIMIT));
+    floors[kind] = { count, label: counted(count, f.noun) };
+  }
+  return {
+    basis: 'minimum_floor',
+    source: `Pennant's minimum for a 26-man active roster (five starters, seven relievers, two catchers) scaled to this league's limit of ${activeLimit}, not a league rule or an ideal roster`,
+    floors,
+  };
+}
 
 /** An injured player due back within this many days creates a return decision when a spot he needs (active, and for a 60-day player also 40-man) is missing. */
 export const IL_RETURN_WINDOW_DAYS = 15;
@@ -255,7 +296,7 @@ function returnCrunchNeeds(view: ClubView, origin: NeedOrigin): MlbNeed[] {
 }
 
 /** Needs the club has right now, from current Player State. */
-export function detectNeeds(view: ClubView, origin: NeedOrigin = 'observed', coverage: CoverageFloors = DEFAULT_COVERAGE_FLOORS): MlbNeed[] {
+export function detectNeeds(view: ClubView, origin: NeedOrigin = 'observed', coverage: CoverageFloors = coverageFloorsFor(view.limits.active)): MlbNeed[] {
   const role = roleNeeds(view, origin, coverage);
   const spot = role.length ? null : openSpotNeed(view, origin);
   return [...role, ...(spot ? [spot] : []), ...returnCrunchNeeds(view, origin)];
@@ -267,7 +308,7 @@ export function detectNeeds(view: ClubView, origin: NeedOrigin = 'observed', cov
  * assumption: it says nothing about why he would be out or for how long.
  */
 export function whatIfNeed(
-  view: ClubView, playerId: number, coverage: CoverageFloors = DEFAULT_COVERAGE_FLOORS, assumedDays: number | null = null
+  view: ClubView, playerId: number, coverage: CoverageFloors = coverageFloorsFor(view.limits.active), assumedDays: number | null = null
 ): MlbNeed | null {
   const target = view.members.find((m) => m.playerId === playerId);
   const after = withUnavailable(view, playerId);
