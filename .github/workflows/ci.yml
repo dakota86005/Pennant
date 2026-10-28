@@ -34,6 +34,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # What ships (the server's dependencies): a high or critical advisory fails the run (B-74, SRVHEALTH-12)
+      - name: npm audit (what ships, blocking at high)
+        run: npm audit --omit=dev --audit-level=high
+      # Development tools and the Electron build (retired at the cutover): reported, never blocking
+      - name: npm audit (everything, report only)
+        run: npm audit
+        continue-on-error: true
       - run: npx tsc --noEmit
       - run: npm test
       - run: npm run build
