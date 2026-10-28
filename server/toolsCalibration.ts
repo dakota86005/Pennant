@@ -14,6 +14,7 @@ import { completedThrough } from './saveIdentity.js';
 import { MLB_CALIBRATION_SUBSYSTEM } from './mlbCalibrationFit.js';
 import { TOOLS_METHOD, type ToolsModel } from './mlbToolsFit.js';
 import { HITTER_TOOL_SLOPES, TOOLS_PRIOR, type ToolsParams } from './toolsModel.js';
+import { PARTLY_MEASURED_HERE } from './calibration.js';
 
 /**
  * The adopted tools fit in force for a league, or null (none, none through a season the league has completed, or one fitted on
@@ -44,6 +45,8 @@ export function toolsParamsOf(model: ToolsModel, basis: string): ToolsParams {
       status: 'calibrated',
       basis: 'The save\'s own bat slopes, direction and scale: clearly better than the starting slopes at forecasting its forward seasons (ratings stored before a season against that season); the running slopes are the starting values.',
       run: `save_calibration_fits ${TOOLS_METHOD} through ${basis}`,
+      // The running slopes stay the starting values: measured in part, said so (batch 13 review, L4)
+      says: PARTLY_MEASURED_HERE,
     },
   };
 }

@@ -4,7 +4,11 @@
  * walked by `tests/servedText.test.ts` (every contract fixture) and the contract test (every live `/v2` payload).
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { MEASURED_ELSEWHERE, VALUE_POLICY_SAYS, calibrated, policy, provisional } from '../server/calibration.js';
+import { MEASURED_ELSEWHERE, PARTLY_MEASURED_HERE, VALUE_POLICY_SAYS, calibrated, policy, provisional } from '../server/calibration.js';
+import { RESULTS_PARTS, paramsOf, type ResultsModel } from '../server/mlbResultsFit.js';
+import { toolsParamsOf } from '../server/toolsCalibration.js';
+import { HITTER_TOOL_SLOPES } from '../server/toolsModel.js';
+import type { ToolsModel } from '../server/mlbToolsFit.js';
 import { getDataStatus } from '../server/dataStatus.js';
 import { STAKES_CALIBRATION } from '../server/developmentFit.js';
 import { LEVEL_WORDS, UNNAMED_LEVEL, levelWord } from '../server/levelWords.js';
@@ -43,6 +47,16 @@ describe('a stamp in the GM\'s words (B-01)', () => {
     // The pages that state a value policy without reading the value modules say the stamp's own line
     expect(stampWords(SURPLUS_POLICY_CALIBRATION)).toBe(VALUE_POLICY_SAYS.surplus);
     expect(stampWords(COST_COMBINATION_POLICY_CALIBRATION)).toBe(VALUE_POLICY_SAYS.clubRange);
+  });
+
+  it('says a fit measured on this save only in part as in part, never as wholly this save\'s (L4, D-053)', () => {
+    // The results fit: the hitters' part is the save's own, the rest (and the tools weight) the starting values
+    const results = { parts: Object.fromEntries(RESULTS_PARTS.map((p) => [p, { source: p === 'hitter' ? 'save' : 'prior' }])), params: {} } as unknown as ResultsModel;
+    expect(stampWords(paramsOf(results, 'the 2039 season').stamp)).toBe(PARTLY_MEASURED_HERE);
+    // The tools fit: the bat slopes are the save's own, the running slopes the starting values
+    const tools = { bat: { source: 'save', served: Object.keys(HITTER_TOOL_SLOPES).map(() => 1) }, blend: { source: 'prior', served: 1 }, forwardSeasons: 1 } as unknown as ToolsModel;
+    expect(stampWords(toolsParamsOf(tools, 'the 2039 season').stamp)).toBe(PARTLY_MEASURED_HERE);
+    expect(bannedIn(PARTLY_MEASURED_HERE, [PROVENANCE, CODE_TEXT])).toEqual([]);
   });
 
   it('serves the farm\'s stakes lines by what they are, never their constant\'s name or a quantile code', () => {

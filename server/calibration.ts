@@ -54,6 +54,11 @@ export const CALIBRATION_RUN = 'scripts/calibrate.ts on the 2026-05-16 Arizona s
 const withSays = (stamp: CalibrationStamp, says: string | undefined): CalibrationStamp => (says ? { ...stamp, says } : stamp);
 /** A constant fitted once on real major-league history (`CALIBRATION_RUN`), said so: never "this save's own" (D-053). */
 export const MEASURED_ELSEWHERE = 'Measured on real major-league seasons, not on this save';
+/**
+ * A fit that serves the save's own values for some of its parts and the starting values for the rest, said so: never the
+ * plain "measured on this save's own seasons" a whole fit earns (batch 13 review, L4; D-053).
+ */
+export const PARTLY_MEASURED_HERE = "Measured on this save in part; the rest are Pennant's starting values";
 export const calibrated = (basis: string, says: string = MEASURED_ELSEWHERE): CalibrationStamp => withSays({ status: 'calibrated', basis, run: CALIBRATION_RUN }, says);
 
 /**

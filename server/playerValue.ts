@@ -65,7 +65,7 @@ import {
   type SeasonRecord, type SeasonWar,
 } from './playerValueFinances.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
-import type { CalibrationStamp } from './calibration.js';
+import { PARTLY_MEASURED_HERE, type CalibrationStamp } from './calibration.js';
 import { readInjuryProneness } from './injuryProneness.js';
 import {
   PRODUCTION_METHOD, PRODUCTION_POLICY, PRODUCTION_PRIOR, PRODUCTION_PRIOR_CALIBRATION, PRODUCTION_PRIOR_SOURCE, RATINGS_METHOD,
@@ -1323,6 +1323,8 @@ function savedRatingsStamp(fit: StoredRatingsFit): CalibrationStamp {
       `arrivals ${r.arrival.measured ? `from seasons ${r.arrival.window[0] ?? '—'}–${r.arrival.window[r.arrival.window.length - 1] ?? '—'}${arrivalAdoptionWords(r)}` : 'not measured'}; ` +
       `development ${r.development.source === 'save_fit' ? `from ${r.development.pairs} rating-snapshot pairs` : `not yet calibrated (${r.development.pairs} of ${r.development.minimumPairs} pairs)`}.`,
     run: `value_production_fits ${r.id}, fitted at game date ${fit.gameDate ?? 'unknown'} (${fit.method})`,
+    // Arrivals or development still on the starting values: measured in part, said so (batch 13 review, L4)
+    ...(r.arrival.measured && r.development.source === 'save_fit' ? {} : { says: PARTLY_MEASURED_HERE }),
   };
 }
 
