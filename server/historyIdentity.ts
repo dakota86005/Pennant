@@ -661,8 +661,8 @@ function copyInto(saveKey: string, carry: number, source: string, dates: readonl
       `INSERT OR IGNORE INTO save_rating_snapshots (save_key, ${columns}) SELECT ?, ${columns} FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?`
     ).run(saveKey, source, date).changes;
     const mode = historyDb.prepare(
-      `INSERT OR IGNORE INTO save_rating_snapshot_modes (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at)
-       SELECT ?, game_date, mode, additional_scouted, source, import_started_at, recorded_at FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`
+      `INSERT OR IGNORE INTO save_rating_snapshot_modes (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at, scale_max)
+       SELECT ?, game_date, mode, additional_scouted, source, import_started_at, recorded_at, scale_max FROM save_rating_snapshot_modes WHERE save_key = ? AND game_date = ?`
     ).run(saveKey, source, date).changes;
     if (mode > 0) modeDates.push(date);
     // The league's population view at that date too (OSA's, D-068), kind by kind, recorded so the undo removes exactly it (review M4)

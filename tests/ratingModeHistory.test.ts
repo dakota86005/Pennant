@@ -104,7 +104,7 @@ describe('rating history across a switch in the kind of ratings', () => {
       expect(modeFilter().excluded.has('2029-7-1')).toBe(true);
       const trend = developmentTrendByPlayer().get(PLAYER)!;
       expect(trend.snapshotCount).toBe(2);
-      expect(trend.reasons.join(' ')).toMatch(/kind of ratings in the snapshot of 2029-7-1 couldn't be read, so it is not compared/);
+      expect(trend.reasons.join(' ')).toMatch(/kind of ratings in the snapshot of July 1, 2029 couldn't be read, so it is not compared/);
       expect((loadScoutedObservations([PLAYER]).get(PLAYER) ?? []).map((o) => o.gameDate)).toEqual(['2029-06-01', '2029-08-20']);
       const body = await request(`/api/development/${ORG}?from=2029-6-1&to=2029-7-1`);
       expect(body.changes).toBeNull();
@@ -199,7 +199,8 @@ describe('a player\'s rating history says what it set aside', () => {
       const history = playerRatingHistory(ONE);
       expect(history.rows.map((r) => r.game_date)).toEqual(['2029-6-1', '2029-10-2']);
       expect(history.setAside).toBe(2);
-      expect(history.unknownKind).toMatch(/2029-9-30 couldn't be read/);
+      // The date in words, never OOTP's raw unpadded form (B-34)
+      expect(history.unknownKind).toMatch(/September 30, 2029 couldn't be read/);
     } finally {
       stampSnapshotMode('2029-9-30', { mode: 'scouted', additionalScouted: null, source: 'export_settings', reason: null }, null);
     }

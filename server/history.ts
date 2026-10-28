@@ -4,7 +4,8 @@ import path from 'node:path';
 import { db as leagueDb, importRecord, tableExists } from './db.js';
 import { DATA_DIR, loadConfig } from './config.js';
 import { evidenceRecord, isModeSwitch, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
-import { evidenceRatingMode, populationSource, ratingsFromOf, snapshotRatingRows } from './scoutedEvidence.js';
+import { evidenceRatingMode, populationSource, ratingScale, ratingScaleNamed, ratingsFromOf, snapshotRatingRows } from './scoutedEvidence.js';
+import { parseGameDate } from './dataFreshness.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, releaseCarriedPopulation, rollbackName, servedLeagueCertain } from './historyIdentity.js';
 
 /**
@@ -234,6 +235,17 @@ historyDb.exec(`
     ON roster_state_snapshot_saves (save_key, snapshot_id);
 `);
 
+/*
+ * The display scale each rating snapshot was taken on (B-90, deep hunt SRVDEV-04; the owner's decision of 2026-10-28: stamp it on each
+ * snapshot from now on). A snapshot keeps OOTP's native grades, and OOTP lets the GM display them on 20-80, 1-20, 1-10, 2-8 or 1-5; read
+ * with today's scale, a switch from 1-10 to 20-80 was every player's growth. Additive and nullable, beside the kind of ratings: a
+ * snapshot taken before the stamp has none, and its scale is unknown, never guessed.
+ */
+{
+  const present = new Set((historyDb.prepare(`PRAGMA table_info(save_rating_snapshot_modes)`).all() as Array<{ name: string }>).map((c) => c.name));
+  if (!present.has('scale_max')) historyDb.exec(`ALTER TABLE save_rating_snapshot_modes ADD COLUMN scale_max INTEGER`);
+}
+
 {
   // A data folder that ran an earlier build of this branch has history_saves without the later columns: added, nullable
   const present = new Set((historyDb.prepare(`PRAGMA table_info(history_saves)`).all() as Array<{ name: string }>).map((c) => c.name));
@@ -283,13 +295,15 @@ export const POPULATION_DATA_COLUMNS = SNAPSHOT_DATA_COLUMNS.filter((c) => c !==
  * of that date). No record (an import from before N3.5 recorded none) stamps nothing: the snapshot stays unrecorded,
  * never `unknown`, which would leave it out of development (N3.5 B2 review).
  */
-export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | null, importStartedAt: string | null): void {
+export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | null, importStartedAt: string | null, scaleMax: number | null = null): void {
   if (!record) return;
   const values = [
     gameDate, record.mode,
     record.additionalScouted === null || record.additionalScouted === undefined ? null : record.additionalScouted ? 1 : 0,
     record.source ?? null, importStartedAt, new Date().toISOString(),
   ];
+  // The display scale the snapshot was taken on (B-90): kept when a later stamp of the same date doesn't name one
+  const scale = scaleMax !== null && Number.isFinite(scaleMax) ? Math.round(scaleMax) : null;
   const resolved = currentHistoryKey();
   const name = rollbackName();
   historyDb.transaction(() => {
@@ -298,10 +312,13 @@ export function stampSnapshotMode(gameDate: string, record: RatingModeRecord | n
     if (saveKey === null) return;
     historyDb
       .prepare(
-        `INSERT OR REPLACE INTO save_rating_snapshot_modes
-         (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO save_rating_snapshot_modes
+         (save_key, game_date, mode, additional_scouted, source, import_started_at, recorded_at, scale_max) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (save_key, game_date) DO UPDATE SET mode = excluded.mode, additional_scouted = excluded.additional_scouted,
+           source = excluded.source, import_started_at = excluded.import_started_at, recorded_at = excluded.recorded_at,
+           scale_max = COALESCE(excluded.scale_max, save_rating_snapshot_modes.scale_max)`
       )
-      .run(saveKey, ...values);
+      .run(saveKey, ...values, scale);
     // The save's own stamp now: no carry-over's undo removes it
     releaseCarried(saveKey, gameDate, null);
     // And under the served save's name, as the earlier build writes it, so a rolled-back Electron build reads it (D-064);
@@ -350,24 +367,119 @@ export interface RatingModeSwitch {
  * unknown kind (N3.5 Stage B2, D-018): its ratings may be of another kind, so comparing it could read a switch as
  * movement. Returns the dates left out, the switches and the unknown-kind dates, for the reasons a consumer shows.
  */
-export function modeFilter(): { excluded: Set<string>; switches: RatingModeSwitch[]; unknownKind: string[] } {
+export function modeFilter(): { excluded: Set<string>; switches: RatingModeSwitch[]; unknownKind: string[]; scale: ScaleFilter } {
   // The kind the evidence is read in now: our scouts' full reports when the export carries them (D-067), else the export's
   const current = evidenceRatingMode();
   const modes = snapshotModes();
-  const excluded = new Set<string>();
+  // A snapshot on another display scale than today's is a switch too, never development (B-90)
+  const scale = scaleFilter();
+  const excluded = new Set<string>(scale.excluded);
   if (current && current !== 'unknown') for (const [date, mode] of modes) if (isModeSwitch(mode, current)) excluded.add(date);
   // A snapshot of an export that carried no ratings observes none, whatever its columns hold (D-018)
   for (const [date, mode] of modes) if (mode === 'none') excluded.add(date);
   const unknownKind = [...modes].filter(([, mode]) => mode === 'unknown').map(([date]) => date).sort(compareGameDates);
   for (const date of unknownKind) excluded.add(date);
-  return { excluded, switches: modeSwitches(modes), unknownKind };
+  return { excluded, switches: modeSwitches(modes), unknownKind, scale };
+}
+
+// ── The display scale of each snapshot (B-90) ────────────────────────────
+
+/** A stored game date in words ("May 6, 2040"), the stored text when it can't be read. */
+export function snapshotDateWords(raw: string): string {
+  const iso = parseGameDate(raw);
+  const m = iso ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null;
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return m ? `${months[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}` : raw;
+}
+
+const listOfDates = (dates: readonly string[]): string => {
+  const words = dates.map(snapshotDateWords);
+  return words.length <= 3 ? words.join(', ') : `${words.slice(0, 3).join(', ')} and ${words.length - 3} more`;
+};
+
+/**
+ * What an unstamped snapshot (taken before the scale was stamped) is: its scale is unknown, never guessed (the owner's decision of
+ * 2026-10-28). `'kept_when_consistent'`: it stays in, as a snapshot of an unrecorded kind does (D-061), unless its own grades prove it
+ * isn't on today's scale (a composite below the scale's floor or above its top: a 1-10 snapshot read on 20-80, or the other way), and
+ * then it is left out and said. `'left_out'` would leave every unstamped snapshot out. The one switch.
+ */
+export const UNSTAMPED_SCALE: 'kept_when_consistent' | 'left_out' = 'kept_when_consistent';
+
+/** The stamped display scale (its top: 80, 20, 10, 8 or 5) of each snapshot date of this save; an unstamped date is absent. */
+export function snapshotScales(): Map<string, number> {
+  const rows = historyDb
+    .prepare(`SELECT game_date, scale_max FROM save_rating_snapshot_modes WHERE save_key = ? AND scale_max IS NOT NULL`)
+    .all(currentHistoryKey()) as Array<{ game_date: string; scale_max: number }>;
+  return new Map(rows.map((r) => [r.game_date, Number(r.scale_max)]));
+}
+
+export interface ScaleFilter {
+  /** The snapshot dates on another display scale than today's (stamped so, or shown so by their own grades): left out. */
+  excluded: Set<string>;
+  /** Each change of the stamped scale between consecutive snapshots, and the unstamped ones shown off today's scale, in words. */
+  texts: string[];
+}
+
+let scaleCache: { key: string; value: ScaleFilter } | null = null;
+
+/** The tool grades a snapshot keeps, read to tell whether an unstamped snapshot is on today's scale. */
+const SCALE_TOOLS = ['con', 'gap', 'pow', 'eye', 'avk', 'conP', 'gapP', 'powP', 'eyeP', 'avkP', 'stu', 'mov', 'ctl', 'stuP', 'movP', 'ctlP'] as const;
+
+/** Which snapshots rating history leaves out for being on another display scale than today's export (B-90). */
+export function scaleFilter(): ScaleFilter {
+  const now = ratingScale();
+  const saveKey = currentHistoryKey();
+  // Kept until the snapshots or their stamps change: a carry-over or its undo (D-064) writes them without a snapshot of its own
+  const rows = historyDb.prepare(`SELECT MAX(rowid) AS r FROM save_rating_snapshots`).get() as { r: number | null };
+  const stamps = historyDb.prepare(`SELECT COUNT(*) AS n FROM save_rating_snapshot_modes WHERE save_key = ?`).get(saveKey) as { n: number };
+  const key = `${saveKey}|${snapshotWrites}|${now.max}|${rows.r ?? 0}|${stamps.n}`;
+  if (scaleCache?.key === key) return scaleCache.value;
+  const stamped = snapshotScales();
+  const excluded = new Set<string>();
+  const texts: string[] = [];
+  for (const [date, max] of stamped) if (max !== now.max) excluded.add(date);
+  // Each change between consecutive stamped snapshots, said once
+  let last: { date: string; max: number } | null = null;
+  for (const date of [...stamped.keys()].sort(compareGameDates)) {
+    const max = stamped.get(date)!;
+    if (last && last.max !== max) {
+      texts.push(`The rating scale changed between ${snapshotDateWords(last.date)} and ${snapshotDateWords(date)}, from ${ratingScaleNamed(last.max)} to ${ratingScaleNamed(max)}: the change is a switch, not development.`);
+    }
+    last = { date, max };
+  }
+  // The snapshots taken before the stamp: scale unknown, never guessed
+  const unstamped = (historyDb.prepare(`SELECT DISTINCT game_date FROM save_rating_snapshots WHERE save_key = ?`).all(saveKey) as Array<{ game_date: string }>)
+    .map((r) => r.game_date).filter((d) => !stamped.has(d));
+  const offScale: string[] = [];
+  if (UNSTAMPED_SCALE === 'left_out') offScale.push(...unstamped);
+  else if (unstamped.length) {
+    // Its own tool grades, as kept (never its composites, which average in a zero): a grade of zero or none is unknown, not a grade
+    const range = historyDb.prepare(
+      `SELECT ${SCALE_TOOLS.map((c) => `MIN(CASE WHEN ${c} > 0 THEN ${c} END) AS lo_${c}, MAX(${c}) AS hi_${c}`).join(', ')}
+       FROM save_rating_snapshots WHERE save_key = ? AND game_date = ?`
+    );
+    for (const date of unstamped) {
+      const r = range.get(saveKey, date) as Record<string, number | null> | undefined;
+      const values = (prefix: string) => SCALE_TOOLS.map((c) => r?.[`${prefix}_${c}`]).filter((v): v is number => typeof v === 'number');
+      const lo = values('lo');
+      const hi = values('hi');
+      if ((lo.length && Math.min(...lo) < now.min) || (hi.length && Math.max(...hi) > now.max)) offScale.push(date);
+    }
+  }
+  for (const date of offScale) excluded.add(date);
+  if (offScale.length) {
+    const sorted = [...offScale].sort(compareGameDates);
+    texts.push(`The snapshot${sorted.length === 1 ? '' : 's'} of ${listOfDates(sorted)} ${sorted.length === 1 ? 'was' : 'were'} taken on another rating scale than today's ${ratingScaleNamed(now.max)}, so ${sorted.length === 1 ? 'it is' : 'they are'} not compared.`);
+  }
+  const value = { excluded, texts };
+  scaleCache = { key, value };
+  return value;
 }
 
 /** Why the snapshots of an unknown kind are left out, in a sentence; null when there are none. */
 export function unknownKindReason(dates: readonly string[]): string | null {
   if (dates.length === 0) return null;
-  const list = dates.length <= 3 ? dates.join(', ') : `${dates.slice(0, 3).join(', ')} and ${dates.length - 3} more`;
-  return `The kind of ratings in the snapshot${dates.length === 1 ? '' : 's'} of ${list} couldn't be read, so ${dates.length === 1 ? 'it is' : 'they are'} not compared.`;
+  return `The kind of ratings in the snapshot${dates.length === 1 ? '' : 's'} of ${listOfDates(dates)} couldn't be read, so ${dates.length === 1 ? 'it is' : 'they are'} not compared.`;
 }
 
 /** Every switch between consecutive snapshots in known, different modes. */
@@ -455,7 +567,7 @@ export function noteSnapshotsWritten(): void {
 }
 
 /** Capture a ratings snapshot of every rostered player. Idempotent per game date. */
-export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean; evidenceMode: RatingMode | null } | null {
+export function takeSnapshot(): { gameDate: string; players: number; ourScouts: boolean; evidenceMode: RatingMode | null; scaleMax: number } | null {
   // The ratings the evidence reads: our scouts' full reports when the export carries them (D-067), else the main tables;
   // none at all under "Show no player ratings" (D-061), and then no snapshot. Read through the adapter (deep hunt SRVDEV-06)
   const rows = snapshotRatingRows('evidence');
@@ -547,7 +659,8 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
   noteSnapshotsWritten();
   if (!filed) return null;
   console.log(`[history] snapshot ${gameDate}: ${rows.length} players${populationRows.length ? ` (and OSA's view of ${populationRows.length}, the league's yardstick)` : ''}`);
-  return { gameDate, players: rows.length, ourScouts, evidenceMode };
+  // The display scale these grades are on, for the snapshot's stamp (B-90)
+  return { gameDate, players: rows.length, ourScouts, evidenceMode, scaleMax: ratingScale().max };
 }
 
 /**
@@ -560,7 +673,7 @@ export function baselineSnapshot(): { gameDate: string; players: number } | null
   const mode = currentRatingMode();
   if (!tableExists('players') || !servedLeagueCertain() || mode?.mode === 'none' || snapshotDates().length > 0) return null;
   const snapshot = takeSnapshot();
-  if (snapshot) stampSnapshotMode(snapshot.gameDate, evidenceRecord(mode, snapshot.evidenceMode), null);
+  if (snapshot) stampSnapshotMode(snapshot.gameDate, evidenceRecord(mode, snapshot.evidenceMode), null, snapshot.scaleMax);
   return snapshot;
 }
 
@@ -752,8 +865,9 @@ function developmentTrendByPlayerForScope(
     ) as DevelopmentTrendRow[];
 
   // Snapshots in another known kind of ratings are a switch, never development (D-061): left out, and said
-  const { excluded: otherMode, switches, unknownKind } = modeFilter();
+  const { excluded: otherMode, switches, unknownKind, scale } = modeFilter();
   const unknownReason = unknownKindReason(unknownKind);
+  const scaleTexts = scale.texts;
   // Rating history this save's earlier name held but that couldn't be matched to it is not used, and said (D-064)
   const historyLeftOut = historyNote().note;
 
@@ -929,6 +1043,8 @@ function developmentTrendByPlayerForScope(
     if (otherMode.size > 0) {
       reasons.push(...switches.map((sw) => `${sw.text} Snapshots in the earlier kind are not compared.`));
       if (unknownReason) reasons.push(unknownReason);
+      // A change of display scale, said the same way (B-90)
+      reasons.push(...scaleTexts);
     }
     if (historyLeftOut) reasons.push(historyLeftOut);
     const switched = switchedFrom.get(playerId);
@@ -1678,14 +1794,16 @@ export function playerRatingHistory(playerId: number): {
     .all(currentHistoryKey(), playerId) as PlayerHistoryRow[];
   const { rows, sourceSwitches } = usableHistoryRows(all);
   rows.sort((a, b) => compareGameDates(a.game_date, b.game_date));
-  const { excluded, switches, unknownKind } = modeFilter();
+  const { excluded, switches, unknownKind, scale } = modeFilter();
   const unknownDates = new Set(unknownKind);
   const his = new Set(all.map((r) => r.game_date));
-  const otherKind = [...his].some((date) => excluded.has(date) && !unknownDates.has(date));
+  const otherKind = [...his].some((date) => excluded.has(date) && !unknownDates.has(date) && !scale.excluded.has(date));
+  const otherScale = [...his].some((date) => scale.excluded.has(date));
   return {
     rows: rows.map(({ src: _src, ...row }: PlayerHistoryRow & { src?: unknown }) => row),
     sourceSwitch: sourceSwitches.get(playerId) ?? null,
-    modeSwitches: otherKind ? switches.map((x) => x.text) : [],
+    // A change of the kind of ratings, or of their display scale (B-90), when any of his snapshots is set aside for it
+    modeSwitches: [...(otherKind ? switches.map((x) => x.text) : []), ...(otherScale ? scale.texts : [])],
     unknownKind: unknownKindReason(unknownKind.filter((date) => his.has(date))),
     setAside: all.length - rows.length,
     history: historyNote(),
@@ -1822,6 +1940,9 @@ export function developmentHistoryFor(orgId: number) {
 
     ratingModeSwitches: modeSwitches(),
 
+    // Snapshots on another display scale than today's, left out the same way, in words (B-90)
+    ratingScaleSwitches: scaleFilter().texts,
+
     // Players whose ratings changed source (our scouts' full reports, OSA's view): their other rows are left out (D-067)
     ratingSourceSwitches: [...sourceSwitches].map(([playerId, text]) => ({ playerId, text })),
 
@@ -1869,6 +1990,11 @@ historyRoutes.get('/development/:orgId', (req, res) => {
   if (isModeSwitch(modes.get(from), modes.get(to))) {
     const ratingModeSwitch = modeSwitches(new Map([[from, modes.get(from)!], [to, modes.get(to)!]]))[0];
     return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingModeSwitch, history });
+  }
+  // Two snapshots on different display scales: a switch too, never development (B-90)
+  const scale = scaleFilter();
+  if (scale.excluded.has(from) || scale.excluded.has(to)) {
+    return res.json({ snapshots: dates.length, dates, from, to, changes: null, ratingScaleSwitch: { text: scale.texts.join(' ') }, history });
   }
   // A snapshot stamped with an unknown kind of ratings is never compared (D-018): no changes, and why
   const unknownEnds = [from, to].filter((d) => modes.get(d) === 'unknown');

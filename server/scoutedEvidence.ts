@@ -42,7 +42,7 @@ import { databaseGeneration, db, importRecord, tableColumns, tableExists } from 
 import { ratingScaleMax } from './ratingScaleProbe.js';
 import { glovesFromRow, type Gloves, type PositionRating } from './gloves.js';
 import { parseGameDate } from './dataFreshness.js';
-import { currentRatingMode, historyDb, modeFilter, otherSource, snapshotModes } from './history.js';
+import { currentRatingMode, historyDb, modeFilter, otherSource, scaleFilter, snapshotModes } from './history.js';
 import { currentHistoryKey } from './historyIdentity.js';
 import { RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 
@@ -609,6 +609,11 @@ const SCALE_MIN: Record<number, number> = { 5: 1, 8: 2, 10: 1, 20: 1, 80: 20 };
 export function ratingScale(): RatingScale {
   const max = ratingScaleMax();
   return { max, min: SCALE_MIN[max] ?? 20, native2080: max === 80, basis: 'detected_from_export_maximum' };
+}
+
+/** A display scale by its top, in words: "20–80", "1–10". */
+export function ratingScaleNamed(max: number): string {
+  return `${SCALE_MIN[max] ?? 1}–${max}`;
 }
 
 /** A rating that exists: finite and positive. Zero, null and junk are unknown. */
@@ -1249,8 +1254,9 @@ export function loadScoutedGlovesAtPosition(playerIds: Iterable<number>): Map<nu
  * One persisted observation of a player's scouted tools: the rating snapshot `history.ts` takes after
  * each import, read back as a `ScoutedAbility` under the same rules as today's export (missing stays
  * missing; a composite only when every tool is known; the 20-80 scale). The snapshot keeps the tools
- * as exported, so it is normalized with the scale detected from TODAY's export: an assumption, stated,
- * that the save's display scale has not changed between imports.
+ * as exported, so it is normalized with the scale detected from TODAY's export, and a snapshot on another
+ * display scale (stamped so, or shown so by its own grades) is left out as a switch, never read on today's
+ * scale (B-90, `scaleFilter` in `history.ts`).
  *
  * This is the longitudinal evidence (ratings at t against what followed at t + h) that a development
  * path, or an arrival rate conditioned on ratings, needs. It is read only here, like every rating.
@@ -1321,7 +1327,8 @@ export function loadScoutedObservations(playerIds: Iterable<number> | null = nul
   const scale = ratingScale();
   const viewer = viewerContext();
   // A snapshot in another known kind of ratings than today's export is a switch, never development: left out (D-061)
-  const { excluded } = osaHistory ? { excluded: new Set<string>() } : modeFilter();
+  // ...and so is a snapshot on another display scale than today's, OSA's history included (B-90)
+  const { excluded } = osaHistory ? { excluded: scaleFilter().excluded } : modeFilter();
   const modes = osaHistory ? new Map<string, RatingMode>() : snapshotModes();
   const take = (rows: Array<Record<string, unknown>>) => {
     for (const row of rows) {

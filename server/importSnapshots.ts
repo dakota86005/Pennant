@@ -24,7 +24,7 @@ export interface SnapshotRequest {
 }
 
 export interface SnapshotOutcome {
-  ratings: { gameDate: string; players: number; ourScouts?: boolean; evidenceMode?: RatingMode | null } | null;
+  ratings: { gameDate: string; players: number; ourScouts?: boolean; evidenceMode?: RatingMode | null; scaleMax?: number } | null;
   errors: string[];
 }
 
@@ -40,7 +40,8 @@ export async function takeImportSnapshots(request: SnapshotRequest, between: () 
     if (request.ratingMode?.mode !== 'none') {
       ratings = takeSnapshot(); // development-tracking snapshot, keyed by in-game date
       // Read from our scouts' full reports, it is stamped as their kind, never the main tables' (D-067)
-      if (ratings) stampSnapshotMode(ratings.gameDate, evidenceRecord(request.ratingMode, ratings.evidenceMode ?? null), request.importStartedAt);
+      // ...and with the display scale its grades are on, so a change of scale is never read as development (B-90)
+      if (ratings) stampSnapshotMode(ratings.gameDate, evidenceRecord(request.ratingMode, ratings.evidenceMode ?? null), request.importStartedAt, ratings.scaleMax ?? null);
     }
   } catch (err) {
     errors.push(`rating snapshot: ${(err as Error).message}`);
