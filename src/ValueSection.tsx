@@ -151,29 +151,13 @@ function OurFigure({ label, total, fmt }: { label: string; total: OurTotal; fmt:
 const possessive = (club: string | null): string => (club ? `the ${club}${club.endsWith('s') ? "'" : "'s"}` : "this club's");
 
 const TIP_WIN_VALUE =
-  "Context from the standings, not part of the value: how much one more win this season changes this club's chance of " +
-  'reaching the playoffs, on the same odds model as the deadline read (its record, run differential and games left). ' +
-  "It isn't converted to dollars, and it isn't added to any value figure.";
+  "What one more win would be worth to this club right now, beside what a win costs on the market. It depends on the " +
+  "club's chances in the race, and Pennant has no model of those it relies on yet, so it isn't given. It's never part " +
+  'of any value figure.';
 
-/** This club's value of a win now, as context: in playoff odds, never part of any value. */
+/** This club's value of a win now, as context: not established since the odds left Player Value (D-060), never part of any value. */
 export function ClubWinValueLine({ value }: { value: ClubWinValue }) {
   const club = possessive(value.club);
-  if (value.status === 'known' && value.perWin !== null) {
-    const pts = value.perWin * 100;
-    const points = pts > 0 && pts < 0.05 ? 'less than 0.1' : pts.toFixed(1);
-    return (
-      <div className="muted value-win">
-        <Tip label={`A win right now moves ${club} playoff odds by about ${points} points`} tip={`${TIP_WIN_VALUE} ${value.text}`} focusable />
-        {value.odds !== null ? ` (now ${Math.round(value.odds * 100)}%)` : ''}.
-      </div>
-    );
-  }
-  if (value.status === 'decided') {
-    return <div className="muted value-win"><Tip label={`A win right now doesn't move ${club} playoff odds`} tip={TIP_WIN_VALUE} focusable />: {value.reason}</div>;
-  }
-  if (value.status === 'no_games_left') {
-    return <div className="muted value-win"><Tip label="No games left this season" tip={TIP_WIN_VALUE} focusable />: a win can no longer be added.</div>;
-  }
   return <div className="muted value-win"><Tip label={`${club.charAt(0).toUpperCase()}${club.slice(1)} value of a win now isn't known`} tip={TIP_WIN_VALUE} focusable />: {value.reason}</div>;
 }
 

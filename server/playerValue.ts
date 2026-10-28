@@ -57,8 +57,7 @@ import { measureCostLadder, priceControlTimeline, type CostLadder } from './play
 import { productionCone, type ProductionCone } from './playerValueCone.js';
 import { surplusOf, type PlayerSurplus, type SurplusMarket } from './playerValueSurplus.js';
 import { ourViewOf, type LensPhilosophy, type OurView } from './playerValueLens.js';
-import { curveWins, winValueOf, type ClubWinValue } from './playerValueWinValue.js';
-import { oddsAt, oddsModelOf, shownOdds } from './posture.js';
+import { winValueOf, type ClubWinValue } from './playerValueWinValue.js';
 import {
   FINANCE_COLUMNS, clubFinancesOf, openingPriceOfWin, replacementLevelOf, scheduleShareOf,
   type ClubFinances, type FinanceTable, type MarketCandidate, type PriceOfWin, type ReplacementLevel,
@@ -147,8 +146,8 @@ export type {
 } from './playerValueLens.js';
 /** Phase 5b: the philosophy lens, at read time on a neutral valuation (pure; Part 6). */
 export { lensPhilosophyFrom, ourViewOf } from './playerValueLens.js';
-export type { ClubWinValue, WinValueInput } from './playerValueWinValue.js';
-/** Phase 5b: the club's value of a win, from the deadline read's odds model (pure; Part 4.5). */
+export type { ClubWinValue } from './playerValueWinValue.js';
+/** Phase 5b: the club's value of a win (pure; Part 4.5): not established since the odds left Player Value (D-060, 2026-10-28). */
 export { winValueOf } from './playerValueWinValue.js';
 export type { ProductionTotal, UnestablishedSeason } from './playerValueProduction.js';
 export { PRODUCTION_NO_EVIDENCE };
@@ -443,25 +442,14 @@ export function playerOurView(
 }
 
 /**
- * Phase 5b: this club's value of a win now (PLAYER_VALUE.md Part 4.5): how much one more win moves its chance of the
- * postseason, and the curve over the rest of the season, on the deadline read's odds model, in playoff odds (Q-6). A club
- * fact from the standings, runs and schedule; the same for every organization that reads it, and never part of a
- * player's value.
+ * Phase 5b: this club's value of a win now (PLAYER_VALUE.md Part 4.5): what one more win is worth to the club. Not
+ * established: it was read on the deadline read's odds model, which the owner retired from Player Value (2026-10-28,
+ * D-060 amended), and nothing replaces it yet (D-018). Never part of a player's value.
  */
 export function clubWinValue(teamId: number): ClubWinValue {
-  const read = oddsModelOf(teamId);
   const clubRow = tableExists('teams') ? db.prepare(`SELECT name, nickname FROM teams WHERE team_id = ?`).get(teamId) as { name?: unknown; nickname?: unknown } | undefined : undefined;
   const club = clubRow ? [clubRow.name, clubRow.nickname].filter((x) => typeof x === 'string' && x.length > 0).join(' ') || null : null;
-  if (!read.model) return winValueOf({ teamId, club, reading: null, reason: read.reason });
-  const m = read.model;
-  return winValueOf({
-    teamId, club, reason: null,
-    reading: {
-      w: m.w, l: m.l, gamesPlayed: m.gamesPlayed, gamesLeft: m.gamesLeft, rs: m.rs, ra: m.ra, talent: m.talent, rival: m.rival,
-      gap: m.gap, gapRead: m.gapRead, summary: m.picture?.summary ?? null, route: m.picture?.route ?? null, wildCards: m.picture?.spots ?? null,
-      shown: shownOdds(m), curve: curveWins().map((k) => ({ wins: k, odds: oddsAt(m, k) })),
-    },
-  });
+  return winValueOf({ teamId, club });
 }
 
 /** Contract facts and control for the players asked about, keyed by id; retired players are not valued. */

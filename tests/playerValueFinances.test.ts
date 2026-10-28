@@ -471,13 +471,13 @@ describe('Payroll lists every player it counts', () => {
 });
 
 describe('Player Value: the club\'s marginal value of a win (phase 5b)', () => {
-  // How it moves with the club's competitive position (far out, a tight race, a place beyond reach) and why it never
-  // reads philosophy is in playerValueWinValue.test.ts; here, that Club Finances serves it beside the price of a win
-  it('is served beside the league\'s price of a win, in playoff odds, as the entry point states it', async () => {
+  // Why it is not established (the odds left Player Value, D-060 amended 2026-10-28) is in playerValueWinValue.test.ts;
+  // here, that Club Finances serves it beside the price of a win as the entry point states it, with no odds
+  it('is served beside the league\'s price of a win as the entry point states it: not established, with no odds', async () => {
     const data = await request(`/api/club-finances/${IDS.mlbTeam}`);
     const { clubWinValue } = await import('../server/playerValue.js');
     expect(data.winValue).toEqual(JSON.parse(JSON.stringify(clubWinValue(IDS.mlbTeam))));
-    expect(data.winValue.unit).toBe('playoff odds');
-    expect(JSON.stringify(data.winValue)).not.toMatch(/\$/);
+    expect(data.winValue.status).toBe('unknown');
+    expect(JSON.stringify(data.winValue)).not.toMatch(/\$|postseason|playoff|"odds"/i);
   });
 });

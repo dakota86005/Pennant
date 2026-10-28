@@ -615,20 +615,14 @@ export interface OurView {
   basis: string[];
   stamp: { status: string; basis: string };
 }
+/** The club's value of a win: not established since the odds left Player Value (D-060, amended 2026-10-28). */
 export interface ClubWinValue {
   teamId: number;
   club: string | null;
-  status: 'known' | 'decided' | 'no_games_left' | 'unknown';
-  reason: string | null;
-  unit: 'playoff odds';
-  odds: number | null;
-  perWin: number | null;
-  curve: Array<{ wins: number; odds: number }>;
-  gamesLeft: number | null;
-  gamesPlayed: number | null;
+  status: 'unknown';
+  reason: string;
   text: string;
   basis: string[];
-  stamp: { status: string; basis: string };
 }
 export interface OurViewResponse {
   organization: { id: number; name: string | null; source: 'requested' | 'configured' | 'human' };

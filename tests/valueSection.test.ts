@@ -67,10 +67,9 @@ const lens = (over: Partial<OurView> = {}): OurView => ({
 });
 
 const winValue = (over: Partial<ClubWinValue> = {}): ClubWinValue => ({
-  teamId: 1, club: 'Arizona Diamondbacks', status: 'known', reason: null, unit: 'playoff odds', odds: 0.71, perWin: 0.032,
-  curve: [{ wins: 0, odds: 0.71 }, { wins: 1, odds: 0.742 }], gamesLeft: 119, gamesPlayed: 43,
-  text: 'One more win moves the Arizona Diamondbacks\' playoff odds from 71% to 74.2%.', basis: ['The deadline read\'s odds model.'],
-  stamp: { status: 'provisional', basis: 'odds model' }, ...over,
+  teamId: 1, club: 'Arizona Diamondbacks', status: 'unknown',
+  reason: 'What one more win is worth to the club depends on its chances in the race, and Pennant has no model of those it relies on yet.',
+  text: 'The Arizona Diamondbacks\' value of a win now isn\'t established.', basis: [], ...over,
 });
 
 const response = (over: Partial<OurViewResponse> = {}): OurViewResponse => ({
@@ -185,13 +184,12 @@ describe('the card\'s Value section', () => {
     expect(text).toMatch(/doesn't lean/);
   });
 
-  it('labels the club\'s value of a win as context from the standings, never part of the value', () => {
+  it('says the club\'s value of a win isn\'t known, never part of the value, and shows no playoff odds (D-060)', () => {
     const out = html(surplus(), response());
     const text = visible(out);
-    expect(text).toMatch(/A win right now moves the Arizona Diamondbacks' playoff odds by about 3\.2 points/);
-    expect(out).toMatch(/tip-pop">[^<]*not part of (the|his) value/i);
-    const unknown = visible(html(surplus(), response({ winValue: winValue({ status: 'unknown', odds: null, perWin: null, curve: [], reason: 'No game has been played yet this season.', text: 'Unknown.' }) })));
-    expect(unknown).toMatch(/No game has been played yet this season/);
+    expect(text).toMatch(/Arizona Diamondbacks' value of a win now isn't known\s*:\s*What one more win is worth/);
+    expect(out).toMatch(/tip-pop">[^<]*never part of any value figure/i);
+    expect(out).not.toMatch(/playoff odds|postseason|\bodds\b/i);
   });
 
   it('is no verdict', () => {

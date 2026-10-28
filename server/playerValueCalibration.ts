@@ -2364,26 +2364,6 @@ export const LENS_POLICY_CALIBRATION: CalibrationStamp = policy(
     'neutral figure it started from.'
 );
 
-/** POLICY (phase 5b, Part 4.5). The club's win curve is shown from `fewer` wins fewer to `more` wins more over the rest of the season. */
-export const WIN_VALUE_POLICY = {
-  curve: { fewer: 3, more: 5 },
-} as const;
-
-export const WIN_VALUE_POLICY_CALIBRATION: CalibrationStamp = policy(
-  "Phase 5b: the club's win curve is shown from three wins fewer to five more over the rest of the season; a display choice."
-);
-
-/**
- * PROVISIONAL (phase 5b, Part 4.5). The club's value of a win is read on the deadline read's odds model (`posture.ts`):
- * talent from this season's runs (Pythagorean, exponent 1.83), the rival for the place a .520 club, the gap in games to
- * the place from the standings (`playoffs.ts`), the difference over the games left read as normal. None of it is fitted
- * on the save; it is in playoff odds, never dollars, until the save can link odds to revenue (Q-6).
- */
-export const WIN_CURVE_CALIBRATION: CalibrationStamp = provisional(
-  "The deadline read's odds model, not fitted on the save: talent from this season's run differential, the rival a .520 club, the " +
-    'gap from the standings, the games left read as a normal difference. In playoff odds only (Q-6).'
-);
-
 // ── phase 6b: a trade's sides and the difference between them (PLAYER_VALUE.md Part 8, consumer 3; owner Q-8) ─────────
 
 /**
