@@ -33,6 +33,7 @@ import type { ResultsParams } from './resultsMetrics.js';
 import type { BullpenLines } from './bullpenRoles.js';
 import { rosterReviewCalibration, type RosterReviewCalibration, type YardstickGroup } from './mlbCalibration.js';
 import { majorLeagueId } from './resultsEvidence.js';
+import { plural } from './numberWords.js';
 
 export const mlbOperationsRoutes = Router();
 
@@ -167,7 +168,7 @@ export function mlbOverview(orgId: number, view: ClubView = loadClubView(orgId))
   if (view.counts.active === null) unknowns.push('Some players have no exported active-roster flag, so roster counts and needs are incomplete.');
   if (view.limits.active === null) unknowns.push("The league's active-roster limit is not exported.");
   const unknownRole = activeMembers(view).filter((m) => m.role === null).length;
-  if (unknownRole) unknowns.push(`${unknownRole} active player(s) have no established role and are not counted toward any standard.`);
+  if (unknownRole) unknowns.push(`${plural(unknownRole, 'active player has', 'active players have')} no established role and ${unknownRole === 1 ? 'is' : 'are'} not counted toward any standard.`);
   return {
     organization: label === null ? null : { orgId, label },
     freshness: {

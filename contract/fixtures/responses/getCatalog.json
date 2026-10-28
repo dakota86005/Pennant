@@ -138,7 +138,7 @@
     },
     {
       "display": "IP",
-      "text": "Innings pitched"
+      "text": "Innings pitched, written as baseball writes them: 10.2 is ten innings and two outs"
     },
     {
       "display": "ISO",
@@ -682,8 +682,8 @@
       "key": "ip",
       "group": "pitching",
       "display": "IP",
-      "text": "Innings pitched",
-      "format": "dec1",
+      "text": "Innings pitched, written as baseball writes them: 10.2 is ten innings and two outs",
+      "format": "ip",
       "section": "Counting",
       "lowerIsBetter": false
     },

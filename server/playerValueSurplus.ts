@@ -23,7 +23,8 @@
  */
 
 import type { CalibrationStamp } from './calibration.js';
-import { SURPLUS_POLICY, SURPLUS_POLICY_CALIBRATION } from './playerValueCalibration.js';
+import { CONTROL_HORIZON_SEASONS, SURPLUS_POLICY, SURPLUS_POLICY_CALIBRATION } from './playerValueCalibration.js';
+import { money, numberWord, percent } from './numberWords.js';
 import type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
 import type { PriceBand } from './playerValueFinances.js';
 import type { PlayerProduction, WinsBand } from './playerValueProduction.js';
@@ -194,14 +195,6 @@ const scale = (a: SurplusFigure, k: number): SurplusFigure =>
   ({ low: a.low * k, central: a.central === null ? null : a.central * k, high: a.high * k });
 
 const point = (v: number): SurplusFigure => ({ low: v, central: v, high: v });
-
-/** Money in words: "$7.25M", "$780K", "−$3.10M". */
-function money(v: number): string {
-  const sign = v < 0 ? '−' : '';
-  const a = Math.abs(v);
-  if (a === 0) return '$0';
-  return a >= 1_000_000 ? `${sign}$${(a / 1_000_000).toFixed(2)}M` : `${sign}$${Math.round(a / 1_000)}K`;
-}
 
 const wins = (v: number): string => (Math.abs(v) < 0.05 && v !== 0 ? (v < 0 ? '>−0.1' : '<0.1') : v.toFixed(1));
 
@@ -558,12 +551,12 @@ export function surplusOf(input: SurplusInput): PlayerSurplus {
   const excluded: string[] = [];
   const first = seasons[0];
   if (first && first.part === 'rest_of_season' && (first.banked !== null || first.paid !== null)) {
-    excluded.push(`What he has banked in ${first.season}${first.banked !== null ? ` (${wins(first.banked)} wins)` : ''} and the salary for the part of it already played${first.paid !== null ? ` (${money(first.paid)})` : ''} are sunk for the forward view: shown, never counted. The rest of ${first.season} counts ${first.share !== null ? `${Math.round(first.share * 100)}%` : 'an unestablished share'} of his salary and of a replacement's minimum, the share of the league's games still to be played.`);
+    excluded.push(`What he has banked in ${first.season}${first.banked !== null ? ` (${wins(first.banked)} wins)` : ''} and the salary for the part of it already played${first.paid !== null ? ` (${money(first.paid)})` : ''} are sunk for the forward view: shown, never counted. The rest of ${first.season} counts ${first.share !== null ? percent(first.share) : 'an unestablished share'} of his salary and of a replacement's minimum, the share of the league's games still to be played.`);
   }
   if (control.controlEnds !== null) excluded.push(`He is a free agent from ${control.controlEnds}: control ends, and nothing after it is counted.`);
   if (control.continuesPastHorizon) {
     const last = control.seasons[control.seasons.length - 1]?.season;
-    excluded.push(`Control continues past ${last}, the end of the horizon (seven seasons, this one included; Q-3): later seasons are not counted.`);
+    excluded.push(`Control continues past ${last}, the end of the horizon (${numberWord(CONTROL_HORIZON_SEASONS)} seasons, this one included; Q-3): later seasons are not counted.`);
   }
 
   const productionReason = production.status !== 'projected' ? (production.reason ?? 'His production is not established.') : null;

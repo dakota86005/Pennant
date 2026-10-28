@@ -28,6 +28,7 @@ import {
   type PitchingLine,
 } from './resultsMetrics.js';
 import { leagueBaseline } from './stats.js';
+import { plural } from './numberWords.js';
 
 export type FarmPlayerKind = 'hitter' | 'pitcher';
 
@@ -435,7 +436,7 @@ export function unassessableText(reason: UnassessableReason, sample: FarmSample)
     case 'no_line_at_this_level':
       return 'No statistics at this level this season.';
     case 'club_has_barely_played':
-      return `His club has played ${sample.clubGames} games; there is not yet a season to read.`;
+      return `His club has played ${plural(sample.clubGames, 'game')}; there is not yet a season to read.`;
     case 'sample_below_minimum':
       return `${Math.round(sample.opportunities)} is below the minimum sample this evaluation requires.`;
     case 'league_population_too_small':

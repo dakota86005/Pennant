@@ -76,6 +76,7 @@ export interface SeasonWar {
 /** One season of the league's standings (declared in the neutral `saveIdentity.ts`). */
 export type { SeasonRecord } from './saveIdentity.js';
 import type { SeasonRecord } from './saveIdentity.js';
+import { money as millions, percent, plural } from './numberWords.js';
 
 /**
  * The share of this season's schedule a past season covered, for the price of a win (B-13): its games
@@ -335,7 +336,6 @@ export function samplingComparable(served: { low: number; high: number }, bands:
 }
 
 const round = (n: number, digits = 0): string => n.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
-const millions = (n: number): string => `$${(n / 1_000_000).toFixed(2)}M`;
 
 interface Row {
   playerId: number;
@@ -386,7 +386,7 @@ function basisOf(
   return {
     ...base, salaryAboveMinimum: above, wins: w,
     perWin: derivedFrom(above / w, 'players_contract (this season\'s salary) + players_career_*_stats.war',
-      `${millions(above)} above the minimum ÷ ${round(w, 1)} WAR, ${kept.length} players${excluded > 0 ? ` (${excluded} left out: a figure is not exported)` : ''}.`),
+      `${millions(above)} above the minimum ÷ ${round(w, 1)} WAR, ${plural(kept.length, 'player')}${excluded > 0 ? ` (${excluded} left out: a figure is not exported)` : ''}.`),
   };
 }
 
@@ -423,7 +423,7 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
       ? `The pace bases rest on ${round(fraction * 100, 1)}% of a season and are the widest.`
       : 'The pace bases need the share of the season played, which is not established here.',
     `A season's WAR prices a full season's salary in proportion to the schedule it covered: a short season (a strike, a 60-game season) is scaled to this season's schedule, never read as a full one, and a season, or this season's pace, covering less than ${round(OPENING_PRICE_MINIMUMS.seasonShare * 100)}% of the schedule is not used (the policy minimum). A season whose share is not established is not assumed full.`,
-    `A basis rests on at least ${OPENING_PRICE_MINIMUMS.contracts} contracts (the policy minimum); a thinner one is not computed.`,
+    `A basis rests on at least ${plural(OPENING_PRICE_MINIMUMS.contracts, 'contract')} (the policy minimum); a thinner one is not computed.`,
   ];
   const result = (price: Sourced<PriceBand>, floor: Sourced<{ low: number; high: number }>, bases: PriceBasis[], unit: PriceOfWin['unit']): PriceOfWin => ({
     leagueId: input.leagueId,
@@ -477,7 +477,7 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
   const twoBack = input.war.get(season - 2) ?? null;
   const now = input.war.get(season) ?? null;
   type Wins = ((r: Row) => number) | { unknown: string };
-  const pct = (share: number) => `${round(share * 100)}%`;
+  const pct = (share: number) => percent(share);
   const missing = (y: number): Wins => ({ unknown: input.warUnavailable ?? `The export has no WAR for the league in ${y}.` });
   /**
    * A season's WAR on this season's footing: each player's WAR divided by the share of this season's

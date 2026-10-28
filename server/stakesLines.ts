@@ -32,6 +32,7 @@ import { populationSource } from './scoutedEvidence.js';
 import { sameRatingSource } from './ratingMode.js';
 import { leagueGameDate } from './saveIdentity.js';
 import { parseGameDate } from './dataFreshness.js';
+import { plural } from './numberWords.js';
 
 export { startingLines };
 export type { CeilingLinesInForce };
@@ -124,7 +125,7 @@ export function measureCeilingLines(
   const thin = clubs.length < policy.minClubs || KINDS.some((k) => counts[k] < policy.minPlayers);
   if (thin) {
     const why = clubs.length < policy.minClubs
-      ? `${clubs.length} clubs, fewer than ${policy.minClubs}`
+      ? `${plural(clubs.length, 'club')}, fewer than ${policy.minClubs}`
       : KINDS.filter((k) => counts[k] < policy.minPlayers).map((k) => `${counts[k]} major-league ${k}s with a visible composite, fewer than ${policy.minPlayers}`).join('; ');
     failures.push(`players: ${why}`);
     notes.push(`Not measured: ${why}.`);
@@ -183,7 +184,7 @@ export function measureCeilingLines(
       ? previous.previous
       : { lines: previous.lines, source: previous.source, measuredOn: previous.measuredOn, replacedOn: measuredOn };
     inForce = { lines, source: 'save', reason: 'measured', measuredOn, previous: before };
-    notes.push(`Measured and served: hitters ${lines.hitter.fringe} / ${lines.hitter.regular} / ${lines.hitter.impact}, pitchers ${lines.pitcher.fringe} / ${lines.pitcher.regular} / ${lines.pitcher.impact} (${counts.hitter} and ${counts.pitcher} major leaguers, ${clubs.length} clubs).`);
+    notes.push(`Measured and served: hitters ${lines.hitter.fringe} / ${lines.hitter.regular} / ${lines.hitter.impact}, pitchers ${lines.pitcher.fringe} / ${lines.pitcher.regular} / ${lines.pitcher.impact} (${counts.hitter} and ${counts.pitcher} major leaguers, ${plural(clubs.length, 'club')}).`);
   } else if (previous.source === 'save') {
     // The true reason: a thin league was not measured at all; it did not fail a check
     inForce = { ...previous, reason: thin ? 'carried_unmeasured' : 'carried' };

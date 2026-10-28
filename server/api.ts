@@ -71,6 +71,7 @@ import { currentReportStamp, holdFrontOfficeRebuilds, relocateLiveLog, valueRefi
 import { afterImport } from './frontOfficeAttention.js';
 import { EXPORT_NOT_FOUND, LEAGUE_UPGRADE_LINE, importNote, importWords, leftOutNote, type ImportNote, type LeagueUpgradeLine } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
+import { plural } from './numberWords.js';
 
 export const api = Router();
 api.use(logoRoutes);
@@ -921,7 +922,7 @@ function clubFromSave(csvDir: string): SetupClub {
   }
   return {
     decided: false, teamId: null, name: null, humanClubs: clubs.length,
-    text: clubs.length === 0 ? 'The export names no club you manage, so Pennant will ask.' : `You manage ${clubs.length} clubs in this save, so Pennant will ask which to follow.`,
+    text: clubs.length === 0 ? 'The export names no club you manage, so Pennant will ask.' : `You manage ${plural(clubs.length, 'club')} in this save, so Pennant will ask which to follow.`,
   };
 }
 

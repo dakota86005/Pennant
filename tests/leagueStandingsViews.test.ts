@@ -111,7 +111,7 @@ describe('Standings says what computeStandings computes', () => {
       expect(r.sort.pct).toBe(t.pct);
       expect(r.cells.gb.display).toBe(t.gb! > 0 ? (Number.isInteger(t.gb) ? String(t.gb) : t.gb!.toFixed(1)) : '–');
       expect(r.sort.gb).toBe(t.gb);
-      expect(r.cells.diff.display).toBe(t.diff! > 0 ? `+${t.diff}` : String(t.diff));
+      expect(r.cells.diff.display).toBe(t.diff! > 0 ? `+${t.diff}` : String(t.diff).replace('-', '−'));
       expect(r.cells.diff.tone).toBe(t.diff! > 0 ? 'good' : t.diff! < 0 ? 'bad' : 'neutral');
       expect(r.cells.streak.display).toBe(t.streak === '—' ? '–' : t.streak);
       expect(r.cells.rs.display).toBe(String(t.rs));

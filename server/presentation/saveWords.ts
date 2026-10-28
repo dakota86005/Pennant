@@ -7,6 +7,7 @@ import { EXPORT_OFF_NOTE, type SaveInfo, type SearchLocation } from '../paths.js
 import { saveLabel, STANDOUT_WINDOW_MS, type NoPickReason, type SavePick } from '../saveDiscovery.js';
 import { timestampWords } from '../timeWords.js';
 import { basis, claim, type BasisInput } from './claim.js';
+import { plural } from '../numberWords.js';
 
 /** What `GET /api/v2/saves` serves: the saves, most recently played first, and the one that stands out or why none does. */
 export interface SaveDiscovery {
@@ -86,7 +87,7 @@ export function pickClaim(pick: SavePick, saves: readonly SaveInfo[] = []) {
   ];
   return claim({
     text: `Last played ${day(s)}, the most recent of your saves, and it has an export`,
-    hint: `No other save was played in the ${WINDOW_DAYS} days before it.`,
+    hint: `No other save was played in the ${plural(WINDOW_DAYS, 'day')} before it.`,
     tone: 'good',
     basis: basis({
       because,
@@ -123,8 +124,8 @@ export function noPickClaim(pick: SavePick, saves: readonly SaveInfo[]) {
     neverPlayed: 'None of these saves has been saved in OOTP yet',
     noExport: `${latest ?? 'Your most recent save'}, your most recent save, has no export yet`,
     tooClose: pick.latest && pick.runnerUp
-      ? `You've played ${latest} and ${saveLabel(pick.runnerUp, saves)} within ${WINDOW_DAYS} days of each other`
-      : `Two saves were played within ${WINDOW_DAYS} days of each other`,
+      ? `You've played ${latest} and ${saveLabel(pick.runnerUp, saves)} within ${plural(WINDOW_DAYS, 'day')} of each other`
+      : `Two saves were played within ${plural(WINDOW_DAYS, 'day')} of each other`,
   };
   const hint: Record<NoPickReason, string> = {
     timeUnknown: 'Choose the save to use.',
@@ -149,7 +150,7 @@ export function noPickClaim(pick: SavePick, saves: readonly SaveInfo[]) {
       wouldChange: reason === 'noExport'
         ? ['An export of that save, written by OOTP.']
         : reason === 'tooClose'
-          ? [`No other save played in the ${WINDOW_DAYS} days before the most recent one.`]
+          ? [`No other save played in the ${plural(WINDOW_DAYS, 'day')} before the most recent one.`]
           : ['A save saved in OOTP, with an export.'],
       lean: null,
       certainty: 'policy',

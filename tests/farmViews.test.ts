@@ -495,7 +495,9 @@ describe('the farm\'s words are plain (AGENTS.md "Writing for the GM")', () => {
       const source = fs.readFileSync(path.join(folder, file), 'utf8');
       expect(source, file).not.toMatch(/\bdb\.|\.prepare\(|\btableExists\(/);
       const byValue = [...source.matchAll(/^import (?!type )[^;]*from '([^']+)'/gm)].map((m) => m[1]);
-      expect(byValue.filter((s) => !s.startsWith('./') && !s.startsWith('../claim.js') && !s.startsWith('../frontOffice/desk.js') && !s.startsWith('../dataStatusWords.js')), file).toEqual([]);
+      // `numberWords.ts` (batch 10, B-06): the shared number formatter, a leaf that imports nothing, by its exact path
+      expect(byValue.filter((s) => !s.startsWith('./') && !s.startsWith('../claim.js') && !s.startsWith('../frontOffice/desk.js') && !s.startsWith('../dataStatusWords.js')
+        && s !== '../../numberWords.js'), file).toEqual([]);
     }
   });
 });

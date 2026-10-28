@@ -18,6 +18,8 @@
  */
 
 import { db, tableColumns, tableExists } from './db.js';
+import { count, inningsWords, outsOf, plural, signed } from './numberWords.js';
+import { POSITION_LABELS } from './lineupPicture.js';
 import { evaluateDestinationFit, evaluatePitcherDevelopmentalRole, type DestinationFitClassification } from './destinationFit.js';
 import { PLAYABLE_RATING } from './minorLeagueRoster.js';
 import { affiliateOperationalUnder, openFarmSession, type FarmSession } from './farmOperations.js';
@@ -123,7 +125,7 @@ export function crossRoleSupport(playerId: number, role: RoleRef): CrossRoleSupp
 }
 
 /** A counting stat as the export has it; a blank column reads "not known", never "null" or a zero (D-018). */
-const countText = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? 'not known' : String(n));
+const countText = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? 'not known' : count(n));
 
 export interface PerformanceLine {
   kind: 'batting' | 'pitching';
@@ -293,7 +295,7 @@ export function farmConsequence(
   const line = jobLine(before, job);
   const lineAfter = jobLine(after, job);
   if (line && lineAfter) changes.push({ label: line.label, before: line.value, after: lineAfter.value });
-  const bodies = (h: { roster: { total: number; pitchers: number } }) => `${h.roster.total} players (${h.roster.pitchers} P)`;
+  const bodies = (h: { roster: { total: number; pitchers: number } }) => `${plural(h.roster.total, 'player')} (${h.roster.pitchers} P)`;
   changes.push({ label: 'Active roster', before: bodies(before), after: bodies(after) });
 
   const rosterNotes: string[] = [];
@@ -306,7 +308,7 @@ export function farmConsequence(
   }
   const others = health.rosterTreatment.ambiguous.filter((p) => p.playerId !== playerId);
   if (others.length) {
-    rosterNotes.push(`${others.length} other player(s) on this club (${others.slice(0, 3).map((p) => p.name).join(', ')}${others.length > 3 ? ', …' : ''}) may be on rehab; they are counted, so its depth may be overstated.`);
+    rosterNotes.push(`${plural(others.length, 'other player')} on this club (${others.slice(0, 3).map((p) => p.name).join(', ')}${others.length > 3 ? ', …' : ''}) may be on rehab; ${others.length === 1 ? 'he is' : 'they are'} counted, so its depth may be overstated.`);
   }
   if (health.rosterTreatment.injured.length) {
     rosterNotes.push(`${health.rosterTreatment.injured.length} injured player(s) on this club (${health.rosterTreatment.injured.slice(0, 3).map((p) => p.name).join(', ')}${health.rosterTreatment.injured.length > 3 ? ', …' : ''}) are not counted as cover.`);
@@ -379,7 +381,7 @@ export function holderEvidence(orgId: number, playerIds: number[], role: RoleRef
 function usageNotes(r: ReturnType<typeof loadPitcherResults> extends Map<number, infer V> ? V | undefined : never, role: RoleRef, bullpen: BullpenLines): string[] {
   if (!r) return [];
   const notes: string[] = [];
-  if (role.kind === 'starting_pitcher' && r.inningsPerStart !== null) notes.push(`Averages ${r.inningsPerStart.toFixed(1)} innings per start.`);
+  if (role.kind === 'starting_pitcher' && r.inningsPerStart !== null) notes.push(`Averages ${inningsWords(outsOf(r.inningsPerStart))} per start.`);
   if (role.kind === 'relief_pitcher' && r.current) {
     notes.push(bullpenRoleOf({ playerId: r.playerId, name: '', g: r.current.g, ip: r.current.outs / 3, sv: r.current.sv, hld: r.current.hld, leverage: r.leverage }, bullpen).text);
   }
@@ -447,8 +449,8 @@ function hitterEvidence(orgId: number, playerIds: number[], role: RoleRef, leagu
     const now = here.find((u) => u.year === year);
     const d = defense.get(id) as { percentile: number | null; per1300: number | null; innings: number } | undefined;
     const notes: string[] = [];
-    if (now && now.gs > 0) notes.push(`Started ${now.gs} games at ${role.label} this season${now.ip > 0 ? ` (${Math.round(now.ip)} innings, ${now.errors} errors)` : ''}.`);
-    if (batRaw !== null) notes.push(`His visible tools imply ${(batRaw - meanBat >= 0 ? '+' : '-')}${Math.abs(Math.round((batRaw - meanBat) * 1000))} points of wOBA against the league average.`);
+    if (now && now.gs > 0) notes.push(`Started ${plural(now.gs, 'game')} at ${POSITION_LABELS[role.position] ?? role.label} this season${now.ip > 0 ? ` (${plural(Math.round(now.ip), 'inning')}, ${plural(now.errors, 'error')})` : ''}.`);
+    if (batRaw !== null) notes.push(`His visible tools imply ${signed(Math.round((batRaw - meanBat) * 1000))} points of wOBA against the league average.`);
     const osaProfile = osaProfiles.get(id);
     const osaBat = osaProfile ? expectedWobaRaw(osaProfile.tools, tools) : null;
     const both = bothReadings(toolsPct, osaBat !== null && pop.bat.length ? percentileAmong(pop.bat, osaBat, true) : null, 'percentile');

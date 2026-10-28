@@ -41,6 +41,7 @@
  */
 
 import { policy, type CalibrationStamp } from './calibration.js';
+import { percent, plural } from './numberWords.js';
 
 export const DETECTOR_METHOD = 'detector-3';
 
@@ -285,14 +286,14 @@ export interface DetectorDecision {
   reason: string;
 }
 
-const pct = (x: number | null) => (x === null ? '—' : `${(x * 100).toFixed(2)}%`);
+const pct = (x: number | null) => (x === null ? '—' : percent(x, 2));
 /** A comparison in one sentence, for the record and the harness. */
 export const describeComparison = (c: Comparison): string =>
-  `${pct(c.relativeGain)} lower error (at least ${pct(c.lowerBound)} at the policy's confidence), z ${c.z === null ? '—' : c.z.toFixed(2)} across players, t ${c.t === null ? '—' : c.t.toFixed(2)} across seasons, better in ${c.originsWon} of ${c.originsScored} seasons`;
+  `${pct(c.relativeGain)} lower error (at least ${pct(c.lowerBound)} at the policy's confidence), z ${c.z === null ? '—' : c.z.toFixed(2)} across players, t ${c.t === null ? '—' : c.t.toFixed(2)} across seasons, better in ${c.originsWon} of ${plural(c.originsScored, 'season')}`;
 
 /** The rule in words, for a run record's notes. */
 export function ruleText(policyIn: DetectorPolicy = DETECTOR_POLICY): string {
-  return `${DETECTOR_METHOD}: to adopt, the lower ${+((1 - policyIn.alpha) * 100).toFixed(1)}% confidence bound of the gain, across players (clustered by player) and across seasons (Student's t), at least ${(policyIn.minRelativeGain * 100).toFixed(1)}% of the starting values' error; better in at least ${Math.round(policyIn.minOriginShare * 100)}% of the seasons checked and at least ${policyIn.minOriginsWon}; at least ${policyIn.minOrigins} seasons of ${policyIn.minCasesPerOrigin} cases; unshrunk and as served${policyIn.confirmations > 1 ? `; at ${policyIn.confirmations} consecutive completed-season refits` : ''}; to return, the same test with the minimum at ${(policyIn.returnMinRelativeGain * 100).toFixed(1)}%`;
+  return `${DETECTOR_METHOD}: to adopt, the lower ${+((1 - policyIn.alpha) * 100).toFixed(1)}% confidence bound of the gain, across players (clustered by player) and across seasons (Student's t), at least ${(policyIn.minRelativeGain * 100).toFixed(1)}% of the starting values' error; better in at least ${Math.round(policyIn.minOriginShare * 100)}% of the seasons checked and at least ${policyIn.minOriginsWon}; at least ${plural(policyIn.minOrigins, 'season')} of ${policyIn.minCasesPerOrigin} cases; unshrunk and as served${policyIn.confirmations > 1 ? `; at ${policyIn.confirmations} consecutive completed-season refits` : ''}; to return, the same test with the minimum at ${(policyIn.returnMinRelativeGain * 100).toFixed(1)}%`;
 }
 
 /**

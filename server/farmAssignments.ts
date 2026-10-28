@@ -27,6 +27,7 @@ import type { MissingEvidence } from './developmentJudgment.js';
 import type { FarmProduction } from './farmResults.js';
 import { describeTenure } from './farmRecentUsage.js';
 import { hasDevelopmentalStakes, jobLabel, shortOfWorkVerdict, type OpportunityRead } from './playingTime.js';
+import { plural } from './numberWords.js';
 
 /**
  * What the review concludes. Descriptive, never an instruction, and deliberately not a
@@ -265,7 +266,7 @@ export function reviewAssignment(input: AssignmentReviewInput): AssignmentReview
      */
     conclusion = input.current.verdict === 'not_assessable' ? 'not_assessable' : input.current.verdict === 'indeterminate' ? 'indeterminate' : 'current_assignment_defensible';
     reasons.push(
-      `He is injured${input.injured.daysLeft !== null ? ` (${input.injured.daysLeft} days)` : ''}, so nothing about his playing time is read while he is out.`
+      `He is injured${input.injured.daysLeft !== null ? ` (${plural(input.injured.daysLeft, 'day')})` : ''}, so nothing about his playing time is read while he is out.`
     );
     reasons.push(...input.current.reasons);
     wouldResolve.push('His return: his assignment is read again when he is playing.');

@@ -8,6 +8,7 @@ import type { Trends } from '../../trends.js';
 import { cell } from '../claim.js';
 import { factClaim, head, plural, type ClubhouseContext } from './common.js';
 import type { MlbSeasonTrendsView, MlbTrendChart, MlbTrendPoint, MlbTrendSeries } from './types.js';
+import { signed as signedNumber } from '../../numberWords.js';
 
 const TRENDS = 'The season\'s games';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -18,7 +19,7 @@ const labelWords = (label: string): string => {
   return m >= 1 && m <= 12 && d ? `${MONTHS[m - 1]} ${d}` : label;
 };
 
-const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(Math.round(n))}`;
+const signed = (n: number) => signedNumber(Math.round(n));
 
 function points(labels: string[], values: Array<number | null>, display: (n: number) => string): MlbTrendPoint[] {
   return values.map((value, i) => ({
@@ -75,9 +76,9 @@ export function seasonTrendsView(v: ClubhouseContext, input: TrendsInput): MlbSe
       id: 'scoring',
       title: cell('Scoring and run prevention'),
       headline: null,
-      caption: factClaim(v, `The lines start once ${w} games are in the books`, {
+      caption: factClaim(v, `The lines start once ${plural(w, 'game')} are in the books`, {
         specialist: TRENDS,
-        because: [{ label: 'Why', value: `Each point is the average of the last ${w} games; a rolling average has nothing to say before then.` }],
+        because: [{ label: 'Why', value: `Each point is the average of the last ${plural(w, 'game')}; a rolling average has nothing to say before then.` }],
       }),
       axis: cell('Runs per game'),
       baseline: null,
@@ -85,7 +86,7 @@ export function seasonTrendsView(v: ClubhouseContext, input: TrendsInput): MlbSe
         series('scored', `Runs scored (${w}-game average)`, 'scored', points(t.labels, t.series.runsScoredRolling, (n) => n.toFixed(1))),
         series('allowed', `Runs allowed (${w}-game average)`, 'allowed', points(t.labels, t.series.runsAllowedRolling, (n) => n.toFixed(1))),
       ],
-      summary: `Runs scored and allowed a game, averaged over ${w} games, across ${plural(t.games, 'game')}: ${t.totals.perGameScored.toFixed(2)} scored and ${t.totals.perGameAllowed.toFixed(2)} allowed on the season.`,
+      summary: `Runs scored and allowed a game, averaged over ${plural(w, 'game')}, across ${plural(t.games, 'game')}: ${t.totals.perGameScored.toFixed(2)} scored and ${t.totals.perGameAllowed.toFixed(2)} allowed on the season.`,
     },
     {
       id: 'winning',

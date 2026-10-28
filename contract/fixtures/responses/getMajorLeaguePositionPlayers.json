@@ -479,7 +479,7 @@
               },
               {
                 "text": {
-                  "display": "Started 28 games at first baseman this season (248 innings, 0 errors)."
+                  "display": "Started 28 games at first base this season (248 innings, 0 errors)."
                 },
                 "quiet": true,
                 "chips": [],
@@ -662,7 +662,7 @@
                     "tone": "neutral"
                   },
                   {
-                    "display": "gap 50 +0",
+                    "display": "gap 50 0",
                     "tone": "neutral"
                   },
                   {
@@ -738,7 +738,7 @@
               },
               {
                 "text": {
-                  "display": "Started 28 games at second baseman this season (248 innings, 0 errors)."
+                  "display": "Started 28 games at second base this season (248 innings, 0 errors)."
                 },
                 "quiet": true,
                 "chips": [],
@@ -994,7 +994,7 @@
               },
               {
                 "text": {
-                  "display": "Started 28 games at third baseman this season (248 innings, 0 errors)."
+                  "display": "Started 28 games at third base this season (248 innings, 0 errors)."
                 },
                 "quiet": true,
                 "chips": [],
@@ -1514,7 +1514,7 @@
               },
               {
                 "text": {
-                  "display": "Started 28 games at left fielder this season (248 innings, 0 errors)."
+                  "display": "Started 28 games at left field this season (248 innings, 0 errors)."
                 },
                 "quiet": true,
                 "chips": [],
@@ -1766,7 +1766,7 @@
               },
               {
                 "text": {
-                  "display": "Started 28 games at center fielder this season (248 innings, 0 errors)."
+                  "display": "Started 28 games at center field this season (248 innings, 0 errors)."
                 },
                 "quiet": true,
                 "chips": [],
@@ -2039,7 +2039,7 @@
               },
               {
                 "text": {
-                  "display": "Started 28 games at right fielder this season (248 innings, 0 errors)."
+                  "display": "Started 28 games at right field this season (248 innings, 0 errors)."
                 },
                 "quiet": true,
                 "chips": [],

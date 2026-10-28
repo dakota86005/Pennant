@@ -26,6 +26,7 @@ import type { ControlSeason, ControlStatus, ControlTimeline } from './playerValu
 import type { LensFigure, OurView } from './playerValueLens.js';
 import type { PlayerProduction, WinsBand } from './playerValueProduction.js';
 import type { PlayerSurplus, SurplusSeason, SurplusTotal } from './playerValueSurplus.js';
+import { money, num, plural } from './numberWords.js';
 
 export type TradeUnit = 'dollars' | 'wins';
 export type TradeSideName = 'sent' | 'received';
@@ -131,15 +132,8 @@ export interface TradeValue {
 
 // ── words ────────────────────────────────────────────────────────────────────
 
-const money = (v: number): string => {
-  const sign = v < 0 ? '−' : '';
-  const a = Math.abs(v);
-  if (a >= 1_000_000) return `${sign}$${(a / 1_000_000).toFixed(1)}M`;
-  return `${sign}$${Math.round(a / 1_000)}K`;
-};
-const wins = (v: number): string => `${v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)} wins`;
+const wins = (v: number): string => `${num(v, 1)} wins`;
 const amountIn = (unit: TradeUnit) => (unit === 'dollars' ? money : wins);
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 const years = (ys: number[]): string => {
   if (ys.length === 0) return '';
   const s = [...ys].sort((a, b) => a - b);

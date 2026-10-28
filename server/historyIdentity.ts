@@ -47,6 +47,7 @@ import { parseGameDate } from './dataFreshness.js';
 import { historyDb, POPULATION_DATA_COLUMNS, SNAPSHOT_DATA_COLUMNS, snapshotGameDate } from './history.js';
 import { locateSave } from './ootpSave.js';
 import { findSaves, saveId, type SaveInfo } from './paths.js';
+import { plural } from './numberWords.js';
 
 // ── the policy ────────────────────────────────────────────────────────────────
 
@@ -1006,7 +1007,6 @@ export interface HistoryNote {
   because: string[];
 }
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 /** A filed game date in words ("April 10, 2026"); null when it can't be read. */
 function gameDateText(date: string | null): string | null {

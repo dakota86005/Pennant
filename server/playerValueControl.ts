@@ -208,6 +208,13 @@ const missingText = (e: SeasonControlEligibility): string[] => {
 };
 
 /** A season the contract does not cover, as Player Rights' eligibility states it. */
+/** A season's status in a sentence: "pre-arbitration", "free agency" (never "pre arbitration", SRVVALUE-13). */
+const FALLBACK_WORDS: Partial<Record<ControlStatus, string>> = {
+  pre_arbitration: 'pre-arbitration', arbitration: 'arbitration', free_agent: 'free agency', reserve_clause: 'the reserve clause',
+  indeterminate: 'a status not established',
+};
+const fallbackWords = (s: ControlStatus): string => FALLBACK_WORDS[s] ?? s.replace(/_/g, ' ');
+
 function fromEligibility(e: SeasonControlEligibility | undefined, season: number, blocking: string[]): Omit<ControlSeason, 'declined'> {
   if (!e) {
     return {
@@ -323,7 +330,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
       const term = cover.from === 'extension' ? contract.extension : contract.term;
       const afterOptOut = optOutLive && optOutFrom !== null && season >= optOutFrom;
       const optOutReason = afterOptOut
-        ? `He may opt out before ${optOutFrom} (opt_out ${contract.optOut.value}); if he does, he is ${fallback.status.replace('_', ' ')} this season. ${OPT_OUT_TIMING}`
+        ? `He may opt out before ${optOutFrom} (opt_out ${contract.optOut.value}); if he does, this season falls to ${fallbackWords(fallback.status)}. ${OPT_OUT_TIMING}`
         : null;
       const unknownOption = k > 0 && cover.optionUnknown ? cover.optionUnknown : null;
       const extra = [optOutReason, unknownOption].filter((x): x is string => x !== null);
@@ -348,7 +355,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
             status: fallback.status, between: fallback.between, cost: fallback.cost,
           },
           from: cover.from,
-          basis: `A ${cover.option} option season: exercised, ${salaryText}; declined, the buyout and then ${fallback.status.replace('_', ' ')}.`,
+          basis: `A ${cover.option} option season: exercised, ${salaryText}; declined, the buyout and then ${fallbackWords(fallback.status)}.`,
           reasons: [...fallback.reasons, ...extra],
           crossings: fallback.crossings,
         });
@@ -364,7 +371,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
             status: fallback.status, between: fallback.between, cost: fallback.cost,
           },
           from: cover.from,
-          basis: `Under ${deal} at ${salaryText} unless he opts out before ${optOutFrom}; if he opts out, ${fallback.status.replace('_', ' ')}.`,
+          basis: `Under ${deal} at ${salaryText} unless he opts out before ${optOutFrom}; if he opts out, ${fallbackWords(fallback.status)}.`,
           reasons: [...extra, ...fallback.reasons],
           crossings: fallback.crossings,
         });

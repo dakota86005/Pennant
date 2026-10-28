@@ -20,6 +20,7 @@
 
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
 import { onScale } from './roleStanding.js';
+import { plural } from './numberWords.js';
 
 export const BULLPEN_CALIBRATION: CalibrationStamp = policy(
   'The leverage cut-offs are policy on the league\'s own leverage scale (1.0 is an average plate appearance there; rescaled only when the league\'s mean is off 1.0 by more than the tolerance). The long-man line is measured on the league\'s own relievers where its checks pass (docs/CALIBRATION.md section 14), else the starting value. The deployment gap, the minimum appearances and the multi-inning line are policy.'
@@ -118,7 +119,7 @@ const STAKES: Record<BullpenTier, Stakes | null> = { closer: 'high', high_levera
 
 export function roleOf(u: BullpenUsage, lines: BullpenLines): BullpenRole {
   if (u.g < MIN_APPEARANCES || u.leverage === null) {
-    return { tier: 'unknown', stakes: null, text: u.g < MIN_APPEARANCES ? `Only ${u.g} appearances, too few to read a role from usage.` : 'The export carries no leverage for him.' };
+    return { tier: 'unknown', stakes: null, text: u.g < MIN_APPEARANCES ? `Only ${plural(u.g, 'appearance')}, too few to read a role from usage.` : 'The export carries no leverage for him.' };
   }
   const perApp = u.g > 0 ? u.ip / u.g : 0;
   let tier: BullpenTier;

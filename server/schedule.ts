@@ -3,6 +3,7 @@ import { db, hasColumns, tableExists } from './db.js';
 import { DATE_KEY } from './dashboard.js';
 import { answer, refuse, type Computed } from './computed.js';
 import { projectedStarters } from './probableStarters.js';
+import { record } from './numberWords.js';
 
 /** The clubs the export projects starters for: the schedule's own projection reader, for its words (N9). */
 export { projectedClubs } from './probableStarters.js';
@@ -225,8 +226,8 @@ function scheduleOf(teamId: number) {
     record: {
       w: wins,
       l: losses,
-      home: `${home.filter((g) => g.won).length}-${home.filter((g) => g.won === false).length}`,
-      away: `${away.filter((g) => g.won).length}-${away.filter((g) => g.won === false).length}`,
+      home: record(home.filter((g) => g.won).length, home.filter((g) => g.won === false).length),
+      away: record(away.filter((g) => g.won).length, away.filter((g) => g.won === false).length),
       runsFor: games.reduce((sum, g) => sum + (g.us ?? 0), 0),
       runsAgainst: games.reduce((sum, g) => sum + (g.them ?? 0), 0),
     },

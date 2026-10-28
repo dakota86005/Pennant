@@ -172,8 +172,10 @@ describe('the presentation boundary', () => {
 
   it.each(ADAPTERS)('%s reads no table and loads no specialist: it words the answers the service hands it', (file) => {
     expect(code(file), file).not.toMatch(/\bdb\.|\.prepare\(|\btableExists\(|\btableColumns\(/);
+    // `numberWords.ts` (batch 10, B-06) is the shared number formatter, no specialist: a leaf that imports nothing
+    // (`tests/numberWords.test.ts`, `tests/playerValueBoundary.test.ts`), named by its exact path
     const specialists = valueImports(file).filter((s) => !s.startsWith('./') && !s.startsWith('../claim.js') && !s.startsWith('../severity.js')
-      && !s.startsWith('../catalog.js') && !s.startsWith('../dataStatusWords.js'));
+      && !s.startsWith('../catalog.js') && !s.startsWith('../dataStatusWords.js') && s !== '../../numberWords.js');
     expect(specialists, file).toEqual([]);
   });
 

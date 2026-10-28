@@ -19,6 +19,8 @@
  *   figure, not a baseball fact, declared here and nowhere else.
  */
 
+import { ordinal } from './numberWords.js';
+
 export const STANDING_CALIBRATION = {
   status: 'policy' as const,
   note: 'The percentile gap that counts as clearly ahead is a policy threshold (roleStanding.ts), a decision about what to call a real difference, not an established baseball fact.',
@@ -57,13 +59,8 @@ export interface RoleStanding {
   calibration: typeof STANDING_CALIBRATION;
 }
 
-/** 52 becomes "52nd": rounded, with the right suffix. */
-export function ordinal(n: number): string {
-  const r = Math.round(n);
-  const v = r % 100;
-  const suffix = v >= 11 && v <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][r % 10] ?? 'th');
-  return `${r}${suffix}`;
-}
+/** 52 becomes "52nd": rounded, with the right suffix (the shared formatter, `numberWords.ts`). */
+export { ordinal };
 
 /**
  * A place on the 0 to 100 scale against peers, in a sentence: "62 on the 0–100 scale". A working estimate, a tools

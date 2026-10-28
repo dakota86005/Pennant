@@ -29,6 +29,7 @@ import {
   hintIf, horizonText, KIND_LABEL, labelOf, needBadge, onScale, rankOf, DEV_ORDER, FIT_ORDER, PATH_ORDER, PREFERENCE_ORDER, RESPONSE_ORDER, scaleNumber, SCALE_HINT, PATH, PATH_LABEL, PATH_TONE, PREFERENCE, RIGHTS_TONE, ROLE_CHOICES, sentences,
   CERTAINTY_TEXT, EVIDENCE_TEXT, FIT_TEXT, FIT_TONE, GROUP_TEXT, STAKES_TIER, stakesWords, STANCE_TEXT, STANCE_TONE, STEP_STATUS, VERDICT_TEXT, VERDICT_TONE,
 } from './words.js';
+import { plural } from '../../numberWords.js';
 
 /** What the GM chose so far, as the request carried it. */
 export interface DecisionAsk {
@@ -54,7 +55,7 @@ const rightsChip = (status: string, label: string, hint?: string) => chip(label.
 function problemBlock(v: ViewContext, need: MlbNeed): MlbBlock {
   const lines: MlbLine[] = [line(need.summary.trim() || need.title)];
   for (const c of need.causes) {
-    const how = c.assumed ? 'assumed unavailable (your scenario)' : `${c.status}${c.daysLeft ? `, ${c.daysLeft} days left` : ''}`;
+    const how = c.assumed ? 'assumed unavailable (your scenario)' : `${c.status}${c.daysLeft ? `, ${plural(c.daysLeft, 'day')} left` : ''}`;
     lines.push(line(`${c.name}: ${how}`, { players: [player(v, c.playerId, c.name)] }));
   }
   for (const f of need.facts) if (f.label.trim() && f.value.trim()) lines.push(line(`${f.label.trim()}: ${f.value.trim()}`, { quiet: true }));

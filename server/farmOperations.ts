@@ -110,6 +110,7 @@ import { buildOrganizationView, type OrganizationView, type OrgPlayerFact } from
 import { reviewRetention, type RetentionReview } from './farmRetention.js';
 import * as calibration from './farmCalibration.js';
 import { ROTATION_SPOTS } from './farmCalibration.js';
+import { plural } from './numberWords.js';
 
 /*
  * The farm's answer's own parts, named through its public module (N10): the views word a finding, a work share, a
@@ -378,7 +379,7 @@ export function roleChangeOf(
   if (!recent || recent.evidence !== 'sufficient') return null;
   const recentStarts = recent.pitchingStartGames.length;
   const recentRelief = recent.reliefGames.length;
-  const over = `the club's last ${recent.observable.length} games`;
+  const over = `the club's last ${plural(recent.observable.length, 'game')}`;
   if (raw.starts > 0 && recentStarts === 0 && recentRelief > 0 && !assignedStarter) {
     return {
       to: 'relief',
@@ -908,7 +909,7 @@ export function computeFarmSystem(orgId: number, session: FarmSession = openFarm
             name: p.name,
             age: Number(p.row.age),
             tier: p.protection.tier,
-            basis: `The club has him in relief; Player Development reads his stamina and repertoire as supporting a starting role. ${p.usage.starts} starts in ${p.usage.games} appearances.`,
+            basis: `The club has him in relief; Player Development reads his stamina and repertoire as supporting a starting role. ${plural(p.usage.starts, 'start')} in ${plural(p.usage.games, 'appearance')}.`,
           })),
         assignments: mine.map((p) => {
           const r = reviewById.get(p.row.player_id)!;

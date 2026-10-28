@@ -13,6 +13,7 @@
 
 import type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
 import type { PlayerProduction, ProductionSeason } from './playerValueProduction.js';
+import { money, plural } from './numberWords.js';
 
 /** A season's control as the card labels it: Player Value's status, or no status where none is stated. */
 export type ConeControlStatus = ControlStatus | 'not_established' | 'unsigned';
@@ -200,7 +201,7 @@ function costOf(c: ControlSeason): Pick<ConeControl, 'cost' | 'costDetail' | 'if
     ifHeld: d.costBasis?.ifHeld ?? false,
     costDetail: d.cost === null ? 'Control ends: no cost to this club.' : d.cost.note ?? 'Not established.',
   };
-  const declinedText = declined === null ? '' : ` Declined (${d!.kind === 'opted_out' ? 'he opts out' : 'the option declined'}): the buyout (${d!.buyout.value === null ? 'not in the export' : `$${(d!.buyout.value / 1_000_000).toFixed(2)}M`}) and then ${declined.label}${declined.cost ? ', a range of reasonable readings' : ''}. ${declined.costDetail}`;
+  const declinedText = declined === null ? '' : ` Declined (${d!.kind === 'opted_out' ? 'he opts out' : 'the option declined'}): the buyout (${d!.buyout.value === null ? 'not in the export' : money(d!.buyout.value)}) and then ${declined.label}${declined.cost ? ', a range of reasonable readings' : ''}. ${declined.costDetail}`;
   if (c.cost === null) return { cost: null, costDetail: 'Control ends: no cost to this club.', ifHeld: false, declined };
   if (c.cost.value === null) return { cost: null, costDetail: `${c.cost.note ?? 'Not established.'}${declinedText}`, ifHeld: false, declined };
   const detail = c.cost.note
@@ -269,7 +270,7 @@ function calibrationOf(production: PlayerProduction): ProductionCone['calibratio
     const later = production.notEstablished.map((s) => s.season);
     const arrival = through === null
       ? ''
-      : `; arrival calibrated through ${through === 1 ? '1 season' : `${through} seasons`} out` +
+      : `; arrival calibrated through ${through === 1 ? '1 season' : `${plural(through, 'season')}`} out` +
         (later.length > 0 ? ` (${later.length === 1 ? later[0] : `${later[0]}–${later[later.length - 1]}`} not established)` : '');
     return {
       source: m.source, calibrated: false,
@@ -281,7 +282,7 @@ function calibrationOf(production: PlayerProduction): ProductionCone['calibratio
   const calibrated = m.source === 'save_fit' && w?.calibrated === true;
   let status: string;
   if (w && calibrated) {
-    const years = w.first !== null && w.last !== null ? `${w.first}–${w.last}` : `${w.seasons} seasons`;
+    const years = w.first !== null && w.last !== null ? `${w.first}–${w.last}` : `${plural(w.seasons, 'season')}`;
     const prior = w.horizons?.prior ?? [];
     const own = w.horizons?.calibrated ?? [];
     const which = prior.length > 0 ? ` (horizons ${span(own)}; ${span(prior)} mostly the fallback prior)` : '';

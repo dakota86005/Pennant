@@ -14,9 +14,9 @@ describe("the history migration's log line", () => {
       ['unclear_rows', { dates: 0, rows: 40 }],
     ] as const));
     expect(line).toContain('looked at 12 dates of the rating history kept under the name "New Game 6"');
-    expect(line).toContain("brought 9 dates over as this save's (71000 rows copied)");
-    expect(line).toContain("2 dates (16000 rows) that had another league's players");
-    expect(line).toContain("1 date (8000 rows) that were later than this save's own date");
+    expect(line).toContain("brought 9 dates over as this save's (71,000 rows copied)");
+    expect(line).toContain("2 dates (16,000 rows) that had another league's players");
+    expect(line).toContain("1 date (8,000 rows) that were later than this save's own date");
     expect(line).toContain("40 rows of the dates brought over, whose players aren't in this league under the same name");
     expect(line).toMatch(/left in place, under the name:/);
   });

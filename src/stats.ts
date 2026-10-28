@@ -71,6 +71,11 @@ export function formatStat(
       return value.toFixed(3).replace(/^0\./, '.').replace(/^-0\./, '-.');
     case 'dec1':
       return value.toFixed(1);
+    case 'ip': {
+      // Innings and outs, as baseball writes them (10.2 is ten and two-thirds), from innings kept as outs / 3
+      const outs = Math.max(0, Math.round(value * 3));
+      return `${Math.floor(outs / 3)}.${outs % 3}`;
+    }
     case 'dec2':
       return value.toFixed(2);
     case 'pct':

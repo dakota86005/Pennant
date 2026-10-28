@@ -29,6 +29,7 @@ import {
   AGING_METHOD, DEFENSE_METHOD, MLB_CALIBRATION_SUBSYSTEM, STANDARDS_METHOD, STANDARDS_METHOD_BEFORE_LINES,
   type AgingModel, type DefenseModel, type StandardsModel,
 } from './mlbCalibrationFit.js';
+import { plural } from './numberWords.js';
 
 export type YardstickKey = 'standards' | 'aging' | 'defense' | 'results' | 'platoon' | 'bullpen' | 'tools';
 
@@ -112,7 +113,7 @@ export const REASON_TEXT: Record<StartingReason, string> = {
   returned: "they did better than this league's own when checked again",
   no_splits: "this league's export has no batting records against left- and right-handed pitchers",
   relievers: 'too few relievers have pitched enough to measure',
-  rarely_long: `this league's relievers rarely work multiple innings, so the line stays at ${LONG_LINE_PRIOR} innings`,
+  rarely_long: `this league's relievers rarely work multiple innings, so the line stays at ${plural(LONG_LINE_PRIOR, 'inning')}`,
   next_import: 'the long-man line is first measured at the next import',
   no_forward_ratings: 'this league has no ratings saved before a season to check them against yet',
   few_forward_ratings: 'too few seasons have been played since this league\'s ratings were first saved to check them yet',
@@ -201,7 +202,7 @@ function describeStandards(s: StoredCalibration<StandardsModel>): string {
   const hist = s.record.heldOut.filter((c) => c.kind === 'history' && c.part.endsWith(':floor') && c.passed !== null);
   const avg = (cs: CalibrationCheck[]) => (cs.length ? cs.reduce((a, c) => a + (c.observed ?? 0) * c.n, 0) / cs.reduce((a, c) => a + c.n, 0) : null);
   const seasons = s.record.window.seasons;
-  return `Measured from every club's regulars and pitchers as of ${s.gameDate ?? 'this export'} (${s.record.window.sample} players). `
+  return `Measured from every club's regulars and pitchers as of ${s.gameDate ?? 'this export'} (${plural(s.record.window.sample, 'player')}). `
     + `Lines drawn from half the clubs left about ${pct(avg(split))} in 100 of the other half's players under them, where 10 is the aim; `
     + `drawn the same way from each of this league's past seasons${seasons.length ? ` (${seasons[0]}–${seasons[seasons.length - 1]})` : ''}, `
     + `they left about ${pct(avg(hist))} in 100 of the next season's regulars under them. Each part of a player's case (his tools, his results) has its own line.`;
@@ -265,7 +266,7 @@ function leverageSentence(lines: BullpenLines): string {
 
 function describeTools(s: StoredCalibration<ToolsModel>): string {
   const own = [s.model.bat.source === 'save' ? 'what each tool is worth' : null, s.model.blend.source === 'save' ? 'how much the tools hold a hitter\'s results back' : null].filter(Boolean);
-  return `Checked on ${s.model.forwardSeasons} seasons that came after ratings were saved: this league's own ${own.join(' and ')} forecast those seasons clearly better than the starting values.`;
+  return `Checked on ${plural(s.model.forwardSeasons, 'season')} that came after ratings were saved: this league's own ${own.join(' and ')} forecast those seasons clearly better than the starting values.`;
 }
 
 function describeDefense(s: StoredCalibration<DefenseModel>): string {

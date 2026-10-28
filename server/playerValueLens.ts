@@ -29,6 +29,7 @@ import {
 } from './philosophy.js';
 import { LENS_POLICY, LENS_POLICY_CALIBRATION } from './playerValueCalibration.js';
 import type { PlayerSurplus, SurplusFigure, SurplusSeason, SurplusTotal, SurplusView } from './playerValueSurplus.js';
+import { money, num, percent, signedMoney } from './numberWords.js';
 
 /** The organization's philosophy as the lens reads it: each dimension's effective value and the policies. */
 export interface LensPhilosophy {
@@ -143,18 +144,9 @@ export function lensPhilosophyFrom(p: EffectivePhilosophy): LensPhilosophy {
 
 // ── words ────────────────────────────────────────────────────────────────────
 
-function money(v: number): string {
-  const sign = v < 0 ? '−' : '';
-  const a = Math.abs(v);
-  if (a < 500) return '$0';
-  return a >= 1_000_000 ? `${sign}$${(a / 1_000_000).toFixed(1)}M` : `${sign}$${Math.round(a / 1_000)}K`;
-}
-const signedMoney = (v: number): string => (v > 0 ? `+${money(v)}` : money(v));
-const signedWins = (v: number): string => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)} wins`;
-const pct = (v: number): string => {
-  const x = v * 100;
-  return `${Number.isInteger(Math.round(x * 10) / 10) ? Math.round(x) : x.toFixed(1)}%`;
-};
+const signedWins = (v: number): string => `${v > 0 && num(v, 1) !== '0.0' ? '+' : ''}${num(v, 1)} wins`;
+/** A share at a tenth of a percent, whole when it is whole: "12%", "12.5%". */
+const pct = (v: number): string => percent(v, Number.isInteger(Math.round(v * 1000) / 10) ? 0 : 1);
 const seasonsText = (ys: number[]): string => {
   if (ys.length === 0) return '';
   const sorted = [...ys].sort((a, b) => a - b);

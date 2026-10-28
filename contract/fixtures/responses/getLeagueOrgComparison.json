@@ -198,15 +198,15 @@
         "because": [
           {
             "label": "Payroll",
-            "value": "$90.0M"
+            "value": "$90M"
           },
           {
             "label": "Budget",
-            "value": "$150.0M"
+            "value": "$150M"
           },
           {
             "label": "League middle",
-            "value": "$90.0M: the middle club's payroll, for scale; never a rank."
+            "value": "$90M: the middle club's payroll, for scale; never a rank."
           },
           {
             "label": "Where it comes from",
@@ -226,11 +226,11 @@
         "called": "A fact from the export"
       },
       "links": [],
-      "hint": "League middle: $90.0M",
+      "hint": "League middle: $90M",
       "value": {
         "n": 90000000,
         "unit": "dollars",
-        "display": "$90.0M"
+        "display": "$90M"
       }
     }
   ],
@@ -344,10 +344,10 @@
             "hint": "Could be 42.7 to 97.5 wins"
           },
           "payroll": {
-            "display": "$90.0M"
+            "display": "$90M"
           },
           "budget": {
-            "display": "$150.0M"
+            "display": "$150M"
           },
           "top": {
             "display": "None projected",
@@ -586,7 +586,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "Payroll $90.0M"
+                  "display": "Payroll $90M"
                 },
                 "quiet": false,
                 "chips": [],
@@ -594,7 +594,7 @@
               },
               {
                 "text": {
-                  "display": "Budget $150.0M"
+                  "display": "Budget $150M"
                 },
                 "quiet": false,
                 "chips": [],
@@ -650,10 +650,10 @@
             "hint": "Could be 29.7 to 79.7 wins"
           },
           "payroll": {
-            "display": "$90.0M"
+            "display": "$90M"
           },
           "budget": {
-            "display": "$150.0M"
+            "display": "$150M"
           },
           "top": {
             "display": "None projected",
@@ -892,7 +892,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "Payroll $90.0M"
+                  "display": "Payroll $90M"
                 },
                 "quiet": false,
                 "chips": [],
@@ -900,7 +900,7 @@
               },
               {
                 "text": {
-                  "display": "Budget $150.0M"
+                  "display": "Budget $150M"
                 },
                 "quiet": false,
                 "chips": [],
@@ -955,10 +955,10 @@
             "hint": "Could be 44.4 to 96.4 wins"
           },
           "payroll": {
-            "display": "$90.0M"
+            "display": "$90M"
           },
           "budget": {
-            "display": "$150.0M"
+            "display": "$150M"
           },
           "top": {
             "display": "None projected",
@@ -1197,7 +1197,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "Payroll $90.0M"
+                  "display": "Payroll $90M"
                 },
                 "quiet": false,
                 "chips": [],
@@ -1205,7 +1205,7 @@
               },
               {
                 "text": {
-                  "display": "Budget $150.0M"
+                  "display": "Budget $150M"
                 },
                 "quiet": false,
                 "chips": [],
@@ -1260,10 +1260,10 @@
             "hint": "Could be 17.9 to 62.0 wins"
           },
           "payroll": {
-            "display": "$90.0M"
+            "display": "$90M"
           },
           "budget": {
-            "display": "$150.0M"
+            "display": "$150M"
           },
           "top": {
             "display": "None projected",
@@ -1502,7 +1502,7 @@
             "lines": [
               {
                 "text": {
-                  "display": "Payroll $90.0M"
+                  "display": "Payroll $90M"
                 },
                 "quiet": false,
                 "chips": [],
@@ -1510,7 +1510,7 @@
               },
               {
                 "text": {
-                  "display": "Budget $150.0M"
+                  "display": "Budget $150M"
                 },
                 "quiet": false,
                 "chips": [],

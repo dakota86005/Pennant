@@ -41,6 +41,7 @@
 
 import type { CalibrationStamp } from './calibration.js';
 import { CONTROL_HORIZON_SEASONS, PRODUCTION_POLICY } from './playerValueCalibration.js';
+import { num, plural } from './numberWords.js';
 
 // ── the model a fit produces (stored per save as JSON) ───────────────────────
 
@@ -1347,20 +1348,20 @@ function applyInjury(seasons: SideResult['seasons'], injury: InjuryFacts | null,
   }
   const shares = injuryShares(d, injury, f, seasons.length);
   if (shares === null) {
-    widenOnly(0, `Injured, ${d} days out, but the season's calendar is not established, so the rest of ${Y} may be lost: the band reaches it, the central is not moved.`);
+    widenOnly(0, `Injured, ${plural(d, 'day')} out, but the season's calendar is not established, so the rest of ${Y} may be lost: the band reaches it, the central is not moved.`);
     return;
   }
   shares.forEach((lost, i) => {
     if (Number.isNaN(lost)) {
-      widenOnly(i, `Injured, ${d} days out: whether any fall in ${Y + i} is not established (the off-season's length is not known).`);
+      widenOnly(i, `Injured, ${plural(d, 'day')} out: whether any fall in ${Y + i} is not established (the off-season's length is not known).`);
       return;
     }
     if (i === 0) {
       take(0, lost, lost > 0
-        ? `Injured, ${d} days out: ${Math.round(lost * 100)}% of the rest of ${Y} comes off his expected playing time; the high edge keeps an earlier return.`
-        : `Injured, ${d} days out: over before any of ${Y}'s remaining games.`);
+        ? `Injured, ${plural(d, 'day')} out: ${Math.round(lost * 100)}% of the rest of ${Y} comes off his expected playing time; the high edge keeps an earlier return.`
+        : `Injured, ${plural(d, 'day')} out: over before any of ${Y}'s remaining games.`);
     } else if (lost > 0) {
-      take(i, lost, `Injured, ${d} days out: about ${Math.round(lost * 100)}% of ${Y + i} comes off his expected playing time; the high edge keeps an earlier return.`);
+      take(i, lost, `Injured, ${plural(d, 'day')} out: about ${Math.round(lost * 100)}% of ${Y + i} comes off his expected playing time; the high edge keeps an earlier return.`);
     }
   });
 }
@@ -1393,7 +1394,7 @@ export function basisShell(input: ProductionInput, model: ProductionModel, prove
     },
     coverage: { outer: PRODUCTION_POLICY.coverage.outer, inner: PRODUCTION_POLICY.coverage.inner },
     schedule: games !== null
-      ? { games, note: `Playing time per scheduled game, at ${games} games a season.` }
+      ? { games, note: `Playing time per scheduled game, at ${plural(games, 'game')} a season.` }
       : { games: model.referenceGames ?? null, note: `The league's schedule is not stated: playing time is read at the ${model.referenceGames ?? '—'}-game schedule the model was fitted on.` },
     model: provenance,
     calibration: provenance.stamp,
@@ -1552,7 +1553,7 @@ export function adaptPriorToLeague(model: ProductionModel, facts: LeagueRateFact
     const k = { ...kinds[kind] };
     if (f.mean600 !== null && Number.isFinite(f.mean600)) {
       k.mean600 = f.mean600;
-      adapted.push(`${kind} mean ${f.mean600.toFixed(2)}`);
+      adapted.push(`${kind} mean ${num(f.mean600, 2)}`);
     }
     const ps = priorSpread[kind];
     if (f.spread600 !== null && Number.isFinite(f.spread600) && f.spread600 > 0 && ps && ps > 0) {

@@ -35,6 +35,7 @@ import {
   type WorkShare,
 } from './playingTime.js';
 import type { CurrentAssignmentVerdict } from './currentAssignment.js';
+import { plural } from './numberWords.js';
 
 /* ── findings ────────────────────────────────────────────────────────────────────────────────── */
 
@@ -239,7 +240,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
   const injuredAt = (position: string) =>
     health.rosterTreatment.injured
       .filter((p) => p.listedPosition === position)
-      .map((p) => ({ playerId: p.playerId, name: p.name, note: `injured${p.daysLeft !== null ? ` (${p.daysLeft} days)` : ''}, not counted as cover` }));
+      .map((p) => ({ playerId: p.playerId, name: p.name, note: `injured${p.daysLeft !== null ? ` (${plural(p.daysLeft, 'day')})` : ''}, not counted as cover` }));
   const unknowns: string[] = [];
 
   const coverage = health.positionPlayers.coverage.map((c) => ({
@@ -387,7 +388,7 @@ export function operationalReading(input: OperationalInput): AffiliateOperationa
         })),
         ...health.rosterTreatment.injured
           .filter((p) => p.listedPosition === 'P')
-          .map((p) => ({ playerId: p.playerId, name: p.name, note: `injured${p.daysLeft !== null ? ` (${p.daysLeft} days)` : ''}, not counted` })),
+          .map((p) => ({ playerId: p.playerId, name: p.name, note: `injured${p.daysLeft !== null ? ` (${plural(p.daysLeft, 'day')})` : ''}, not counted` })),
       ],
       missing: [],
       wouldResolve: [
@@ -500,7 +501,7 @@ export function buildAffiliateView(input: AffiliateInput): AffiliateView {
                 label: 'Read over',
                 value: conflict.window.since
                   ? `the ${conflict.window.counted} ${conflict.window.counted === 1 ? 'game' : 'games'} since ${conflict.window.since.name} last started there`
-                  : `the club's last ${conflict.window.games} games`,
+                  : `the club's last ${plural(conflict.window.games, 'game')}`,
                 basis: 'The recent window, from the export\'s game log. The season to date is shown beside each man where it differs.',
               },
             ]
@@ -627,7 +628,7 @@ export function buildAffiliateView(input: AffiliateInput): AffiliateView {
       headline:
         developmental.length === 1
           ? 'One player has outgrown this level and still has developmental time.'
-          : `${developmental.length} players have outgrown this level and still have developmental time.`,
+          : `${plural(developmental.length, 'player')} have outgrown this level and still have developmental time.`,
       evidence: developmental.map((c) => ({ label: `${c.name} (${c.age})`, value: 'a developmental question', basis: c.summary })),
       players: developmental.map((c) => ({ playerId: c.playerId, name: c.name, note: c.summary })),
       missing: [],
@@ -691,7 +692,7 @@ export function buildAffiliateView(input: AffiliateInput): AffiliateView {
     );
     if (input.games < MINIMUM_CLUB_GAMES) {
       unknowns.push(
-        `This club has played ${input.games} games, fewer than the ${MINIMUM_CLUB_GAMES} a work share needs, so how it is using its roster cannot be read yet and no playing-time conflict is reported for it.`
+        `This club has played ${plural(input.games, 'game')}, fewer than the ${MINIMUM_CLUB_GAMES} a work share needs, so how it is using its roster cannot be read yet and no playing-time conflict is reported for it.`
       );
     }
   }

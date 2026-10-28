@@ -14,6 +14,7 @@ import { BATTING_STATS, CONTACT_STATS, FIELDING_STATS, PITCHING_STATS, type Stat
 import { factClaim, head, hintIf, player, statCell, statSort, type ClubhouseContext } from './common.js';
 import { fillMark, withFill } from './fill.js';
 import type { MlbRosterChoice, MlbRostersView, MlbTableSection } from './types.js';
+import { plural } from '../../numberWords.js';
 
 const ROSTER = 'The club\'s roster';
 
@@ -50,7 +51,7 @@ function standingCell(p: RosterPlayer): { cell: Cell; sort: number } {
   const s = p.standing;
   if (!s) return { cell: cell('Not in the export', { tone: 'unknown' }), sort: 9 };
   const label = s.label === 'DFA' ? 'Designated for assignment' : s.label === 'Waivers' ? 'On waivers' : s.label;
-  const days = s.daysLeft ? ` · ${s.daysLeft} days left` : '';
+  const days = s.daysLeft ? ` · ${plural(s.daysLeft, 'day')} left` : '';
   return { cell: cell(`${label}${days}`, { tone: s.label === 'Active' ? 'neutral' : s.available ? 'caution' : 'bad' }), sort: s.label === 'Active' ? 0 : s.available ? 1 : 2 };
 }
 

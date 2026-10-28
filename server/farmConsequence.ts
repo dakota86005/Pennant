@@ -52,6 +52,7 @@ import {
   type FarmSession,
   type ProspectRow,
 } from './farmOperations.js';
+import { plural } from './numberWords.js';
 
 /* ── the MLB ↔ farm consequence contract ─────────────────────────────────────────────────────── */
 
@@ -700,7 +701,7 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
   const capacity = job === 'the rotation' ? calibration.STARTER_CAPACITY : job === 'the bullpen' ? calibration.RELIEF_CAPACITY : POSITION_CAPACITY.covered;
   const evidence: string[] = [];
   if (club.games < calibration.MINIMUM_CLUB_GAMES) {
-    evidence.push(`${meta.label} has played ${club.games} games, fewer than the ${calibration.MINIMUM_CLUB_GAMES} a work share needs, so who holds ${job} there cannot be read yet.`);
+    evidence.push(`${meta.label} has played ${plural(club.games, 'game')}, fewer than the ${calibration.MINIMUM_CLUB_GAMES} a work share needs, so who holds ${job} there cannot be read yet.`);
     return {
       player: { playerId, name },
       destination,
@@ -726,7 +727,7 @@ export function farmArrivalFor(orgId: number, playerId: number, teamId: number, 
   const readOn = conflict?.window
     ? conflict.window.since
       ? `the ${conflict.window.counted} ${conflict.window.counted === 1 ? 'game' : 'games'} since ${conflict.window.since.name} last started there`
-      : `its last ${conflict.window.games} games`
+      : `its last ${plural(conflict.window.games, 'game')}`
     : 'its usage this season';
   evidence.push(`${meta.label} is read on ${readOn}: ${claimants.length} ${claimants.length === 1 ? 'man has' : 'men have'} a claim on ${job} before he arrives, and it supports ${capacity}.`);
   if (conflict?.unknowns.length) evidence.push(...conflict.unknowns);

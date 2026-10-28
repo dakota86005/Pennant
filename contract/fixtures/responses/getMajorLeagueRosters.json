@@ -954,7 +954,7 @@
                 "hint": "Not in his line this season"
               },
               "stat.war": {
-                "display": "-0.1"
+                "display": "−0.1"
               },
               "stat.avgExitVelo": {
                 "display": "No line",
@@ -2434,7 +2434,7 @@
                 "hint": "Not in his line this season"
               },
               "stat.war": {
-                "display": "-0.4"
+                "display": "−0.4"
               },
               "stat.avgExitVelo": {
                 "display": "No line",
@@ -3618,7 +3618,7 @@
                 "hint": "Not in his line this season"
               },
               "stat.war": {
-                "display": "-0.1"
+                "display": "−0.1"
               },
               "stat.avgExitVelo": {
                 "display": "No line",
@@ -4607,8 +4607,7 @@
           {
             "id": "stat.ip",
             "title": {
-              "display": "IP",
-              "hint": "Innings pitched"
+              "display": "IP"
             },
             "numeric": true
           },
@@ -4880,7 +4879,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "33.7"
+                "display": "33.2"
               },
               "stat.h": {
                 "display": "0"
@@ -5105,7 +5104,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "31.3"
+                "display": "31.1"
               },
               "stat.h": {
                 "display": "0"
@@ -5156,7 +5155,7 @@
                 "tone": "bad"
               },
               "stat.war": {
-                "display": "-0.1"
+                "display": "−0.1"
               },
               "stat.fg": {
                 "display": "No line",
@@ -5778,7 +5777,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "38.3"
+                "display": "38.1"
               },
               "stat.h": {
                 "display": "0"
@@ -6053,7 +6052,7 @@
                 "tone": "good"
               },
               "stat.war": {
-                "display": "-0.1"
+                "display": "−0.1"
               },
               "stat.fg": {
                 "display": "No line",
@@ -6227,7 +6226,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "12.3"
+                "display": "12.1"
               },
               "stat.h": {
                 "display": "0"
@@ -6278,7 +6277,7 @@
                 "tone": "bad"
               },
               "stat.war": {
-                "display": "-0.4"
+                "display": "−0.4"
               },
               "stat.fg": {
                 "display": "No line",
@@ -6452,7 +6451,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "10.7"
+                "display": "10.2"
               },
               "stat.h": {
                 "display": "0"
@@ -6728,7 +6727,7 @@
                 "tone": "bad"
               },
               "stat.war": {
-                "display": "-0.2"
+                "display": "−0.2"
               },
               "stat.fg": {
                 "display": "No line",
@@ -6953,7 +6952,7 @@
                 "tone": "good"
               },
               "stat.war": {
-                "display": "-0.3"
+                "display": "−0.3"
               },
               "stat.fg": {
                 "display": "No line",
@@ -7127,7 +7126,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "12.7"
+                "display": "12.2"
               },
               "stat.h": {
                 "display": "0"
@@ -7178,7 +7177,7 @@
                 "tone": "bad"
               },
               "stat.war": {
-                "display": "-0.2"
+                "display": "−0.2"
               },
               "stat.fg": {
                 "display": "No line",
@@ -7352,7 +7351,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "10.7"
+                "display": "10.2"
               },
               "stat.h": {
                 "display": "0"
@@ -7576,7 +7575,7 @@
                 "display": "0"
               },
               "stat.ip": {
-                "display": "13.3"
+                "display": "13.1"
               },
               "stat.h": {
                 "display": "0"
@@ -7626,7 +7625,7 @@
                 "display": "106"
               },
               "stat.war": {
-                "display": "-0.5"
+                "display": "−0.5"
               },
               "stat.fg": {
                 "display": "No line",
@@ -7766,6 +7765,10 @@
             {
               "label": "Season lines",
               "value": "This season, at this club's level only: a player who has moved between levels has a line at each, and they are never added together."
+            },
+            {
+              "label": "IP",
+              "value": "Innings pitched, written as baseball writes them: 10.2 is ten innings and two outs"
             },
             {
               "label": "FIP",

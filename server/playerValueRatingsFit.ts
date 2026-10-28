@@ -54,6 +54,7 @@ import {
   type PitcherRate, type RatingsEvidence, type RatingsModel,
 } from './playerValueRatings.js';
 import type { HitterTool, PitcherTool } from './scoutedEvidence.js';
+import { percent, plural } from './numberWords.js';
 
 const PER = PRODUCTION_POLICY.rateUnitOpportunities;
 const H = CONTROL_HORIZON_SEASONS;
@@ -990,7 +991,7 @@ export function fitRatingsModel(input: RatingsFitInput, options: RatingsFitOptio
     // origins a short history has none; before, a single split checked it): the next season must be evaluable
     passed = false;
     reason = `The arrival chance cannot be checked on held-out seasons: ${heldOut[1].cases} cases one season on from ${rolling.length} rolling origin${rolling.length === 1 ? '' : 's'} ` +
-      `(${minimumCases} needed; an origin needs ${backtest.origins.firstOriginAfter} seasons before it and a fit through it with ${backtest.origins.minimumOrigins} origin cohorts at the horizon).`;
+      `(${minimumCases} needed; an origin needs ${plural(backtest.origins.firstOriginAfter, 'season')} before it and a fit through it with ${backtest.origins.minimumOrigins} origin cohorts at the horizon).`;
   } else if (arrivalOff.length > 0) {
     passed = false;
     reason = `The arrival chance's held-out calibration is outside the gate (${Math.round(tol * 100)} points, or a bias beyond ${Math.round(bias.relative * 100)}% of what happened and ${bias.standardErrors} standard errors clustered by player and by origin) at horizon ` +
@@ -1348,5 +1349,5 @@ function linkedArrivals(input: RatingsFitInput, arrival: ArrivalModel, window: n
   return { used: true, linked: rows.length, byPotential: { cuts, multipliers, linked: rows.length } };
 }
 
-const pct = (x: number | null): string => (x === null ? '—' : `${(x * 100).toFixed(1)}%`);
+const pct = (x: number | null): string => (x === null ? '—' : percent(x, 1));
 const num = (x: number | null): string => (x === null ? '—' : x.toFixed(1));

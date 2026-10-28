@@ -98,6 +98,7 @@ import {
   inPopulationView, loadScoutedAbilities, loadScoutedGlovesAtPosition, loadScoutedHitterProfiles, loadScoutedObservations, populationSource,
   ratingSourceNamed, sameRatingSource,
 } from './scoutedEvidence.js';
+import { plural } from './numberWords.js';
 
 export type { ContractFacts, ContractSeason, ContractTerm } from './playerValueContract.js';
 export { contractSeasonFor } from './playerValueContract.js';
@@ -634,9 +635,9 @@ function leaguePayrollOf(clubs: Set<number>, rules: Map<number, LeagueRules>): S
     else total += payroll;
   }
   if (lacking.length > 0) {
-    return unknownBecause('not_exported_by_ootp', source, `${lacking.length} of ${clubs.size} clubs have no payroll figure (club ${lacking.join(', ')}), so the league's total is not stated.`);
+    return unknownBecause('not_exported_by_ootp', source, `${lacking.length} of ${plural(clubs.size, 'club')} have no payroll figure (club ${lacking.join(', ')}), so the league's total is not stated.`);
   }
-  return derivedFrom(total, source, `OOTP's payroll figure summed over the league's ${clubs.size} clubs.`);
+  return derivedFrom(total, source, `OOTP's payroll figure summed over the league's ${plural(clubs.size, 'club')}.`);
 }
 
 /** The league a market is read in: the regime league of `leagueId` (a minor league's parent). */
@@ -751,8 +752,6 @@ function leagueMarket(leagueId: number, options: ValuationOptions = {}): {
 }
 
 // ── the market observed across imports (phase 4b) ────────────────────────────
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** A player's name as the export writes it, for a flag that names him (owner decision 3); null where the export has none. */
 function playerNameOf(playerId: number): string | null {
@@ -1008,7 +1007,7 @@ function seasonStateOf(leagueId: number, season: number | null, played: number |
   const league = allLeagueRules().get(leagueId);
   const calendar = seasonCalendar(leagueId, leagueRecord(leagueId, clubs, season, true), gamesThisSeason(leagueId, league, clubs));
   if (calendar.daysToOpening !== null && calendar.daysToOpening > 0) {
-    return { notBegun: true, words: `Before Opening Day of ${season} by the schedule (${Math.round(calendar.daysToOpening)} days to go): the season has not begun.` };
+    return { notBegun: true, words: `Before Opening Day of ${season} by the schedule (${plural(Math.round(calendar.daysToOpening), 'day')} to go): the season has not begun.` };
   }
   if (tableExists('leagues')) {
     const present = new Set(tableColumns('leagues'));
@@ -1132,7 +1131,7 @@ export function contractSnapshotsNow(
         minimum: finances.regime.minimumSalary.value, financials: finances.regime.financials.value,
         arbitration: { status: regime.status, classes: regime.classes, mlb: regime.mlb },
         rows,
-        population: `${rows.length} players: every player the league's clubs hold (${full} with Player Rights' standing, expected production and the cost of ${winterSeason ?? 'the coming season'}; ` +
+        population: `${plural(rows.length, 'player')}: every player the league's clubs hold (${full} with Player Rights' standing, expected production and the cost of ${winterSeason ?? 'the coming season'}; ` +
           `the rest on minor-league deals or rows with no term, their terms only), and every unsigned player whose production is established.`,
         playDigest: seasonPlayDigest(leagueId),
         seasonState: state.words,

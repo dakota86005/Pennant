@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
 import type { Integer } from './contract/primitives.js';
+import { plural } from './numberWords.js';
 
 const FILE = path.join(DATA_DIR, 'club-owed.json');
 
@@ -51,7 +52,7 @@ export function clubOwed(): ClubOwed | null {
 export function owedText(humanClubs: number | null): string {
   if (humanClubs === null) return 'The export doesn\'t say which club you manage. Choose the one to follow.';
   if (humanClubs === 0) return 'The export names no club you manage. Choose the one to follow.';
-  return `You manage ${humanClubs} clubs in this save. Choose the one to follow.`;
+  return `You manage ${plural(humanClubs, 'club')} in this save. Choose the one to follow.`;
 }
 
 /**

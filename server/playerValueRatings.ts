@@ -50,6 +50,7 @@ import {
 import type {
   EvidenceStatus, HitterTool, PitcherTool, ScoutedAbility, ScoutedGloveAtPosition, ScoutedHitterProfile,
 } from './scoutedEvidence.js';
+import { plural } from './numberWords.js';
 
 const PER = PRODUCTION_POLICY.rateUnitOpportunities;
 const H = CONTROL_HORIZON_SEASONS;
@@ -923,10 +924,10 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   const notEstablished: UnestablishedSeason[] = [];
   for (let i = served; i < horizon && adopted; i += 1) {
     const x = path.seasons[i];
-    const finding = adopted.notEstablished.find((n) => n.horizon === i)?.reason ?? `${i} seasons out: not adopted`;
+    const finding = adopted.notEstablished.find((n) => n.horizon === i)?.reason ?? `${plural(i, 'season')} out: not adopted`;
     notEstablished.push({
       season: x.season, horizon: i + 1 - f, age: x.age,
-      reason: `His expected production in ${x.season} is not established: the save's arrival model is adopted only through ${adopted.through === 1 ? '1 season' : `${adopted.through} seasons`} out, where its held-out check passed the gate; ${finding}.`,
+      reason: `His expected production in ${x.season} is not established: the save's arrival model is adopted only through ${adopted.through === 1 ? '1 season' : `${plural(adopted.through, 'season')}`} out, where its held-out check passed the gate; ${finding}.`,
     });
   }
   const basis = basisShell(input, production.model, ratings.provenance);

@@ -10,6 +10,7 @@ import type { computeContracts } from '../../contracts.js';
 import type { computePayroll } from '../../payroll.js';
 import { basis, cell, claim, servedValue, target, unknownValue } from '../claim.js';
 import { contractSeverity } from '../severity.js';
+import { money } from '../../numberWords.js';
 import { item, plural, sourceOf, type DepartmentContext, type DepartmentMaterial } from './desk.js';
 
 type Contracts = ReturnType<typeof computeContracts>;
@@ -25,14 +26,8 @@ const SPECIALIST = 'Contracts';
 /** The groups that come to a decision after this season, in the order Contracts lists them. */
 const DECISIONS = new Set(['leaving', 'option', 'arbitration']);
 
-/** Dollars as a GM reads them: "$12.5M", "$750K". */
-export function dollars(n: number): string {
-  const sign = n < 0 ? '−' : '';
-  const a = Math.abs(n);
-  if (a >= 1_000_000) return `${sign}$${(a / 1_000_000).toFixed(a >= 10_000_000 ? 1 : 2).replace(/\.?0+$/, '')}M`;
-  if (a >= 1_000) return `${sign}$${Math.round(a / 1_000)}K`;
-  return `${sign}$${Math.round(a)}`;
-}
+/** Dollars as a GM reads them: "$12.5M", "$750K" (the shared money rule, `numberWords.ts`). */
+export const dollars = money;
 
 function headlineText(p: Contracts['players'][number], season: number): string {
   if (p.group === 'leaving') return `${p.name}'s contract ends after ${season}`;

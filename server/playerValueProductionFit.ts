@@ -35,6 +35,7 @@ import {
   type AgingGroup, type HorizonModel, type KindModel, type ModelProvenance, type ProductionKind,
   type ProductionLine, type ProductionModel, type ProductionSide, type ProneModel, type SideTrajectory, type SurvivorTerms, type UsageTerms,
 } from './playerValueProduction.js';
+import { percent, plural } from './numberWords.js';
 
 // ── the history a fit reads ─────────────────────────────────────────────────
 
@@ -436,7 +437,7 @@ export function judgeGate(rows: GateRow[]): { passed: boolean; reason: string; f
     return { passed: false, reason: `Too few held-out cases to validate: horizon 1 needs ${g.minimumCases} pooled held-out cases.`, failures: [] };
   }
   const failures: string[] = [];
-  const pct = (x: number | null | undefined) => (x === null || x === undefined ? '—' : `${(x * 100).toFixed(1)}%`);
+  const pct = (x: number | null | undefined) => (x === null || x === undefined ? '—' : percent(x, 1));
   for (const r of evaluable) {
     const tol = r.group === 'pooled' ? g.coverage.pooled : g.coverage.subgroup;
     const off = (o: number | null, t: number) => o === null || Math.abs(o - t) > tol + 1e-12;
@@ -901,7 +902,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
         tests.push({
           z: se > 0 ? (m - 1) / se : 0,
           apply: () => { prone.usage[group][b] = m; },
-          text: (used) => `${group === 'hitter' ? 'Hitters' : 'Pitchers'}, proneness ${label(b)}: playing time ${(m * 100).toFixed(1)}% of the league's rate for the same expected usage (± ${(se * 100).toFixed(1)}, clustered by player: ${e.clusters} players, ${rows.length} seasons, horizons 1–${policy.proneness.usageHorizons})${used ? '' : ' — not distinguishable from none (Holm), not used'}.`,
+          text: (used) => `${group === 'hitter' ? 'Hitters' : 'Pitchers'}, proneness ${label(b)}: playing time ${(m * 100).toFixed(1)}% of the league's rate for the same expected usage (± ${(se * 100).toFixed(1)}, clustered by player: ${plural(e.clusters, 'player')}, ${plural(rows.length, 'season')}, horizons 1–${policy.proneness.usageHorizons})${used ? '' : ' — not distinguishable from none (Holm), not used'}.`,
         });
       });
       for (let b = 0; b < bands; b += 1) {
@@ -919,7 +920,7 @@ export function fitProductionModel(history: FitHistory, options: FitOptions): Fi
           tests.push({
             z: se > 0 ? mean / se : 0,
             apply: () => { prone.aging[group][b][gi] = mean; },
-            text: (used) => `${group === 'hitter' ? 'Hitters' : 'Pitchers'}, proneness ${label(b)}, ${name}: aging ${mean >= 0 ? '+' : ''}${mean.toFixed(3)} WAR per ${PER} a year against the curve (± ${se.toFixed(3)}, clustered: ${byPlayer.size} players, ${xs.length} pairs)${used ? '' : ' — not distinguishable from none (Holm), not used'}.`,
+            text: (used) => `${group === 'hitter' ? 'Hitters' : 'Pitchers'}, proneness ${label(b)}, ${name}: aging ${mean >= 0 ? '+' : ''}${mean.toFixed(3)} WAR per ${PER} a year against the curve (± ${se.toFixed(3)}, clustered: ${plural(byPlayer.size, 'player')}, ${xs.length} pairs)${used ? '' : ' — not distinguishable from none (Holm), not used'}.`,
           });
         }
       }

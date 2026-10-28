@@ -35,6 +35,7 @@ import {
 } from './farmCalibration.js';
 import type { DevelopmentProtectionTier } from './developmentFit.js';
 import { describeTenure, gamesAgo, type RecentEvidence, type RecentUsage, type Tenure } from './farmRecentUsage.js';
+import { innings, inningsWords, plural } from './numberWords.js';
 
 /** A job on an affiliate that a player can hold. */
 export type FarmJob =
@@ -354,7 +355,6 @@ const competing = (c: UsageFacts): boolean => !c.rehab && c.injured !== true;
 const evidenceOf = (counted: number, tenure: Tenure): RecentEvidence =>
   counted === 0 ? 'none' : counted < RECENT_MINIMUM_GAMES || tenure.status === 'unknown' ? 'thin' : 'sufficient';
 
-const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 /** Why a recent read that exists is not being read as a role, in words. */
 function thinBecause(name: string, recent: RecentUsage, counted: number, since: GoneHolder | null): string {
@@ -551,9 +551,9 @@ function buildPositionConflict(
       basis:
         clubInningsAtPosition > 0
           ? level === 'bat_only'
-            ? `${Math.round(innings)} of the club's ${Math.round(clubInningsAtPosition)} innings at ${position}, but in the lineup for ${c.games} of its ${c.clubGames} games: he is batting, not fielding.`
-            : `${Math.round(innings)} of the club's ${Math.round(clubInningsAtPosition)} innings at ${position}.`
-          : `The club has played ${c.clubGames} games; innings at ${position} are not yet a share.`,
+            ? `${Math.round(innings)} of the club's ${plural(Math.round(clubInningsAtPosition), 'inning')} at ${position}, but in the lineup for ${c.games} of its ${plural(c.clubGames, 'game')}: he is batting, not fielding.`
+            : `${Math.round(innings)} of the club's ${plural(Math.round(clubInningsAtPosition), 'inning')} at ${position}.`
+          : `The club has played ${plural(c.clubGames, 'game')}; innings at ${position} are not yet a share.`,
     };
     const identity = { playerId: c.playerId, name: c.name, age: c.age, tier: c.tier };
     if (!hasRecent || c.recent == null) {
@@ -622,7 +622,7 @@ function buildPositionConflict(
 
   const unknowns: string[] = [];
   if (shares.some((s) => s.season.level === 'unknown')) {
-    unknowns.push(`Some shares cannot be read yet: the club has played fewer than ${MINIMUM_CLUB_GAMES} games.`);
+    unknowns.push(`Some shares cannot be read yet: the club has played fewer than ${plural(MINIMUM_CLUB_GAMES, 'game')}.`);
   }
   if (members.some((c) => c.tier === null)) {
     unknowns.push(
@@ -641,7 +641,7 @@ function buildPositionConflict(
     const departed = clubInningsAtPosition - rosteredInnings;
     if (clubInningsAtPosition > 0 && departed / clubInningsAtPosition >= DEPARTED_SHARE_NOTED) {
       unknowns.push(
-        `${Math.round(departed)} of the club's ${Math.round(clubInningsAtPosition)} innings at ${position} were played by men no longer on its roster, so the shares describe the season so far, not the competition as it stands.`
+        `${Math.round(departed)} of the club's ${plural(Math.round(clubInningsAtPosition), 'inning')} at ${position} were played by men no longer on its roster, so the shares describe the season so far, not the competition as it stands.`
       );
     }
   }
@@ -741,7 +741,7 @@ function buildRotationConflict(
                   ? ('part_time' as WorkLevel)
                   : ('occasional' as WorkLevel),
         share: capped,
-        basis: `${c.starts} starts and ${Math.round(c.inningsPitched)} innings while the club played ${clubStarts} games.`,
+        basis: `${plural(c.starts, 'start')} and ${plural(Math.round(c.inningsPitched), 'inning')} while the club played ${plural(clubStarts, 'game')}.`,
       };
       const identity = { playerId: c.playerId, name: c.name, age: c.age, tier: c.tier };
       if (!hasRecent || c.recent == null) {
@@ -823,7 +823,7 @@ function buildRotationConflict(
     : [];
 
   const unknowns: string[] = [];
-  if (shares.some((s) => s.season.level === 'unknown')) unknowns.push(`The club has played fewer than ${MINIMUM_CLUB_GAMES} games, so a starter's share cannot be read.`);
+  if (shares.some((s) => s.season.level === 'unknown')) unknowns.push(`The club has played fewer than ${plural(MINIMUM_CLUB_GAMES, 'game')}, so a starter's share cannot be read.`);
   if (members.some((c) => c.tier === null)) {
     unknowns.push('Developmental stakes are indeterminate for at least one starter.');
   }
@@ -892,7 +892,7 @@ function buildReliefConflict(teamId: number, relievers: readonly UsageFacts[], c
                   ? ('part_time' as WorkLevel)
                   : ('occasional' as WorkLevel),
         share,
-        basis: `${Math.round(c.inningsPitched)} of the relief corps' ${Math.round(totalInnings)} innings.`,
+        basis: `${Math.round(c.inningsPitched)} of the relief corps' ${plural(Math.round(totalInnings), 'inning')}.`,
       };
       const identity = { playerId: c.playerId, name: c.name, age: c.age, tier: c.tier };
       if (!hasRecent || c.recent == null) {
@@ -929,7 +929,7 @@ function buildReliefConflict(teamId: number, relievers: readonly UsageFacts[], c
         basis:
           counted === 0
             ? `None of the club's last ${plural(c.recent.windowGames, 'game')} can be counted for him.`
-            : `${plural(c.recent.reliefGames.length, 'relief appearance')} and ${(outs / 3).toFixed(1)} innings over ${over}; an even share of the corps' work over those games is ${((evenRate * counted) / 3).toFixed(1)}.`,
+            : `${plural(c.recent.reliefGames.length, 'relief appearance')} and ${inningsWords(outs)} over ${over}; an even share of the corps' work over those games is ${innings(evenRate * counted)}.`,
       };
       if (evidence !== 'sufficient') {
         thin.push(thinBecause(c.name, c.recent, counted, null));
@@ -961,7 +961,7 @@ function buildReliefConflict(teamId: number, relievers: readonly UsageFacts[], c
   const squeezedOverSeason = shares.filter((s) => hasDevelopmentalStakes(s.tier) && shortOfWork(s.season.level));
 
   const unknowns: string[] = [];
-  if (shares.some((s) => s.season.level === 'unknown')) unknowns.push(`The club has played fewer than ${MINIMUM_CLUB_GAMES} games, so an innings share cannot be read.`);
+  if (shares.some((s) => s.season.level === 'unknown')) unknowns.push(`The club has played fewer than ${plural(MINIMUM_CLUB_GAMES, 'game')}, so an innings share cannot be read.`);
   unknowns.push(...thin);
 
   const windowGames = members.find((c) => c.recent != null)?.recent?.windowGames ?? 0;

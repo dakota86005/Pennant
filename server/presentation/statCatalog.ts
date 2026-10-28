@@ -6,7 +6,7 @@
  */
 
 export type StatGroup = 'batting' | 'pitching';
-export type StatFormat = 'int' | 'avg3' | 'dec1' | 'dec2' | 'pct' | 'plus';
+export type StatFormat = 'int' | 'avg3' | 'dec1' | 'dec2' | 'pct' | 'plus' | 'ip';
 
 export interface StatDef {
   key: string;
@@ -56,7 +56,7 @@ export const PITCHING_STATS: StatDef[] = [
   { key: 'l', label: 'L', desc: 'Losses', format: 'int', section: 'Counting', lowerIsBetter: true },
   { key: 'sv', label: 'SV', desc: 'Saves', format: 'int', section: 'Counting' },
   { key: 'hld', label: 'HLD', desc: 'Holds', format: 'int', section: 'Counting' },
-  { key: 'ip', label: 'IP', desc: 'Innings pitched', format: 'dec1', section: 'Counting' },
+  { key: 'ip', label: 'IP', desc: 'Innings pitched, written as baseball writes them: 10.2 is ten innings and two outs', format: 'ip', section: 'Counting' },
   { key: 'h', label: 'H', desc: 'Hits allowed', format: 'int', section: 'Counting', lowerIsBetter: true },
   { key: 'er', label: 'ER', desc: 'Earned runs allowed', format: 'int', section: 'Counting', lowerIsBetter: true },
   { key: 'hr', label: 'HR', desc: 'Home runs allowed', format: 'int', section: 'Counting', lowerIsBetter: true },

@@ -8,6 +8,9 @@ import { basis, cell, claim, target } from '../claim.js';
 import { sourceOf, type DepartmentContext } from '../frontOffice/desk.js';
 import type { MlbPlayer, MlbViewHead } from '../majorLeague/types.js';
 import type { StatDef } from '../statCatalog.js';
+import { count, inningsOf, MINUS, num, plural } from '../../numberWords.js';
+
+export { plural };
 
 /** A clubhouse tool's context: the department's (its source, the build). */
 export interface ClubhouseContext {
@@ -109,8 +112,6 @@ export function ageCell(age: number | null | undefined): Cell {
   return words === null ? cell('Not known', { tone: 'unknown', hint: 'His age isn\'t in the export' }) : cell(words);
 }
 
-export const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
-
 /** A hand in words ("right-handed"), from the export's letter. */
 export const HAND_WORDS: Readonly<Record<string, string>> = { R: 'right-handed', L: 'left-handed', S: 'switch' };
 
@@ -122,11 +123,12 @@ export function statText(def: StatDef, value: number | null | undefined, raw?: R
   if (def.key === 'eraPlus' && (value === null || value === undefined) && raw && raw.era === 0 && (raw.ip ?? 0) > 0) return '∞';
   if (value === null || value === undefined || !Number.isFinite(value)) return null;
   switch (def.format) {
-    case 'avg3': return value.toFixed(3).replace(/^0\./, '.').replace(/^-0\./, '-.');
-    case 'dec1': return value.toFixed(1);
-    case 'dec2': return value.toFixed(2);
-    case 'pct': return `${value.toFixed(1)}%`;
-    default: return String(Math.round(value));
+    case 'avg3': return value.toFixed(3).replace(/^0\./, '.').replace(/^-0\./, `${MINUS}.`).replace(/^-/, MINUS);
+    case 'dec1': return num(value, 1);
+    case 'dec2': return num(value, 2);
+    case 'pct': return `${num(value, 1)}%`;
+    case 'ip': return inningsOf(value);
+    default: return count(value);
   }
 }
 

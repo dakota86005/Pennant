@@ -36,7 +36,7 @@
         },
         {
           "label": "The budget line",
-          "value": "Today's budget, $150.0M, as the export states it."
+          "value": "Today's budget, $150M, as the export states it."
         }
       ],
       "source": {
@@ -91,7 +91,7 @@
         "because": [
           {
             "label": "Budget",
-            "value": "$150.0M"
+            "value": "$150M"
           },
           {
             "label": "Source",
@@ -114,7 +114,7 @@
       "value": {
         "n": 150000000,
         "unit": "dollars",
-        "display": "$150.0M"
+        "display": "$150M"
       }
     },
     {
@@ -124,7 +124,7 @@
         "because": [
           {
             "label": "Payroll now",
-            "value": "$90.0M"
+            "value": "$90M"
           },
           {
             "label": "Source",
@@ -144,11 +144,11 @@
         "called": "A fact from the export"
       },
       "links": [],
-      "hint": "+$60.0M room",
+      "hint": "$60M room",
       "value": {
         "n": 90000000,
         "unit": "dollars",
-        "display": "$90.0M"
+        "display": "$90M"
       }
     },
     {
@@ -158,7 +158,7 @@
         "because": [
           {
             "label": "Payroll next season",
-            "value": "$60.0M"
+            "value": "$60M"
           },
           {
             "label": "Source",
@@ -182,7 +182,7 @@
       "value": {
         "n": 60000000,
         "unit": "dollars",
-        "display": "$60.0M"
+        "display": "$60M"
       }
     },
     {
@@ -192,7 +192,7 @@
         "because": [
           {
             "label": "Revenue",
-            "value": "$160.0M"
+            "value": "$160M"
           },
           {
             "label": "Source",
@@ -212,11 +212,11 @@
         "called": "A fact from the export"
       },
       "links": [],
-      "hint": "Less $140.0M in expenses",
+      "hint": "Less $140M in expenses",
       "value": {
         "n": 160000000,
         "unit": "dollars",
-        "display": "$160.0M"
+        "display": "$160M"
       }
     },
     {
@@ -226,7 +226,7 @@
         "because": [
           {
             "label": "Expenses",
-            "value": "$140.0M"
+            "value": "$140M"
           },
           {
             "label": "Source",
@@ -249,7 +249,7 @@
       "value": {
         "n": 140000000,
         "unit": "dollars",
-        "display": "$140.0M"
+        "display": "$140M"
       }
     },
     {
@@ -259,7 +259,7 @@
         "because": [
           {
             "label": "Cash for trades",
-            "value": "$5.0M"
+            "value": "$5M"
           },
           {
             "label": "Source",
@@ -282,7 +282,7 @@
       "value": {
         "n": 5000000,
         "unit": "dollars",
-        "display": "$5.0M"
+        "display": "$5M"
       }
     }
   ],
@@ -398,7 +398,7 @@
       "because": [
         {
           "label": "A renewal",
-          "value": "A pre-arbitration renewal: measured on this save. Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+          "value": "A pre-arbitration renewal: measured on this save. Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
         },
         {
           "label": "An arbitration year",
@@ -479,7 +479,7 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M, this season's budget"
+              "value": "$150M, this season's budget"
             },
             {
               "label": "Room",
@@ -532,13 +532,13 @@
       },
       "budget": 150000000,
       "claim": {
-        "text": "2041: $49.0M committed",
+        "text": "2041: $49M committed",
         "tone": "neutral",
         "basis": {
           "because": [
             {
               "label": "Committed",
-              "value": "$49.0M"
+              "value": "$49M"
             },
             {
               "label": "What committed means",
@@ -550,11 +550,11 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M, today's budget held flat"
+              "value": "$150M, today's budget held flat"
             },
             {
               "label": "Room",
-              "value": "$101.0M free"
+              "value": "$101M free"
             },
             {
               "label": "What room means",
@@ -566,7 +566,7 @@
             },
             {
               "label": "How it is combined",
-              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 8 players (root sum of squares). Every player at his edge, summed: $5.60M–$94.46M. Readings that move together (a class's line) are read as independent too."
+              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 8 players (root sum of squares). Every player at his edge, summed: $5.6M–$94.5M. Readings that move together (a class's line) are read as independent too."
             },
             {
               "label": "Every player at the same end",
@@ -591,21 +591,21 @@
         "value": {
           "n": 49015000,
           "unit": "dollars",
-          "display": "$49.0M"
+          "display": "$49M"
         }
       },
       "committedCell": {
-        "display": "$49.0M"
+        "display": "$49M"
       },
       "playersCell": {
         "display": "18 players"
       },
       "projectedCell": {
-        "display": "Most likely +$16.4M · could be $12.6M to $44.0M (8 players)",
+        "display": "Most likely +$16.4M · could be $12.6M to $44M (8 players)",
         "hint": "Projected, never in the total or the room"
       },
       "roomCell": {
-        "display": "$101.0M free",
+        "display": "$101M free",
         "tone": "good",
         "hint": "Against today's budget, held flat"
       }
@@ -639,7 +639,7 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M, today's budget held flat"
+              "value": "$150M, today's budget held flat"
             },
             {
               "label": "Room",
@@ -655,7 +655,7 @@
             },
             {
               "label": "How it is combined",
-              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 19 players (root sum of squares). Every player at his edge, summed: $13.30M–$224.33M. Readings that move together (a class's line) are read as independent too."
+              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 19 players (root sum of squares). Every player at his edge, summed: $13.3M–$224.3M. Readings that move together (a class's line) are read as independent too."
             },
             {
               "label": "Every player at the same end",
@@ -690,7 +690,7 @@
         "display": "7 players"
       },
       "projectedCell": {
-        "display": "Most likely +$39.0M · could be $33.1M to $81.5M (19 players)",
+        "display": "Most likely +$39M · could be $33.1M to $81.5M (19 players)",
         "hint": "Projected, never in the total or the room"
       },
       "roomCell": {
@@ -710,13 +710,13 @@
       },
       "budget": 150000000,
       "claim": {
-        "text": "2043: $9.2M committed",
+        "text": "2043: $9.23M committed",
         "tone": "neutral",
         "basis": {
           "because": [
             {
               "label": "Committed",
-              "value": "$9.2M"
+              "value": "$9.23M"
             },
             {
               "label": "What committed means",
@@ -728,7 +728,7 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M, today's budget held flat"
+              "value": "$150M, today's budget held flat"
             },
             {
               "label": "Room",
@@ -744,7 +744,7 @@
             },
             {
               "label": "How it is combined",
-              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 22 players (root sum of squares). Every player at his edge, summed: $15.40M–$259.75M. Readings that move together (a class's line) are read as independent too."
+              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 22 players (root sum of squares). Every player at his edge, summed: $15.4M–$259.8M. Readings that move together (a class's line) are read as independent too."
             },
             {
               "label": "Every player at the same end",
@@ -769,11 +769,11 @@
         "value": {
           "n": 9228000,
           "unit": "dollars",
-          "display": "$9.2M"
+          "display": "$9.23M"
         }
       },
       "committedCell": {
-        "display": "$9.2M"
+        "display": "$9.23M"
       },
       "playersCell": {
         "display": "4 players"
@@ -817,11 +817,11 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M, today's budget held flat"
+              "value": "$150M, today's budget held flat"
             },
             {
               "label": "Room",
-              "value": "$150.0M free"
+              "value": "$150M free"
             },
             {
               "label": "What room means",
@@ -833,7 +833,7 @@
             },
             {
               "label": "How it is combined",
-              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 2 players (root sum of squares). Every player at his edge, summed: $1.40M–$23.61M. Readings that move together (a class's line) are read as independent too."
+              "value": "players combined as independent; not a calibrated interval: around the sum of centrals, each player's own distance from it on each side is combined as independent across 2 players (root sum of squares). Every player at his edge, summed: $1.4M–$23.6M. Readings that move together (a class's line) are read as independent too."
             },
             {
               "label": "Every player at the same end",
@@ -841,7 +841,7 @@
             },
             {
               "label": "Not priced",
-              "value": "24 not priced: their cost is not established, never counted as $0."
+              "value": "24 controlled seasons not priced: their cost is not established, never counted as $0."
             }
           ],
           "source": {
@@ -874,11 +874,11 @@
         "display": "0 players"
       },
       "projectedCell": {
-        "display": "Most likely +$4.1M · could be $2.2M to $17.9M (2 players)",
+        "display": "Most likely +$4.1M · could be $2.19M to $17.9M (2 players)",
         "hint": "Projected, never in the total or the room"
       },
       "roomCell": {
-        "display": "$150.0M free",
+        "display": "$150M free",
         "tone": "good",
         "hint": "Against today's budget, held flat"
       }
@@ -907,11 +907,11 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M, today's budget held flat"
+              "value": "$150M, today's budget held flat"
             },
             {
               "label": "Room",
-              "value": "$150.0M free"
+              "value": "$150M free"
             },
             {
               "label": "What room means",
@@ -919,7 +919,7 @@
             },
             {
               "label": "Not priced",
-              "value": "26 not priced yet."
+              "value": "26 controlled seasons not priced yet."
             }
           ],
           "source": {
@@ -952,11 +952,11 @@
         "display": "0 players"
       },
       "projectedCell": {
-        "display": "26 not priced yet",
+        "display": "26 controlled seasons not priced yet",
         "tone": "unknown"
       },
       "roomCell": {
-        "display": "$150.0M free",
+        "display": "$150M free",
         "tone": "good",
         "hint": "Against today's budget, held flat"
       }
@@ -965,12 +965,12 @@
   "budget": {
     "amount": 150000000,
     "label": {
-      "display": "Budget $150.0M"
+      "display": "Budget $150M"
     }
   },
   "expectedBudget": null,
   "chartSummary": {
-    "display": "Committed salary by season: 2040 $84.1M, 2041 $49.0M, 2042 $17.6M, 2043 $9.2M, 2044 $0, 2045 $0; budget $150.0M."
+    "display": "Committed salary by season: 2040 $84.1M, 2041 $49M, 2042 $17.6M, 2043 $9.23M, 2044 $0, 2045 $0; budget $150M."
   },
   "nextSeasonBudget": {
     "amount": null,
@@ -989,7 +989,7 @@
       "because": [
         {
           "label": "2041",
-          "value": "$5.6M to $94.5M with every player at the same end (edge against edge), against $12.6M to $44.0M as shown, with players combined as independent (8 combined, 0 kept at their ends)."
+          "value": "$5.6M to $94.5M with every player at the same end (edge against edge), against $12.6M to $44M as shown, with players combined as independent (8 combined, 0 kept at their ends)."
         },
         {
           "label": "2042",
@@ -1001,7 +1001,7 @@
         },
         {
           "label": "2044",
-          "value": "$1.4M to $23.6M with every player at the same end (edge against edge), against $2.2M to $17.9M as shown, with players combined as independent (2 combined, 0 kept at their ends)."
+          "value": "$1.4M to $23.6M with every player at the same end (edge against edge), against $2.19M to $17.9M as shown, with players combined as independent (2 combined, 0 kept at their ends)."
         }
       ],
       "source": {
@@ -1171,7 +1171,7 @@
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1195,13 +1195,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1230,13 +1230,13 @@
                 "display": "32"
               },
               "salary": {
-                "display": "$8.8M"
+                "display": "$8.76M"
               },
               "standing": {
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1260,13 +1260,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1295,13 +1295,13 @@
                 "display": "29"
               },
               "salary": {
-                "display": "$5.8M"
+                "display": "$5.77M"
               },
               "standing": {
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1325,13 +1325,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1360,13 +1360,13 @@
                 "display": "28"
               },
               "salary": {
-                "display": "$3.1M"
+                "display": "$3.12M"
               },
               "standing": {
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1390,13 +1390,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1425,13 +1425,13 @@
                 "display": "24"
               },
               "salary": {
-                "display": "$3.0M"
+                "display": "$2.95M"
               },
               "standing": {
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1455,13 +1455,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1490,13 +1490,13 @@
                 "display": "27"
               },
               "salary": {
-                "display": "$1.3M"
+                "display": "$1.32M"
               },
               "standing": {
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1520,13 +1520,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1561,7 +1561,7 @@
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1585,13 +1585,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1626,7 +1626,7 @@
                 "display": "Pre-arbitration"
               },
               "nextCost": {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               }
             },
@@ -1650,13 +1650,13 @@
             "actions": [],
             "claims": [
               {
-                "text": "Next season could cost $2.1M",
+                "text": "Next season could cost $2.05M",
                 "tone": "neutral",
                 "basis": {
                   "because": [
                     {
                       "label": "His cost",
-                      "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                      "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                     }
                   ],
                   "source": {
@@ -1818,11 +1818,11 @@
             "display": "$12.1M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -1877,13 +1877,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -1901,13 +1901,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -1981,15 +1981,15 @@
             "display": "$11.8M"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -2044,13 +2044,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2068,13 +2068,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2092,13 +2092,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2169,18 +2169,18 @@
         "id": "payroll-1004",
         "cells": {
           "y2040": {
-            "display": "$8.8M"
+            "display": "$8.76M"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -2235,13 +2235,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2259,13 +2259,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2283,13 +2283,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2360,18 +2360,18 @@
         "id": "payroll-1017",
         "cells": {
           "y2040": {
-            "display": "$5.8M"
+            "display": "$5.77M"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -2426,13 +2426,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2450,13 +2450,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2474,13 +2474,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2551,17 +2551,17 @@
         "id": "payroll-1005",
         "cells": {
           "y2040": {
-            "display": "$4.8M"
+            "display": "$4.79M"
           },
           "y2041": {
-            "display": "$4.8M"
+            "display": "$4.79M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -2616,13 +2616,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2640,13 +2640,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2717,16 +2717,16 @@
         "id": "payroll-1003",
         "cells": {
           "y2040": {
-            "display": "$4.7M"
+            "display": "$4.69M"
           },
           "y2041": {
-            "display": "$4.7M"
+            "display": "$4.69M"
           },
           "y2042": {
-            "display": "$4.7M"
+            "display": "$4.69M"
           },
           "y2043": {
-            "display": "$4.7M"
+            "display": "$4.69M"
           },
           "y2044": {
             "display": "Not known projected",
@@ -2833,16 +2833,16 @@
         "id": "payroll-1010",
         "cells": {
           "y2040": {
-            "display": "$4.7M"
+            "display": "$4.68M"
           },
           "y2041": {
-            "display": "$4.7M"
+            "display": "$4.68M"
           },
           "y2042": {
-            "display": "$4.7M"
+            "display": "$4.68M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -2897,13 +2897,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2974,17 +2974,17 @@
         "id": "payroll-1023",
         "cells": {
           "y2040": {
-            "display": "$3.7M"
+            "display": "$3.66M"
           },
           "y2041": {
-            "display": "$3.7M"
+            "display": "$3.66M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -3039,13 +3039,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3063,13 +3063,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3140,17 +3140,17 @@
         "id": "payroll-1011",
         "cells": {
           "y2040": {
-            "display": "$3.6M"
+            "display": "$3.58M"
           },
           "y2041": {
-            "display": "$3.6M"
+            "display": "$3.58M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -3205,13 +3205,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3229,13 +3229,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3306,16 +3306,16 @@
         "id": "payroll-1001",
         "cells": {
           "y2040": {
-            "display": "$3.1M"
+            "display": "$3.14M"
           },
           "y2041": {
-            "display": "$3.1M"
+            "display": "$3.14M"
           },
           "y2042": {
-            "display": "$3.1M"
+            "display": "$3.14M"
           },
           "y2043": {
-            "display": "$3.1M"
+            "display": "$3.14M"
           },
           "y2044": {
             "display": "Not known projected",
@@ -3422,18 +3422,18 @@
         "id": "payroll-1012",
         "cells": {
           "y2040": {
-            "display": "$3.1M"
+            "display": "$3.12M"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -3488,13 +3488,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3512,13 +3512,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3536,13 +3536,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3613,20 +3613,20 @@
         "id": "payroll-1015",
         "cells": {
           "y2040": {
-            "display": "$3.0M"
+            "display": "$2.99M"
           },
           "y2041": {
-            "display": "$3.0M"
+            "display": "$2.99M"
           },
           "y2042": {
-            "display": "$3.0M"
+            "display": "$2.99M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2045": {
@@ -3676,13 +3676,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3700,13 +3700,13 @@
             "links": []
           },
           {
-            "text": "2044: $2.1M projected",
+            "text": "2044: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3753,22 +3753,22 @@
         "id": "payroll-1020",
         "cells": {
           "y2040": {
-            "display": "$3.0M"
+            "display": "$2.95M"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2045": {
@@ -3818,13 +3818,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3842,13 +3842,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3866,13 +3866,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3890,13 +3890,13 @@
             "links": []
           },
           {
-            "text": "2044: $2.1M projected",
+            "text": "2044: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -3943,17 +3943,17 @@
         "id": "payroll-1008",
         "cells": {
           "y2040": {
-            "display": "$2.5M"
+            "display": "$2.47M"
           },
           "y2041": {
-            "display": "$2.5M"
+            "display": "$2.47M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -4008,13 +4008,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4032,13 +4032,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4109,18 +4109,18 @@
         "id": "payroll-1007",
         "cells": {
           "y2040": {
-            "display": "$1.3M"
+            "display": "$1.32M"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -4175,13 +4175,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4199,13 +4199,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4223,13 +4223,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4306,11 +4306,11 @@
             "display": "$1.3M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -4365,13 +4365,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4389,13 +4389,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4472,11 +4472,11 @@
             "display": "$750K"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -4531,13 +4531,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4555,13 +4555,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4870,11 +4870,11 @@
             "display": "$700K"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -4929,13 +4929,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -4953,13 +4953,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5033,15 +5033,15 @@
             "display": "$700K"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -5096,13 +5096,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5120,13 +5120,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5144,13 +5144,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5227,11 +5227,11 @@
             "display": "$700K"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -5286,13 +5286,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5310,13 +5310,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5390,15 +5390,15 @@
             "display": "$700K"
           },
           "y2041": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -5453,13 +5453,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2041: $2.1M projected",
+            "text": "2041: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5477,13 +5477,13 @@
             "links": []
           },
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5501,13 +5501,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5584,11 +5584,11 @@
             "display": "$700K"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -5643,13 +5643,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5667,13 +5667,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5753,7 +5753,7 @@
             "display": "$700K"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -5808,13 +5808,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5891,11 +5891,11 @@
             "display": "$700K"
           },
           "y2042": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2043": {
-            "display": "$2.1M projected",
+            "display": "$2.05M projected",
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
@@ -5950,13 +5950,13 @@
         "actions": [],
         "claims": [
           {
-            "text": "2042: $2.1M projected",
+            "text": "2042: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -5974,13 +5974,13 @@
             "links": []
           },
           {
-            "text": "2043: $2.1M projected",
+            "text": "2043: $2.05M projected",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {

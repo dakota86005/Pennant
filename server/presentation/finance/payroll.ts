@@ -19,6 +19,7 @@ import type { FinanceBudgetChange, FinancePayrollSeason, FinancePayrollSection, 
 import {
   COMBINED_LABEL, COST_BAND_WORDS, costCell, costExplanation, money, perWin, perWinRange, rangeWords, statusWords, type CostInput,
 } from './words.js';
+import { plural } from '../../numberWords.js';
 
 type Payroll = ReturnType<typeof computePayroll>;
 type Commitment = Payroll['commitments'][number];
@@ -67,6 +68,9 @@ const HOW_READ: Record<string, string> = {
 };
 const howRead = (status: string): string => HOW_READ[status] ?? status.replace(/_/g, ' ');
 
+/** Room under the budget, or how far over it the club is: "$1.5M free", "$3.2M over" (never "$-3.2M free"). */
+const roomWords = (headroom: number): string => (headroom < 0 ? `${money(-headroom)} over` : `${money(headroom)} free`);
+
 /** A club's projected season, in its breakdown: what it is, how it was combined and what it leaves out. */
 function projectedLines(p: Commitment['projected']): BasisLine[] {
   const out: BasisLine[] = [{ label: 'What it is', value: PROJECTED_TIP }];
@@ -74,7 +78,7 @@ function projectedLines(p: Commitment['projected']): BasisLine[] {
   if (p.edges) out.push({ label: 'Every player at the same end', value: rangeWords(p.edges.low, p.edges.high) });
   if (p.mayLeave > 0) out.push({ label: 'If kept', value: `${p.mayLeave} may reach free agency instead ("if kept"): they add nothing to the low end.` });
   if (p.provisional > 0) out.push({ label: 'Starting estimates', value: `${p.provisional} rest partly on a starting estimate, not yet measured on this save (provisional).` });
-  if (p.unpriced > 0) out.push({ label: 'Not priced', value: `${p.unpriced} not priced: their cost is not established, never counted as $0.` });
+  if (p.unpriced > 0) out.push({ label: 'Not priced', value: `${counted(p.unpriced, 'controlled season')} not priced: their cost is not established, never counted as $0.` });
   return out;
 }
 
@@ -99,7 +103,7 @@ function seasonOf(ctx: OfficeContext, c: Commitment, thisSeason: number, budget:
   const projectedText = shown
     ? `${likely ? `Most likely +${likely}` : '+ controlled seasons'} · could be ${rangeWords(p.low!, p.high!)} (${counted(p.players, 'player')}${p.mayLeave > 0 ? `, ${p.mayLeave} if kept` : ''})`
     : null;
-  const roomText = c.headroom === null ? 'Room not known' : `${money(c.headroom)} free${c.budgetUsed === 'expected' ? ' against the budget you expect' : ''}`;
+  const roomText = c.headroom === null ? 'Room not known' : `${roomWords(c.headroom)}${c.budgetUsed === 'expected' ? ' against the budget you expect' : ''}`;
   const because: BasisLine[] = [
     { label: 'Committed', value: money(c.total) },
     { label: 'What committed means', value: TIP_COMMITTED },
@@ -108,7 +112,7 @@ function seasonOf(ctx: OfficeContext, c: Commitment, thisSeason: number, budget:
     { label: 'Room', value: roomText },
     { label: 'What room means', value: TIP_HEADROOM },
     ...(shown ? projectedLines(p) : []),
-    ...(p.unpriced > 0 && !shown ? [{ label: 'Not priced', value: `${p.unpriced} not priced yet.` }] : []),
+    ...(p.unpriced > 0 && !shown ? [{ label: 'Not priced', value: `${counted(p.unpriced, 'controlled season')} not priced yet.` }] : []),
   ];
   return {
     season: c.year,
@@ -125,7 +129,7 @@ function seasonOf(ctx: OfficeContext, c: Commitment, thisSeason: number, budget:
         unknown: [
           ...(c.unstated > 0 ? [`${counted(c.unstated, 'salary', 'salaries')} the contract covers but the export doesn't state.`] : []),
           ...(against === null ? ["The club's budget isn't in the export."] : []),
-          ...(p.unpriced > 0 ? [`${p.unpriced} controlled seasons not priced.`] : []),
+          ...(p.unpriced > 0 ? [`${counted(p.unpriced, 'controlled season')} not priced.`] : []),
         ],
         wouldChange: c.year > thisSeason ? ['Entering the budget you expect next season.'] : [],
         lean: null,
@@ -134,10 +138,10 @@ function seasonOf(ctx: OfficeContext, c: Commitment, thisSeason: number, budget:
     }),
     committedCell: cell(money(c.total)),
     playersCell: cell(playersLine),
-    projectedCell: projectedText ? cell(projectedText, { hint: 'Projected, never in the total or the room' }) : p.unpriced > 0 ? cell(`${p.unpriced} not priced yet`, { tone: 'unknown' }) : null,
+    projectedCell: projectedText ? cell(projectedText, { hint: 'Projected, never in the total or the room' }) : p.unpriced > 0 ? cell(`${counted(p.unpriced, 'controlled season')} not priced yet`, { tone: 'unknown' }) : null,
     roomCell: c.headroom === null
       ? cell('Room not known', { tone: 'unknown', hint: "The club's budget isn't in the export" })
-      : cell(`${money(c.headroom)} free`, { tone: c.headroom < 0 ? 'bad' : 'good', hint: c.budgetUsed === 'expected' ? 'Against the budget you expect next season' : c.year > thisSeason ? "Against today's budget, held flat" : undefined }),
+      : cell(roomWords(c.headroom), { tone: c.headroom < 0 ? 'bad' : 'good', hint: c.budgetUsed === 'expected' ? 'Against the budget you expect next season' : c.year > thisSeason ? "Against today's budget, held flat" : undefined }),
   };
 }
 
@@ -163,7 +167,7 @@ function cardsOf(ctx: OfficeContext, club: ReturnType<typeof clubFinances> | nul
   const room = budget !== null && now !== null ? budget - now : null;
   return [
     financeFigure(ctx, 'Budget', club.budget),
-    financeFigure(ctx, 'Payroll now', club.payroll.now, room === null ? {} : { hint: `${room >= 0 ? '+' : ''}${money(room)} room`, tone: room < 0 ? 'bad' : 'good' }),
+    financeFigure(ctx, 'Payroll now', club.payroll.now, room === null ? {} : { hint: room < 0 ? `${money(-room)} over` : `${money(room)} room`, tone: room < 0 ? 'bad' : 'good' }),
     financeFigure(ctx, 'Payroll next season', club.payroll.nextSeason, { hint: 'OOTP estimate' }),
     financeFigure(ctx, 'Revenue', club.revenue, club.expenses.value !== null ? { hint: `Less ${money(club.expenses.value)} in expenses` } : {}),
     financeFigure(ctx, 'Expenses', club.expenses),
@@ -205,7 +209,7 @@ function priceOf(ctx: OfficeContext, league: LeagueFinances, history: readonly P
     for (const b of a.measured.bases?.filter((x) => x.status === 'measured') ?? []) {
       lines.push({
         label: b.unit === 'realized' ? 'Measured, per win produced (the price)' : 'Measured, per win projected at signing (the check)',
-        value: `${b.description}: ${perWin(b.central as number)}${b.low !== null && b.high !== null ? ` (${perWin(b.low)}–${perWin(b.high)} resampled)` : ''}, ${b.signings} signings.`,
+        value: `${b.description}: ${perWin(b.central as number)}${b.low !== null && b.high !== null ? ` (${perWin(b.low)}–${perWin(b.high)} resampled)` : ''}, ${plural(b.signings, 'signing')}.`,
       });
     }
     lines.push({ label: 'The rule', value: a.rule });
@@ -229,10 +233,10 @@ function priceOf(ctx: OfficeContext, league: LeagueFinances, history: readonly P
     if (!m) return 'not recorded';
     if (m.status === 'measured' && m.central !== null && m.low !== null && m.high !== null) {
       const check = m.check ? `; check per win projected at signing ${perWin(m.check.central)}${m.check.ratio !== null ? ` (${m.check.ratio.toFixed(2)} times)` : ''}` : '';
-      return `${perWin(m.central)} per win produced (${perWin(m.low)}–${perWin(m.high)}), ${m.signings} signings${check}`;
+      return `${perWin(m.central)} per win produced (${perWin(m.low)}–${perWin(m.high)}), ${plural(m.signings, 'signing')}${check}`;
     }
     if (m.status === 'no_off_season') return 'no off-season observed yet';
-    if (m.status === 'not_measured') return `not measured (${m.signings} signings priced)`;
+    if (m.status === 'not_measured') return `not measured (${plural(m.signings, 'signing')} priced)`;
     return 'unknown';
   };
   const historyClaim = history.length > 0

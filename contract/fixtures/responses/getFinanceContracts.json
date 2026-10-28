@@ -122,7 +122,7 @@
         "because": [
           {
             "label": "Budget",
-            "value": "$150.0M"
+            "value": "$150M"
           },
           {
             "label": "Source",
@@ -145,7 +145,7 @@
       "value": {
         "n": 150000000,
         "unit": "dollars",
-        "display": "$150.0M"
+        "display": "$150M"
       }
     },
     {
@@ -155,7 +155,7 @@
         "because": [
           {
             "label": "Payroll now",
-            "value": "$90.0M"
+            "value": "$90M"
           },
           {
             "label": "Source",
@@ -178,7 +178,7 @@
       "value": {
         "n": 90000000,
         "unit": "dollars",
-        "display": "$90.0M"
+        "display": "$90M"
       }
     },
     {
@@ -207,7 +207,7 @@
       "value": {
         "n": 60000000,
         "unit": "dollars",
-        "display": "$60.0M"
+        "display": "$60M"
       }
     },
     {
@@ -217,7 +217,7 @@
         "because": [
           {
             "label": "Payroll next season",
-            "value": "$60.0M"
+            "value": "$60M"
           },
           {
             "label": "Source",
@@ -241,7 +241,7 @@
       "value": {
         "n": 60000000,
         "unit": "dollars",
-        "display": "$60.0M"
+        "display": "$60M"
       }
     },
     {
@@ -270,7 +270,7 @@
       "value": {
         "n": 90000000,
         "unit": "dollars",
-        "display": "$90.0M"
+        "display": "$90M"
       }
     },
     {
@@ -280,7 +280,7 @@
         "because": [
           {
             "label": "Cash for trades",
-            "value": "$5.0M"
+            "value": "$5M"
           },
           {
             "label": "Source",
@@ -303,7 +303,7 @@
       "value": {
         "n": 5000000,
         "unit": "dollars",
-        "display": "$5.0M"
+        "display": "$5M"
       }
     }
   ],
@@ -341,7 +341,7 @@
         {
           "id": "long_term",
           "title": {
-            "display": "4 · Long-term deals · $9.2M in 2040"
+            "display": "4 · Long-term deals · $9.23M in 2040"
           },
           "explain": null
         }
@@ -504,7 +504,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -591,13 +591,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -679,7 +679,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -695,7 +695,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -711,7 +711,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -793,7 +793,7 @@
             "display": "32"
           },
           "salary": {
-            "display": "$8.8M"
+            "display": "$8.76M"
           },
           "signed": {
             "display": "2040"
@@ -806,7 +806,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -893,13 +893,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -981,7 +981,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -997,7 +997,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1013,7 +1013,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1095,7 +1095,7 @@
             "display": "29"
           },
           "salary": {
-            "display": "$5.8M"
+            "display": "$5.77M"
           },
           "signed": {
             "display": "2040"
@@ -1108,7 +1108,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -1195,13 +1195,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -1238,7 +1238,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "38.3 IP, 5.40 ERA, 93 ERA+."
+                  "value": "38.1 IP, 5.40 ERA, 93 ERA+."
                 }
               ],
               "source": {
@@ -1283,7 +1283,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1299,7 +1299,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1315,7 +1315,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1397,7 +1397,7 @@
             "display": "28"
           },
           "salary": {
-            "display": "$3.1M"
+            "display": "$3.12M"
           },
           "signed": {
             "display": "2040"
@@ -1410,7 +1410,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -1497,13 +1497,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -1585,7 +1585,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1601,7 +1601,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1617,7 +1617,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1699,7 +1699,7 @@
             "display": "24"
           },
           "salary": {
-            "display": "$3.0M"
+            "display": "$2.95M"
           },
           "signed": {
             "display": "2040"
@@ -1712,7 +1712,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -1799,13 +1799,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -1842,7 +1842,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "10.7 IP, 3.38 ERA, 149 ERA+."
+                  "value": "10.2 IP, 3.38 ERA, 149 ERA+."
                 }
               ],
               "source": {
@@ -1887,7 +1887,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1903,7 +1903,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1919,7 +1919,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -1935,7 +1935,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2000,7 +2000,7 @@
             "display": "27"
           },
           "salary": {
-            "display": "$1.3M"
+            "display": "$1.32M"
           },
           "signed": {
             "display": "2040"
@@ -2013,7 +2013,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -2100,13 +2100,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2188,7 +2188,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2204,7 +2204,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2220,7 +2220,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2315,7 +2315,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -2402,13 +2402,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2445,7 +2445,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "32 IP, 5.06 ERA, 99 ERA+."
+                  "value": "32.0 IP, 5.06 ERA, 99 ERA+."
                 }
               ],
               "source": {
@@ -2490,7 +2490,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2506,7 +2506,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2522,7 +2522,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2617,7 +2617,7 @@
             "hint": "Pre-arbitration"
           },
           "nextCost": {
-            "display": "$2.1M",
+            "display": "$2.05M",
             "hint": "Could be $700K to $11.8M"
           },
           "wins": {
@@ -2704,13 +2704,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.1M",
+            "text": "2041 cost: $2.05M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.1M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $0.70M to $11.81M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
+                  "value": "Projected, not committed. Most likely $2.05M. Could be $700K to $11.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. Pre-arbitration renewal: Measured on this save's 30 pre-arbitration renewals (6 at the minimum): $700K to $11.8M, central $2.05M (the median renewal); the high edge is the largest of the 30 renewals: too few for the upper bound of their 90th percentile to leave any out, so one renewal sets it."
                 }
               ],
               "source": {
@@ -2747,7 +2747,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "11 IP, 9.00 ERA, 56 ERA+."
+                  "value": "11.0 IP, 9.00 ERA, 56 ERA+."
                 }
               ],
               "source": {
@@ -2792,7 +2792,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2808,7 +2808,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -2824,7 +2824,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -3052,7 +3052,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "33.7 IP, 5.61 ERA, 89 ERA+."
+                  "value": "33.2 IP, 5.61 ERA, 89 ERA+."
                 }
               ],
               "source": {
@@ -3112,7 +3112,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -3128,7 +3128,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -3210,7 +3210,7 @@
             "display": "23"
           },
           "salary": {
-            "display": "$4.8M"
+            "display": "$4.79M"
           },
           "signed": {
             "display": "2041"
@@ -3223,7 +3223,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$4.8M"
+            "display": "$4.79M"
           },
           "wins": {
             "display": "2.4",
@@ -3309,13 +3309,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $4.8M",
+            "text": "2041 cost: $4.79M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $4.8M. Could be $4.8M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $4.79M. Could be $4.79M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -3401,7 +3401,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$4.8M"
+                "display": "$4.79M"
               },
               {
                 "display": "2.4",
@@ -3416,7 +3416,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -3432,7 +3432,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -3514,7 +3514,7 @@
             "display": "31"
           },
           "salary": {
-            "display": "$4.7M"
+            "display": "$4.68M"
           },
           "signed": {
             "display": "2042"
@@ -3527,7 +3527,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$4.7M"
+            "display": "$4.68M"
           },
           "wins": {
             "display": "0.1",
@@ -3613,13 +3613,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $4.7M",
+            "text": "2041 cost: $4.68M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $4.7M. Could be $4.7M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $4.68M. Could be $4.68M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -3705,7 +3705,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$4.7M"
+                "display": "$4.68M"
               },
               {
                 "display": "0.1",
@@ -3720,7 +3720,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$4.7M"
+                "display": "$4.68M"
               },
               {
                 "display": "<0.1",
@@ -3735,7 +3735,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -3817,7 +3817,7 @@
             "display": "23"
           },
           "salary": {
-            "display": "$3.7M"
+            "display": "$3.66M"
           },
           "signed": {
             "display": "2041"
@@ -3830,7 +3830,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$3.7M"
+            "display": "$3.66M"
           },
           "wins": {
             "display": "−<0.1",
@@ -3916,13 +3916,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $3.7M",
+            "text": "2041 cost: $3.66M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $3.7M. Could be $3.7M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $3.66M. Could be $3.66M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -3963,7 +3963,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "12.7 IP, 11.37 ERA, 44 ERA+."
+                  "value": "12.2 IP, 11.37 ERA, 44 ERA+."
                 }
               ],
               "source": {
@@ -4008,7 +4008,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$3.7M"
+                "display": "$3.66M"
               },
               {
                 "display": "−<0.1",
@@ -4023,7 +4023,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -4039,7 +4039,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -4121,7 +4121,7 @@
             "display": "30"
           },
           "salary": {
-            "display": "$3.6M"
+            "display": "$3.58M"
           },
           "signed": {
             "display": "2041"
@@ -4134,7 +4134,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$3.6M"
+            "display": "$3.58M"
           },
           "wins": {
             "display": "−<0.1",
@@ -4220,13 +4220,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $3.6M",
+            "text": "2041 cost: $3.58M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $3.6M. Could be $3.6M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $3.58M. Could be $3.58M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -4312,7 +4312,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$3.6M"
+                "display": "$3.58M"
               },
               {
                 "display": "−<0.1",
@@ -4327,7 +4327,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -4343,7 +4343,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -4425,7 +4425,7 @@
             "display": "23"
           },
           "salary": {
-            "display": "$3.0M"
+            "display": "$2.99M"
           },
           "signed": {
             "display": "2042"
@@ -4438,7 +4438,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$3.0M"
+            "display": "$2.99M"
           },
           "wins": {
             "display": "0.7",
@@ -4524,13 +4524,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $3.0M",
+            "text": "2041 cost: $2.99M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $3.0M. Could be $3.0M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $2.99M. Could be $2.99M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -4571,7 +4571,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "32 IP, 5.34 ERA, 94 ERA+."
+                  "value": "32.0 IP, 5.34 ERA, 94 ERA+."
                 }
               ],
               "source": {
@@ -4616,7 +4616,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$3.0M"
+                "display": "$2.99M"
               },
               {
                 "display": "0.7",
@@ -4631,7 +4631,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$3.0M"
+                "display": "$2.99M"
               },
               {
                 "display": "0.8",
@@ -4646,7 +4646,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -4662,7 +4662,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -4727,7 +4727,7 @@
             "display": "24"
           },
           "salary": {
-            "display": "$2.5M"
+            "display": "$2.47M"
           },
           "signed": {
             "display": "2041"
@@ -4740,7 +4740,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$2.5M"
+            "display": "$2.47M"
           },
           "wins": {
             "display": "1.2",
@@ -4826,13 +4826,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $2.5M",
+            "text": "2041 cost: $2.47M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $2.5M. Could be $2.5M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $2.47M. Could be $2.47M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -4918,7 +4918,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$2.5M"
+                "display": "$2.47M"
               },
               {
                 "display": "1.2",
@@ -4933,7 +4933,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -4949,7 +4949,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -5237,7 +5237,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -5253,7 +5253,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -5481,7 +5481,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "12 IP, 3.00 ERA, 167 ERA+."
+                  "value": "12.0 IP, 3.00 ERA, 167 ERA+."
                 }
               ],
               "source": {
@@ -5541,7 +5541,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -5557,7 +5557,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -5785,7 +5785,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "31.3 IP, 9.19 ERA, 55 ERA+."
+                  "value": "31.1 IP, 9.19 ERA, 55 ERA+."
                 }
               ],
               "source": {
@@ -5845,7 +5845,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -5861,7 +5861,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -6089,7 +6089,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "12.3 IP, 8.03 ERA, 62 ERA+."
+                  "value": "12.1 IP, 8.03 ERA, 62 ERA+."
                 }
               ],
               "source": {
@@ -6149,7 +6149,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -6165,7 +6165,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -6393,7 +6393,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "11 IP, 3.27 ERA, 153 ERA+."
+                  "value": "11.0 IP, 3.27 ERA, 153 ERA+."
                 }
               ],
               "source": {
@@ -6453,7 +6453,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -6469,7 +6469,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -6697,7 +6697,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "10.7 IP, 5.06 ERA, 99 ERA+."
+                  "value": "10.2 IP, 5.06 ERA, 99 ERA+."
                 }
               ],
               "source": {
@@ -6772,7 +6772,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -7000,7 +7000,7 @@
                 },
                 {
                   "label": "This season",
-                  "value": "13.3 IP, 4.73 ERA, 106 ERA+."
+                  "value": "13.1 IP, 4.73 ERA, 106 ERA+."
                 }
               ],
               "source": {
@@ -7060,7 +7060,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -7076,7 +7076,7 @@
                 "display": "Pre-arbitration"
               },
               {
-                "display": "$2.1M",
+                "display": "$2.05M",
                 "hint": "Could be $700K to $11.8M"
               },
               {
@@ -7158,7 +7158,7 @@
             "display": "26"
           },
           "salary": {
-            "display": "$4.7M"
+            "display": "$4.69M"
           },
           "signed": {
             "display": "2043"
@@ -7171,7 +7171,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$4.7M"
+            "display": "$4.69M"
           },
           "wins": {
             "display": "1.6",
@@ -7257,13 +7257,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $4.7M",
+            "text": "2041 cost: $4.69M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $4.7M. Could be $4.7M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $4.69M. Could be $4.69M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -7349,7 +7349,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$4.7M"
+                "display": "$4.69M"
               },
               {
                 "display": "1.6",
@@ -7364,7 +7364,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$4.7M"
+                "display": "$4.69M"
               },
               {
                 "display": "1.4",
@@ -7379,7 +7379,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$4.7M"
+                "display": "$4.69M"
               },
               {
                 "display": "1.2",
@@ -7460,7 +7460,7 @@
             "display": "31"
           },
           "salary": {
-            "display": "$3.1M"
+            "display": "$3.14M"
           },
           "signed": {
             "display": "2043"
@@ -7473,7 +7473,7 @@
             "hint": "Signed"
           },
           "nextCost": {
-            "display": "$3.1M"
+            "display": "$3.14M"
           },
           "wins": {
             "display": "0.3",
@@ -7559,13 +7559,13 @@
             "links": []
           },
           {
-            "text": "2041 cost: $3.1M",
+            "text": "2041 cost: $3.14M",
             "tone": "neutral",
             "basis": {
               "because": [
                 {
                   "label": "His cost",
-                  "value": "Projected, not committed. Most likely $3.1M. Could be $3.1M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
+                  "value": "Projected, not committed. Most likely $3.14M. Could be $3.14M: a range of reasonable readings, edge against edge (every component at its low edge, every component at its high edge): not an interval with a stated chance, and not an expectation. The contract's salary."
                 }
               ],
               "source": {
@@ -7651,7 +7651,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$3.1M"
+                "display": "$3.14M"
               },
               {
                 "display": "0.3",
@@ -7666,7 +7666,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$3.1M"
+                "display": "$3.14M"
               },
               {
                 "display": "0.2",
@@ -7681,7 +7681,7 @@
                 "display": "Signed"
               },
               {
-                "display": "$3.1M"
+                "display": "$3.14M"
               },
               {
                 "display": "0.1",

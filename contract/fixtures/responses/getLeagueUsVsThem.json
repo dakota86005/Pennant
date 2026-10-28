@@ -101,7 +101,7 @@
         },
         {
           "label": "Runs",
-          "value": "55 scored, 56 allowed (-1)"
+          "value": "55 scored, 56 allowed (−1)"
         },
         {
           "label": "Games",
@@ -474,10 +474,10 @@
                 "hint": "Runs scored minus runs allowed"
               },
               "us": {
-                "display": "-16 · 4th of 4"
+                "display": "−16 · 4th of 4"
               },
               "them": {
-                "display": "-12 · 3rd of 4"
+                "display": "−12 · 3rd of 4"
               }
             },
             "sort": {

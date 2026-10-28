@@ -163,6 +163,20 @@ describe('Payroll & Budget (N12)', () => {
     expect(visible([view.budget, view.seasons.map((s) => s.roomCell)]).filter((w) => /\$0\b/.test(w))).toEqual([]);
   });
 
+  it('says an over-budget club is "$3.2M over", never "$-3.2M free", and carries a rounding (B-06, SRVHEALTH-05)', () => {
+    const payroll = computePayroll(save.org, getDataStatus());
+    const over = {
+      ...payroll,
+      commitments: payroll.commitments.map((c, i) => ({ ...c, headroom: i === 0 ? -3_200_000 : 999_600 })),
+    } as typeof payroll;
+    const view = payrollView(ctx(), { payroll: over, club: null, league: null, history: [] });
+    expect(view.seasons[0].roomCell.display).toBe('$3.2M over');
+    expect(view.seasons[0].roomCell.tone).toBe('bad');
+    if (view.seasons.length > 1) expect(view.seasons[1].roomCell.display).toBe('$1M free');
+    const words = visible(view);
+    expect(words.filter((w) => /\$[-−]|1000K/.test(w))).toEqual([]);
+  });
+
   it('says an arbitration year with no contracts to read from in its own words, never "read from 0 contracts" (L9)', () => {
     expect(arbitrationYearWords('prior', [{ cases: 0, arbitrationClass: 1 }, { cases: 0, arbitrationClass: 2 }], 0))
       .toBe('no arbitration contracts on this save to read an arbitration year from yet');
@@ -179,13 +193,13 @@ describe('Payroll & Budget (N12)', () => {
       club: null, league: null, history: [],
     }).deadMoney;
     const mixed = owed([{ salary: 4_000_000 }, { salary: null }]);
-    expect(mixed.text).toBe('Dead money: $4.0M still owed to players who left, plus 1 not stated');
-    expect(mixed.value?.display).toBe('$4.0M + 1 not stated');
+    expect(mixed.text).toBe('Dead money: $4M still owed to players who left, plus 1 not stated');
+    expect(mixed.value?.display).toBe('$4M + 1 not stated');
     expect(mixed.basis.unknown.length).toBe(1);
     const blank = owed([{ salary: null }, { salary: null }]);
     expect(blank).toMatchObject({ text: 'Dead money: owed to 2 players who left, amounts not stated', tone: 'unknown' });
     expect(blank.value).toBeUndefined();
-    expect(owed([{ salary: 4_000_000 }]).text).toBe('Dead money: $4.0M still owed to players who left');
+    expect(owed([{ salary: 4_000_000 }]).text).toBe('Dead money: $4M still owed to players who left');
   });
 
   it('reads later seasons against the budget the GM expects once he enters it, and clears it at zero', async () => {

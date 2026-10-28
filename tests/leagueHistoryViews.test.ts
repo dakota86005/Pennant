@@ -268,7 +268,7 @@ describe('Franchise History serves every season (N12)', () => {
     for (const p of view.chart!.points) {
       const s = byYear.get(p.year)!;
       expect(p.result).toBe(s.wonTitle ? 'title' : s.madePlayoffs ? 'playoffs' : 'none');
-      expect(p.display).toBe(`${p.year}: ${s.w}-${s.l}${s.wonTitle ? ', won it all' : s.madePlayoffs ? ', made the playoffs' : ', missed the playoffs'}`);
+      expect(p.display).toBe(`${p.year}: ${s.w}–${s.l}${s.wonTitle ? ', won it all' : s.madePlayoffs ? ', made the playoffs' : ', missed the playoffs'}`);
     }
     for (const r of view.seasons.table.rows) {
       const s = byYear.get(r.sort.year as number)!;

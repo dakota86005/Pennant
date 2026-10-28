@@ -51,6 +51,7 @@ import type { ControlSeason, ControlStatus, ControlTimeline, CostBand, CostBasis
 import type { MarketCandidate, PriceBand, SeasonWar } from './playerValueFinances.js';
 import type { PlayerProduction } from './playerValueProduction.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
+import { money as millions, ordinal as ordinalOf, percent as pct, plural, signedMoney as signed } from './numberWords.js';
 
 // ── the ladder's shape ───────────────────────────────────────────────────────
 
@@ -154,20 +155,9 @@ export interface CostLadderInput {
 
 // ── small helpers (no module-level numbers: every constant is in the calibration module) ──
 
-const millions = (n: number): string => `$${(n / 1_000_000).toFixed(2)}M`;
-const signed = (n: number): string => `${n < 0 ? '−' : '+'}${millions(Math.abs(n))}`;
-const pct = (x: number): string => `${Math.round(x * 100)}%`;
-const nth = (x: number): string => {
-  const n = Math.round(x * 100);
-  const suffix = n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th';
-  return `${n}${suffix}`;
-};
-const ordinalOf = (n: number): string => {
-  const suffix = n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th';
-  return `${n}${suffix}`;
-};
+/** A quantile (0.9) as its percentile's ordinal ("90th"). */
+const nth = (x: number): string => ordinalOf(x * 100);
 const wins = (x: number): string => x.toFixed(1);
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const STATUS_WORDS: Partial<Record<ControlStatus, string>> = {
   pre_arbitration: 'pre-arbitration', arbitration: 'arbitration', free_agent: 'free agency', reserve_clause: 'a reserve clause',
   indeterminate: 'not established',
@@ -407,7 +397,7 @@ function priorReading(arbitrationClass: number, minimum: number): CostReading | 
 }
 
 const PLATFORM_TEXT = () =>
-  `the mean WAR of the ${COST_POLICY.ladder.platformSeasons} seasons before the arbitration winter (the platform season and the one before it), each on its schedule's footing; a season with no line counts 0`;
+  `the mean WAR of the ${plural(COST_POLICY.ladder.platformSeasons, 'season')} before the arbitration winter (the platform season and the one before it), each on its schedule's footing; a season with no line counts 0`;
 
 const ARBITRATION_RULE = () =>
   `An arbitration season costs the league minimum plus its class's line at the platform: a base (the class's pay at no platform wins) and a pay per platform win, ` +
@@ -416,7 +406,7 @@ const ARBITRATION_RULE = () =>
   `widened by ${aboutErrors()} of the line's own standard errors (from ${COST_POLICY.ladder.bootstrap.replicates} bootstrap refits of the same line); never below the least the class was paid above the minimum, ` +
   `except that where the save shows one-year contracts in the class at the league minimum, a season whose platform reaches as low as theirs reaches the minimum too. ` +
   `Read on this import's one-year contracts of players Player Rights finds in arbitration, by class (the class his service puts him in); a contract at the league minimum ` +
-  `is kept out of the line (pay there is held at the floor, not set by the platform). Below ${COST_POLICY.ladder.minimumCases} contracts a class has no line of its own: ` +
+  `is kept out of the line (pay there is held at the floor, not set by the platform). Below ${plural(COST_POLICY.ladder.minimumCases, 'contract')} a class has no line of its own: ` +
   `it is the provisional prior's line, widened by the range the save paid the class, only where the regime as read is MLB's.`;
 
 const BAND_RULE =
@@ -439,7 +429,7 @@ function classText(c: Omit<LadderClass, 'text'>, price: number | null): string {
     ? `; ${plural(c.atMinimum.cases, 'one-year contract')} at the league minimum kept out of the line (at platforms up to ${wins(c.atMinimum.platformHigh as number)} wins)`
     : '';
   const r = c.readings[0];
-  if (c.status === 'measured') return `${head}: measured on ${c.cases} contracts${atMin}: a robust line, ${lineText(r, price)}.`;
+  if (c.status === 'measured') return `${head}: measured on ${plural(c.cases, 'contract')}${atMin}: a robust line, ${lineText(r, price)}.`;
   if (c.status === 'thin') {
     const o = c.observed!;
     return `${head}: provisional. The save's ${plural(o.cases, 'contract')} (fewer than ${COST_POLICY.ladder.minimumCases}, too few for a line) paid ${millions(o.low)} to ${millions(o.high)} above the minimum${atMin}; ` +
@@ -798,7 +788,7 @@ function priceArbitration(
   const fourth = trip !== null && trip.high > top
     ? `; a ${ordinalOf(trip.high)} trip (a Super Two's, or one after an earlier winter was an arbitration year the export does not show) is priced in class ${top}, where his service puts him`
     : '';
-  const counted = all.map((c) => (c.status === 'measured' ? `class ${c.arbitrationClass} measured on ${c.cases} contracts`
+  const counted = all.map((c) => (c.status === 'measured' ? `class ${c.arbitrationClass} measured on ${plural(c.cases, 'contract')}`
     : c.status === 'thin' ? `class ${c.arbitrationClass} provisional (the prior, widened by the save's ${plural(c.cases, 'contract')})`
       : `class ${c.arbitrationClass} provisional (the prior; the save has no contracts in it)`)).join('; ');
   const measuredAny = all.some((c) => c.status === 'measured');

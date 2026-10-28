@@ -156,7 +156,7 @@ function detailOf(ctx: FarmContext, t: Tracked, rating: RatingDisplay): FarmDeve
 function sourceSwitchNote(n: number): Cell[] {
   if (n === 0) return [];
   return [cell(
-    `${n === 1 ? 'One player\'s ratings' : `${n} players' ratings`} changed source between snapshots: a switch, not development.`,
+    `${n === 1 ? 'One player\'s ratings' : `${plural(n, 'player')}' ratings`} changed source between snapshots: a switch, not development.`,
     { tone: 'unknown', hint: 'Each one\'s snapshots from the other source are left out of his trend' },
   )];
 }

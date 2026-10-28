@@ -27,6 +27,7 @@ import {
   derivedFrom, fromExport, unknownBecause,
   type Sourced,
 } from './provenance.js';
+import { plural } from './numberWords.js';
 
 export interface PlayerState {
   playerId: number;
@@ -422,7 +423,7 @@ export function seasonServiceCalendars(): (leagueId: number) => Sourced<ServiceC
     else if (now === null) return unknownBecause<ServiceCalendar>('not_exported_by_ootp', source, `League ${leagueId}'s current date is not exported, so the days left in its schedule are unknown.`);
     else daysLeft = Math.min(scheduleDays, Math.max(0, daysBetween(now, s.last) + 1));
     return derivedFrom({ scheduleDays, daysLeft }, source,
-      `Scheduled ${s.first} to ${s.last} (${scheduleDays} days); ${daysLeft} left from ${now ?? 'the end of the schedule'}.`);
+      `Scheduled ${s.first} to ${s.last} (${plural(scheduleDays, 'day')}); ${daysLeft} left from ${now ?? 'the end of the schedule'}.`);
   };
 }
 

@@ -24,6 +24,7 @@ export { leagueClubs, leagueRecord, seasonPlayedOf, leagueGameDate, marketLevels
 import type { InSeasonFacts, ProductionLine } from './playerValueProduction.js';
 import type { FitPlayer, FitSeason } from './playerValueProductionFit.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
+import { plural } from './numberWords.js';
 
 const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
@@ -459,7 +460,7 @@ export function inSeasonContinuation(leagueId: number, clubs: number, gamesPerTe
   const share = perClub2 / gamesPerTeam;
   return {
     continuation, measuredShare: share, games: perClub1 + perClub2,
-    note: `Measured on this season's own games: of the players who played in its first ${Math.round(perClub1)} games per club, their playing time per game in the next ${Math.round(perClub2)} (${Object.entries(continuation).map(([k, v]) => `${k}s ${((v as number) * 100).toFixed(0)}%`).join(', ')}), carried to the rest of the season at the same rate of loss per game.`,
+    note: `Measured on this season's own games: of the players who played in its first ${plural(Math.round(perClub1), 'game')} per club, their playing time per game in the next ${Math.round(perClub2)} (${Object.entries(continuation).map(([k, v]) => `${k}s ${((v as number) * 100).toFixed(0)}%`).join(', ')}), carried to the rest of the season at the same rate of loss per game.`,
   };
 }
 

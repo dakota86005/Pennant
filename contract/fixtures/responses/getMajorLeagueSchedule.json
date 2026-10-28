@@ -72,11 +72,11 @@
         "because": [
           {
             "label": "At home",
-            "value": "0-15"
+            "value": "0–15"
           },
           {
             "label": "Away",
-            "value": "15-0"
+            "value": "15–0"
           }
         ],
         "source": {
@@ -95,7 +95,7 @@
       "value": {
         "n": 15,
         "unit": "wins",
-        "display": "0-15 home · 15-0 away"
+        "display": "0–15 home · 15–0 away"
       }
     },
     {

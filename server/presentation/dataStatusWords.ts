@@ -18,6 +18,7 @@ import { basis, cell, claim, row } from './claim.js';
 import { RATING_MODE_WORDS } from '../ratingMode.js';
 import { leftOutDetail, leftOutNote } from './importWords.js';
 import { ratingHistoryNoteClaim } from './ratingHistoryWords.js';
+import { plural } from '../numberWords.js';
 
 /** A game date as served (unpadded, as OOTP writes it, or null) and as the app shows it. */
 export interface GameDateText {
@@ -71,7 +72,6 @@ export interface ImportLandedLine {
   importStamp: string;
 }
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** An OOTP game date (padded or not) in words; null stays null. */
 export function gameDateDisplay(raw: string | null | undefined): string | null {

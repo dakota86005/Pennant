@@ -1,6 +1,7 @@
 import { db, tableExists } from './db.js';
 import { leagueRulesForLeague } from './leagueRules.js';
 import { rememberFact, rememberedFact } from './servedFacts.js';
+import { plural } from './numberWords.js';
 
 /**
  * SQL fragment restricting a `players p` query to men genuinely on the club.
@@ -118,9 +119,9 @@ export function calendarBriefing(leagueId: number): string {
   const today = currentGameDate(leagueId);
   const said = entries.map((e) => {
     if (e.daysAway === null) return `${e.what} ${e.date}`;
-    if (e.passed) return `${e.what} ${e.date} (${Math.abs(e.daysAway)} days ago)`;
+    if (e.passed) return `${e.what} ${e.date} (${plural(Math.abs(e.daysAway), 'day')} ago)`;
     if (e.daysAway === 0) return `${e.what} ${e.date} (today)`;
-    return `${e.what} ${e.date} (in ${e.daysAway} days)`;
+    return `${e.what} ${e.date} (in ${plural(e.daysAway, 'day')})`;
   });
   return (
     `KEY DATES — today is ${today ?? 'unknown'}. ${said.join('; ')}. ` +
@@ -203,12 +204,12 @@ export function rulesBriefing(leagueId: number, teamId?: number): string {
         'Do not assume the modern six years; say it is not known.'
     );
   } else {
-    parts.push(`Free agency requires ${fa} years of major-league service.`);
+    parts.push(`Free agency requires ${plural(fa, 'year')} of major-league service.`);
   }
   if (arb === null) {
     if (fa !== 0) parts.push('The league\'s arbitration rule is not in the export; do not assume one.');
   } else if (arb > 0) {
-    parts.push(`Salary arbitration begins at ${arb} years of service.`);
+    parts.push(`Salary arbitration begins at ${plural(arb, 'year')} of service.`);
   } else if (fa !== 0) {
     parts.push('This league has no salary arbitration.');
   }

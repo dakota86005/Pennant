@@ -10,6 +10,10 @@
  */
 import type { Tone } from '../../contract/presentation.js';
 
+import { ordinal, plural } from '../../numberWords.js';
+
+export { ordinal, plural };
+
 export const MINOR_LEAGUE_OPS = 'Minor League Operations';
 export const PLAYER_DEVELOPMENT = 'Player Development';
 
@@ -250,17 +254,6 @@ export const EVALUATION: Record<string, Toned> = {
 };
 
 // ── Small word builders ────────────────────────────────────────────────────
-
-/** 1st, 2nd, 3rd, 11th, 21st. */
-export function ordinal(n: number): string {
-  const r = Math.round(n);
-  const tens = r % 100;
-  if (tens >= 11 && tens <= 13) return `${r}th`;
-  return `${r}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[r % 10] ?? 'th'}`;
-}
-
-/** "1 game", "4 games". */
-export const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 /** A signed change to one decimal, a whole number without one: "+2", "−1.5", "0". */
 export function signed(n: number): string {

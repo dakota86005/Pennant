@@ -236,6 +236,12 @@ const ownNumbersOf = memo((file): string[] => {
 /** Every Player Value module, found by name so a new one is covered the day it is added. */
 const VALUE_MODULES = SERVER_FILES.filter((f) => /^playerValue[A-Za-z]*\.ts$/.test(f));
 
+/**
+ * Polish batch 10 (B-06): the one number, money and count formatter. A leaf: it imports nothing (asserted below), so it
+ * reaches no rating, philosophy, tier or defensibility; it only writes the figures a value module hands it.
+ */
+const NUMBER_WORDS = './numberWords.js';
+
 /** What a value module may import in phase 3b: proneness only through its reader, ratings only through the adapter (below). */
 const ALLOWED_IMPORTS = new Set([
   './dataFreshness.js', './leagueRules.js', './playerRights.js', './playerState.js', './provenance.js',
@@ -246,6 +252,7 @@ const ALLOWED_IMPORTS = new Set([
   './playerValueLens.js', './playerValueWinValue.js', './playerValueTrade.js',
   // Per-save calibration, cycle 1: the save's identity and the league's seasons moved, unchanged, to a neutral module
   './saveIdentity.js',
+  NUMBER_WORDS,
 ]);
 
 /**
@@ -388,6 +395,12 @@ describe('the Player Value boundary', () => {
       // Phase 6a (A-20): the one-player routes read how current the export is, to hand Player Value its currentState
       && !(i === './dataStatus.js' && file === 'playerValueRoutes.ts'));
     expect(outside, `${file} imports ${outside.join(', ')}`).toEqual([]);
+  });
+
+  it('the number formatter a value module may import is a leaf: it imports nothing, in any form', () => {
+    const { records, nonLiteral } = importRecordsOf('numberWords.ts');
+    expect(records).toEqual([]);
+    expect(nonLiteral).toEqual([]);
   });
 
   it('ratings reach Player Value only through the adapter: the reader loads them, the pure ratings modules take its types only (3b, D-017)', () => {
@@ -578,7 +591,7 @@ describe('the Player Value boundary', () => {
   });
 
   it('the lens (phase 5b) is the one value module that names philosophy, handed to it at read time: never the stored settings, never production, cost, a fit, a table, a rating, the tier, defensibility or the club\'s value of a win (4, Part 6)', () => {
-    expect(importsOf(LENS).filter((i) => !['./calibration.js', './philosophy.js', './playerValueCalibration.js', './playerValueSurplus.js'].includes(i))).toEqual([]);
+    expect(importsOf(LENS).filter((i) => !['./calibration.js', './philosophy.js', './playerValueCalibration.js', './playerValueSurplus.js', NUMBER_WORDS].includes(i))).toEqual([]);
     const lens = code(LENS);
     expect(lens).not.toMatch(/\bdb\.|prepare\(|scoutedEvidence|players_value|settings|staffPreference|assignmentPreference|projectProduction|priceControlTimeline|surplusOf\(|winValue|posture|playoff|protection/);
     // The lens is applied after the neutral valuation, at read time: the neutral pass never calls it
@@ -744,7 +757,7 @@ describe('the Player Value boundary', () => {
 
   it('the surplus (phase 5a) is pure: it reads Player Value\'s own answers and the market as handed to it, opens no table, reads no rating, no tier and no philosophy, and says no verdict', () => {
     const surplus = code('playerValueSurplus.ts');
-    expect(importsOf('playerValueSurplus.ts').filter((i) => !['./provenance.js', './calibration.js', './playerValueCalibration.js', './playerValueControl.js', './playerValueProduction.js', './playerValueFinances.js'].includes(i))).toEqual([]);
+    expect(importsOf('playerValueSurplus.ts').filter((i) => !['./provenance.js', './calibration.js', './playerValueCalibration.js', './playerValueControl.js', './playerValueProduction.js', './playerValueFinances.js', NUMBER_WORDS].includes(i))).toEqual([]);
     expect(surplus).not.toMatch(/\bdb\.|prepare\(|scoutedEvidence|players_value|evaluateContractControl|serviceDays|\.service\b|philosophy|protection/);
     // Only the reader hands it the market; no consumer computes a surplus of its own
     for (const file of SERVER_FILES.filter((f) => !VALUE_MODULES.includes(f))) expect(code(file), file).not.toMatch(/\bsurplusOf\b/);
@@ -754,7 +767,7 @@ describe('the Player Value boundary', () => {
 
   it('the trade reading (phase 6b) is pure: it combines the valuations and our views handed to it, opens no table, reads no rating, no philosophy of its own and no club value of a win, and says no verdict', () => {
     const TRADE = 'playerValueTrade.ts';
-    expect(importsOf(TRADE).filter((i) => !['./calibration.js', './playerValueCalibration.js', './playerValueSurplus.js', './playerValueLens.js', './playerValueControl.js', './playerValueProduction.js'].includes(i))).toEqual([]);
+    expect(importsOf(TRADE).filter((i) => !['./calibration.js', './playerValueCalibration.js', './playerValueSurplus.js', './playerValueLens.js', './playerValueControl.js', './playerValueProduction.js', NUMBER_WORDS].includes(i))).toEqual([]);
     // The lens's types only: our view is handed to it, never computed here
     for (const r of importRecordsOf(TRADE).records.filter((x) => x.spec === './playerValueLens.js')) expect(r.typeOnly).toBe(true);
     const trade = code(TRADE);

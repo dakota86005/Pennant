@@ -182,7 +182,7 @@ function readMap(facts: TeamSeasonFacts, status: DataStatus, needs: readonly Mlb
   const standingOf = (id: number | undefined): string | null => {
     if (id === undefined) return null;
     const s = states.find((x) => x.playerId === id)?.standing.value ?? null;
-    return s && !NOT_SHOWN_STANDINGS.has(s.label) ? s.label + (s.daysLeft ? ` · ${s.daysLeft} days` : '') : null;
+    return s && !NOT_SHOWN_STANDINGS.has(s.label) ? s.label + (s.daysLeft ? ` · ${s.daysLeft} ${s.daysLeft === 1 ? 'day' : 'days'}` : '') : null;
   };
   const aboutHim = (n: MlbNeed) => n.subject?.playerId ?? n.returning?.playerId ?? null;
   // A need about a man who holds a node sits on his node, wherever Major League Ops raised it; else at its role

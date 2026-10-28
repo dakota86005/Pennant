@@ -6,6 +6,7 @@ import { DATA_DIR, loadConfig } from './config.js';
 import { evidenceRecord, isModeSwitch, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 import { evidenceRatingMode, inPopulationView, populationSource, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, releaseCarriedPopulation, rollbackName, servedLeagueCertain } from './historyIdentity.js';
+import { plural } from './numberWords.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -587,7 +588,7 @@ export function takeSnapshot(): { gameDate: string; players: number; ourScouts: 
   insertAll.immediate();
   noteSnapshotsWritten();
   if (!filed) return null;
-  console.log(`[history] snapshot ${gameDate}: ${rows.length} players${populationRows.length ? ` (and OSA's view of ${populationRows.length}, the league's yardstick)` : ''}`);
+  console.log(`[history] snapshot ${gameDate}: ${plural(rows.length, 'player')}${populationRows.length ? ` (and OSA's view of ${populationRows.length}, the league's yardstick)` : ''}`);
   return { gameDate, players: rows.length, ourScouts, evidenceMode };
 }
 
@@ -916,7 +917,7 @@ function developmentTrendByPlayerForScope(
           observationDays === null
             ? 'an unknown observation window'
             : `${observationDays} in-game days`
-        }; trend classification requires at least ${MIN_TREND_SNAPSHOTS} snapshots across ${MIN_TREND_DAYS} days.`
+        }; trend classification requires at least ${MIN_TREND_SNAPSHOTS} snapshots across ${plural(MIN_TREND_DAYS, 'day')}.`
       );
     } else if (
       currentDelta >= 2

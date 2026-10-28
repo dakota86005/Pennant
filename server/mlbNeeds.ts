@@ -22,6 +22,7 @@ import type { PlatoonRead } from './platoon.js';
 import type { ShadeReason } from './staffPreference.js';
 import type { FlagExplanation } from './mlbExplain.js';
 import { withUnavailable, activeMembers, type ClubView, type RoleKind, type RoleRef, type RosterMember } from './mlbRoster.js';
+import { plural } from './numberWords.js';
 
 /**
  * Minimum role-coverage FLOORS: the fewest healthy active players in a role
@@ -124,7 +125,6 @@ const horizonOf = (days: number | null, basis: string): NeedHorizon => {
   return { kind: 'long_term', days, basis };
 };
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 const causeOf = (m: RosterMember): NeedCause => ({
   playerId: m.playerId,
@@ -178,7 +178,7 @@ function roleNeeds(view: ClubView, origin: NeedOrigin, coverage: CoverageFloors)
       urgency: { label: 'Now', days: 0 },
       horizon: horizonOf(earliest, earliest === null
         ? 'No unavailable player in this role has an exported return estimate.'
-        : `Earliest return among the unavailable players in this role: ${causes.filter((c) => c.availability.daysLeft === earliest).map((c) => c.name).join(', ')} (${earliest} days, exported injury days left).`),
+        : `Earliest return among the unavailable players in this role: ${causes.filter((c) => c.availability.daysLeft === earliest).map((c) => c.name).join(', ')} (${plural(earliest, 'day')}, exported injury days left).`),
       causes: causes.map(causeOf),
       facts: [
         { label: 'Minimum', value: `${standard.label}: ${coverage.source}` },
@@ -204,7 +204,7 @@ function openSpotNeed(view: ClubView, origin: NeedOrigin): MlbNeed | null {
     origin,
     role: null,
     title: `${plural(open, 'open active-roster spot')}`,
-    summary: `The active roster has ${active} of ${limit} players. Which role to add is a roster-composition choice Pennant does not make.`,
+    summary: `The active roster has ${active} of ${plural(limit, 'player')}. Which role to add is a roster-composition choice Pennant does not make.`,
     severity: 'elevated',
     urgency: { label: 'Now', days: 0 },
     horizon: { kind: 'unknown', days: null, basis: 'A vacant spot has no exported end date.' },

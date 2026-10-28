@@ -51,6 +51,7 @@ import { bootstrapRatio, type PriceBand, type PriceOfWin } from './playerValueFi
 import { parseGameDate } from './dataFreshness.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
 import type { CalibrationStamp } from './calibration.js';
+import { money as millions, percent as pct, plural } from './numberWords.js';
 
 // ── what an import recorded ──────────────────────────────────────────────────
 
@@ -348,10 +349,7 @@ export interface PairContext {
   heldDuring?: (playerId: number, orgId: number, season: number) => boolean | null;
 }
 
-const millions = (n: number): string => `$${(n / 1_000_000).toFixed(2)}M`;
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const words = (s: string): string => s.replace(/_/g, ' ');
-const pct = (x: number): string => `${Math.round(x * 100)}%`;
 
 function lastSeasonOf(r: ContractSnapshotRow): number | null {
   return r.firstSeason !== null && r.years !== null && r.years > 0 ? r.firstSeason + r.years - 1 : null;
@@ -853,19 +851,19 @@ function basisOf(id: MeasuredBasisId, unit: MeasuredBasis['unit'], description: 
   if (cases.length < need) return out('not_computed', `${description}: not computed, ${plural(cases.length, 'signing')}, fewer than the ${need} a basis rests on.${extra}`);
   const money = cases.reduce((s, c) => s + c.money, 0);
   const wins = cases.reduce((s, c) => s + c.wins, 0);
-  if (!(wins > 0)) return out('not_computed', `${description}: not computed, its ${cases.length} signings sum to no win.${extra}`, { money, wins });
+  if (!(wins > 0)) return out('not_computed', `${description}: not computed, its ${plural(cases.length, 'signing')} sum to no win.${extra}`, { money, wins });
   const central = money / wins;
   const winters = [...new Set(cases.map((c) => c.winter))];
   const clusters = winters.length >= 2 ? cases.map((c) => c.winter) : undefined;
   const band = bootstrapRatio(cases.map((c) => c.money), cases.map((c) => c.wins), clusters);
   const how = clusters ? `resampled by winter (${winters.length} winters), then by signing within each` : 'resampled by signing';
   if (!band || band.high === null) {
-    return out('unbounded', `${description}: ${millions(central)} a win on ${cases.length} signings, but ${how}, too many readings price no positive win: its band has no upper edge.${extra}`, { money, wins, central });
+    return out('unbounded', `${description}: ${millions(central)} a win on ${plural(cases.length, 'signing')}, but ${how}, too many readings price no positive win: its band has no upper edge.${extra}`, { money, wins, central });
   }
   const low = Math.min(central, band.low);
   const high = Math.max(central, band.high);
   return out('measured',
-    `${description}: ${millions(central)} a win on ${cases.length} signings (${millions(money)} above the minimum ÷ ${wins.toFixed(1)} wins); ${how}, 80% of readings ${millions(low)} to ${millions(high)}.${extra}`,
+    `${description}: ${millions(central)} a win on ${plural(cases.length, 'signing')} (${millions(money)} above the minimum ÷ ${wins.toFixed(1)} wins); ${how}, 80% of readings ${millions(low)} to ${millions(high)}.${extra}`,
     { money, wins, central, low, high });
 }
 
@@ -909,7 +907,7 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
       priced.filter((x) => x.c.firstWinsIfPlays !== undefined && x.c.firstWinsIfPlays !== null).map((x) => ({ money: x.c.firstMoney as number, wins: x.c.firstWinsIfPlays as number, winter: x.winter, playerId: x.c.playerId }))),
     basisOf('realized', 'realized', "The first season, per win he produced in it (its salary above the minimum ÷ his WAR that season on its schedule's footing, once it is completed: the opening's own unit)",
       realizedCases.map(({ x, w }) => ({ money: x.c.firstMoney as number, wins: w, winter: x.winter, playerId: x.c.playerId })),
-      priced.length > realizedCases.length ? ` ${priced.length - realizedCases.length} of the ${priced.length} signings' first seasons are not completed yet.` : ''),
+      priced.length > realizedCases.length ? ` ${priced.length - realizedCases.length} of the ${plural(priced.length, 'signing')}' first seasons are not completed yet.` : ''),
   ];
 
   // Coverage of the free-agent class (review R4-02: a tightening)
@@ -966,7 +964,7 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
   const unbounded = bases.filter((b) => b.status === 'unbounded');
   if (unbounded.length > 0) return unknown('not_measured', `Not measured: ${counted}; ${unbounded.map((b) => b.text).join(' ')}`);
   const measured = bases.filter((b) => b.status === 'measured');
-  if (measured.length === 0) return unknown('not_measured', `Not measured: ${counted}; each basis rests on at least ${need} signings (the opening basis's policy minimum). ${bases.map((b) => b.text).join(' ')}`);
+  if (measured.length === 0) return unknown('not_measured', `Not measured: ${counted}; each basis rests on at least ${plural(need, 'signing')} (the opening basis's policy minimum). ${bases.map((b) => b.text).join(' ')}`);
   // Owner decision 1 (2026-09-24): the price is per win produced, the realized basis's central and band alone; until that
   // reading exists nothing is measured in the price's unit, and the projected readings are the check, shown beside
   const realizedText = bases.find((b) => b.id === 'realized')!.text;

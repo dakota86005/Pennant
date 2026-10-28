@@ -21,6 +21,7 @@ import { money } from '../player/words.js';
 import { column, officeClub, ordinal, pctText } from './common.js';
 import { choosable } from './office.js';
 import type { LeagueFranchiseView, LeagueSeasonChart, LeagueSeasonPoint, LeagueTenure, OfficeRow, OfficeSection } from './types.js';
+import { count, record } from '../../numberWords.js';
 
 const RECORD = 'The franchise\'s record books';
 const TENURE = 'Your record as manager';
@@ -72,8 +73,8 @@ function gloss(term: string): string | undefined {
   return hintIf(text) ?? hintIf(/^[^.]*\./.exec(text)?.[0]);
 }
 
-const thousands = (n: number): string => Math.round(n).toLocaleString('en-US');
-const recordText = (w: number, l: number): string => `${thousands(w)}–${thousands(l)}`;
+const thousands = count;
+const recordText = (w: number, l: number): string => record(w, l);
 const gbText = (gb: number): string => (Number.isInteger(gb) ? String(gb) : gb.toFixed(1));
 
 /** How a season ended, as the chart's mark: `title`, `playoffs` or `none`. */
@@ -203,12 +204,12 @@ function chartOf(v: ClubhouseContext, h: FranchiseHistory, carry: Reading): Leag
     const result = carry.results && carry.known(x.year) ? resultOf(x) : 'unknown';
     const ended = result === 'title' ? ', won it all' : result === 'playoffs' ? ', made the playoffs'
       : result === 'none' ? ', missed the playoffs' : ', how it ended not known';
-    return { year: x.year, wins: x.w, losses: x.l, result, display: `${x.year}: ${x.w}-${x.l}${ended}` };
+    return { year: x.year, wins: x.w, losses: x.l, result, display: `${x.year}: ${recordText(x.w, x.l)}${ended}` };
   });
   const span = s.firstYear === s.lastYear ? `${s.firstYear}` : `${s.firstYear} to ${s.lastYear}`;
-  const parts = [`Wins in each of ${plural(s.seasons, 'season')}, ${span}, oldest first`];
-  if (s.bestSeason) parts.push(`best record ${s.bestSeason.w}-${s.bestSeason.l} in ${s.bestSeason.year}`);
-  if (s.worstSeason) parts.push(`worst ${s.worstSeason.w}-${s.worstSeason.l} in ${s.worstSeason.year}`);
+  const parts = [s.seasons === 1 ? `Wins in ${span}` : `Wins in each of ${plural(s.seasons, 'season')}, ${span}, oldest first`];
+  if (s.bestSeason) parts.push(`best record ${recordText(s.bestSeason.w, s.bestSeason.l)} in ${s.bestSeason.year}`);
+  if (s.worstSeason && s.worstSeason.year !== s.bestSeason?.year) parts.push(`worst ${recordText(s.worstSeason.w, s.worstSeason.l)} in ${s.worstSeason.year}`);
   const summary = `${parts.join('; ')}${carry.results ? `; ${plural(s.titles, 'title')} and ${plural(s.playoffs, 'playoff season')}` : ''}.`;
   return {
     title: cell('Wins by season'),
@@ -245,10 +246,10 @@ function figuresOf(v: ClubhouseContext, h: FranchiseHistory, carry: Reading) {
   const fact = (text: string, value: ServedValue, because: Array<{ label: string; value: string }>, tone?: Tone, unknown: string[] = []) =>
     factClaim(v, text, { specialist: RECORD, value, because, ...(tone ? { tone } : {}), unknown });
   const seasonValue = (x: { year: number; w: number; l: number }) =>
-    servedValue(x.w + x.l > 0 ? x.w / (x.w + x.l) : 0, 'rate', `${x.year}: ${x.w}–${x.l}`);
+    servedValue(x.w + x.l > 0 ? x.w / (x.w + x.l) : 0, 'rate', `${x.year}: ${recordText(x.w, x.l)}`);
   const results = carry.results ? unrecordedSentence(carry) : ['How each season ended: the export carries no season history beyond the record.'];
   return [
-    fact(`Seasons, ${span}`, servedValue(s.seasons, 'count', String(s.seasons)), [
+    fact(s.seasons === 1 ? `One season, ${span}` : `Seasons, ${span}`, servedValue(s.seasons, 'count', count(s.seasons)), [
       { label: 'Seasons', value: `${plural(s.seasons, 'completed season')} in the export, ${span}.` },
     ]),
     fact('All-time record', servedValue(s.pct, 'rate', `${recordText(s.wins, s.losses)}${pct ? ` · ${pct}` : ''}`), [
@@ -265,7 +266,8 @@ function figuresOf(v: ClubhouseContext, h: FranchiseHistory, carry: Reading) {
     ...(s.bestSeason ? [fact('Best season', seasonValue(s.bestSeason), [
       { label: 'Read as', value: 'The season with the best winning percentage; a tie goes to the latest.' },
     ], 'good')] : []),
-    ...(s.worstSeason ? [fact('Worst season', seasonValue(s.worstSeason), [
+    // With one season, the best is the worst: said once
+    ...(s.worstSeason && s.worstSeason.year !== s.bestSeason?.year ? [fact('Worst season', seasonValue(s.worstSeason), [
       { label: 'Read as', value: 'The season with the worst winning percentage; a tie goes to the latest.' },
     ], 'bad')] : []),
   ];

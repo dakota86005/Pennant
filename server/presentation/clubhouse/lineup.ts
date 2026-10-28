@@ -15,6 +15,7 @@ import { BATTING_STATS } from '../statCatalog.js';
 import { factClaim, head, HAND_WORDS, dayWords, player, statCell, statSort, type ClubhouseContext } from './common.js';
 import type { MlbLineupChoice, MlbLineupChoices, MlbLineupQuery, MlbLineupView } from './types.js';
 import { fillMark, withFill, type RatingFill } from './fill.js';
+import { plural } from '../../numberWords.js';
 
 const CARD = 'The lineup card';
 const stat = (key: string) => BATTING_STATS.find((s) => s.key === key)!;
@@ -266,7 +267,7 @@ export function lineupView(v: ClubhouseContext, input: LineupInput): MlbLineupVi
       ? playersBlock('Not scouted', built.notScouted ?? [], orgId, 'Their bat hasn\'t been graded, so the card leaves them out.')
       : null,
     unavailable: built
-      ? playersBlock('Unavailable', built.unavailable.map((u) => ({ ...u, extra: `${u.status}${u.daysLeft ? `, ${u.daysLeft} days` : ''}` })), orgId)
+      ? playersBlock('Unavailable', built.unavailable.map((u) => ({ ...u, extra: `${u.status}${u.daysLeft ? `, ${plural(u.daysLeft, 'day')}` : ''}` })), orgId)
       : null,
     empty: built ? null : cell(typeof card === 'string' ? `${card}.` : 'No card.'),
   };

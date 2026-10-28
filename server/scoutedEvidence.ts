@@ -45,6 +45,7 @@ import { parseGameDate } from './dataFreshness.js';
 import { currentRatingMode, historyDb, modeFilter, otherSource, snapshotModes } from './history.js';
 import { currentHistoryKey } from './historyIdentity.js';
 import { RATING_MODE_WORDS, type RatingMode, type RatingModeRecord } from './ratingMode.js';
+import { ordinal } from './numberWords.js';
 
 // ── Provenance ──────────────────────────────────────────────────────────
 
@@ -531,12 +532,6 @@ export { ratingSourceNamed, sameRatingSource } from './ratingMode.js';
 export function bothReadingsApply(): boolean {
   return populationSource().id === 'osa_file' && ourScoutsRatings() !== null;
 }
-
-const ordinal = (n: number): string => {
-  const tens = n % 100;
-  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
-  return `${n}${suffix}`;
-};
 
 /**
  * A player's own reading beside his OSA reading, for a league comparison's basis (D-068): "Our scouts: 65 · OSA: 70" for a

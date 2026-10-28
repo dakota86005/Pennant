@@ -9,6 +9,7 @@
  */
 import type { Cell, Tone } from '../../contract/presentation.js';
 import { cell } from '../claim.js';
+import { percent, signed as signedNumber } from '../../numberWords.js';
 
 /** A code made readable when no map has it ("upgrade_uncertain" becomes "upgrade uncertain"). */
 export const codeWords = (code: string): string => code.replace(/_/g, ' ').trim() || 'not stated';
@@ -43,10 +44,10 @@ export function betterThan(n: number | null | undefined, peers: string): string 
 export const SCALE_HINT = 'On a 0–100 scale against major league peers; 50 is typical';
 
 /** "+12" or "−4", rounded. */
-export const signed = (n: number): string => `${n >= 0 ? '+' : '−'}${Math.abs(Math.round(n))}`;
+export const signed = (n: number): string => signedNumber(Math.round(n));
 
 /** "40%" from a share of one. */
-export const share = (n: number): string => `${Math.round(n * 100)}%`;
+export const share = (n: number): string => percent(n);
 
 /** A list of sentences, trimmed, blanks and repeats left out, in order. */
 export const sentences = (lines: ReadonlyArray<string | null | undefined>): string[] =>

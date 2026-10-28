@@ -377,7 +377,7 @@ describe('changing philosophy recomputes nothing', () => {
   it('the lens reads the neutral valuation as handed to it: it reaches no production, cost, fit, table, rating, tier, defensibility or club value of a win', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'server', 'playerValueLens.ts'), 'utf8');
     const imports = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
-    expect(imports.filter((i) => !['./calibration.js', './philosophy.js', './playerValueCalibration.js', './playerValueSurplus.js'].includes(i))).toEqual([]);
+    expect(imports.filter((i) => !['./calibration.js', './philosophy.js', './playerValueCalibration.js', './playerValueSurplus.js', './numberWords.js'].includes(i))).toEqual([]);
     expect(source).not.toMatch(/\bdb\.|prepare\(|projectProduction|priceControlTimeline|surplusOf\(|scoutedEvidence|players_value|developmentFit|developmentalContext|prospectDecision|winValue|posture|playoff/);
     // Nothing that edits a philosophy reaches Player Value
     const settings = fs.readFileSync(path.join(process.cwd(), 'server', 'settings.ts'), 'utf8');

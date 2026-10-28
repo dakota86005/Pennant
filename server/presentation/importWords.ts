@@ -4,6 +4,7 @@
  * importing. The importer and the status decide nothing here: these are sentences about what they reported.
  */
 import type { ImportStep, ImportWords, LeftOutFile } from '../importer.js';
+import { listWords, plural } from '../numberWords.js';
 import { timestampWords } from '../timeWords.js';
 
 /** OOTP's export files a GM would recognize, named in words (lower case: the name sits inside a sentence). */
@@ -145,11 +146,7 @@ export const LEAGUE_UPGRADE_LINE: LeagueUpgradeLine = {
 export const EXPORT_NOT_FOUND =
   'That save has no export yet. In OOTP, export the league\'s database, then choose the save again.';
 
-/** "a", "a and b", "a, b and c". */
-export function listWords(items: readonly string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
-}
+export { listWords };
 
 /** The files an import left out, in a sentence or two (the owner's decision 5); null when nothing was left out. */
 export function leftOutNote(leftOut: readonly LeftOutFile[]): string | null {
@@ -157,7 +154,7 @@ export function leftOutNote(leftOut: readonly LeftOutFile[]): string | null {
   const named = (files: readonly LeftOutFile[]): string => {
     const names = files.map((f) => tableName(f.table)).filter((n): n is string => !!n);
     const others = files.length - names.length;
-    const parts = [...names, ...(others > 0 ? [`${others} other file${others === 1 ? '' : 's'}`] : [])];
+    const parts = [...names, ...(others > 0 ? [plural(others, 'other file')] : [])];
     return listWords(parts);
   };
   const sentences: string[] = [];

@@ -1,4 +1,5 @@
 import { db, tableColumns, tableExists } from './db.js';
+import { money } from './numberWords.js';
 
 /**
  * The people you can talk to, read out of the save rather than invented.
@@ -175,9 +176,6 @@ function loadCoach(orgId: number, occupation: number): Coach | null {
       .get(orgId, occupation) as Coach | undefined) ?? null
   );
 }
-
-const money = (n: number): string =>
-  n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : `$${Math.round(n / 1000)}k`;
 
 /** Age, birthplace, time in the game and what he is signed for. */
 function bioLines(c: Coach): string[] {

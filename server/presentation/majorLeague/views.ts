@@ -22,6 +22,7 @@ import {
   PLATOON_BASIS, platoonChip, platoonHeadline, positionAbbr, QUALITY_TEXT, QUALITY_TONE, REQUIRED_COVERS, sentences, share, signed,
   STRENGTH_TONE, TAG_TEXT, TIER_TEXT,
 } from './words.js';
+import { listWords, plural } from '../../numberWords.js';
 
 type Holder = RoleGroupReview['holders'][number];
 
@@ -33,8 +34,6 @@ const benchReview = (v: OverviewContext) => v.overview.review.find((g) => g.benc
 /** A case worth a look: the strong and moderate ones (the ones that become needs). */
 const flagged = (holders: ReadonlyArray<{ strength: string }> | undefined): number =>
   (holders ?? []).filter((h) => h.strength === 'strong' || h.strength === 'moderate').length;
-
-const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 
 // ── the report's companion ───────────────────────────────────────────────────
 
@@ -119,7 +118,7 @@ function glances(v: OverviewContext): MlbGlance[] {
       ? [
         cell(`${plural(bench.rows.length, 'player')} on the bench`),
         cell(bench.gaps.length ? `No backup: ${bench.gaps.map((g) => g.label.replace(/^an? /, '')).join('; ')}` : 'Catcher, middle infield and center field have a backup'),
-        cell(missing.length ? `No ${missing.map((f) => f.label.toLowerCase().replace(/^an? /, '')).join(', ')}` : 'Every bench job has someone'),
+        cell(missing.length ? `Missing ${listWords(missing.map((f) => `${f.label.charAt(0).toLowerCase()}${f.label.slice(1)}`))}` : 'Every bench job has someone'),
       ]
       : [cell('No bench review yet', { tone: 'unknown' })],
     open: view('benchBackups'),

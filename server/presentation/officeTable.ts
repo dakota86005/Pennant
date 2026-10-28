@@ -14,6 +14,9 @@ import type { Integer } from '../contract/primitives.js';
 import { basis, cell, claim, HINT_MAX, row, target } from './claim.js';
 import type { MlbAction, MlbColumn, MlbPlayer, MlbRow } from './majorLeague/types.js';
 
+/** "3 players", "1 player", "2,076 players": the shared count (`numberWords.ts`). */
+export { plural as counted } from '../numberWords.js';
+
 /** A club a view names: its id, its name, whether it is ours, and where it opens (its club window). */
 export interface OfficeClub {
   teamId: Integer;
@@ -364,5 +367,3 @@ export function officeHead(ctx: OfficeContext, title: string, lede: Claim, speci
   };
 }
 
-/** "3 players", "1 player". */
-export const counted = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;

@@ -59,7 +59,7 @@ export function buildPlayerDossiers(request: PlayerDossiersRequest): PlayerDossi
   const chronologyNote = !log
     ? 'The OOTP transaction log is unavailable, so no transaction history is shown.'
     : logState.state === 'behind'
-      ? `The transaction log is ${logState.lagDays} day(s) behind the save; recent moves may be missing.`
+      ? `The transaction log is ${logState.lagDays} ${logState.lagDays === 1 ? 'day' : 'days'} behind the save; recent moves may be missing.`
       : null;
   const philosophy = lensPhilosophyFrom(resolvePhilosophy(philosophyForOrg(request.orgId)));
   const orgName = clubNameOf(request.orgId);

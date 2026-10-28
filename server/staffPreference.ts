@@ -31,6 +31,7 @@
 import { policy, type CalibrationStamp } from './calibration.js';
 import type { PhilosophyDimensionId } from './philosophy.js';
 import type { Posture } from './posture.js';
+import { plural } from './numberWords.js';
 
 export const STAFF_PREFERENCE_CALIBRATION: CalibrationStamp = policy(
   'The window cut-offs, the lean thresholds, the age gap, the tie band and the upside gap are policy parameters: they say when a philosophy leans on a recommendation, not how baseball works.'
@@ -197,7 +198,7 @@ export function preferenceFor(ctx: OrganizationContext | null, cand: CandidateFa
     const younger = gap > 0;
     score += younger ? 1 : -1;
     const why = ageLean === 'high' && building ? 'you discount aging and are building' : ageLean === 'high' ? 'you discount aging aggressively' : 'you are building for the future';
-    reasons.push({ dimension: ageLean === 'high' ? 'ageCurveSensitivity' : 'competitiveWindow', value: (ageLean === 'high' ? d.ageCurveSensitivity : d.competitiveWindow) ?? null, effect: younger ? 'favors' : 'against', text: `He is ${Math.abs(gap)} years ${younger ? 'younger' : 'older'} than the player he would replace, and ${why}.` });
+    reasons.push({ dimension: ageLean === 'high' ? 'ageCurveSensitivity' : 'competitiveWindow', value: (ageLean === 'high' ? d.ageCurveSensitivity : d.competitiveWindow) ?? null, effect: younger ? 'favors' : 'against', text: `He is ${plural(Math.abs(gap), 'year')} ${younger ? 'younger' : 'older'} than the player he would replace, and ${why}.` });
   } else if (gap !== null && Math.abs(gap) >= AGE_GAP_YEARS && read?.window.label === 'contending' && lean(d.ageCurveSensitivity) === 'low') {
     reasons.push({ dimension: 'ageCurveSensitivity', value: d.ageCurveSensitivity ?? null, effect: 'notes', text: 'You trust veterans and are contending, so age is not held against him.' });
   }

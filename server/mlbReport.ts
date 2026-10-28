@@ -26,6 +26,7 @@ import { estimateOf as workingEstimate, isFirmRead, type ReplacementComparison }
 /** The glove weights in force for the save (D-053): the fitted ones once adopted; undefined leaves the review's built-in starting values. */
 const gloveWeights = (ports: Pick<ResponsePorts, 'reviewCalibration'>): Record<number, number> | undefined => ports.reviewCalibration?.defenseWeights ?? undefined;
 import type { PerformanceLine } from './mlbEvidence.js';
+import { count, inningsOf, plural } from './numberWords.js';
 import { activeMembers, sameRole, type ClubView, type RoleRef, type RosterMember } from './mlbRoster.js';
 import { lineupPictureFor } from './mlbReview.js';
 import { actBar, type ActBar, type ShadeReason } from './staffPreference.js';
@@ -143,8 +144,7 @@ const CLASS_WORDS: Record<string, string> = {
 };
 
 const isPitcher = (role: RoleRef | null) => role?.kind === 'starting_pitcher' || role?.kind === 'relief_pitcher';
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
-const lineText = (p: PerformanceLine | null) => (p ? `${p.lines.map((l) => `${l.label} ${l.value}`).join(', ')} in ${p.sample} ${p.sampleUnit}` : null);
+const lineText = (p: PerformanceLine | null) => (p ? `${p.lines.map((l) => `${l.label} ${l.value}`).join(', ')} in ${p.sampleUnit === 'IP' ? inningsOf(p.sample) : count(p.sample)} ${p.sampleUnit}` : null);
 
 function rowFor(
   m: RosterMember, relation: RoleRow['relation'], ports: ResponsePorts, standing: RoleStanding | null, group: string | null = null,

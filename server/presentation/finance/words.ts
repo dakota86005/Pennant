@@ -13,7 +13,7 @@ import { costRangeText, money, rangeText, signedMoney, signedTenths } from '../p
 export { costRangeText, money, rangeText, signedMoney, signedTenths };
 
 /** A season at the market in plain money ("$23.1M"), never signed like a surplus; one below zero reads "−$1.2M". */
-export const marketMoney = (v: number): string => (v < 0 ? `−${money(-v)}` : money(v));
+export const marketMoney = money;
 
 /** "$4.6M to $25.3M": a range the way the pages say it, never reading as a point. */
 export const rangeWords = (low: number, high: number): string => costRangeText(low, high).replace('–', ' to ');
@@ -214,8 +214,8 @@ export function perWinLine(ctx: OfficeContext, text: string, explanation: string
   });
 }
 
-/** A price of a win to the hundredth of a million: "$7.25M". */
-export const perWin = (v: number): string => `$${(v / 1_000_000).toFixed(2)}M`;
+/** A price of a win: "$7.25M" (the shared money rule). */
+export const perWin = money;
 
 /** "$6.57M to $9.78M", or one figure where the two ends print alike. */
 export const perWinRange = (low: number, high: number): string => (perWin(low) === perWin(high) ? perWin(low) : `${perWin(low)} to ${perWin(high)}`);

@@ -340,7 +340,7 @@
             "because": [
               {
                 "label": "Observed in OOTP and documented",
-                "value": "0 of 3 option years used and 1 years of service: OOTP allowed an option in every observed case like this."
+                "value": "0 of 3 option years used and 1 year of service: OOTP allowed an option in every observed case like this."
               }
             ],
             "source": {
@@ -1483,7 +1483,7 @@
             },
             {
               "label": "Detail",
-              "value": "not yet calibrated on this save (0 seasons): the starting fallback prior, rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: hitter mean 1.70, starter mean 1.12, reliever mean -1.15); no fit has been made on this save yet"
+              "value": "not yet calibrated on this save (0 seasons): the starting fallback prior, rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: hitter mean 1.70, starter mean 1.12, reliever mean −1.15); no fit has been made on this save yet"
             }
           ],
           "source": {
@@ -1974,7 +1974,7 @@
             "because": [
               {
                 "label": "Observed in OOTP and documented",
-                "value": "0 of 3 option years used and 1 years of service: OOTP allowed an option in every observed case like this."
+                "value": "0 of 3 option years used and 1 year of service: OOTP allowed an option in every observed case like this."
               }
             ],
             "source": {

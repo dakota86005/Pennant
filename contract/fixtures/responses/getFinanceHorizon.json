@@ -3640,7 +3640,7 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M"
+              "value": "$150M"
             }
           ],
           "source": {
@@ -3663,17 +3663,17 @@
       "committed": 49015000,
       "budget": 150000000,
       "claim": {
-        "text": "2041: $49.0M committed",
+        "text": "2041: $49M committed",
         "tone": "neutral",
         "basis": {
           "because": [
             {
               "label": "Committed",
-              "value": "$49.0M"
+              "value": "$49M"
             },
             {
               "label": "Measured against",
-              "value": "$150.0M: today's budget, assumed to hold flat, since no budget for 2041 is entered"
+              "value": "$150M: today's budget, assumed to hold flat, since no budget for 2041 is entered"
             }
           ],
           "source": {
@@ -3707,7 +3707,7 @@
             },
             {
               "label": "Measured against",
-              "value": "$150.0M: today's budget, assumed to hold flat, since no budget for 2042 is entered"
+              "value": "$150M: today's budget, assumed to hold flat, since no budget for 2042 is entered"
             }
           ],
           "source": {
@@ -3731,17 +3731,17 @@
       "committed": 9228000,
       "budget": 150000000,
       "claim": {
-        "text": "2043: $9.2M committed",
+        "text": "2043: $9.23M committed",
         "tone": "neutral",
         "basis": {
           "because": [
             {
               "label": "Committed",
-              "value": "$9.2M"
+              "value": "$9.23M"
             },
             {
               "label": "Measured against",
-              "value": "$150.0M: today's budget, assumed to hold flat, since no budget for 2043 is entered"
+              "value": "$150M: today's budget, assumed to hold flat, since no budget for 2043 is entered"
             }
           ],
           "source": {
@@ -3764,12 +3764,12 @@
   "budget": {
     "amount": 150000000,
     "label": {
-      "display": "Budget $150.0M"
+      "display": "Budget $150M"
     }
   },
   "payrollNote": null,
   "chartSummary": {
-    "display": "Committed salary: 2040 $84.1M, 2041 $49.0M, 2042 $17.6M, 2043 $9.2M; budget $150.0M."
+    "display": "Committed salary: 2040 $84.1M, 2041 $49M, 2042 $17.6M, 2043 $9.23M; budget $150M."
   },
   "unknowns": []
 }

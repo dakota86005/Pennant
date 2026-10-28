@@ -15,6 +15,7 @@ import type { FarmNext } from '../../mlbEvidence.js';
 import type { ControlReading, MapPitcher, MapPosition, MorningMaterial, RosterMaterial } from '../../morningReport.js';
 import { basis, cell, claim, servedValue, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
+import { inningsWords, MINUS, numberWord, ordinal, ordinalWord, record, signed } from '../../numberWords.js';
 import { asOfCell, listWords, plural, type BuildContext } from './desk.js';
 import { needText, type MajorLeagueInput } from './majorLeague.js';
 import type { MlbNeed } from '../../mlbNeeds.js';
@@ -25,18 +26,8 @@ import type {
 
 // ── words ────────────────────────────────────────────────────────────────────
 
-const SMALL = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen',
-  'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
-const ORDINAL_WORDS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
-
-/** "7th", "21st", "112th". */
-export function ordinal(n: number): string {
-  const s = n % 100;
-  const suffix = s >= 11 && s <= 13 ? 'th' : n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th';
-  return `${n}${suffix}`;
-}
-const ordinalWord = (n: number) => ORDINAL_WORDS[n - 1] ?? ordinal(n);
-const numberWord = (n: number) => SMALL[n] ?? String(n);
+/** "7th", "21st", "112th" (the shared formatter, `numberWords.ts`). */
+export { ordinal };
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Games back as the standings write them: "2½", "½", "3". */
@@ -61,8 +52,7 @@ export function placeWords(p: { rank: number; of: number; tiedWith: number }): s
   return `${p.tiedWith > 0 ? 'T-' : ''}${ordinal(p.rank)} of ${p.of}`;
 }
 
-const signed = (n: number, digits = 0) => (n > 0 ? `+${n.toFixed(digits)}` : n < 0 ? `−${Math.abs(n).toFixed(digits)}` : n.toFixed(digits));
-const rate3 = (v: number) => v.toFixed(3).replace(/^0(?=\.)/, '').replace(/^-0(?=\.)/, '-');
+const rate3 = (v: number) => v.toFixed(3).replace(/^0(?=\.)/, '').replace(/^-0(?=\.)/, MINUS).replace(/^-/, MINUS);
 
 /** "Ketel Marte" to "K. Marte"; a one-word name stays as it is. */
 /**
@@ -203,10 +193,10 @@ function starterOf(line: PitcherLine | undefined, id: number | null): ProbableSt
 /** "7–4 · 3.21 ERA", "21 saves · 2.70 ERA", "3.38 ERA · 24 innings", or why there is no line. */
 export function pitcherLineWords(l: PitcherLine, kind: 'starter' | 'closer' | 'reliever'): string {
   const era = l.er !== null && l.outs !== null && l.outs > 0 ? `${((l.er * 27) / l.outs).toFixed(2)} ERA` : null;
-  const innings = l.outs !== null ? `${Math.floor(l.outs / 3)}${l.outs % 3 ? `.${l.outs % 3}` : ''} innings` : null;
+  const innings = l.outs !== null ? inningsWords(l.outs) : null;
   if (l.outs === null || l.outs === 0) return 'No major-league innings this season';
   if (kind === 'starter') {
-    const wl = l.w !== null && l.l !== null ? `${l.w}–${l.l}` : null;
+    const wl = l.w !== null && l.l !== null ? record(l.w, l.l) : null;
     return [wl, era ?? innings].filter(Boolean).join(' · ');
   }
   if (kind === 'closer' && l.saves !== null) return [plural(l.saves, 'save'), era ?? innings].filter(Boolean).join(' · ');
@@ -341,7 +331,7 @@ function runsFigure(build: BuildContext, facts: TeamSeasonFacts, me: ClubFacts, 
         because: [
           { label: 'Runs scored', value: `${scored}${per(scored)}` },
           { label: 'Runs allowed', value: `${allowed}${per(allowed)}` },
-          ...(last20.length ? [{ label: `Last ${last20.length} games`, value: signed(last20.reduce((s, x) => s + x.scored - x.allowed, 0)) }] : []),
+          ...(last20.length ? [{ label: `Last ${plural(last20.length, 'game')}`, value: signed(last20.reduce((s, x) => s + x.scored - x.allowed, 0)) }] : []),
         ],
         source: source(build, from),
         unknown: [],
@@ -552,7 +542,7 @@ function dimensionWords(build: BuildContext, d: DimensionReading, reading: ClubP
     ...(middle ? [{ label: 'League middle', value: middle }] : []),
     ...(d.tiedWith.length ? [{ label: 'Level with', value: listWords(d.tiedWith) }] : []),
     {
-      label: `Last ${recentGames} games`,
+      label: `Last ${plural(recentGames, 'game')}`,
       value: d.recent.figure.value !== null ? `${w.figure(d.recent.figure.value)}${recentPlace ? ` · ${placeWords(recentPlace)}` : ''}` : d.recent.why ?? 'Not known',
     },
     { label: 'How it is read', value: w.measure },
@@ -560,7 +550,7 @@ function dimensionWords(build: BuildContext, d: DimensionReading, reading: ClubP
   ];
   const unknown = [
     ...(d.leftOut.length ? [`${plural(d.leftOut.length, 'club')} not placed: ${d.leftOut.slice(0, 5).map((l) => `${l.club} (${l.why.replace(/\.$/, '')})`).join('; ')}${d.leftOut.length > 5 ? '; and others' : ''}.`] : []),
-    ...(d.recent.why && !recentPlace ? [`Over the last ${recentGames} games: ${d.recent.why}`] : []),
+    ...(d.recent.why && !recentPlace ? [`Over the last ${plural(recentGames, 'game')}: ${d.recent.why}`] : []),
     ...(reading.tooEarly ? [`The club has played ${reading.games ?? 'no'} games; below ${reading.policy.minGames} it is too early to call a strength or a weakness.`] : []),
   ];
   const text = `${w.name}: ${placeText}`;
@@ -578,7 +568,7 @@ function dimensionWords(build: BuildContext, d: DimensionReading, reading: ClubP
     claim: claim({
       text,
       tone: d.figure.value === null ? 'unknown' : 'neutral',
-      hint: fit(`${w.hint}, against the other ${others} clubs`),
+      hint: fit(`${w.hint}, against the other ${plural(others, 'club')}`),
       ...(place ? { place } : {}),
       basis: d.figure.value === null && !d.place
         ? basis({ because, source: source(build, TOTALS), unknown: [...new Set([d.figure.why ?? 'The export lacks the figure.', ...unknown])], wouldChange: [], lean: null, certainty: 'unknown' })
@@ -605,7 +595,7 @@ export function profileGroups(minGames: number | null): ProfileGroups {
     rest: { title: cell('The rest', { hint: 'Neither a strength nor a weakness' }), line: null },
     tooEarly: {
       title: cell('Too early to call', { hint: 'Too early to call a strength or a weakness' }),
-      line: minGames === null ? null : cell(`Fewer than ${minGames} games`, { hint: 'Too early to call a strength or a weakness' }),
+      line: minGames === null ? null : cell(`Fewer than ${plural(minGames, 'game')}`, { hint: 'Too early to call a strength or a weakness' }),
     },
     notPlaced: { title: cell('Not placed', { hint: 'The export lacks the figure for the club, which says nothing about it' }), line: null },
   };
@@ -636,8 +626,8 @@ export function clubProfileWords(build: BuildContext, m: MorningMaterial): ClubP
   return {
     note: cell(`${through}${reading.games !== null ? ` · ${plural(reading.games, 'game')}` : ''}`, {
       hint: small
-        ? `With ${reading.clubs} clubs the league has no top or bottom fifth`
-        : `Places among the league's ${reading.clubs} clubs`,
+        ? `With ${plural(reading.clubs, 'club')} the league has no top or bottom fifth`
+        : `Places among the league's ${plural(reading.clubs, 'club')}`,
     }),
     clubs: reading.clubs,
     groups: profileGroups(reading.policy.minGames),
@@ -880,14 +870,14 @@ function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: Ros
     ...(p.standing ? [{ label: 'Standing', value: p.standing }] : []),
     { label: 'Major League Ops', value: need ? p.needs.map(needWords).join('; ') : build.subject === 'theirs' ? 'Reads only your club' : 'No need raised here' },
     { label: 'How the holder is chosen', value: chosen },
-    { label: 'The same rule for every club', value: `The man now on the club with the most starts there this season, among those who started there in its last ${window} games; where the game log shows no such start, its man listed there with the most expected wins.` },
+    { label: 'The same rule for every club', value: `The man now on the club with the most starts there this season, among those who started there in its last ${plural(window, 'game')}; where the game log shows no such start, its man listed there with the most expected wins.` },
   ];
   const a = p.farmNext?.assessment ?? null;
   const unknown = [
     ...(holder && !holder.wins ? [`${holder.name} isn't valued: ${holder.why ?? 'his production is not established'}`] : []),
     ...(p.place && !halfTime ? ['Player Value served no half-time range for him, so clubs are told apart on the range drawn.'] : []),
     ...(p.leftOut.length ? [`${plural(p.leftOut.length, 'club')} not placed at ${where.at}: ${p.leftOut.slice(0, 5).map((l) => l.club).join(', ')}${p.leftOut.length > 5 ? ' and others' : ''}.`] : []),
-    ...(p.listedClubs > 0 ? [`${p.listedClubs === 1 ? 'One club\'s holder' : `${p.listedClubs} clubs' holders`} at ${where.at} ${p.listedClubs === 1 ? 'is its listed man' : 'are their listed men'}: the game log shows nobody now on the club starting there lately.`] : []),
+    ...(p.listedClubs > 0 ? [`${p.listedClubs === 1 ? 'One club\'s holder' : `${plural(p.listedClubs, 'club')}' holders`} at ${where.at} ${p.listedClubs === 1 ? 'is its listed man' : 'are their listed men'}: the game log shows nobody now on the club starting there lately.`] : []),
     ...(farm?.state === 'notAssessed' ? [`Player Development hasn't assessed ${farm.name} for the majors (it assesses Triple-A players with enough of a season).`] : []),
     ...(a?.judgment === 'indeterminate' ? a.missing.map((x) => `${p.farmNext!.name}: ${x}`) : []),
     ...(control.kind === 'unknown' && p.control?.end.reason ? [`Control: ${p.control.end.reason}`] : []),
@@ -979,7 +969,7 @@ export function rosterMapWords(build: BuildContext, m: MorningMaterial): RosterM
         hint: fit(`${map.logWhy} Each club's man listed there with the most expected wins.`),
       })
       : cell('Each position shows its regular: the man who\'s been starting there', {
-        hint: `Most starts this season among those starting there in the last ${map.holderWindow} games`,
+        hint: `Most starts this season among those starting there in the last ${plural(map.holderWindow, 'game')}`,
       }),
   ];
   return {

@@ -14,6 +14,7 @@ import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbRow } from '../majorLeague/types.js';
 import { ageWords, dayOrder, dayWords, factClaim, HAND_WORDS, head, plural, player, type ClubhouseContext } from './common.js';
 import type { MlbGamePlanView, MlbScheduleView, MlbTableSection } from './types.js';
+import { signed } from '../../numberWords.js';
 
 const SCHEDULE = 'The schedule';
 const PLAN = 'The game plan';
@@ -23,8 +24,6 @@ const isFull = (s: Schedule): s is Full => typeof (s as { nextSeriesIndex?: unkn
 type Game = Full['series'][number]['games'][number];
 
 export const gameRowId = (gameId: number): string => `game-${gameId}`;
-
-const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
 
 function recordFigures(v: ClubhouseContext, s: Full) {
   const r = s.record;

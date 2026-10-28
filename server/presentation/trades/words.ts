@@ -16,7 +16,7 @@ export type Fmt = (v: number) => string;
 
 /** Money or wins, as the analyser prints them: "$12.3M", "−$4.0M", "1.2 wins". */
 export const amountFor = (unit: TradeUnit | null): Fmt =>
-  (unit === 'wins' ? (v) => `${signedTenths(v)} wins` : (v) => (v < 0 ? `−${money(-v)}` : money(v)));
+  (unit === 'wins' ? (v) => `${signedTenths(v)} wins` : money);
 
 /** A difference always carries its sign: "+$12.3M", "−$4.0M". */
 export const signed = (fmt: Fmt): Fmt => (v) => (v > 0 ? `+${fmt(v)}` : fmt(v));

@@ -16,6 +16,7 @@ import { BATTING_STATS, PITCHING_STATS } from '../statCatalog.js';
 import { column } from './common.js';
 import { choosable } from './office.js';
 import type { LeagueLeaderGroup, LeagueLeadersView, OfficeRow, OfficeSection } from './types.js';
+import { plural } from '../../numberWords.js';
 
 const LEADERS = 'The league leaders';
 
@@ -156,8 +157,8 @@ export function leadersView(v: ClubhouseContext, input: LeadersInput): LeagueLea
   const qualifier = factClaim(v, `Rate leaders need ${q.minPA}+ plate appearances or ${innings(q.minOuts)}+ innings`, {
     specialist: LEADERS,
     because: [
-      { label: 'Hitters', value: `3.1 plate appearances for each game your club has played: ${q.games} games make ${q.minPA}.` },
-      { label: 'Pitchers', value: `One inning for each game your club has played: ${q.games} games make ${innings(q.minOuts)}.` },
+      { label: 'Hitters', value: `3.1 plate appearances for each game your club has played: ${plural(q.games, 'game')} make ${q.minPA}.` },
+      { label: 'Pitchers', value: `One inning for each game your club has played: ${plural(q.games, 'game')} make ${innings(q.minOuts)}.` },
       { label: 'Which leaders', value: 'Batting average, on-base plus slugging, earned run average and walks and hits per inning count qualified players only; home runs, runs batted in, stolen bases, strikeouts, wins, saves and wins above replacement count everyone.' },
     ],
     unknown: q.gamesFromExport ? [] : ['Your club\'s games played aren\'t in the export, so the page counts 20.'],

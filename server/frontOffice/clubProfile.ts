@@ -17,6 +17,7 @@
  */
 import type { ClubFacts, GameLogLine, TeamSeasonFacts } from './teamSeason.js';
 import { clubGames } from './teamSeason.js';
+import { plural } from '../numberWords.js';
 
 /** The profile's lines: chosen and stated, never fitted (D-041). */
 export const CLUB_PROFILE_POLICY = {
@@ -278,7 +279,7 @@ export function recentWindows(facts: TeamSeasonFacts, size: number = CLUB_PROFIL
     }
     const games = clubGames(facts, club.teamId).slice(-size);
     if (games.length < size) {
-      out.set(club.teamId, { teamId: club.teamId, why: `Fewer than ${size} games played.` });
+      out.set(club.teamId, { teamId: club.teamId, why: `Fewer than ${plural(size, 'game')} played.` });
       continue;
     }
     const pick = (m: Map<string, Record<string, number | null>> | null) => {
@@ -298,7 +299,7 @@ export function recentWindows(facts: TeamSeasonFacts, size: number = CLUB_PROFIL
       starting: s ?? null,
       relief: s ? r : null,
       logWhy: missing
-        ? `The export's game log doesn't hold all of the club's last ${size} games.`
+        ? `The export's game log doesn't hold all of the club's last ${plural(size, 'game')}.`
         : facts.log.why,
     });
   }

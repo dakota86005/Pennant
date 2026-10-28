@@ -10,6 +10,7 @@ import type { BasisLine, Cell, DeptId, Tone } from '../../contract/presentation.
 import { gameDateWords } from '../../dataStatus.js';
 import { parseGameDate } from '../../dataFreshness.js';
 import { basis, cell, claim, row, servedValue, target, unknownValue } from '../claim.js';
+import { inningsOf, record } from '../../numberWords.js';
 import { plain, plainAll, ratingText, type RatingDisplay } from '../farm/words.js';
 import type { DossierInput } from './input.js';
 import type {
@@ -334,7 +335,7 @@ function thisSeasonLine(ctx: DossierInput): string | null {
     const ip = num(best.ip);
     const era = num(best.era);
     if (ip === null && era === null) return null;
-    return `${latest}: ${level}${ip ?? '—'} IP · ${era === null ? '—' : era.toFixed(2)} ERA · ${num(best.k) ?? '—'} K`;
+    return `${latest}: ${level}${ip === null ? '—' : inningsOf(ip)} IP · ${era === null ? '—' : era.toFixed(2)} ERA · ${num(best.k) ?? '—'} K`;
   }
   const pa = num(best.pa);
   if (pa === null) return null;
@@ -975,8 +976,8 @@ function statTables(ctx: DossierInput): PlayerTable[] {
     ], pitchingYears.map((y, i) => ({
       id: `p${i}`,
       cells: {
-        year: str(y.year), team: str(y.team), level: str(y.levelName), g: str(y.g), gs: str(y.gs), wl: `${num(y.w) ?? '—'}-${num(y.l) ?? '—'}`,
-        sv: str(y.sv), ip: num(y.ip) === null ? null : num(y.ip)!.toFixed(1), era: num(y.era) === null ? null : num(y.era)!.toFixed(2),
+        year: str(y.year), team: str(y.team), level: str(y.levelName), g: str(y.g), gs: str(y.gs), wl: num(y.w) !== null && num(y.l) !== null ? record(num(y.w)!, num(y.l)!) : `${num(y.w) ?? '—'}–${num(y.l) ?? '—'}`,
+        sv: str(y.sv), ip: num(y.ip) === null ? null : inningsOf(num(y.ip)!), era: num(y.era) === null ? null : num(y.era)!.toFixed(2),
         whip: num(y.whip) === null ? null : num(y.whip)!.toFixed(2), k: str(y.k), bb: str(y.bb), war: num(y.war) === null ? null : signedTenths(num(y.war)!),
       },
       sort: { year: num(y.year), team: str(y.team), level: str(y.levelName), g: num(y.g), gs: num(y.gs), wl: num(y.w), sv: num(y.sv), ip: num(y.ip), era: num(y.era), whip: num(y.whip), k: num(y.k), bb: num(y.bb), war: num(y.war) },
@@ -1013,7 +1014,7 @@ function statTables(ctx: DossierInput): PlayerTable[] {
       ['date', 'Date', false], ['opp', 'Opp', false], ['gs', 'GS', true], ['ip', 'IP', true], ['er', 'ER', true], ['h', 'H', true], ['bb', 'BB', true], ['k', 'K', true],
     ], outings.map((g, i) => ({
       id: `o${i}`,
-      cells: { date: dateWords(str(g.date)) ?? str(g.date), opp: str(g.opp), gs: str(g.gs), ip: str(g.ip), er: str(g.er), h: str(g.ha), bb: str(g.bb), k: str(g.k) },
+      cells: { date: dateWords(str(g.date)) ?? str(g.date), opp: str(g.opp), gs: str(g.gs), ip: num(g.ip) === null ? null : inningsOf(num(g.ip)!), er: str(g.er), h: str(g.ha), bb: str(g.bb), k: str(g.k) },
       sort: { date: i, opp: str(g.opp), gs: num(g.gs), ip: num(g.ip), er: num(g.er), h: num(g.ha), bb: num(g.bb), k: num(g.k) },
     }))));
   }

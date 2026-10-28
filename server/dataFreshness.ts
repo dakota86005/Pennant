@@ -21,6 +21,7 @@
  */
 
 import type { Integer } from './contract/primitives.js';
+import { plural } from './numberWords.js';
 
 export type RosterEvidenceLevel = 'current' | 'partial' | 'stale' | 'unavailable';
 
@@ -97,7 +98,6 @@ export function addDays(iso: string, days: number): string {
   return new Date(toMs(iso) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export const STALE_SNAPSHOT_ACTION =
   'Your Pennant roster snapshot is behind the current OOTP save. Export fresh database data before relying on roster recommendations.';

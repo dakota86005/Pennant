@@ -66,7 +66,7 @@ const TONE_ORDER: Record<string, number> = { good: 0, caution: 1, bad: 2 };
 
 function healthCell(arm: AnyArm): Cell {
   if (!arm.injury) return cell('Healthy', { tone: 'good' });
-  const days = arm.injury.daysLeft ? `, about ${arm.injury.daysLeft} days left` : '';
+  const days = arm.injury.daysLeft ? `, about ${plural(arm.injury.daysLeft, 'day')} left` : '';
   return cell(`${arm.injury.status}${days}`, { tone: arm.injury.playable ? 'caution' : 'bad' });
 }
 

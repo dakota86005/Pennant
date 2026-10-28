@@ -1,6 +1,7 @@
 import { db, tableExists } from './db.js';
 import type { Integer } from './contract/primitives.js';
 import { loadSettings } from './settings.js';
+import { plural } from './numberWords.js';
 
 /**
  * Whose organization a view is about (AGENTS.md: resolve the configured organization, then the human-managed OOTP
@@ -52,7 +53,7 @@ export function currentOrganization(): CurrentOrganization | null {
   if (!found || found.source === 'requested') return null;
   const human = humanClubs();
   const note = found.source === 'human' && human.length > 1
-    ? `You manage ${human.length} clubs in this save. Pennant follows ${clubName(found.id)}; choose another in Settings.`
+    ? `You manage ${plural(human.length, 'club')} in this save. Pennant follows ${clubName(found.id)}; choose another in Settings.`
     : null;
   return { id: found.id, source: found.source, humanClubs: human.length, note };
 }

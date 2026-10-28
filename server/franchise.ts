@@ -9,6 +9,7 @@ import {
 } from './playerValue.js';
 import type { Sourced } from './provenance.js';
 import { currentGameDate, ON_ROSTER } from './valuation.js';
+import { plural } from './numberWords.js';
 
 /**
  * The club's whole history, which the export has carried all along.
@@ -230,7 +231,6 @@ export interface OrgSum {
 
 type Group = Array<{ player_id: number; name: string }>;
 
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 const winsText = (v: number): string => `${v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`;
 
 function leavesOut(excluded: OrgLeftOut[]): string {

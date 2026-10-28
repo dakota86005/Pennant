@@ -12,6 +12,7 @@ import type { MlbBlock, MlbColumn, MlbRow, MlbTable } from '../majorLeague/types
 import { money } from '../player/words.js';
 import { headOf, source, type PhilosophyContext } from './editor.js';
 import type { CoachingStaffView, StaffSection } from './types.js';
+import { record } from '../../numberWords.js';
 
 const THE_EXPORT = 'The save\'s staff';
 const SCALE = 'OOTP rates coaches on its own 1–200 scale; higher is better. These are the export\'s figures as stated.';
@@ -59,7 +60,7 @@ function ratingsText(ratings: Array<{ label: string; value: number }>): string {
   return ratings.map((r) => `${r.label} ${rated(r.value) ?? 'not known'}`).join(' · ');
 }
 
-const recordText = (r: { w: number; l: number } | null): string | null => (r ? `${r.w}-${r.l}` : null);
+const recordText = (r: { w: number; l: number } | null): string | null => (r ? record(r.w, r.l) : null);
 
 function ratingsBlock(ctx: PhilosophyContext, title: string, ratings: Array<{ label: string; value: number }>): MlbBlock {
   return { title: cell(title), player: null, chips: [], claims: ratings.map((r) => ratingClaim(ctx, r.label, r.value)), lines: [], collapsed: false };

@@ -43,7 +43,7 @@
   },
   "figures": [
     {
-      "text": "Seasons, 2039",
+      "text": "One season, 2039",
       "tone": "neutral",
       "basis": {
         "because": [
@@ -171,35 +171,6 @@
         "unit": "rate",
         "display": "2039: 30–30"
       }
-    },
-    {
-      "text": "Worst season",
-      "tone": "bad",
-      "basis": {
-        "because": [
-          {
-            "label": "Read as",
-            "value": "The season with the worst winning percentage; a tie goes to the latest."
-          }
-        ],
-        "source": {
-          "department": "league",
-          "specialist": "The franchise's record books",
-          "asOf": null,
-          "gameDate": "2040-05-05"
-        },
-        "unknown": [],
-        "wouldChange": [],
-        "lean": null,
-        "certainty": "fact",
-        "called": "A fact from the export"
-      },
-      "links": [],
-      "value": {
-        "n": 0.5,
-        "unit": "rate",
-        "display": "2039: 30–30"
-      }
     }
   ],
   "chart": {
@@ -241,10 +212,10 @@
         "wins": 30,
         "losses": 30,
         "result": "unknown",
-        "display": "2039: 30-30, how it ended not known"
+        "display": "2039: 30–30, how it ended not known"
       }
     ],
-    "summary": "Wins in each of 1 season, 2039, oldest first; best record 30-30 in 2039; worst 30-30 in 2039.",
+    "summary": "Wins in 2039; best record 30–30 in 2039.",
     "legend": [
       {
         "result": "title",

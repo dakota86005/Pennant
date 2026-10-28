@@ -11,6 +11,7 @@ import type { ScoutedDevelopmentPlayer } from '../../scoutedDevelopment.js';
 import { cell, claim, row, servedValue, unknownValue } from '../claim.js';
 import { decisionTarget, factBasis, factRow, fillMark, headOf, judgmentBasis, lastNameKey, policyCalled, sentenceCells } from './common.js';
 import type { FarmContext, ProspectEvaluationInput, ProspectInput } from './input.js';
+import { inningsOf } from '../../numberWords.js';
 import type { FarmEvaluationRow, FarmFilter, FarmNextAssignment, FarmProspectCard, FarmProspectRow, FarmProspectsView } from './types.js';
 import {
   CALL_ORDER, EVALUATION, MEETING_CALLS, PLAYER_DEVELOPMENT, callWord, fitWord, moveWord, paceWords, plain, plainAll, plural, preferenceWord,
@@ -22,7 +23,7 @@ const CALLED = policyCalled('Player Development\'s prospect model: performance s
 /** His season at his level, as the Prospects page put it: "62.1 IP · 3.48 ERA · 24.3% K", "212 PA · .812 OPS · 9 HR". */
 function seasonLine(p: ProspectInput): string {
   if (p.ip !== null && p.ip !== undefined) {
-    return [`${p.ip.toFixed(1)} IP`, p.era != null ? `${p.era.toFixed(2)} ERA` : null, p.kpct != null ? `${p.kpct.toFixed(1)}% K` : null].filter(Boolean).join(' · ');
+    return [`${inningsOf(p.ip)} IP`, p.era != null ? `${p.era.toFixed(2)} ERA` : null, p.kpct != null ? `${p.kpct.toFixed(1)}% K` : null].filter(Boolean).join(' · ');
   }
   return [p.pa != null ? `${p.pa} PA` : null, p.opsVal != null ? `${p.opsVal.toFixed(3).replace(/^0/, '')} OPS` : null, p.hr != null ? `${p.hr} HR` : null].filter(Boolean).join(' · ');
 }

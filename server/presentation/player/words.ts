@@ -7,37 +7,24 @@
  * Nothing here computes a figure about a player: every number is Player Value's, Player Rights' or the export's, as handed in.
  */
 
+import { money, moneyRange, ordinal, plural } from '../../numberWords.js';
+
 // ── numbers ──────────────────────────────────────────────────────────────────
 
-/** Dollars at a precision: millions to `digits` places, or thousands below a million. */
-function dollars(v: number, digits: number): string {
-  if (v === 0) return '$0';
-  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(digits)}M`;
-  return `$${Math.round(v / 1_000)}K`;
-}
-
-/** One figure as the pages print money: "$8.5M", "$780K". */
-export const money = (v: number): string => dollars(v, 1);
-
-/** Signed money: "$28.0M", "−$9.0M". */
-export const signedMoney = (v: number): string => (v < 0 ? `−${money(-v)}` : money(v));
-
-/** A price of a win to the hundredth of a million: "$7.25M". */
-export const perWin = (v: number): string => `$${(v / 1_000_000).toFixed(2)}M`;
-
 /**
- * "$4.6M–$25.3M", "$780K–$790K", or "$9.0M" for a point. Ends that differ never print alike: a range whose ends round to
- * the same tenth of a million prints to the hundredth (`src/costBand.ts`).
+ * Money, counts and places come from the one shared formatter (`numberWords.ts`, B-06): "$8.5M", "$780K", "−$9M",
+ * "$4.6M–$25.3M", "4 games", "21st". These names stay so the player window's modules read as before.
  */
-export function costRangeText(low: number, high: number): string {
-  if (low === high) return dollars(low, 1);
-  for (const digits of [1, 2, 3]) {
-    const a = dollars(low, digits);
-    const b = dollars(high, digits);
-    if (a !== b) return `${a}–${b}`;
-  }
-  return `${dollars(low, 3)}–${dollars(high, 3)}`;
-}
+export { money, ordinal, plural };
+
+/** Signed money: "$28M", "−$9M" (the sign before the dollar sign). */
+export const signedMoney = money;
+
+/** A price of a win: "$7.25M". */
+export const perWin = money;
+
+/** "$4.6M–$25.3M", "$780K–$790K", or "$9M" for a point; ends that differ never print alike. */
+export const costRangeText = moneyRange;
 
 /**
  * A number with a true minus sign, one decimal. A value that is not zero but rounds to it prints "<0.1" (or "−<0.1"), so a
@@ -75,9 +62,6 @@ export function listSeasons(ys: readonly number[]): string {
 export const rate3 = (n: number | null | undefined): string | null =>
   (n === null || n === undefined || !Number.isFinite(n) ? null : n.toFixed(3).replace(/^0\./, '.'));
 
-/** "1 game", "4 games". */
-export const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
-
 /** Upper-cases a sentence's first letter. */
 export const capitalized = (text: string): string => (text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : text);
 
@@ -87,13 +71,6 @@ export const afterColon = (t: string): string => (t.length > 0 ? `${t.charAt(0).
 /** A sentence ends with one full stop. */
 export const sentence = (t: string): string => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
 
-/** "1st", "2nd", "3rd". */
-export function ordinal(n: number): string {
-  const r = Math.round(n);
-  const tens = r % 100;
-  if (tens >= 11 && tens <= 13) return `${r}th`;
-  return `${r}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[r % 10] ?? 'th'}`;
-}
 
 // ── the hovers, in the GM's words (`src/ValueSection.tsx`, `src/PlayerHeaderValue.tsx`) ──────────────────────
 

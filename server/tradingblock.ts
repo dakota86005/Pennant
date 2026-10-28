@@ -1,6 +1,7 @@
 import { db, tableExists } from './db.js';
 import { freshnessCue, getDataStatus, type DataStatus, type FreshnessCue } from './dataStatus.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
+import { inningsOf } from './numberWords.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { contractSeasonFor, controlSummaryOf, playerValues, productionHeadlineOf, tradeValueOf, type TradeFigure, type TradeUnit } from './playerValue.js';
 
@@ -107,7 +108,7 @@ function linesFor(players: Array<{ player_id: number; level: number; league_id: 
       const p = wanted.get(row.player_id);
       if (!p || p.position !== 1 || row.level_id !== p.level) continue;
       const s = computePitching(row, leagueBaseline(p.league_id, year, p.level), null);
-      out.set(row.player_id, `${s.ip ?? 0} IP, ${(s.era ?? 0).toFixed(2)} ERA${s.eraPlus !== null ? `, ${s.eraPlus} ERA+` : ''}`);
+      out.set(row.player_id, `${inningsOf(s.ip ?? 0)} IP, ${(s.era ?? 0).toFixed(2)} ERA${s.eraPlus !== null ? `, ${s.eraPlus} ERA+` : ''}`);
     }
   }
 

@@ -22,6 +22,7 @@
  * the posture.
  */
 import { placesOf, type StatedPlace } from './clubProfile.js';
+import { plural } from '../numberWords.js';
 
 /** Expected wins as Player Value serves them: the most likely value inside its range (80%), and the 50% range inside it. */
 export interface WinsRange {
@@ -136,7 +137,7 @@ export function holderAt(
   }
   const why = !log || log.why ? log?.why ?? 'The export has no game-by-game lines to show who starts there.'
     : !club || club.games === 0 ? 'The club hasn\'t played a game yet.'
-      : `Nobody now on the club started there in its last ${club.games} games.`;
+      : `Nobody now on the club started there in its last ${plural(club.games, 'game')}.`;
   return { holder: listed[0] ?? null, behind: listed.slice(1), basis: { rule: 'listed', why } };
 }
 

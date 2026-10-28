@@ -1,5 +1,6 @@
 import { db, tableExists } from './db.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
+import { inningsOf } from './numberWords.js';
 
 /**
  * How a man is actually playing this season, in one league-relative number.
@@ -126,7 +127,7 @@ export function seasonFormByPlayer(teamId: number): Map<number, SeasonForm> {
         index,
         meaningful,
         line: [
-          `${stats.ip ?? 0} IP`,
+          `${inningsOf(stats.ip ?? 0)} IP`,
           era !== null ? `${era} ERA` : null,
           index !== null ? `${index} ERA+` : null,
         ].filter(Boolean).join(', '),

@@ -1,6 +1,7 @@
 import { db, tableExists } from './db.js';
 import { playoffPicture, type PlayoffPicture } from './playoffs.js';
 import { currentGameDate } from './valuation.js';
+import { plural } from './numberWords.js';
 
 /**
  * Buy, hold or sell — and the arithmetic behind it.
@@ -234,9 +235,9 @@ export function deadlineRead(teamId: number): DeadlineRead | null {
     );
   }
   if (picture) reasons.push(picture.summary);
-  reasons.push(`${gamesLeft} games left to settle it.`);
+  reasons.push(`${plural(gamesLeft, 'game')} left to settle it.`);
   if (deadlinePassed) reasons.push('The deadline has passed — this reads the season, not the market.');
-  else if (daysToDeadline !== null) reasons.push(`${daysToDeadline} days to the deadline.`);
+  else if (daysToDeadline !== null) reasons.push(`${plural(daysToDeadline, 'day')} to the deadline.`);
 
   const chance = `${Math.round(odds * 100)}%`;
   const headline = {

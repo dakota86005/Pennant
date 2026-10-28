@@ -17,6 +17,7 @@ import { parseGameDate } from './dataFreshness.js';
 import { currentSaveName } from './history.js';
 import { allLeagueRules, type LeagueRules } from './leagueRules.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
+import { plural } from './numberWords.js';
 
 const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
@@ -94,7 +95,7 @@ export function seasonPlayedOf(now: SeasonRecord | null, gamesPerTeam: Sourced<n
   }
   const scheduled = now.clubs.size * gamesPerTeam.value;
   return derivedFrom(now.games / scheduled,'team_record.g + leagues.rules_schedule_games_per_team',
-    `${now.games} of ${scheduled} team-games played (${now.clubs.size} clubs × ${gamesPerTeam.value}).`);
+    `${now.games} of ${scheduled} team-games played (${plural(now.clubs.size, 'club')} × ${gamesPerTeam.value}).`);
 }
 
 /** The league's current game date, as an ISO date (`parseGameDate`), or null. */

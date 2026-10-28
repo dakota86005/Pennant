@@ -1,4 +1,5 @@
 import { db, tableExists } from './db.js';
+import { ordinal as ordinalOf } from './numberWords.js';
 
 /**
  * Where the club actually stands for a playoff place.
@@ -179,7 +180,7 @@ export function playoffPicture(teamId: number): PlayoffPicture | null {
       ? gamesBack(lastIn, mine)
       : null;
 
-  const ordinal = rank >= 0 ? nth(rank + 1) : null;
+  const ordinal = rank >= 0 ? ordinalOf(rank + 1) : null;
   let summary: string;
   if (inAPlace) {
     const cushion = wildcardGb === null ? null : Math.abs(wildcardGb);
@@ -213,9 +214,4 @@ function fmt(games: number): string {
   return `${text} game${n === 1 ? '' : 's'}`;
 }
 
-function nth(n: number): string {
-  if (n === 1) return '1st';
-  if (n === 2) return '2nd';
-  if (n === 3) return '3rd';
-  return `${n}th`;
-}
+

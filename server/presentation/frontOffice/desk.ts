@@ -16,6 +16,11 @@ import { DESK_SEVERITIES, rankOf, type DepartmentReading, type DeskSeverity, typ
 import type { DepartmentCard, DepartmentReport, Desk, DeskAttention, FoItem, FrontOfficeSummary, ReportSection } from './types.js';
 import type { MorningParts } from './morningTypes.js';
 
+/** The shared counts and lists (`numberWords.ts`): "2,076 players"; "Farm, Finance and Medical". */
+import { count, listWords, plural } from '../../numberWords.js';
+
+export { listWords, plural };
+
 /** What every claim of one build shares: the club, the import it reads and the game date it reflects. */
 export interface BuildContext {
   orgId: number;
@@ -67,9 +72,7 @@ export type DepartmentAnswer = DepartmentReading<DepartmentMaterial> | NotYet;
 const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 
 /** A count at the start of a sentence: "Two", or "12" beyond ten. */
-export const countWord = (n: number): string => NUMBER_WORDS[n] ?? String(n);
-
-export const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
+export const countWord = (n: number): string => NUMBER_WORDS[n] ?? count(n);
 
 /** The desk's severity in words. */
 export const SEVERITY_WORDS: Record<DeskSeverity, string> = { critical: 'Urgent', attention: 'Needs attention', noted: 'Noted' };
@@ -372,12 +375,6 @@ export function desk(reports: readonly DepartmentReport[]): Desk {
     openCount: items.length + more.reduce((sum, m) => sum + m.count, 0),
     deferChoices: [],
   };
-}
-
-/** "Medical", "Finance and Medical", "Farm, Finance and Medical". */
-export function listWords(names: readonly string[]): string {
-  if (names.length <= 1) return names.join('');
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 /**

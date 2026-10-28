@@ -19,6 +19,7 @@ import { basis, cell, claim, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { gamesWords, ordinal } from './morning.js';
 import type { Wire, WireEntry, WireKind, WireKindChoice, WireOrder, WireTop } from './leagueTypes.js';
+import { plural } from '../../numberWords.js';
 
 /** The kinds in the wire's stated order within a day. */
 export const KIND_ORDER: readonly WireKind[] = ['trade', 'move', 'injury', 'award', 'streak', 'standings'];
@@ -150,7 +151,7 @@ function headline(f: WireFact, ctx: WireContext) {
     case 'streak':
       because.push({ label: 'Games', value: String(f.detail.games) });
       if (f.detail.started) because.push({ label: 'Began', value: gameDateDisplay(f.detail.started) ?? f.detail.started });
-      because.push({ label: 'Shown from', value: `${f.detail.line} games` });
+      because.push({ label: 'Shown from', value: `${plural(f.detail.line, 'game')}` });
       certainty = 'policy';
       stamp = 'The wire shows hitting streaks of 15 games or more and on-base streaks of 25 or more, for players on a major-league club.';
       break;

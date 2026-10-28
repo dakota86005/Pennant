@@ -20648,7 +20648,7 @@
           },
           "format": {
             "$ref": "#/components/schemas/StatFormat",
-            "description": "How a value is written: `int`, `avg3` (.312), `dec1`, `dec2`, `pct` (a share), `plus` (100 is league average)."
+            "description": "How a value is written: `int`, `avg3` (.312), `dec1`, `dec2`, `pct` (a share), `plus` (100 is league average), `ip` (innings and outs: 10.2)."
           },
           "section": {
             "$ref": "#/components/schemas/StatSection"
@@ -20679,7 +20679,8 @@
               "dec1",
               "dec2",
               "pct",
-              "plus"
+              "plus",
+              "ip"
             ]
           },
           {

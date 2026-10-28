@@ -667,7 +667,7 @@ function adviseOnGrades(pot: number, cur: number, upside: number): { label: stri
 
   if (pot >= 55 && upside >= 15) {
     label = 'High ceiling, long wait';
-    reasons.push(`${pot} ceiling, but ${upside} points of it is still projection`);
+    reasons.push(`${pot} ceiling, but ${upside} ${upside === 1 ? 'point of it is' : 'points of it are'} still projection`);
   } else if (upside <= 8 && cur >= 45) {
     label = 'Close to ready';
     reasons.push(`already at ${cur} of a ${pot} ceiling — least development left`);

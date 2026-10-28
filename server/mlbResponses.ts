@@ -41,6 +41,7 @@ import type { MlbAssignmentAssessment } from './org.js';
 import type {
   ActionRights, MissingEvidence, OptionYears, PlayerRights, RightsReason, RightsRequirement, RightsStatus,
 } from './playerRights.js';
+import { plural } from './numberWords.js';
 
 // ── ports ───────────────────────────────────────────────────────────────────
 
@@ -660,7 +661,7 @@ function assemble(
   else if (requiresClearing.active || requiresClearing.fortyMan) group = 'open_requires_clearing';
 
   const why: string[] = [`${raw.source}.`];
-  if (group === 'unavailable') why.push(`Currently ${m.availability.label ?? 'unavailable'}${m.availability.daysLeft ? ` (${m.availability.daysLeft} days)` : ''}.`);
+  if (group === 'unavailable') why.push(`Currently ${m.availability.label ?? 'unavailable'}${m.availability.daysLeft ? ` (${plural(m.availability.daysLeft, 'day')})` : ''}.`);
   if (group === 'blocked_by_rights') why.push(...steps.filter((s) => s.status === 'ineligible').map((s) => `${s.label}.`));
   if (group === 'blocked_by_development') why.push(...(development.status === 'indefensible' ? development.blockers : []));
   if (group === 'context_dependent' && development.status === 'context_dependent' && development.duration) {
@@ -1013,7 +1014,7 @@ export function contemplatedAssignment(need: MlbNeed, override?: MlbAssignmentCo
   if (h === 'extended') return one('temporary_depth', 'derived_from_horizon', `The need is extended (about ${need.horizon.days} days) but bounded.`);
   if (h === 'long_term') return one('durable_role', 'derived_from_horizon', need.horizon.days === null
     ? 'Replacing a role holder is open-ended, so a durable role is contemplated.'
-    : `The need is long-term (about ${need.horizon.days} days), so a durable role is contemplated.`);
+    : `The need is long-term (about ${plural(need.horizon.days, 'day')}), so a durable role is contemplated.`);
   return {
     context: null, evaluated: ['temporary_depth', 'durable_role'],
     label: 'Temporary depth and a durable assignment', basis: 'duration_unknown',

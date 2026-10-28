@@ -263,7 +263,7 @@
               "display": "177"
             },
             "diff": {
-              "display": "-16",
+              "display": "−16",
               "tone": "bad"
             },
             "streak": {
@@ -426,7 +426,7 @@
               "display": "153"
             },
             "diff": {
-              "display": "-12",
+              "display": "−12",
               "tone": "bad"
             },
             "streak": {
@@ -711,7 +711,7 @@
                     "display": "177"
                   },
                   "diff": {
-                    "display": "-16",
+                    "display": "−16",
                     "tone": "bad"
                   },
                   "streak": {
@@ -866,7 +866,7 @@
                     "display": "153"
                   },
                   "diff": {
-                    "display": "-12",
+                    "display": "−12",
                     "tone": "bad"
                   },
                   "streak": {
@@ -982,7 +982,7 @@
           },
           {
             "label": "Runs",
-            "value": "161 scored, 177 allowed (-16)"
+            "value": "161 scored, 177 allowed (−16)"
           },
           {
             "label": "Strength read from the runs",
@@ -1056,7 +1056,7 @@
           },
           {
             "label": "Runs",
-            "value": "161 scored, 177 allowed (-16)"
+            "value": "161 scored, 177 allowed (−16)"
           },
           {
             "label": "Strength read from the runs",
@@ -1104,7 +1104,7 @@
     },
     "reasons": [
       {
-        "display": "15–15, 161 runs scored and 177 allowed (-16)"
+        "display": "15–15, 161 runs scored and 177 allowed (−16)"
       },
       {
         "display": "The runs fit about 14 wins so far; the club has 15"

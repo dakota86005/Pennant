@@ -20,6 +20,7 @@ import { clubColorsPack } from './themePacks.js';
 import {
   BATTING_STATS, CONTACT_STATS, FIELDING_STATS, PITCHING_STATS, type StatDef, type StatFormat,
 } from './statCatalog.js';
+import { ordinal } from '../numberWords.js';
 
 /** A term and what it means (a column label and its explanation). */
 export interface GlossaryEntry {
@@ -41,7 +42,7 @@ export interface StatEntry {
   display: string;
   /** What it means. */
   text: string;
-  /** How a value is written: `int`, `avg3` (.312), `dec1`, `dec2`, `pct` (a share), `plus` (100 is league average). */
+  /** How a value is written: `int`, `avg3` (.312), `dec1`, `dec2`, `pct` (a share), `plus` (100 is league average), `ip` (innings and outs: 10.2). */
   format: StatFormat;
   section: StatSection;
   /** Lower is better (an ERA, a strikeout rate for a hitter). */
@@ -209,12 +210,6 @@ function recordCell(teamId: number): Cell {
   const hint = `${record.w} ${record.w === 1 ? 'win' : 'wins'}, ${record.l} ${record.l === 1 ? 'loss' : 'losses'}${place ? `, ${place}${back}` : ''}`;
   return cell(`${record.w}–${record.l}`, { hint });
 }
-
-const ordinal = (n: number): string => {
-  const rem100 = n % 100;
-  const suffix = rem100 >= 11 && rem100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
-  return `${n}${suffix}`;
-};
 
 /** The clubs the catalog describes: the major-league clubs (`catalogClubs()` in `org.ts`). */
 export interface ClubSource {

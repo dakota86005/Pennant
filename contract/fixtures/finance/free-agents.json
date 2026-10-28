@@ -54,7 +54,7 @@
         "because": [
           {
             "label": "Budget",
-            "value": "$150.0M"
+            "value": "$150M"
           },
           {
             "label": "Source",
@@ -77,7 +77,7 @@
       "value": {
         "n": 150000000,
         "unit": "dollars",
-        "display": "$150.0M"
+        "display": "$150M"
       }
     },
     {
@@ -87,7 +87,7 @@
         "because": [
           {
             "label": "Payroll now",
-            "value": "$90.0M"
+            "value": "$90M"
           },
           {
             "label": "Source",
@@ -110,7 +110,7 @@
       "value": {
         "n": 90000000,
         "unit": "dollars",
-        "display": "$90.0M"
+        "display": "$90M"
       }
     },
     {
@@ -139,7 +139,7 @@
       "value": {
         "n": 60000000,
         "unit": "dollars",
-        "display": "$60.0M"
+        "display": "$60M"
       }
     },
     {
@@ -149,7 +149,7 @@
         "because": [
           {
             "label": "Payroll next season",
-            "value": "$60.0M"
+            "value": "$60M"
           },
           {
             "label": "Source",
@@ -173,7 +173,7 @@
       "value": {
         "n": 60000000,
         "unit": "dollars",
-        "display": "$60.0M"
+        "display": "$60M"
       }
     },
     {
@@ -202,7 +202,7 @@
       "value": {
         "n": 90000000,
         "unit": "dollars",
-        "display": "$90.0M"
+        "display": "$90M"
       }
     },
     {
@@ -212,7 +212,7 @@
         "because": [
           {
             "label": "Cash for trades",
-            "value": "$5.0M"
+            "value": "$5M"
           },
           {
             "label": "Source",
@@ -235,7 +235,7 @@
       "value": {
         "n": 5000000,
         "unit": "dollars",
-        "display": "$5.0M"
+        "display": "$5M"
       }
     }
   ],

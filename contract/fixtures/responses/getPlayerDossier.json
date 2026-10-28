@@ -1366,7 +1366,7 @@
             },
             {
               "label": "Detail",
-              "value": "not yet calibrated on this save (0 seasons): the starting fallback prior, rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: hitter mean 2.00, starter mean 1.73, reliever mean -0.21); no fit has been made on this save yet"
+              "value": "not yet calibrated on this save (0 seasons): the starting fallback prior, rates regressed toward this league's own mean and scaled to its own spread of rates (derived from the export: hitter mean 2.00, starter mean 1.73, reliever mean −0.21); no fit has been made on this save yet"
             }
           ],
           "source": {
@@ -1532,7 +1532,7 @@
               "display": "not known"
             },
             "cost": {
-              "display": "$2.1M ($700K to $11.8M)"
+              "display": "$2.05M ($700K to $11.8M)"
             },
             "counts": {
               "display": "91%"
@@ -1567,7 +1567,7 @@
               "display": "not known"
             },
             "cost": {
-              "display": "$2.1M ($700K to $11.8M)"
+              "display": "$2.05M ($700K to $11.8M)"
             },
             "counts": {
               "display": "86%"
