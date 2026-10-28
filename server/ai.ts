@@ -10,8 +10,8 @@ import {
 import {
   PROVIDERS, authRejected, describeError, isProviderId, providerFor, toolLoop, withoutKey, type FallbackNotice,
 } from './providers.js';
-import { TOOLS, VALUE_FIGURES_NOTE, aiErrorStatus, noKeyMessage, runTool } from './chat.js';
-import { computeProspects } from './org.js';
+import { TOOLS, aiErrorStatus, noKeyMessage, runTool } from './chat.js';
+import { WRITER_GUARDRAILS } from './aiGuardrails.js';
 import { farmBriefing } from './farmOperations.js';
 import { computeContracts } from './contracts.js';
 import { tradeContext } from './trade.js';
@@ -77,7 +77,6 @@ export function briefingContext(orgId: number) {
        ORDER BY r.pos`
     )
     .all(team.league_id, team.sub_league_id, team.division_id);
-  const prospects = computeProspects(orgId);
   let contracts: unknown = null;
   try {
     const c = computeContracts(orgId);
@@ -91,11 +90,10 @@ export function briefingContext(orgId: number) {
     seasonYear: seasonYear(team.league_id as number),
     standings,
     /*
-     * The farm as its own department describes it: what needs a decision, and Player Development's
-     * promotion-direction recommendations. Not a "top prospects" slice — the prospect payload is
-     * ordered by name, so the first five were the first five alphabetically.
+     * The farm as its own department describes it: what needs a decision, and the farm review's conclusions where a
+     * more demanding assignment is defensible. Not a "top prospects" slice, and no legacy recommendation code (B-63).
      */
-    farm: farmBriefing(orgId, prospects),
+    farm: farmBriefing(orgId),
     contractSituations: contracts,
     /*
      * Who is genuinely for sale, which is most of what a deadline briefing is
@@ -119,21 +117,10 @@ export function briefingSystem(organization: string, leagueRules: string): strin
     `You are the assistant GM of the ${organization} in a saved game of Out of the Park ` +
     `Baseball, writing the weekly briefing for the GM. Everything below is from that save — the ` +
     `standings, statistics and contracts are outcomes the simulation generated, and the names come ` +
-    `from the game's database. LEAGUE RULES: ${leagueRules} Everything you advise must fit ` +
+    `from the game's database. LEAGUE RULES: ${leagueRules} Everything you write must fit ` +
     `these rules rather than the modern game. Be direct and decision-oriented: what happened, what ` +
     `needs a decision now, what to watch. Ground everything in the provided data with real numbers. ` +
-    `STRICT DATA RULES: Never infer a player's position, role, handedness, injury, contract demand, ` +
-    `salary demand, or roster status from his name or from outside baseball knowledge. Use only fields ` +
-    `explicitly present in the supplied data. If a fact is absent, omit it rather than guess. ` +
-    `FARM: 'farm.attention' is what Minor League Operations says needs a decision (a prospect who cannot ` +
-    `get the work, an affiliate that cannot field a team, a roster spot in question); 'farm.promotionDirection' ` +
-    `lists players for whom Player Development finds a promotion ONE AFFILIATE LEVEL developmentally defensible — ` +
-    `never a call-up. 'mlb_ready_discussion' is a discussion, not a call-up. Only a player currently at AAA may be ` +
-    `described as an MLB call-up candidate, and do not say a minor-league promotion fills an MLB bench or bullpen ` +
-    `need. Do not rank prospects or invent a top-prospect list. CONTRACTS: 'contractSituations' describe each contract ` +
-    `(salary, term, what happens after this season, next season's cost, expected wins, contract value and value of keeping ` +
-    `him as ranges with a most-likely figure); they carry no recommendation, so never present one as the app's advice, ` +
-    `and say 'not known' where a figure is null. Do not invent extension years or dollar figures. ` +
+    `${WRITER_GUARDRAILS} ` +
     `Only MLB-level injuries directly create major-league roster holes; affiliate injuries affect organizational ` +
     `depth. Respect the game date: before Opening Day, 0-0 standings are not a development and expiring-after-season ` +
     `contracts generally are not immediate weekly decisions. 'dataFreshness' says how current the data is: where it ` +
@@ -141,7 +128,7 @@ export function briefingSystem(organization: string, leagueRules: string): strin
     `Structure with short markdown headers (## Status, ## Decisions Needed, ## Watch List, ` +
     `## Worth a look this week). Under Worth a look this week, name one thing in the data the GM may want to look at ` +
     `and why, worded as something to look at, never as an instruction or a decision made for him: the GM decides. ` +
-    `Keep it under 500 words. ${VALUE_FIGURES_NOTE}`
+    `Keep it under 500 words.`
   );
 }
 
@@ -207,7 +194,7 @@ aiRoutes.post('/briefing/:orgId', (req, res) => {
  * man with different standards halfway down the thread.
  */
 export function tradeSystem(
-  voice: Persona, orgLabel: string | undefined, leagueId?: number, options: { winValues?: boolean } = {},
+  voice: Persona, orgLabel: string | undefined, leagueId?: number,
 ): string {
   const who =
     voice.name === 'the front office'
@@ -243,11 +230,7 @@ export function tradeSystem(
     `"ourView", where present, is the same reading through this club's philosophy, with each lean named.\n` +
     `- "expectedWins" is each man's projected wins above replacement for the rest of this season (or the whole of it) and ` +
     `next season, with the likely range.` +
-    // The Mac app's desk is not handed the club's value of a win, nor told of it (D-060: odds belong to the standings)
-    (options.winValues === false
-      ? ''
-      : ` "clubValueOfAWin" is context from the standings (how much one more win moves a club's playoff odds), never part ` +
-        `of any value figure.`) +
+    // No desk is handed the club's value of a win or anything read from the odds (D-060, amended 2026-10-28)
     `\n` +
     `- "onTheBlock" names the men in this deal whose own club has listed them for trade. A club ` +
     `that has listed a player wants to move him and the price starts lower; a club that has not ` +
@@ -355,7 +338,7 @@ interface TradeBody {
 
 /** Both routes want the same validation and the same context assembly. */
 function tradeSetup(
-  body: TradeBody, options: { winValues?: boolean } = {},
+  body: TradeBody,
 ): { orgId: number; voice: Persona; context: unknown; leagueId?: number } {
   const { sideA, sideB } = body;
   if (!Array.isArray(sideA) || !Array.isArray(sideB) || sideA.length === 0 || sideB.length === 0) {
@@ -368,7 +351,7 @@ function tradeSetup(
   return {
     orgId,
     voice: tradeVoice(orgId),
-    context: tradeContext(orgId, sideA, sideB, options),
+    context: tradeContext(orgId, sideA, sideB),
     leagueId: league,
   };
 }
@@ -405,15 +388,15 @@ export function threadKept(thread: unknown): Array<{ role: 'user' | 'assistant';
 /**
  * The trade desk's answer: its read of the deal, or, with a `message`, its reply to the GM's question about it. The one
  * place the desk is asked, for `/trade/ai-eval`, `/trade/ai-reply` and the Mac app's Trade Desk (N12, D-073): the same
- * system prompt, context and model. `winValues: false` (the Mac app's) leaves the club's value of a win out of the context
- * and the prompt (D-060). It explains Pennant's figures and decides nothing (D-001). Errors are thrown as they come, for
+ * system prompt, context and model. No caller's context or prompt carries the club's value of a win or anything read
+ * from the odds (D-060, amended 2026-10-28). It explains Pennant's figures and decides nothing (D-001). Errors are thrown as they come, for
  * each caller to answer in its own way.
  */
 async function deskAnswer(
-  body: TradeBody, options: { winValues?: boolean } = {},
+  body: TradeBody,
 ): Promise<{ text: string; voice: Persona; notice: FallbackNotice | null }> {
-  const { voice, context, leagueId } = tradeSetup(body, options);
-  const system = tradeSystem(voice, body.orgLabel, leagueId, options);
+  const { voice, context, leagueId } = tradeSetup(body);
+  const system = tradeSystem(voice, body.orgLabel, leagueId);
   let notice: FallbackNotice | null = null;
   const onFallback = (n: FallbackNotice) => { notice = n; };
   const message = typeof body.message === 'string' ? body.message.trim() : '';
@@ -450,7 +433,7 @@ export const TRADE_SIDES_EMPTY = 'Put a player on each side first.';
 export const TRADE_DESK_FAILED = 'The AI desk couldn\'t answer this time.';
 
 /**
- * The Mac app's AI desk (N12 Track C, D-073): `deskAnswer` without the club's value of a win (D-060). AI off is a 409 in
+ * The Mac app's AI desk (N12 Track C, D-073): `deskAnswer`, as the React routes ask it. AI off is a 409 in
  * words; a provider that refuses the key is a 401 (`aiErrorStatus`, as the React routes answer it); any other failure a
  * 502. Logged as the React routes log it, by its worded message only, never a raw error that could carry a key or prompt.
  */
@@ -460,7 +443,6 @@ async function askForTheMac(q: TradeDeskQuestion): Promise<TradeDeskReply> {
   try {
     const { text, voice, notice } = await deskAnswer(
       { orgId: q.orgId, orgLabel: q.orgLabel, sideA: q.sent, sideB: q.received, thread: q.thread, message: q.message },
-      { winValues: false },
     );
     return { text, voice: { name: voice.name, role: voice.role }, notice: notice ? { message: notice.message } : null };
   } catch (err) {

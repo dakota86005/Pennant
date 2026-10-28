@@ -353,7 +353,7 @@ export interface ResponsePacket {
   report: StaffReport | null;
   /** For a replacement: the ways to make room for him, each followed through to what it does to the other groups. */
   plans?: Plan[] | null;
-  /** The organization's window and the season, and how they lean on this advice. Null when no philosophy is known. */
+  /** The organization's competitive window and how it leans on this advice. Null when no philosophy is known. */
   context?: ContextRead | null;
   /** Players the discovery did not consider, and why — counted, not listed. */
   notConsidered: Array<{ reason: string; count: number }>;

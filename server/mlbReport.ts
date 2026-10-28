@@ -118,7 +118,7 @@ export interface Recommendation {
   wouldChange: string[];
   confidence: 'high' | 'moderate' | 'low';
   basis: string;
-  /** How the organization's philosophy and the season leaned on this recommendation, each a named reason (D-036). Empty when nothing leaned. */
+  /** How the organization's philosophy leaned on this recommendation, each a named reason (D-036). Empty when nothing leaned. */
   shading?: ShadeReason[];
   /** What a club with no stated philosophy would be told, when that differs: so the effect of the philosophy is never hidden. */
   neutralStance?: 'act' | 'explore' | 'monitor' | 'hold' | null;
@@ -771,7 +771,7 @@ function complementReport(
       toSettle: [], wouldChange: ['The regular\'s ratings against that hand changing, or the partner losing playing time to injury.'], confidence: 'moderate', basis: COMPLEMENT_BASIS, shading,
     };
   } else if (lead && plan) {
-    if (bar?.patient && bar.why.patient) shading.push({ ...bar.why.patient, text: 'Neither the window nor the season presses, so a platoon is worth pursuing rather than setting up outright.' });
+    if (bar?.patient && bar.why.patient) shading.push({ ...bar.why.patient, text: 'Your competitive window leaves room to be patient, so a platoon is worth pursuing rather than setting up outright.' });
     recommendation = {
       stance: 'explore', headline: staffView(`worth pursuing: ${plan.title}.`),
       because: [`${subject.name} has a platoon problem (${regular.basis.replace(/_/g, ' ')}).`, plan.summary],

@@ -25,7 +25,6 @@ import { openFarmSession, type FarmSession } from './mlbEvidence.js';
 /** Where a candidate's grades come from, when it needs saying (D-067), for a need's evidence trail. */
 export { ratingsNoteOf } from './mlbEvidence.js';
 import { resolvePhilosophy } from './philosophy.js';
-import { deadlineRead } from './posture.js';
 import { readContext, type ContextRead, type OrganizationContext } from './staffPreference.js';
 import { rightsFor } from './playerContext.js';
 import { philosophyForOrg } from './settings.js';
@@ -36,17 +35,14 @@ import { majorLeagueId } from './resultsEvidence.js';
 
 export const mlbOperationsRoutes = Router();
 
-/** The organization's philosophy and where its season stands: the two things that lean on advice (D-036). Read, never assumed. */
+/**
+ * The organization's philosophy, the one thing that leans on advice (D-036). Read, never assumed. The season's postseason
+ * odds are not read: they never move the staff's advice (D-060, amended 2026-10-28).
+ */
 export function organizationContext(orgId: number): OrganizationContext {
   const philosophy = resolvePhilosophy(philosophyForOrg(orgId));
-  let posture: OrganizationContext['posture'] = null;
-  try {
-    const read = deadlineRead(orgId);
-    if (read) posture = { posture: read.posture, odds: read.odds, gamesLeft: read.gamesLeft, deadlinePassed: read.deadlinePassed, headline: read.headline };
-  } catch { posture = null; }
   return {
     dimensions: Object.fromEntries(Object.entries(philosophy.dimensions).map(([k, v]) => [k, v.value])) as OrganizationContext['dimensions'],
-    posture,
   };
 }
 
@@ -135,7 +131,7 @@ export interface MlbOverview {
   /** Minimum role-coverage floors in force. Floors, not ideal roster targets. */
   coverage: { basis: 'minimum_floor'; source: string; floors: Array<{ role: string; count: number; label: string }> };
   needs: MlbNeed[];
-  /** The organization's window and the season, and how they lean on the advice below. Null when nothing is known. */
+  /** The organization's competitive window and how it leans on the advice below. Null when nothing is known. */
   context: ContextRead | null;
   /**
    * The scouting review of the pitching groups, most concerning first. A finding is a flag for

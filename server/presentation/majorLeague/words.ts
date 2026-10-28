@@ -131,7 +131,7 @@ export const QUALITY_TEXT: Readonly<Record<string, string>> = {
 };
 export const QUALITY_TONE: Readonly<Record<string, Tone>> = { regular_quality: 'good', credible: 'good', emergency: 'bad', unknown: 'unknown' };
 export const DIMENSION_LABEL: Readonly<Record<string, string>> = {
-  competitiveWindow: 'Window and season', riskTolerance: 'Risk tolerance', ageCurveSensitivity: 'Age-curve sensitivity', upsidePreference: 'Upside preference',
+  competitiveWindow: 'Competitive window', riskTolerance: 'Risk tolerance', ageCurveSensitivity: 'Age-curve sensitivity', upsidePreference: 'Upside preference',
   defenseEmphasis: 'Defense emphasis', rosterDepth: 'Roster depth', pitchingDepth: 'Pitching depth', versatility: 'Versatility', usage: 'How he is used',
   promotionAggressiveness: 'Promotion aggressiveness',
 };

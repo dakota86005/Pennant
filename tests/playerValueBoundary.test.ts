@@ -256,7 +256,6 @@ const ALLOWED_IMPORTS = new Set([
 const LENS = 'playerValueLens.ts';
 /** Phase 5b: the club's value of a win reads the deadline read's odds model; only the reader asks it (Part 4.5). */
 const WIN_VALUE = 'playerValueWinValue.ts';
-const ODDS_READER = 'playerValue.ts';
 
 /** The modules that open league.db at all: the readers, the snapshot writer (its game date) and the route (a table check). The pure modules never do. */
 const DB_READERS = ['playerValue.ts', 'playerValueHistory.ts', 'playerValueSnapshot.ts', 'playerValueRoutes.ts'];
@@ -370,7 +369,8 @@ describe('the Player Value boundary', () => {
     expect(blanked).toMatch(/\/\* not a comment \*\//);
     expect(blanked).not.toMatch(/hidden/);
     // The real helpers on the real tree: every value module parses and yields its imports
-    for (const file of VALUE_MODULES) expect(importsOf(file).length, file).toBeGreaterThan(0);
+    // (The club's value of a win imports nothing since the odds left Player Value, D-060 amended 2026-10-28: its own test holds that.)
+    for (const file of VALUE_MODULES.filter((f) => f !== WIN_VALUE)) expect(importsOf(file).length, file).toBeGreaterThan(0);
     expect(SERVER_FILES.length).toBeGreaterThan(VALUE_MODULES.length);
   });
 
@@ -383,7 +383,6 @@ describe('the Player Value boundary', () => {
       && !(WRITERS.includes(file) && WRITER_IMPORTS.has(i))
       && !(PACKAGE_IMPORTS[file] ?? []).includes(i)
       && !(i === './philosophy.js' && file === LENS)
-      && !(i === './posture.js' && file === ODDS_READER)
       && !(i === './scoutedEvidence.js' && (file === ADAPTER_READER || ADAPTER_TYPES_ONLY.includes(file)))
       // Phase 6a (A-20): the one-player routes read how current the export is, to hand Player Value its currentState
       && !(i === './dataStatus.js' && file === 'playerValueRoutes.ts'));
@@ -592,11 +591,12 @@ describe('the Player Value boundary', () => {
     expect(lens).not.toMatch(/\b(should|recommend\w*|release him|keep him|trade him|extend him|sign him)\b/i);
   });
 
-  it('the club\'s value of a win (phase 5b) is pure and names no philosophy; only the reader reads the odds model, and neither the surplus nor the lens reads it (Part 4.5, Q-6)', () => {
-    expect(importsOf(WIN_VALUE).filter((i) => !['./calibration.js', './playerValueCalibration.js'].includes(i))).toEqual([]);
+  it('the club\'s value of a win (phase 5b) is pure, imports nothing and names no philosophy; no value module reads the odds model, and neither the surplus nor the lens reads it (Part 4.5; D-060, amended 2026-10-28)', () => {
+    expect(importsOf(WIN_VALUE)).toEqual([]);
     expect(code(WIN_VALUE)).not.toMatch(/\bdb\.|prepare\(|philosophy|settings|competitiveWindow|staffPreference/);
-    const readers = VALUE_MODULES.filter((f) => importsOf(f).includes('./posture.js'));
-    expect(readers).toEqual([ODDS_READER]);
+    const readers = VALUE_MODULES.filter((f) => importsOf(f).some((i) => /posture|playoffs/.test(i)));
+    expect(readers).toEqual([]);
+    for (const file of VALUE_MODULES) expect(code(file), file).not.toMatch(/oddsModelOf|oddsAt\(|shownOdds|deadlineRead|playoffPicture/);
     for (const file of ['playerValueSurplus.ts', LENS]) expect(code(file), file).not.toMatch(/winValue|WinValue|posture|playoff/);
   });
 
@@ -796,10 +796,8 @@ describe('the Player Value boundary', () => {
       ['COST_COMBINATION_POLICY_CALIBRATION', 'policy'],
       // Phase 5a (owner, 2026-09-24): the neutral view's discount rate and how the surplus is read
       ['SURPLUS_POLICY_CALIBRATION', 'policy'],
-      // Phase 5b: the lens weights, and the club's value of a win (the curve's extent, and the odds model it reads)
+      // Phase 5b: the lens weights (the club's value of a win has no constant since the odds left it, D-060 amended 2026-10-28)
       ['LENS_POLICY_CALIBRATION', 'policy'],
-      ['WIN_VALUE_POLICY_CALIBRATION', 'policy'],
-      ['WIN_CURVE_CALIBRATION', 'provisional'],
       // Phase 6b: how a trade combines its players (the owner's Payroll rule, extended to a deal's sides and their difference)
       ['TRADE_COMBINATION_POLICY_CALIBRATION', 'policy'],
     ]);

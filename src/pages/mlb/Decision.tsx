@@ -158,7 +158,7 @@ function RecommendationView({ r }: { r: Recommendation }) {
       <ul className="mlb-why">{r.because.map((b) => <li key={b}>{b}</li>)}</ul>
       {r.toSettle.length > 0 && <div><b>To settle first:</b><ul className="mlb-why">{r.toSettle.map((b) => <li key={b}>{b}</li>)}</ul></div>}
       {r.shading && r.shading.length > 0 && (
-        <div><b>How your philosophy and the season leaned on this:</b><ShadingList items={r.shading} />
+        <div><b>How your philosophy leaned on this:</b><ShadingList items={r.shading} />
           {r.neutralStance && <p className="muted">A club with no stated philosophy would have been told: <b>{STANCE_TEXT[r.neutralStance]}</b>.</p>}
         </div>
       )}

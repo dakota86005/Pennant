@@ -81,7 +81,7 @@ interface ClubFinancesData {
   };
   /** Phase 4b: the price of a win across the save's imports. */
   priceHistory?: PriceHistoryEntry[];
-  /** Phase 5b: this club's value of a win now, in playoff odds: context beside the league's price, never in any figure. */
+  /** Phase 5b: this club's value of a win now: not established (D-052, amended), said beside the league's price, never in any figure. */
   winValue?: ClubWinValue;
 }
 /** Which price of a win is in force and why (phase 4b), as Club Finances serves it. */

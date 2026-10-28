@@ -56,14 +56,14 @@ export function replacePacket(sc: Scenario = {}): ResponsePacket {
 export const candidatesOf = (p: ResponsePacket): ResponseCandidate[] => p.groups.flatMap((g) => g.candidates);
 export const candidate = (p: ResponsePacket, id: number): ResponseCandidate => candidatesOf(p).find((c) => c.playerId === id) as ResponseCandidate;
 
-export const posture = (odds: number) => ({ posture: 'hold' as const, odds, gamesLeft: 100, deadlinePassed: false, headline: `${Math.round(odds * 100)}% to reach the postseason.` });
-export const club = (dimensions: OrganizationContext['dimensions'], odds: number | null): OrganizationContext => ({ dimensions, posture: odds === null ? null : posture(odds) });
+/** A club's philosophy: the one thing that leans on the staff's advice (D-036; the odds never do, D-060). */
+export const club = (dimensions: OrganizationContext['dimensions']): OrganizationContext => ({ dimensions });
 
 /** Organizations that lean every way the layer knows how to lean. */
 export const CLUBS: Record<string, OrganizationContext | null> = {
   none: null,
-  contending: club({ competitiveWindow: 90, riskTolerance: 30, ageCurveSensitivity: 20, upsidePreference: 20, defenseEmphasis: 50, rosterDepth: 30, pitchingDepth: 30 }, 0.85),
-  building: club({ competitiveWindow: 10, riskTolerance: 80, ageCurveSensitivity: 85, upsidePreference: 85, defenseEmphasis: 50, rosterDepth: 80, pitchingDepth: 80 }, 0.1),
-  conflicted: club({ competitiveWindow: 90, riskTolerance: 10, ageCurveSensitivity: 10, upsidePreference: 10, defenseEmphasis: 50, rosterDepth: 10, pitchingDepth: 10 }, 0.1),
-  balanced: club({ competitiveWindow: 50, riskTolerance: 50, ageCurveSensitivity: 50, upsidePreference: 50, defenseEmphasis: 50, rosterDepth: 50, pitchingDepth: 50 }, null),
+  contending: club({ competitiveWindow: 90, riskTolerance: 30, ageCurveSensitivity: 20, upsidePreference: 20, defenseEmphasis: 50, rosterDepth: 30, pitchingDepth: 30 }),
+  building: club({ competitiveWindow: 10, riskTolerance: 80, ageCurveSensitivity: 85, upsidePreference: 85, defenseEmphasis: 50, rosterDepth: 80, pitchingDepth: 80 }),
+  conflicted: club({ competitiveWindow: 90, riskTolerance: 10, ageCurveSensitivity: 10, upsidePreference: 10, defenseEmphasis: 50, rosterDepth: 10, pitchingDepth: 10 }),
+  balanced: club({ competitiveWindow: 50, riskTolerance: 50, ageCurveSensitivity: 50, upsidePreference: 50, defenseEmphasis: 50, rosterDepth: 50, pitchingDepth: 50 }),
 };

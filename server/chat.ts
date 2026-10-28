@@ -19,16 +19,11 @@ import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
 
 export const chatRoutes = Router();
 
-/**
- * What the assistants are told about Pennant's value figures (Player Value phase 6c, D-001, D-052), in place of the old
- * note on OOTP's value percentiles, which no context carries any more. Shared by the briefing and the staff chat.
- */
-export const VALUE_FIGURES_NOTE =
-  "VALUE FIGURES: expected wins, a season's cost, contract value, the value of keeping him and a free agent's cost at the " +
-  "market are Pennant's own readings (Player Value), each a most likely figure with the range it could be; a null means " +
-  'not known, and its reason says why. Quote them as ranges and say when one is not known. You never produce a value ' +
-  'number of your own: no dollar figure, rating, rank or score for a player that is not in the data. They describe; they ' +
-  'recommend nothing, so never present one as advice to sign, keep, trade or release anyone: the GM decides.';
+/** What the assistants are told about Pennant's value figures: one note, shared with the writers (`aiGuardrails.ts`). */
+export { VALUE_FIGURES_NOTE } from './aiGuardrails.js';
+import { NULL_MEANS_UNKNOWN, FARM_TOOL_RULES, VALUE_FIGURES_NOTE } from './aiGuardrails.js';
+import { computeFarmSystem, prospectsForAi } from './farmOperations.js';
+import type { AssignmentReview } from './farmAssignments.js';
 
 /**
  * The conversation lives on disk beside the rest of the app's data.
@@ -288,7 +283,10 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'get_prospects',
-    description: 'Minor leaguers ranked by promotion signal, with the reasoning behind each ranking.',
+    description:
+      "Minor leaguers with enough of a line at their level: each one's season line, his scouted tools and the farm " +
+      "review's conclusion about him ('farmReview'). Listed by name: it is not a ranking, so never present its order as " +
+      'a top-prospect list, and never make a promotion or call-up call of your own from it: the GM decides.',
     input_schema: {
       type: 'object',
       properties: { team_id: { type: 'number' } },
@@ -312,24 +310,10 @@ export const TOOLS: Anthropic.Tool[] = [
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   /*
-   * The four below reach analysis the app already does and the chat could not.
-   * Asked whether to buy or sell — the question a GM asks most — it had the
-   * standings and had to reason from them, while the dashboard beside it was
-   * carrying a worked postseason probability the whole time.
+   * The three below reach analysis the app already does. The dashboard tool that stood beside them served the
+   * postseason odds and the buy/hold/sell read; it is retired (D-060, amended 2026-10-28: no AI surface is handed the
+   * odds, the deadline posture or a playoff chance, and the race is answered from the standings' facts).
    */
-  {
-    name: 'get_dashboard',
-    description:
-      'The club at a glance: playoff picture (games back, wild-card rank, magic number), the ' +
-      'buy/hold/sell read with the postseason odds behind it and days to the deadline, recent ' +
-      'and upcoming games, hot and cold players, injuries. Call this for "how are we doing", ' +
-      '"should we buy or sell", or anything about the race.',
-    input_schema: {
-      type: 'object',
-      properties: { team_id: { type: 'number' } },
-      required: ['team_id'],
-    },
-  },
   {
     name: 'get_contracts',
     description:
@@ -396,7 +380,16 @@ export const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+/** A tool's answer, as handed to the model: its payload, capped so a 500-player result can't blow out the context. */
 export async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
+  return cap(await toolPayload(name, input));
+}
+
+/**
+ * A tool's whole payload, before the cap. The AI payload boundary (`tests/aiOddsBoundary.test.ts`) reads this, so a
+ * payload too large for the model is still checked in full.
+ */
+export async function toolPayload(name: string, input: Record<string, unknown>): Promise<unknown> {
   switch (name) {
     case 'search_players': {
       const params = new URLSearchParams();
@@ -405,12 +398,12 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       params.set('level', String(input.level ?? 'all'));
       params.set('limit', String(Math.min(Number(input.limit ?? 25), 100)));
       if (input.freeAgents) params.set('freeAgents', '1');
-      return cap(await callOwnApi(`players?${params}`));
+      return callOwnApi(`players?${params}`);
     }
     case 'get_player':
-      return cap(await callOwnApi(`player/${Number(input.player_id)}`));
+      return callOwnApi(`player/${Number(input.player_id)}`);
     case 'get_roster':
-      return cap(await callOwnApi(`roster/${Number(input.team_id)}`));
+      return callOwnApi(`roster/${Number(input.team_id)}`);
     case 'get_franchise_history': {
       const team = Number(input.team_id) || defaultOrgId();
       const history = (await callOwnApi(`franchise/${team}`)) as {
@@ -426,12 +419,20 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
        * about, and the seasons are trimmed to the ones asked for.
        */
       const wanted = Number.isFinite(since) ? seasons.filter((s) => s.year >= since) : seasons;
-      return cap({ summary: history.summary, seasons: wanted.slice(0, 60) });
+      /*
+       * The past's postseason appearances, a count of history, named so: no AI tool payload carries a key named for the
+       * odds, the deadline posture or the playoffs (D-060, amended 2026-10-28; `tests/aiOddsBoundary.test.ts`).
+       */
+      const { playoffs, ...summary } = (history.summary ?? {}) as { playoffs?: number } & Record<string, unknown>;
+      return {
+        summary: history.summary ? { ...summary, postseasonAppearances: playoffs ?? null } : history.summary,
+        seasons: wanted.slice(0, 60),
+      };
     }
     case 'get_standings':
-      return cap(await callOwnApi(`standings/${defaultOrgId()}`));
+      return callOwnApi(`standings/${defaultOrgId()}`);
     case 'get_pitching_staff':
-      return cap(await callOwnApi(`pitching/${Number(input.team_id)}`));
+      return callOwnApi(`pitching/${Number(input.team_id)}`);
     case 'get_schedule': {
       const full = (await callOwnApi(`schedule/${Number(input.team_id)}`)) as {
         series: Array<{ played: boolean }>;
@@ -459,30 +460,34 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
             gameCount: Array.isArray(games) ? games.length : 0,
           }))
         : series;
-      return cap({
+      return {
         ...full,
         window,
         detail: summarize ? 'series summary only — use window "current" for game-by-game' : 'full',
         seriesReturned: shaped.length,
         series: shaped,
-      });
+      };
     }
     case 'get_lineup':
-      return cap(await callOwnApi(`lineup/${Number(input.team_id)}?vs=${input.vs === 'l' ? 'l' : 'r'}`));
+      return callOwnApi(`lineup/${Number(input.team_id)}?vs=${input.vs === 'l' ? 'l' : 'r'}`);
     case 'get_payroll':
-      return cap(await callOwnApi(`payroll/${Number(input.team_id)}`));
+      return callOwnApi(`payroll/${Number(input.team_id)}`);
     case 'get_injuries':
-      return cap(await callOwnApi(`injuries/${Number(input.team_id)}`));
-    case 'get_prospects':
-      return cap(await callOwnApi(`prospects/${Number(input.team_id)}`));
+      return callOwnApi(`injuries/${Number(input.team_id)}`);
+    case 'get_prospects': {
+      const orgId = Number(input.team_id);
+      const prospects = (await callOwnApi(`prospects/${orgId}`)) as Parameters<typeof prospectsForAi>[0];
+      // The farm review's conclusions, never Player Development's legacy codes (B-63). A farm it can't review is not known.
+      let reviews: AssignmentReview[] = [];
+      try { reviews = computeFarmSystem(orgId).assignments; } catch { reviews = []; }
+      return prospectsForAi(prospects, reviews);
+    }
     case 'get_leaderboards':
-      return cap(await callOwnApi(`leaderboards/${Number(input.team_id)}`));
+      return callOwnApi(`leaderboards/${Number(input.team_id)}`);
     case 'get_teams':
-      return cap(await callOwnApi('teams'));
-    case 'get_dashboard':
-      return cap(await callOwnApi(`dashboard/${Number(input.team_id) || defaultOrgId()}`));
+      return callOwnApi('teams');
     case 'get_contracts':
-      return cap(await callOwnApi(`contracts/${Number(input.team_id) || defaultOrgId()}`));
+      return callOwnApi(`contracts/${Number(input.team_id) || defaultOrgId()}`);
     case 'get_free_agents': {
       const market = (await callOwnApi(`free-agents/${Number(input.team_id) || defaultOrgId()}`)) as {
         currentFAs?: unknown[]; upcomingFAs?: unknown[]; mightReach?: unknown[];
@@ -491,7 +496,7 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
       const current = market.currentFAs ?? [];
       const upcoming = market.upcomingFAs ?? [];
       const might = market.mightReach ?? [];
-      return cap({
+      return {
         ...market,
         currentFAs: current.slice(0, FREE_AGENTS_SHOWN),
         upcomingFAs: upcoming.slice(0, FREE_AGENTS_SHOWN),
@@ -501,19 +506,17 @@ export async function runTool(name: string, input: Record<string, unknown>): Pro
           upcomingFAs: `${Math.min(upcoming.length, FREE_AGENTS_SHOWN)} of ${upcoming.length}`,
           mightReach: `${Math.min(might.length, FREE_AGENTS_SHOWN)} of ${might.length}`,
         },
-      });
+      };
     }
     case 'get_roster_crunch':
-      return cap(await callOwnApi(`roster-crunch/${Number(input.team_id) || defaultOrgId()}`));
+      return callOwnApi(`roster-crunch/${Number(input.team_id) || defaultOrgId()}`);
     case 'get_trading_block': {
       const raw = input.level === undefined ? '1' : String(input.level);
-      return cap(
-        tradingBlock({
-          teamId: input.team_id ? Number(input.team_id) : undefined,
-          level: raw === 'all' ? 'all' : Number(raw),
-          limit: input.limit ? Number(input.limit) : undefined,
-        })
-      );
+      return tradingBlock({
+        teamId: input.team_id ? Number(input.team_id) : undefined,
+        level: raw === 'all' ? 'all' : Number(raw),
+        limit: input.limit ? Number(input.limit) : undefined,
+      });
     }
     default:
       throw new Error(`Unknown tool: ${name}`);
@@ -636,6 +639,11 @@ export function systemPrompt(orgId: number, persona: Persona): string {
     // What Pennant's value figures are, as the briefing is told (Player Value phase 6c): the chat reads the same ones
     VALUE_FIGURES_NOTE,
     '',
+    // The writers' farm and null rules (aiGuardrails.ts), so the Staff room reads the farm as they do (B-63)
+    FARM_TOOL_RULES,
+    '',
+    NULL_MEANS_UNKNOWN,
+    '',
     'Name a player in full — first name and surname — the first time you mention him in a reply.',
     'After that, talk about him however you like. The app links names to their cards and files your',
     'advice against the right man, and it can do neither from a surname or a pronoun. This matters',
@@ -666,10 +674,34 @@ export interface ChatMessage {
  * Storing the tool results means it does not have to remember what it read.
  */
 
-interface StoredContext {
+export interface StoredContext {
   /** The visible thread as it stood when this transcript was written. */
   visible: ChatMessage[];
   messages: Anthropic.MessageParam[];
+  /** Which tool payloads it was written under ({@link TRANSCRIPT_PAYLOADS}); absent on one written before the stamp. */
+  payloads?: number;
+}
+
+/**
+ * The version of what the tools hand the model. A stored transcript resends its old tool results, so when a payload
+ * loses something no AI may be handed any more, a transcript written before is not resumed: the thread rebuilds from its
+ * plain text, and the model looks again with today's tools.
+ *
+ * 2 (2026-10-28, B-62, B-63): the dashboard tool and every odds and posture key retired (D-060, amended); the prospects
+ * tool hands the farm review's conclusions, not Player Development's legacy codes.
+ */
+export const TRANSCRIPT_PAYLOADS = 2;
+
+/**
+ * True when a stored transcript may be resumed: written under today's payloads, and calling no tool that is no longer
+ * offered (`get_dashboard`, retired). A call for a tool the model isn't offered is one some providers refuse, and its
+ * result is exactly what the retirement took away.
+ */
+export function resumable(stored: StoredContext): boolean {
+  if (stored.payloads !== TRANSCRIPT_PAYLOADS) return false;
+  const offered = new Set(TOOLS.map((t) => t.name));
+  return stored.messages.every((m) => typeof m.content === 'string'
+    || m.content.every((b) => b.type !== 'tool_use' || offered.has(b.name)));
 }
 
 /**
@@ -952,10 +984,12 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
     if (!isRoom) {
       const persona = speakers[0];
       // Resume the stored transcript, tool results and all, when this thread is
-      // the one it belongs to. Anything else — a cleared conversation, a thread
-      // edited elsewhere — rebuilds from what the client sent.
+      // the one it belongs to and its tool results are ones the model may still
+      // be handed. Anything else — a cleared conversation, a thread edited
+      // elsewhere, a transcript from before a payload was retired — rebuilds
+      // from what the client sent.
       const stored = loadContext(team, persona.id);
-      const resuming = stored !== null && continuesThread(stored.visible, history);
+      const resuming = stored !== null && resumable(stored) && continuesThread(stored.visible, history);
       const messages: Anthropic.MessageParam[] = resuming ? trimTranscript(stored.messages) : [];
       stripCachePoints(messages);
       appendPlain(messages, resuming ? history.slice(stored.visible.length) : history);
@@ -973,6 +1007,7 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
       saveContext(team, persona.id, {
         visible: [...history, { role: 'assistant', content: answer }],
         messages: stripThinking(messages),
+        payloads: TRANSCRIPT_PAYLOADS,
       });
       send('done', {});
       return;

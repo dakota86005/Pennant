@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { db, tableExists } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { playoffPicture } from './playoffs.js';
-import { deadlineRead } from './posture.js';
 import { healthOf, HURT_SQL } from './health.js';
 import { computeContracts } from './contracts.js';
 import { computeFarmSystem } from './farmOperations.js';
@@ -379,8 +378,7 @@ dashboardRoutes.get('/dashboard/:orgId', (req, res) => {
     // Where the club actually stands for a place, which for most of the league
     // most of the time is not the division race the table above shows
     playoffs: playoffPicture(orgId),
-    // Buy, hold or sell, with the arithmetic that produced it
-    deadline: deadlineRead(orgId),
+    // No buy/hold/sell read and no postseason odds: those are Standings' alone (D-060, amended 2026-10-28)
     recent,
     upcoming,
     hot,

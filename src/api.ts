@@ -577,7 +577,7 @@ export const getPlayerSurplus = (id: number) => json<PlayerSurplus>(`/api/player
 /**
  * Phase 5b: "our view" of the player's value (server/playerValueLens.ts, PLAYER_VALUE.md Part 6), the neutral value read
  * through the viewing organization's philosophy, with every lean named and the neutral figure it started from; and that
- * club's value of a win now (server/playerValueWinValue.ts, Part 4.5), in playoff odds, context beside the value.
+ * club's value of a win now (server/playerValueWinValue.ts, Part 4.5), which is not established (D-052, amended).
  */
 export interface LensFigure { low: number; central: number | null; high: number; centralRange: { low: number; high: number } | null }
 export interface OurTotal {
@@ -615,20 +615,14 @@ export interface OurView {
   basis: string[];
   stamp: { status: string; basis: string };
 }
+/** The club's value of a win: not established since the odds left Player Value (D-060, amended 2026-10-28). */
 export interface ClubWinValue {
   teamId: number;
   club: string | null;
-  status: 'known' | 'decided' | 'no_games_left' | 'unknown';
-  reason: string | null;
-  unit: 'playoff odds';
-  odds: number | null;
-  perWin: number | null;
-  curve: Array<{ wins: number; odds: number }>;
-  gamesLeft: number | null;
-  gamesPlayed: number | null;
+  status: 'unknown';
+  reason: string;
   text: string;
   basis: string[];
-  stamp: { status: string; basis: string };
 }
 export interface OurViewResponse {
   organization: { id: number; name: string | null; source: 'requested' | 'configured' | 'human' };

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, tableExists } from './db.js';
+import { db, tableColumns, tableExists } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { answer, refuse, type Computed } from './computed.js';
@@ -116,8 +116,9 @@ export function computeStandings(orgId: number): Computed<Standings> {
     });
   }
 
-  const scheduled =
-    (db.prepare(`SELECT rules_schedule_games_per_team AS n FROM leagues WHERE league_id = ?`)
+  // Not every export carries the schedule length (leagueRules.ts reads it the same way): absent, it is not known
+  const scheduled = !tableColumns('leagues').includes('rules_schedule_games_per_team') ? null
+    : (db.prepare(`SELECT rules_schedule_games_per_team AS n FROM leagues WHERE league_id = ?`)
       .get(org.league_id) as { n: number | null } | undefined)?.n ?? null;
 
   return answer({

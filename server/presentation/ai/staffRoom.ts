@@ -60,7 +60,6 @@ const STEPS: Record<string, string> = {
   get_prospects: 'Reviewing prospects',
   get_leaderboards: 'Checking the league leaders',
   get_teams: 'Looking up the clubs',
-  get_dashboard: 'Reading the club\'s summary',
   get_contracts: 'Reading the contracts',
   get_free_agents: 'Looking at free agents',
   get_roster_crunch: 'Checking roster space',

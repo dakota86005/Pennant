@@ -744,49 +744,6 @@ th.sortable .tip { cursor: pointer; }
   font-family: var(--font-body);
 }
 
-/*
- * Buy, hold or sell. Colour carries the verdict, but never alone — the word
- * itself is the first thing in the block, so it reads the same to somebody who
- * cannot tell the green from the red.
- */
-.posture {
-  border: 1px solid var(--border);
-  border-left-width: 5px;
-  border-radius: 10px;
-  background: var(--panel);
-  padding: 12px 16px;
-  margin-bottom: 14px;
-}
-.posture-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.posture-verdict {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.posture-odds { font-size: 1.1rem; font-weight: 700; }
-.posture-why {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  color: var(--muted);
-  font-size: 0.88rem;
-  line-height: 1.55;
-}
-.posture-buy      { border-left-color: var(--good); }
-.posture-buy      .posture-verdict, .posture-buy .posture-odds { color: var(--good); }
-.posture-lean-buy { border-left-color: var(--good); }
-.posture-lean-buy .posture-verdict { color: var(--good); }
-.posture-hold     { border-left-color: var(--muted); }
-.posture-sell     { border-left-color: var(--bad); }
-.posture-sell     .posture-verdict, .posture-sell .posture-odds { color: var(--bad); }
-.posture-lean-sell { border-left-color: var(--bad); }
-.posture-lean-sell .posture-verdict { color: var(--bad); }
-
 /* Where the club stands for a place, under the division table */
 .playoff-line {
   margin: 10px 0 0;
@@ -5156,11 +5113,10 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .mlb-recommendation p { margin: 4px 0 8px; font-size: 14.5px; line-height: 1.5; max-width: 80ch; }
 
 
-/* organization context: how the window and the season lean on the advice */
+/* organization context: how the competitive window leans on the advice */
 .mlb-context { border: 1px solid var(--border, #d8d8d8); border-left: 4px solid var(--accent, #4a7); border-radius: 6px; padding: 10px 14px; margin: 12px 0; background: var(--surface, transparent); }
 .mlb-context.high { border-left-color: #c0392b; }
 .mlb-context.low { border-left-color: #7f8c8d; }
-.mlb-context .mlb-conflict { margin-top: 6px; font-weight: 600; }
 .mlb-shading { margin-top: 4px; }
 .mlb-scroll { overflow-x: auto; max-width: 100%; }
 .mlb-review-group table th, .mlb-review-group table td { white-space: normal; vertical-align: top; }

@@ -327,7 +327,7 @@ function DifferenceView({ analysis }: { analysis: TradeAnalysis }) {
         <div className="trade-ours muted">{club}{club.endsWith('s') ? "'" : "'s"} philosophy doesn't lean on these players: our view is the same.</div>
       ))}
       <SalaryLine analysis={analysis} />
-      {analysis.winValues.map((w) => <ClubWinValueLine key={w.teamId} value={w} />)}
+      {analysis.winValues.length > 0 && <ClubWinValueLine value={analysis.winValues[0]} everyClub={analysis.winValues.length > 1} />}
     </section>
   );
 }

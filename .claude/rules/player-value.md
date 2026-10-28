@@ -1,8 +1,6 @@
 ---
 paths:
   - "server/playerValue*.ts"
-  - "server/posture.ts"
-  - "server/playoffs.ts"
   - "src/ValueSection.tsx"
   - "src/PlayerHeaderValue.tsx"
   - "src/valueWords.ts"
@@ -171,10 +169,10 @@ worktree.
   never changes a neutral figure or unknown, names every lean with its amount, leans on nothing inside 40–60 with the default
   policies, keeps guaranteed money out of the retention margin under every philosophy, words the policies only, and reads no
   production, cost, fit, table, tier, defensibility or club value of a win. Its weights are `LENS_POLICY` (policy).
-- The club's value of a win (phase 5b; 4.5): `clubWinValue` reads the deadline read's odds model (`posture.ts`
-  `oddsModelOf`/`oddsAt`, the only value-module import of posture, in the entry point); points of playoff odds per win and the
-  curve, never dollars (Q-6), never in any value, unknown with its reason where the odds cannot be read (never the deadline
-  read's defaults). The card's Value section speaks plainly: "Contract value", "Value of keeping him", "Most likely",
+- The club's value of a win (phase 5b; 4.5; D-052 amended 2026-10-28): not established. `clubWinValue` reads no odds and
+  says, for every club, that it is not known and why, never a number, a default or a level race; no value module imports
+  `posture.ts` or `playoffs.ts` (D-060, amended). ROADMAP "Playoff odds from the roster" is what could establish it. The
+  card's Value section speaks plainly: "Contract value", "Value of keeping him", "Most likely",
   "could be", "if kept", explanations on hover; the API keeps its names.
 - The consumer migration (phase 6, Part 8): each consumer migrates in the change that deletes its `players_value`
   reads; nothing runs in parallel. 6a (2026-09-24) moved the player card's header and Contracts: the header shows his

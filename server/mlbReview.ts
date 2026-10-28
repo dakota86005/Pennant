@@ -38,7 +38,7 @@ export interface ReviewPorts {
   covers?(playerIds: number[]): Map<number, number[]>;
   /** How well each of those positions is played, against the peers listed there: the difference between a backup and an emergency cover. */
   coverReads?(playerIds: number[]): Map<number, CoverRead[]>;
-  /** The organization's philosophy and the season's standing: shades how urgently a flag is raised, never whether it is (D-036). */
+  /** The organization's philosophy: shades how urgently a flag is raised, never whether it is (D-036). */
   organization?: OrganizationContext | null;
   /**
    * The yardsticks in force for this save (D-053): the role standards, the aging curve and the glove weights the save has measured
@@ -306,7 +306,9 @@ export function reviewNeeds(view: ClubView, groups: RoleGroupReview[], context: 
       if (m) needs.push(needFromReview(m, h, g.role, h.role, context));
     }
   }
-  needs.sort((a, b) => (a.severity === b.severity ? a.title.localeCompare(b.title) : a.severity === 'elevated' ? -1 : 1));
+  // Ordered by the neutral severity (no philosophy, no season): a lean is shown beside a need, never deciding its place
+  const neutral = (n: MlbNeed) => n.explanation?.neutralSeverity ?? n.severity;
+  needs.sort((a, b) => (neutral(a) === neutral(b) ? a.title.localeCompare(b.title) : neutral(a) === 'elevated' ? -1 : 1));
   return [...needs, ...platoonNeeds(groups, view), ...benchNeeds(groups)];
 }
 

@@ -26,8 +26,7 @@ const farm: Spec[] = [
 ];
 const AGE: Record<number, number> = { 104: 30, 500: 36, 501: 24 };
 
-const posture = (odds: number) => ({ posture: 'hold' as const, odds, gamesLeft: 100, deadlinePassed: false, headline: `${Math.round(odds * 100)}% to reach the postseason.` });
-const club = (dimensions: OrganizationContext['dimensions'], odds: number | null): OrganizationContext => ({ dimensions, posture: odds === null ? null : posture(odds) });
+const club = (dimensions: OrganizationContext['dimensions']): OrganizationContext => ({ dimensions });
 
 function run(organization: OrganizationContext | null): ResponsePacket {
   const specs = [...healthy26(), ...farm].map((s) => (AGE[s.id] ? { ...s, age: AGE[s.id] } : s));
@@ -46,8 +45,8 @@ const cand = (p: ResponsePacket, id: number) => p.groups.flatMap((g) => g.candid
 
 describe('the same facts, told to different clubs', () => {
   const neutral = run(null);
-  const contender = run(club({ competitiveWindow: 85 }, 0.8));
-  const builder = run(club({ competitiveWindow: 15 }, 0.05));
+  const contender = run(club({ competitiveWindow: 85 }));
+  const builder = run(club({ competitiveWindow: 15 }));
 
   it('the case against the holder is a moderate one', () => {
     expect(neutral.need.review?.strength).toBe('moderate');
@@ -89,7 +88,7 @@ describe('the same facts, told to different clubs', () => {
 
 describe('choosing between equivalent replacements', () => {
   it('a club that discounts aging leads with the younger arm, and names the reason', () => {
-    const p = run(club({ competitiveWindow: 50, ageCurveSensitivity: 90 }, 0.5));
+    const p = run(club({ competitiveWindow: 50, ageCurveSensitivity: 90 }));
     expect(p.report?.recommendation?.headline).toMatch(/Reno Prospect/);
     expect(cand(p, 501).preference?.score).toBe(1);
     expect(cand(p, 500).preference?.score).toBe(-1);
@@ -117,7 +116,7 @@ describe('choosing between equivalent replacements', () => {
       return buildResponsePacket(reviewNeedFor(view, 104, ports)!, view, ports).report!.recommendation!;
     };
     expect(stanceFor(null).stance).toBe('act');
-    const building = stanceFor(club({ competitiveWindow: 15 }, 0.5));
+    const building = stanceFor(club({ competitiveWindow: 15 }));
     expect(building.stance).toBe('explore');
     expect(building.toSettle.join(' ')).toMatch(/6 years older/);
     expect(building.neutralStance).toBe('act');

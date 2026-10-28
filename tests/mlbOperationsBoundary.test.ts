@@ -51,6 +51,17 @@ describe('MLB Operations boundary', () => {
     for (const pattern of HISTORY) expect(code(file), `${file} matches ${pattern}`).not.toMatch(pattern);
   });
 
+  /*
+   * D-036 and D-060, amended 2026-10-28 (B-62): the postseason odds and the deadline posture left the staff's decision
+   * path. Urgency, the bar for "act" and the needs order come from the window and the neutral severity, so neither the
+   * MLB modules nor the staff's preference reads may import the odds model or the playoff picture again.
+   */
+  it.each([...MLB, 'staffPreference.ts', 'mlbExplain.ts'])('%s imports no posture or playoffs and reads no odds', (file) => {
+    const source = code(file);
+    expect(source, file).not.toMatch(/from '\.\/(posture|playoffs)\.js'/);
+    expect(source, file).not.toMatch(/\b(deadlineRead|oddsModelOf|oddsAt|playoffPicture|shownOdds)\b/);
+  });
+
   it.each(PURE)('%s (the pure core) opens no table', (file) => {
     expect(code(file), file).not.toMatch(/from '\.\/db\.js'/);
     expect(code(file), file).not.toMatch(/\.prepare\(/);

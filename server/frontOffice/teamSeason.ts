@@ -139,8 +139,11 @@ const DATE_KEY = (col: string) => `(
 
 const has = (table: string): Set<string> => (tableExists(table) ? new Set(tableColumns(table)) : new Set<string>());
 
-/** A table's WHERE for the league's season at the major league, on the columns the table has. */
-function seasonWhere(cols: Set<string>, leagueId: number, season: number | null): { sql: string; params: number[] } | null {
+/**
+ * A table's WHERE for the league's season at the major league, on the columns the table has; null when the table is by
+ * year and the season is not known. Also the staff's rough read's (`posture.ts`, Standings only) one row per club.
+ */
+export function seasonWhere(cols: Set<string>, leagueId: number, season: number | null): { sql: string; params: number[] } | null {
   const parts: string[] = [];
   const params: number[] = [];
   if (cols.has('level_id')) parts.push('level_id = 1');
