@@ -8,15 +8,15 @@
 import type { BasisLine, Cell, Claim } from '../../contract/presentation.js';
 import { basis, cell, claim, servedValue, unknownValue } from '../claim.js';
 import { hintIf, officeFacts, type OfficeContext } from '../officeTable.js';
-import { costRangeText, money, rangeText, signedMoney, signedTenths } from '../player/words.js';
+import { costRangeText, money, moneyRangeWords, rangeText, signedMoney, signedTenths } from '../player/words.js';
 
-export { costRangeText, money, rangeText, signedMoney, signedTenths };
+export { costRangeText, money, moneyRangeWords, rangeText, signedMoney, signedTenths };
 
 /** A season at the market in plain money ("$23.1M"), never signed like a surplus; one below zero reads "−$1.2M". */
 export const marketMoney = money;
 
 /** "$4.6M to $25.3M": a range the way the pages say it, never reading as a point. */
-export const rangeWords = (low: number, high: number): string => costRangeText(low, high).replace('–', ' to ');
+export const rangeWords = moneyRangeWords;
 
 /** What every cost band is (`src/costBand.ts`), for the hovers and breakdowns. */
 export const COST_BAND_WORDS =

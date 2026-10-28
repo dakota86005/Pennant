@@ -29,7 +29,7 @@ import {
 } from './philosophy.js';
 import { LENS_POLICY, LENS_POLICY_CALIBRATION } from './playerValueCalibration.js';
 import type { PlayerSurplus, SurplusFigure, SurplusSeason, SurplusTotal, SurplusView } from './playerValueSurplus.js';
-import { money, num, percent, signedMoney } from './numberWords.js';
+import { money, num, percent, rangeWith, signedMoney } from './numberWords.js';
 
 /** The organization's philosophy as the lens reads it: each dimension's effective value and the policies. */
 export interface LensPhilosophy {
@@ -533,7 +533,7 @@ function leanWords(
   return { kind: 'dimension', id, label, value, short, text: `${what}${moved}`, seasons: touched, by };
 }
 
-const deltaText = (d: LensDelta, fmt: (v: number) => string): string => (d.low === d.high ? fmt(d.low) : `${fmt(d.low)} to ${fmt(d.high)}`);
+const deltaText = (d: LensDelta, fmt: (v: number) => string): string => rangeWith(d.low, d.high, fmt);
 
 // ── the policies: words only ─────────────────────────────────────────────────
 

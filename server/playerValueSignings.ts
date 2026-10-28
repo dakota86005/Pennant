@@ -51,7 +51,7 @@ import { bootstrapRatio, type PriceBand, type PriceOfWin } from './playerValueFi
 import { parseGameDate } from './dataFreshness.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
 import type { CalibrationStamp } from './calibration.js';
-import { money as millions, percent as pct, plural } from './numberWords.js';
+import { money as millions, moneyRange, moneyRangeWords, percent as pct, plural } from './numberWords.js';
 
 // ── what an import recorded ──────────────────────────────────────────────────
 
@@ -863,7 +863,7 @@ function basisOf(id: MeasuredBasisId, unit: MeasuredBasis['unit'], description: 
   const low = Math.min(central, band.low);
   const high = Math.max(central, band.high);
   return out('measured',
-    `${description}: ${millions(central)} a win on ${plural(cases.length, 'signing')} (${millions(money)} above the minimum ÷ ${wins.toFixed(1)} wins); ${how}, 80% of readings ${millions(low)} to ${millions(high)}.${extra}`,
+    `${description}: ${millions(central)} a win on ${plural(cases.length, 'signing')} (${millions(money)} above the minimum ÷ ${wins.toFixed(1)} wins); ${how}, 80% of readings ${moneyRangeWords(low, high)}.${extra}`,
     { money, wins, central, low, high });
 }
 
@@ -933,7 +933,7 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
     const high = Math.max(...projectedBases.map((b) => b.high as number));
     return {
       status: 'measured', unit: 'projected', central, low, high, ratio, bases: projectedBases.map((b) => b.id),
-      text: `The check on the projection, per win projected at signing: ${millions(central)} (the median of ${plural(projectedBases.length, 'basis', 'bases')}; ${millions(low)} to ${millions(high)} with their sampling)` +
+      text: `The check on the projection, per win projected at signing: ${millions(central)} (the median of ${plural(projectedBases.length, 'basis', 'bases')}; ${moneyRangeWords(low, high)} with their sampling)` +
         (ratio === null
           ? ", beside no price per win produced yet: the price is per win produced, and waits for the signings' first season to be completed."
           : `, ${ratio.toFixed(2)} times the price per win produced: how far the earlier import's expected wins sat from what the signed players went on to produce (expected wins include the chance a player does not play at all). Shown beside the price, never in it.`),
@@ -972,7 +972,7 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
     return unknown('not_measured', `Not measured per win produced: ${counted}; the price of a win is per win produced in the first season (owner, 2026-09-24), and that reading waits for the signings' first season to be completed. ${realizedText}${check ? ` ${check.text}` : ''} Wins are the export's own WAR (replacement at its convention).`);
   }
   const value = { central: realizedBasis.central as number, low: realizedBasis.low as number, high: realizedBasis.high as number };
-  const text = `Measured on ${counted}: ${millions(value.central)} per win produced (the first season, the opening's own unit; owner, 2026-09-24), band ${millions(value.low)} to ${millions(value.high)}: ` +
+  const text = `Measured on ${counted}: ${millions(value.central)} per win produced (the first season, the opening's own unit; owner, 2026-09-24), band ${moneyRangeWords(value.low, value.high)}: ` +
     `its signings resampled. ${check ? `${check.text} ` : ''}${measured.map((b) => b.text).join(' ')} ` +
     "Wins are the export's own WAR (replacement at its convention): a replacement measured from free talent is shown beside it, never applied. " +
     "Each signing is in its own winter's dollars, and nothing is discounted. The projected bases read the earlier import's expected wins, which include the chance a player does not play at all: " +
@@ -1008,10 +1008,10 @@ function flagsOf(opening: PriceOfWin, m: PriceBand, band: { low: number; high: n
   const out: string[] = [];
   const floor = opening.floor.value;
   if (floor && m.central < floor.high) {
-    out.push(`Flag: the measured central ${millions(m.central)} is below the opening floor (${millions(floor.low)}–${millions(floor.high)}), what the league pays every major leaguer per win, pay held below the market included: a market price below it suggests the projection or the signings observed are off.`);
+    out.push(`Flag: the measured central ${millions(m.central)} is below the opening floor (${moneyRange(floor.low, floor.high)}), what the league pays every major leaguer per win, pay held below the market included: a market price below it suggests the projection or the signings observed are off.`);
   }
   if (band && (m.central < band.low || m.central > band.high)) {
-    out.push(`Flag: the measured central ${millions(m.central)} lies outside the opening band with its sampling (${millions(band.low)}–${millions(band.high)}).`);
+    out.push(`Flag: the measured central ${millions(m.central)} lies outside the opening band with its sampling (${moneyRange(band.low, band.high)}).`);
   }
   return out;
 }
@@ -1036,7 +1036,7 @@ export function adoptPrice(opening: PriceOfWin, measured: MeasuredPrice): PriceO
     const note = measured.price.note ?? measured.text;
     return stays(measured.check && !note.includes(measured.check.text) ? `${note} ${measured.check.text}` : note);
   }
-  const measuredBand = `${millions(m.low)}–${millions(m.high)} (${millions(m.high - m.low)} wide)`;
+  const measuredBand = `${moneyRange(m.low, m.high)} (${millions(m.high - m.low)} wide)`;
   const counted = `${plural(measured.observed, 'free-agent signing')} observed`;
   const units = unitWords(measured);
   const flags = flagsOf(opening, m, comparable ?? (o ? { low: o.low, high: o.high } : null));
@@ -1061,7 +1061,7 @@ export function adoptPrice(opening: PriceOfWin, measured: MeasuredPrice): PriceO
   if (comparable === null) {
     return takes(`${counted}; the measured band ${measuredBand} is narrower than the opening band with its sampling, which has no upper edge (a basis's resampled band is unbounded). Its bases are ${units}.`);
   }
-  const openWords = `${millions(comparable.low)}–${millions(comparable.high)} (${millions(comparable.high - comparable.low)} wide, its bases with their sampling)`;
+  const openWords = `${moneyRange(comparable.low, comparable.high)} (${millions(comparable.high - comparable.low)} wide, its bases with their sampling)`;
   if (m.high - m.low < comparable.high - comparable.low) {
     return takes(`${counted}; the measured band ${measuredBand} is narrower than the opening band ${openWords}. Its bases are ${units}.`);
   }
@@ -1244,7 +1244,7 @@ export function reserveRenewals(pairs: WinterPair[], minimum: number | null, reg
   const bound = upperBoundOfQuantile(pay, COST_POLICY.renewal.quantile, COST_POLICY.renewal.confidence);
   if (bound === null) return unknown(`${pay.length} reserve-clause renewals observed: too few for the renewal band's upper bound.`);
   const band = { low: minimum, high: Math.max(minimum, bound) };
-  const text = `Measured on ${pay.length} reserve-clause renewals observed across imports (${atMinimum} at the minimum): ${millions(band.low)} to ${millions(band.high)}, the pre-arbitration renewal spread's method.`;
+  const text = `Measured on ${pay.length} reserve-clause renewals observed across imports (${atMinimum} at the minimum): ${moneyRangeWords(band.low, band.high)}, the pre-arbitration renewal spread's method.`;
   return { status: 'measured', band: derivedFrom(band, source, text), cases: pay.length, atMinimum, text };
 }
 

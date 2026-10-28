@@ -7,7 +7,7 @@
  * Nothing here computes a figure about a player: every number is Player Value's, Player Rights' or the export's, as handed in.
  */
 
-import { money, moneyRange, ordinal, plural } from '../../numberWords.js';
+import { money, moneyRange, moneyRangeWords, ordinal, plural, rangeWith } from '../../numberWords.js';
 
 // ── numbers ──────────────────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ import { money, moneyRange, ordinal, plural } from '../../numberWords.js';
  * Money, counts and places come from the one shared formatter (`numberWords.ts`, B-06): "$8.5M", "$780K", "−$9M",
  * "$4.6M–$25.3M", "4 games", "21st". These names stay so the player window's modules read as before.
  */
-export { money, ordinal, plural };
+export { money, moneyRangeWords, ordinal, plural, rangeWith };
 
 /** Signed money: "$28M", "−$9M" (the sign before the dollar sign). */
 export const signedMoney = money;
@@ -44,8 +44,7 @@ export function signedTenths(v: number): string {
 export const winsText = (v: number): string => `${signedTenths(v)} wins`;
 
 /** "$A to $B", or one figure where the ends meet. */
-export const rangeText = (low: number, high: number, fmt: (v: number) => string): string =>
-  (low === high ? fmt(low) : `${fmt(low)} to ${fmt(high)}`);
+export const rangeText = (low: number, high: number, fmt: (v: number) => string): string => rangeWith(low, high, fmt);
 
 /** "2026–2030", or one season. */
 export const seasonsText = (from: number | null, to: number | null): string =>

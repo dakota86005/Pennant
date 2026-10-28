@@ -24,7 +24,7 @@
 
 import type { CalibrationStamp } from './calibration.js';
 import { CONTROL_HORIZON_SEASONS, SURPLUS_POLICY, SURPLUS_POLICY_CALIBRATION } from './playerValueCalibration.js';
-import { money, numberWord, percent } from './numberWords.js';
+import { money, moneyRangeWords, numberWord, percent } from './numberWords.js';
 import type { ControlSeason, ControlStatus, ControlTimeline, CostBand } from './playerValueControl.js';
 import type { PriceBand } from './playerValueFinances.js';
 import type { PlayerProduction, WinsBand } from './playerValueProduction.js';
@@ -417,7 +417,7 @@ function seasonOf(s: ControlSeason, ctx: SeasonContext): SurplusSeason {
 
 function figureText(f: SurplusFigure): string {
   if (f.low === f.high) return money(f.low);
-  return `${money(f.low)} to ${money(f.high)}${f.central !== null ? `, central ${money(f.central)}` : ''}`;
+  return `${moneyRangeWords(f.low, f.high)}${f.central !== null ? `, central ${money(f.central)}` : ''}`;
 }
 
 // ── the sums ─────────────────────────────────────────────────────────────────
@@ -515,7 +515,7 @@ export function surplusOf(input: SurplusInput): PlayerSurplus {
   };
   const priceOut = market && price ? {
     stage: market.stage, label: market.label, band: price,
-    text: `The price of a win in force: ${market.label}, ${money(price.central)} a win (band ${money(price.low)} to ${money(price.high)}), held flat in every season (owner, 2026-09-24: no salary inflation is assumed unless the save's own measured price history shows drift). It is salary above the league minimum per win above the export's replacement level.`,
+    text: `The price of a win in force: ${market.label}, ${money(price.central)} a win (band ${moneyRangeWords(price.low, price.high)}), held flat in every season (owner, 2026-09-24: no salary inflation is assumed unless the save's own measured price history shows drift). It is salary above the league minimum per win above the export's replacement level.`,
   } : null;
   const basis = [
     'Contract surplus: for each controlled season, his production value (the minimum a replacement at 0 WAR costs, plus his wins × the price of a win) less what he costs, discounted and summed: what the contract is worth to whoever holds it.',
@@ -620,7 +620,7 @@ export function marketValueOf(input: { production: PlayerProduction; market: Sur
     status: 'known', season, low: figure.low, central: figure.central, high: figure.high, reason: null,
     text: `${season}: the league minimum (${money(minimum)}, what a replacement at 0 WAR costs) plus his projected wins ` +
       `(${wins(W.central)}, could be ${wins(W.low)} to ${wins(W.high)}) × the price of a win in force (${market.label}, ` +
-      `${money(price.central)} a win, band ${money(price.low)} to ${money(price.high)}, held flat), edge against edge. What this ` +
+      `${money(price.central)} a win, band ${moneyRangeWords(price.low, price.high)}, held flat), edge against edge. What this ` +
       "league's market pays for that production: not an asking price, not an offer, and not his worth to any one club.",
   };
 }

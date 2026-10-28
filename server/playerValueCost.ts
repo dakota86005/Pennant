@@ -51,7 +51,7 @@ import type { ControlSeason, ControlStatus, ControlTimeline, CostBand, CostBasis
 import type { MarketCandidate, PriceBand, SeasonWar } from './playerValueFinances.js';
 import type { PlayerProduction } from './playerValueProduction.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
-import { money as millions, ordinal as ordinalOf, percent as pct, plural, signedMoney as signed } from './numberWords.js';
+import { money as millions, moneyRange, moneyRangeWords, ordinal as ordinalOf, percent as pct, plural, signedMoney as signed } from './numberWords.js';
 
 // ── the ladder's shape ───────────────────────────────────────────────────────
 
@@ -277,7 +277,7 @@ function renewalSpread(rows: Row[], minimum: number, regime: ArbitrationRegime):
       const which = k === n
         ? `the largest of the ${n} renewals: too few for the upper bound of their ${nth(COST_POLICY.renewal.quantile)} percentile to leave any out, so one renewal sets it`
         : `the ${ordinalOf(n - k + 1)} largest of the ${n} renewals (the upper bound of their ${nth(COST_POLICY.renewal.quantile)} percentile, leaving out the ${n - k === 1 ? 'largest' : `${n - k} largest`})`;
-      const text = `Measured on this save's ${n} pre-arbitration renewals (${atMinimum} at the minimum): ${millions(band.low)} to ${millions(band.high)}, ` +
+      const text = `Measured on this save's ${n} pre-arbitration renewals (${atMinimum} at the minimum): ${moneyRangeWords(band.low, band.high)}, ` +
         `central ${millions(central)} (the median renewal); the high edge is ${which}.`;
       return { status: 'measured', band: derivedFrom(band, source, text), cases: n, atMinimum, text };
     }
@@ -296,7 +296,7 @@ function renewalSpread(rows: Row[], minimum: number, regime: ArbitrationRegime):
   const central = Math.min(high, Math.max(minimum, minimum * COST_PRIOR.renewal.medianOverMinimum));
   const band = { low: minimum, central, high };
   const text = `Provisional: ${thin}, so the provisional prior (${COST_PRIOR.source}) widened by the save's own renewals (the largest of them): ` +
-    `${millions(band.low)} to ${millions(band.high)}, central ${millions(central)} (the prior's median renewal).`;
+    `${moneyRangeWords(band.low, band.high)}, central ${millions(central)} (the prior's median renewal).`;
   return { status: 'provisional', band: derivedFrom(band, source, text), cases: n, atMinimum, text };
 }
 
@@ -432,7 +432,7 @@ function classText(c: Omit<LadderClass, 'text'>, price: number | null): string {
   if (c.status === 'measured') return `${head}: measured on ${plural(c.cases, 'contract')}${atMin}: a robust line, ${lineText(r, price)}.`;
   if (c.status === 'thin') {
     const o = c.observed!;
-    return `${head}: provisional. The save's ${plural(o.cases, 'contract')} (fewer than ${COST_POLICY.ladder.minimumCases}, too few for a line) paid ${millions(o.low)} to ${millions(o.high)} above the minimum${atMin}; ` +
+    return `${head}: provisional. The save's ${plural(o.cases, 'contract')} (fewer than ${COST_POLICY.ladder.minimumCases}, too few for a line) paid ${moneyRangeWords(o.low, o.high)} above the minimum${atMin}; ` +
       `that range widens the provisional prior's line: ${lineText(r, price)}.`;
   }
   return `${head}: provisional prior (the save has no contracts in the class above the minimum${atMin}): ${lineText(r, price)}.`;
@@ -765,7 +765,7 @@ function priceArbitration(
   const tendered = 'What he costs if tendered: a non-tender stays possible, and the export does not say whether the club will tender him.';
   if (rule.status === 'binds') {
     notes.push(above
-      ? `Every reading of the ladder (${millions(ladderBand.low)}–${millions(ladderBand.high)}) is below his previous salary, ${previous.words}, and an arbitration salary is never below it (owner-attested, 2026-09-24): the season is at his previous salary. ${tendered}`
+      ? `Every reading of the ladder (${moneyRange(ladderBand.low, ladderBand.high)}) is below his previous salary, ${previous.words}, and an arbitration salary is never below it (owner-attested, 2026-09-24): the season is at his previous salary. ${tendered}`
       : lifts
         ? `An arbitration salary is never below his previous salary (owner-attested, 2026-09-24): ${previous.words} lifts the low edge from ${millions(ladderBand.low)}. ${tendered}`
         : `An arbitration salary is never below his previous salary (owner-attested, 2026-09-24): ${previous.words}, already below the band. ${tendered}`);
@@ -997,7 +997,7 @@ export function combineProjectedCosts(costs: ProjectedCost[]): CombinedCost {
     ? ` For ${plural(atEdges, 'player')}, what is not noise stays at its edges, added: which status a season between statuses is, which class a range of arbitration classes is, or that he may leave (nothing on the low side).`
     : '';
   const text = `${COST_COMBINATION_POLICY.label}: around the sum of centrals, each player's own distance from it on each side is combined as independent across ${plural(costs.length, 'player')} (root sum of squares).${kept} ` +
-    `Every player at his edge, summed: ${millions(edgeLow)}–${millions(edgeHigh)}. Readings that move together (a class's line) are read as independent too.`;
+    `Every player at his edge, summed: ${moneyRange(edgeLow, edgeHigh)}. Readings that move together (a class's line) are read as independent too.`;
   return { ...range, edges: { low: edgeLow, high: edgeHigh }, central: { low: centralLow, high: centralHigh }, combined, atEdges, text, stamp: COST_COMBINATION_POLICY_CALIBRATION };
 }
 

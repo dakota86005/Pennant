@@ -16,7 +16,7 @@ import {
 } from '../officeTable.js';
 import { TIP_SCOUTED } from '../player/words.js';
 import type { FinanceFreeAgentDetail, FinanceFreeAgentList, FinanceFreeAgentsView } from './types.js';
-import { financeCards, marketMoney, money, perWinLine, rangeText, signedTenths, winsCell } from './words.js';
+import { financeCards, marketMoney, money, moneyRangeWords, perWinLine, rangeText, signedTenths, winsCell } from './words.js';
 
 type FreeAgents = ReturnType<typeof computeFreeAgents>;
 /** The mark beside his grades when they are OSA's view filling in for our scouts (D-067), or null. */
@@ -257,7 +257,7 @@ export function freeAgentsViewAndDetails(
     : null;
   const price = f.price
     ? perWinLine(ctx, `A win costs about ${money(f.price.band.central)} here`,
-        `${f.price.label}: about ${money(f.price.band.central)} a win, could be ${money(f.price.band.low)} to ${money(f.price.band.high)}. It's what clubs in this league pay above the minimum salary for each win a player adds.`, f.price.stage)
+        `${f.price.label}: about ${money(f.price.band.central)} a win, could be ${moneyRangeWords(f.price.band.low, f.price.band.high)}. It's what clubs in this league pay above the minimum salary for each win a player adds.`, f.price.stage)
     : null;
   const lede = officeLede(ctx, SPECIALIST, "What each player is expected to produce, and what that costs on this league's market", [
     { label: 'How to read it', value: 'Figures are the most likely value with the range they could be; the range is in each figure\'s help tag.' },

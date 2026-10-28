@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  count, innings, inningsOf, inningsWords, listWords, money, moneyRange, num, numberWord, ordinal, ordinalWord, percent,
-  plural, record, signed, signedMoney, span,
+  count, innings, inningsOf, inningsWords, listWords, money, moneyRange, moneyRangeWords, num, numberWord, ordinal, ordinalWord,
+  percent, plural, rangeWith, record, signed, signedMoney, span,
 } from '../server/numberWords.js';
 import { statText } from '../server/presentation/clubhouse/common.js';
 import { dollars } from '../server/presentation/frontOffice/finance.js';
@@ -28,6 +28,15 @@ describe('counts and plurals', () => {
     expect(plural(2, 'game')).toBe('2 games');
     expect(plural(2076, 'player')).toBe('2,076 players');
     expect(plural(1, 'position without a backup', 'positions without a backup')).toBe('1 position without a backup');
+  });
+
+  it('reads a figure that is not whole as a decimal, never "1.0 days" (review 10 L4)', () => {
+    expect(plural(1.04, 'day')).toBe('1.04 days');
+    expect(plural(0.96, 'day')).toBe('0.96 days');
+    expect(plural(2.5, 'day')).toBe('2.5 days');
+    expect(plural(1.0004, 'day')).toBe('1.000 days');
+    expect(numberWord(1.04)).toBe('1.04');
+    expect(numberWord(2.5)).toBe('2.5');
   });
 
   it('writes a negative with a real minus sign, and a rounded zero without one', () => {
@@ -66,9 +75,6 @@ describe('counts and plurals', () => {
 describe('money', () => {
   it('carries a rounding into the next unit, never "$1000K"', () => {
     expect(money(0)).toBe('$0');
-    expect(money(1)).toBe('$1');
-    expect(money(450)).toBe('$450');
-    expect(money(999)).toBe('$999');
     expect(money(1000)).toBe('$1K');
     expect(money(780_000)).toBe('$780K');
     expect(money(999_400)).toBe('$999K');
@@ -83,13 +89,34 @@ describe('money', () => {
     expect(money(1_000_000)).toBe('$1M');
     expect(money(12_500_000)).toBe('$12.5M');
     expect(money(28_000_000)).toBe('$28M');
-    expect(money(1_250_000_000)).toBe('$1,250M');
+  });
+
+  it('rounds anything under $1K to the nearest $1K: a value is never known to the dollar (review 10 L4)', () => {
+    expect(money(1)).toBe('$0');
+    expect(money(437)).toBe('$0');
+    expect(money(499)).toBe('$0');
+    expect(money(500)).toBe('$1K');
+    expect(money(999)).toBe('$1K');
+    expect(money(-12)).toBe('$0');
+    expect(signedMoney(437)).toBe('$0');
+    expect(signedMoney(-700)).toBe('−$1K');
+    // A range whose ends would both read "$0" is told apart in whole dollars
+    expect(moneyRange(120, 380)).toBe('$120–$380');
+  });
+
+  it('writes billions as billions, with the carry: "$1.25B", never "$1,250M" (review 10 L4)', () => {
+    expect(money(1_250_000_000)).toBe('$1.25B');
+    expect(money(12_500_000_000)).toBe('$12.5B');
+    expect(money(999_960_000)).toBe('$1B');
+    expect(money(999_940_000)).toBe('$999.9M');
+    expect(money(-2_000_000_000)).toBe('−$2B');
   });
 
   it('puts the sign before the dollar sign, never "$-3.2M"', () => {
     expect(money(-3_200_000)).toBe('−$3.2M');
     expect(money(-999_600)).toBe('−$1M');
-    expect(money(-400)).toBe('−$400');
+    expect(money(-400)).toBe('$0');
+    expect(money(-600)).toBe('−$1K');
     expect(money(-0.4)).toBe('$0');
     expect(signedMoney(1_500_000)).toBe('+$1.5M');
     expect(signedMoney(-900_000)).toBe('−$900K');
@@ -102,6 +129,25 @@ describe('money', () => {
     expect(moneyRange(9_000_000, 9_000_000)).toBe('$9M');
     expect(moneyRange(780_100, 780_400)).toBe('$780.1K–$780.4K');
     expect(moneyRange(-1_000_000, 2_000_000)).toBe('−$1M–$2M');
+  });
+
+  it('writes a range in words with " to ", and ends that differ never read as a point (review 10 M2)', () => {
+    expect(money(12_310_000)).toBe('$12.3M');
+    expect(money(12_340_000)).toBe('$12.3M');
+    expect(moneyRange(12_310_000, 12_340_000, ' to ')).toBe('$12.31M to $12.34M');
+    expect(moneyRangeWords(12_310_000, 12_340_000)).toBe('$12.31M to $12.34M');
+    expect(moneyRangeWords(4_600_000, 25_300_000)).toBe('$4.6M to $25.3M');
+    expect(moneyRangeWords(9_000_000, 9_000_000)).toBe('$9M');
+    expect(moneyRangeWords(-3_200_000, 1_000_000)).toBe('−$3.2M to $1M');
+  });
+
+  it('a range through a formatter goes through the money rule when the formatter is money (review 10 M2)', () => {
+    expect(rangeWith(12_310_000, 12_340_000, money)).toBe('$12.31M to $12.34M');
+    expect(rangeWith(12_310_000, 12_340_000, signedMoney)).toBe('+$12.31M to +$12.34M');
+    expect(rangeWith(-12_340_000, -12_310_000, signedMoney)).toBe('−$12.34M to −$12.31M');
+    expect(rangeWith(12_310_000, 12_340_000, money, '–')).toBe('$12.31M–$12.34M');
+    expect(rangeWith(1.2, 3.4, (v) => `${v.toFixed(1)} wins`)).toBe('1.2 wins to 3.4 wins');
+    expect(rangeWith(2, 2, (v) => `${v} wins`)).toBe('2 wins');
   });
 });
 

@@ -76,7 +76,7 @@ export interface SeasonWar {
 /** One season of the league's standings (declared in the neutral `saveIdentity.ts`). */
 export type { SeasonRecord } from './saveIdentity.js';
 import type { SeasonRecord } from './saveIdentity.js';
-import { money as millions, percent, plural } from './numberWords.js';
+import { money as millions, moneyRangeWords, percent, plural } from './numberWords.js';
 
 /**
  * The share of this season's schedule a past season covered, for the price of a win (B-13): its games
@@ -562,7 +562,7 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
   } else {
     const band = { central: median(readings), low: Math.min(...readings), high: Math.max(...readings) };
     price = derivedFrom(band, 'market bases B to C3',
-      `Median of ${readings.length} market bases, band from the lowest to the highest (${millions(band.low)} to ${millions(band.high)}); ${population.market} market contracts.`);
+      `Median of ${readings.length} market bases, band from the lowest to the highest (${moneyRangeWords(band.low, band.high)}); ${population.market} market contracts.`);
   }
   const dollarsKnown = price.value !== null || floor.value !== null;
   const out = result(price, floor, bases, dollarsKnown ? 'dollars_per_win' : 'wins');
@@ -607,7 +607,7 @@ function samplingOf(specs: BasisSpec[], bases: PriceBasis[], minimum: number, se
     comparable,
     text: comparable
       ? `Each market basis resampled over its own contracts ${replicates} times (${Math.round(low * 100)}th to ${Math.round(high * 100)}th percentile); ` +
-        `the spread of the bases with that sampling in it is ${millions(comparable.low)} to ${millions(comparable.high)}, the band a measured price must be narrower than (Q-4).`
+        `the spread of the bases with that sampling in it is ${moneyRangeWords(comparable.low, comparable.high)}, the band a measured price must be narrower than (Q-4).`
       : `Each market basis resampled over its own contracts ${replicates} times; at least one has no upper edge (too many resamples price no positive win), so the opening band with its sampling is unbounded.`,
   };
 }

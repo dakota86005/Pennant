@@ -6,7 +6,8 @@
  */
 import type { TradeFigure, TradeUnit } from '../../playerValue.js';
 import { CANT_TELL_APART } from '../player/compare.js';
-import { money, signedTenths } from '../player/words.js';
+import { signedMoney } from '../../numberWords.js';
+import { money, rangeWith, signedTenths } from '../player/words.js';
 
 export const TRADES = 'trades' as const;
 export const PLAYER_VALUE = 'Player Value';
@@ -19,11 +20,11 @@ export const amountFor = (unit: TradeUnit | null): Fmt =>
   (unit === 'wins' ? (v) => `${signedTenths(v)} wins` : money);
 
 /** A difference always carries its sign: "+$12.3M", "−$4.0M". */
-export const signed = (fmt: Fmt): Fmt => (v) => (v > 0 ? `+${fmt(v)}` : fmt(v));
+export const signed = (fmt: Fmt): Fmt => (fmt === money ? signedMoney : (v) => (v > 0 ? `+${fmt(v)}` : fmt(v)));
 
 /** The most likely reading: a figure, or a stretch where it depends on an open season. */
 export const likelyText = (f: TradeFigure, fmt: Fmt): string =>
-  (f.central !== null ? fmt(f.central) : f.centralRange ? `${fmt(f.centralRange.low)} to ${fmt(f.centralRange.high)}` : `${fmt(f.low)} to ${fmt(f.high)}`);
+  (f.central !== null ? fmt(f.central) : f.centralRange ? rangeWith(f.centralRange.low, f.centralRange.high, fmt) : rangeWith(f.low, f.high, fmt));
 
 /** Whether a difference's range holds zero: then it can't be told apart from an even deal, whatever its most likely. */
 export const holdsEven = (f: { low: number; high: number }): boolean => f.low <= 0 && f.high >= 0;
@@ -39,7 +40,7 @@ export function evenDealText(f: TradeFigure, fmt: Fmt, lead = true): string {
 }
 
 /** "$A to $B", or one figure where the ends meet. */
-export const spanText = (f: { low: number; high: number }, fmt: Fmt): string => (f.low === f.high ? fmt(f.low) : `${fmt(f.low)} to ${fmt(f.high)}`);
+export const spanText = (f: { low: number; high: number }, fmt: Fmt): string => rangeWith(f.low, f.high, fmt);
 
 /** "SS · 27 · ARI": what a row says about who he is, the empty parts left out. */
 export const metaLine = (parts: ReadonlyArray<string | number | null | undefined>): string =>

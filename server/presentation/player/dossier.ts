@@ -10,7 +10,7 @@ import type { BasisLine, Cell, DeptId, Tone } from '../../contract/presentation.
 import { gameDateWords } from '../../dataStatus.js';
 import { parseGameDate } from '../../dataFreshness.js';
 import { basis, cell, claim, row, servedValue, target, unknownValue } from '../claim.js';
-import { inningsOf, record } from '../../numberWords.js';
+import { inningsOf, rangeWith, record } from '../../numberWords.js';
 import { plain, plainAll, ratingText, type RatingDisplay } from '../farm/words.js';
 import type { DossierInput } from './input.js';
 import type {
@@ -690,7 +690,7 @@ function ourViewBlock(ctx: DossierInput, unit: 'dollars' | 'wins'): PlayerOurVie
   };
   const figure = (label: string, t: typeof v.contract) => (t.status !== 'known' ? `${label}: not valued yet` : `${label}: ${lensText(t.ours)} (neutral ${lensText(t.neutral)})`);
   const amount = (d: { low: number; high: number } | null): string =>
-    (d === null || (Math.abs(d.low) < 500 && Math.abs(d.high) < 500 && unit === 'dollars') ? '' : ` (${d.low === d.high ? `${d.low > 0 ? '+' : ''}${fmt(d.low)}` : `${fmt(d.low)} to ${fmt(d.high)}`})`);
+    (d === null || (Math.abs(d.low) < 500 && Math.abs(d.high) < 500 && unit === 'dollars') ? '' : ` (${d.low === d.high ? `${d.low > 0 ? '+' : ''}${fmt(d.low)}` : rangeWith(d.low, d.high, fmt)})`);
   const nothing = v.status === 'not_held' || (v.contract.status !== 'known' && v.retention.status !== 'known' && v.wins.status !== 'known');
   const leanClaim = (l: (typeof v.leans)[number]) => claim({
     text: `${capitalized(plain(l.short))}${amount(unit === 'dollars' ? l.by.contract : l.by.wins)}`, tone: 'neutral',

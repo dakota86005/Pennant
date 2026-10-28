@@ -26,7 +26,7 @@ import type { ControlSeason, ControlStatus, ControlTimeline } from './playerValu
 import type { LensFigure, OurView } from './playerValueLens.js';
 import type { PlayerProduction, WinsBand } from './playerValueProduction.js';
 import type { PlayerSurplus, SurplusSeason, SurplusTotal } from './playerValueSurplus.js';
-import { money, num, plural } from './numberWords.js';
+import { money, moneyRangeWords, num, plural, rangeWith } from './numberWords.js';
 
 export type TradeUnit = 'dollars' | 'wins';
 export type TradeSideName = 'sent' | 'received';
@@ -331,7 +331,7 @@ function sideTotal(side: TradeSideName, players: TradePlayerValue[], unit: Trade
     status: 'known', counted: counted.length, excluded, figure, edges,
     text: `${LABEL}: around the sum of each player's most likely reading, each player's own distance from it on each side is combined as ` +
       `independent across ${plural(counted.length, 'player')} (root sum of squares); an option, an open status or whether he stays stays at its edges. ` +
-      `Every player at his edge, summed: ${fmt(edges.low)} to ${fmt(edges.high)}.${leavesOut(excluded)}`,
+      `Every player at his edge, summed: ${rangeWith(edges.low, edges.high, fmt)}.${leavesOut(excluded)}`,
   };
 }
 
@@ -463,8 +463,8 @@ const costTextOf = (s: ControlSeason, cost: TradeControlSeason['cost']): string 
     return `not known${why ? ` (${why.replace(/\.$/, '')})` : ''}`;
   }
   if (cost.low === cost.high) return money(cost.low);
-  if (cost.central === null) return `${money(cost.low)} to ${money(cost.high)}, depending on his status`;
-  return `most likely ${money(cost.central)} · could be ${money(cost.low)} to ${money(cost.high)}`;
+  if (cost.central === null) return `${moneyRangeWords(cost.low, cost.high)}, depending on his status`;
+  return `most likely ${money(cost.central)} · could be ${moneyRangeWords(cost.low, cost.high)}`;
 };
 
 /** A player's control as a trade row shows it: each run of seasons in plain words, and each controlled season's cost. */
