@@ -245,7 +245,8 @@ function figuresOf(v: ClubhouseContext, input: OrgComparisonInput, data: OrgComp
         { label: 'Payroll', value: me.payroll.value === null ? 'Not in the export.' : money(me.payroll.value) },
         { label: 'Budget', value: me.budget.value === null ? 'Not in the export.' : money(me.budget.value) },
         ...(payrollMiddle ? [{ label: 'League middle', value: `${money(data.league.payroll!)}: the middle club's payroll, for scale; never a rank.` }] : []),
-        { label: 'Where it comes from', value: [me.payroll.source, me.payroll.note].filter((x): x is string => typeof x === 'string' && x.trim().length > 0).join('. ') || TIP_PAYROLL },
+        // The figure's column is the developer's locator, never served (B-11): its note, else what the payroll is
+        { label: 'Where it comes from', value: typeof me.payroll.note === 'string' && me.payroll.note.trim().length > 0 ? me.payroll.note : TIP_PAYROLL },
       ],
       unknown: [
         ...(me.payroll.value === null ? [`The club's payroll: ${me.payroll.note ?? 'the export doesn\'t state it'}.`.replace(/\.\.$/, '.')] : []),

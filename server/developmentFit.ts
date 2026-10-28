@@ -141,12 +141,27 @@ export const PROJECTION_CALIBRATION: CalibrationStamp = provisional(
 
 export const PROJECTION_REALIZED_UNDER = 3;
 
-/** Every stakes constant with its stamp, for a response that reports what it used. */
-export const STAKES_CALIBRATION: ReadonlyArray<{ name: string; value: unknown; stamp: CalibrationStamp }> = [
-  { name: 'CEILING_LINES (Pennant\'s starting lines)', value: CEILING_LINES, stamp: CEILING_LINES_CALIBRATION },
-  { name: 'CEILING_LINES (the quantiles they stand for)', value: 'p10 / p50 / p90 of major leaguers of his kind', stamp: CEILING_QUANTILES_CALIBRATION },
-  { name: 'DEVELOPMENT_AGE', value: DEVELOPMENT_AGE, stamp: DEVELOPMENT_AGE_CALIBRATION },
-  { name: 'PROJECTION_REALIZED_UNDER', value: PROJECTION_REALIZED_UNDER, stamp: PROJECTION_CALIBRATION },
+/**
+ * Every stakes constant with its stamp, for a response that reports what it used. `what` is the line the GM reads for it
+ * (the farm's lines table); the stamp's `basis` is the developer's record and is never served (B-01).
+ */
+export const STAKES_CALIBRATION: ReadonlyArray<{ name: string; value: unknown; what: string; stamp: CalibrationStamp }> = [
+  {
+    name: 'CEILING_LINES (Pennant\'s starting lines)', value: CEILING_LINES, stamp: CEILING_LINES_CALIBRATION,
+    what: 'Pennant\'s starting ceiling lines: the visible potential at which a prospect projects as a fringe major leaguer, a regular or an impact player. A league\'s own lines replace them once measured and holding up.',
+  },
+  {
+    name: 'CEILING_LINES (the quantiles they stand for)', value: 'the weakest tenth, the median and the best tenth of major leaguers of his kind', stamp: CEILING_QUANTILES_CALIBRATION,
+    what: 'What "a major leaguer", "a regular" and "an impact player" are taken to mean: where a ceiling starts to be worth protecting.',
+  },
+  {
+    name: 'DEVELOPMENT_AGE', value: DEVELOPMENT_AGE, stamp: DEVELOPMENT_AGE_CALIBRATION,
+    what: 'The age through which most, some and little of a player\'s development is still ahead of him.',
+  },
+  {
+    name: 'PROJECTION_REALIZED_UNDER', value: PROJECTION_REALIZED_UNDER, stamp: PROJECTION_CALIBRATION,
+    what: 'Points of potential over current under which what the scouts project has, in effect, happened.',
+  },
 ];
 
 /* ── the two readings ────────────────────────────────────────────────────────────────────────── */

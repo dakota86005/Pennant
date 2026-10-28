@@ -505,7 +505,7 @@ export function surplusOf(input: SurplusInput): PlayerSurplus {
 
   const discount = {
     rate,
-    text: `One stated rate, ${(rate * 100).toFixed(0)}% a season (owner, 2026-09-24; policy, a time preference): a season s seasons from now weighs 1/${(1 + rate).toFixed(2)}^s, and this season's remaining part weighs 1.`,
+    text: `One stated rate, ${(rate * 100).toFixed(0)}% a season (a stated policy, a time preference): a season s seasons from now weighs 1/${(1 + rate).toFixed(2)}^s, and this season's remaining part weighs 1.`,
   };
   const level = market?.replacementLevel ?? null;
   const replacement = {
@@ -522,7 +522,7 @@ export function surplusOf(input: SurplusInput): PlayerSurplus {
   };
   const priceOut = market && price ? {
     stage: market.stage, label: market.label, band: price,
-    text: `The price of a win in force: ${market.label}, ${money(price.central)} a win (band ${money(price.low)} to ${money(price.high)}), held flat in every season (owner, 2026-09-24: no salary inflation is assumed unless the save's own measured price history shows drift). It is salary above the league minimum per win above the export's replacement level.`,
+    text: `The price of a win in force: ${market.label}, ${money(price.central)} a win (band ${money(price.low)} to ${money(price.high)}), held flat in every season (a stated policy: no salary inflation is assumed unless the save's own measured price history shows drift). It is salary above the league minimum per win above the export's replacement level.`,
   } : null;
   const basis = [
     'Contract surplus: for each controlled season, his production value (the minimum a replacement at 0 WAR costs, plus his wins × the price of a win) less what he costs, discounted and summed: what the contract is worth to whoever holds it.',
@@ -563,7 +563,7 @@ export function surplusOf(input: SurplusInput): PlayerSurplus {
   if (control.controlEnds !== null) excluded.push(`He is a free agent from ${control.controlEnds}: control ends, and nothing after it is counted.`);
   if (control.continuesPastHorizon) {
     const last = control.seasons[control.seasons.length - 1]?.season;
-    excluded.push(`Control continues past ${last}, the end of the horizon (seven seasons, this one included; Q-3): later seasons are not counted.`);
+    excluded.push(`Control continues past ${last}, the end of the horizon (seven seasons, this one included): later seasons are not counted.`);
   }
 
   const productionReason = production.status !== 'projected' ? (production.reason ?? 'His production is not established.') : null;

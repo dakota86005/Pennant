@@ -55,11 +55,11 @@ export function majorLeagueLines(ids: number[] | null, fromSeason: number, throu
   const sides: MajorLeagueLines['sides'] = { batting: null, pitching: null };
   const tables = [['players_career_batting_stats', BATTING, 'batting'], ['players_career_pitching_stats', PITCHING, 'pitching']] as const;
   for (const [table, wanted, side] of tables) {
-    if (!tableExists(table)) { sides[side] = `${table} is not in the export, so major-league ${side} results cannot be read.`; continue; }
+    if (!tableExists(table)) { sides[side] = `The export has no career ${side} lines, so major-league ${side} results cannot be read.`; continue; }
     const present = new Set(tableColumns(table));
     // WAR may be absent (then every figure is unknown); the rest are needed to read a line at all
     const lacking = wanted.filter((c) => c !== 'war' && c !== 'g' && c !== 'gs' && !present.has(c));
-    if (lacking.length > 0) sides[side] = `${table} has no ${lacking.join(', ')} column, so major-league ${side} results cannot be read.`;
+    if (lacking.length > 0) sides[side] = `The export's career ${side} lines lack ${lacking.length === 1 ? 'a figure' : 'figures'} needed to read them, so major-league ${side} results cannot be read.`;
   }
   if (sides.batting && sides.pitching) return { byPlayer, unavailable: `${sides.batting} ${sides.pitching}`, sides };
   // The majors: level 1, and an independent market league's own top level

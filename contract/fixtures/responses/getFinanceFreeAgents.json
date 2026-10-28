@@ -83,7 +83,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.budget"
+            "value": "The club's finances, as exported"
           }
         ],
         "source": {
@@ -116,7 +116,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.player_payroll"
+            "value": "The club's finances, as exported"
           }
         ],
         "source": {
@@ -178,7 +178,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.player_payroll_next_season — OOTP's own estimate of next season's payroll."
+            "value": "The club's finances, as exported — OOTP's own estimate of next season's payroll."
           }
         ],
         "source": {
@@ -241,7 +241,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.cash_trades_available — The cash a club can move in trades; `cash` is exported as zero for every club and is never read (R-7)."
+            "value": "The club's finances, as exported — The cash a club can move in trades; the club's cash on hand is exported as zero for every club and is never read."
           }
         ],
         "source": {

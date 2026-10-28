@@ -24,7 +24,7 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 ### Tier 1
 
 **B-01 · Hover notes show developer details and a developer's local save**
-- Status: open
+- Status: fixed (batch 13)
 - Tier 1 · data · Front Office, MLB Ops, Farm, Player windows, League Office, Trades · size M · batch 2
 - The GM sees: Value and roster-map hovers read "fitted by production-3b.1 (playerValueProductionFit.ts) ... a developer's local save (its league id) ... npm run calibrate ... (D-053)", 20 times per club report; Org Comparison and the farm's lines table show "provisional ratings prior", "(a developer's local save, its export date)", "(Q-3)".
 - Cause: Developer provenance kept in calibration stamps is served raw as the GM-facing basis: server/playerValueCalibration.ts:366-372, :458-463, :1533-1538, :2319-2325; server/developmentFit.ts:64-70; server/calibration.ts:42-44 (CALIBRATION_RUN, preferred by dossier.ts:57 and leagueHistoryViews.ts:35); carried by server/presentation/frontOffice/morning.ts:920, :961, trades/desk.ts:55, frontOffice/desk.ts:142, league/orgComparison.ts:130, farm/organization.ts:109-120; drawn verbatim by PD/Depth.swift:223-224. Other stamps with the same provenance: resultsMetrics.ts, toolsModel.ts, roleStandards.ts, roleReview.ts, mlbCalibrationFit.ts, mlbResultsFit.ts, mlbToolsFit.ts, mlbPlatoonFit.ts.
@@ -94,7 +94,7 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 - Absorbs: MLB-13 (confirmed), MLB-24 (confirmed), MLB-26 (confirmed), MLB-29 (confirmed)
 
 **B-11 · Code words reach the screen ("level 2", column names)**
-- Status: open
+- Status: fixed (batch 13)
 - Tier 1 · data · MLB Ops, Player windows, Finance, Farm · size S · batch 2
 - The GM sees: "Season line (55 PA, level 2)", "Recall, level 2", the column name rules_minor_league_fa_minimum_years in Contract & Rights, "Not known projected" in 50 payroll cells (a raw protected_prospect on the farm Decision is tracked under FARM-20).
 - Cause: `level ${n}` interpolated: server/presentation/majorLeague/decision.ts:361, server/mlbResponses.ts:564, server/mlbReport.ts:382, :429, :435, :635, :743, server/playerValueRatings.ts:810-818, server/playerValueCone.ts:239-240; server/playerValueControl.ts:444, server/playerValueContract.ts:137; server/presentation/finance/payroll.ts:398; server/presentation/farm/words.ts:47, :77.

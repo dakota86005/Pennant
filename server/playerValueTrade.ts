@@ -413,7 +413,7 @@ export function tradeValueOf(input: { sent: TradeEntryInput[]; received: TradeEn
         'him, whose guaranteed money cancels only for the club that already owes it; that value is shown per player, never summed.',
       "Each player's figures are Player Value's as every read serves them (the player card, Payroll, the league-wide read): never " +
         'recomputed, narrowed or re-read here.',
-      `${LABEL}: the owner's Payroll rule extended to a deal's sides and the difference between them; the every-player-at-his-edge ` +
+      `${LABEL}: Payroll's rule for a club's range, applied to a deal's sides and the difference between them; the every-player-at-his-edge ` +
         "sum is kept beside each figure and no player's own band is narrowed.",
       "A player whose value is not known is listed with his reason and left out of the sums, which name him; he is never counted as zero.",
       "The difference describes the deal; it does not see either club's roster, needs or finances, and it decides nothing.",

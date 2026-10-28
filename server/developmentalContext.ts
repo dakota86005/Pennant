@@ -47,6 +47,7 @@ import {
 import { stakesLinesFor } from './stakesLines.js';
 import { loadScoutedObservations, type ScoutedAbility } from './scoutedEvidence.js';
 import { parseGameDate } from './dataFreshness.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 interface AgeProfile {
   players: number;
@@ -184,7 +185,7 @@ export function openDevelopmentalContext(): DevelopmentalContextReader {
     const known = knownAge(age);
     return {
       level,
-      levelName: LEVEL_NAMES[level] ?? `L${level}`,
+      levelName: LEVEL_NAMES[level] ?? UNNAMED_LEVEL_SHORT,
       leagueName,
       ageRelativeToLevel: ageProfile.averageAge !== null && known !== null ? ageProfile.averageAge - known : null,
       ageProfile,

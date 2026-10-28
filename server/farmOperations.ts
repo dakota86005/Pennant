@@ -110,6 +110,7 @@ import { buildOrganizationView, type OrganizationView, type OrgPlayerFact } from
 import { reviewRetention, type RetentionReview } from './farmRetention.js';
 import * as calibration from './farmCalibration.js';
 import { ROTATION_SPOTS } from './farmCalibration.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 /*
  * The farm's answer's own parts, named through its public module (N10): the views word a finding, a work share, a
@@ -159,7 +160,7 @@ function affiliateMeta(orgId: number): AffiliateMeta[] {
     teamId: r.team_id,
     label: r.name === r.nickname ? r.name : `${r.name} ${r.nickname}`,
     level: r.level,
-    levelName: LEVEL_NAMES[r.level] ?? `L${r.level}`,
+    levelName: LEVEL_NAMES[r.level] ?? UNNAMED_LEVEL_SHORT,
     leagueId: r.league_id,
     leagueName: r.league_name || `League ${r.league_id}`,
   }));
@@ -1266,7 +1267,7 @@ function farmCalibrationReport(lines: CeilingLinesInForce): FarmSystemView['cali
       // Set aside (D-068): the league's own were measured, on other ratings than today's, so "not measured yet" would be untrue
       : `Pennant's starting lines: ${lines.setAside ? 'this league\'s own were measured on other ratings than today\'s' : STARTING_LINES_WHY[lines.reason]}.`,
     lines.source === 'starting' ? lines.setAside : null),
-    ...STAKES_CALIBRATION.map((c) => stamp(c.name, typeof c.value === 'object' && c.value !== null && 'hitter' in c.value ? linesText(c.value as CeilingLines) : c.value, c.stamp.status === 'policy' ? 'policy' : 'provisional', c.stamp.basis)),
+    ...STAKES_CALIBRATION.map((c) => stamp(c.name, typeof c.value === 'object' && c.value !== null && 'hitter' in c.value ? linesText(c.value as CeilingLines) : c.value, c.stamp.status === 'policy' ? 'policy' : 'provisional', c.what)),
   ];
 }
 

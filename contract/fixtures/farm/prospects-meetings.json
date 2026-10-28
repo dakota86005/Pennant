@@ -221,10 +221,10 @@
       "playerId": 9101,
       "name": "Player 9101",
       "line": {
-        "display": "21 · SS · Level 2 · Club 2"
+        "display": "21 · SS · AAA · Club 2"
       },
       "queueLine": {
-        "display": "Level 2 → Level 2",
+        "display": "AAA → AAA",
         "hint": "The nearest move Player Development finds defensible"
       },
       "call": {
@@ -334,7 +334,7 @@
       "next": [
         {
           "move": {
-            "display": "Normal promotion to Level 2"
+            "display": "Normal promotion to AAA"
           },
           "destinations": [
             {
@@ -420,7 +420,7 @@
           "id": "evaluation:9101:0",
           "cells": {
             "move": {
-              "display": "Normal promotion to Level 2"
+              "display": "Normal promotion to AAA"
             },
             "judgment": {
               "display": "Defensible",
@@ -448,10 +448,10 @@
       "playerId": 9102,
       "name": "Player 9102",
       "line": {
-        "display": "21 · SS · Level 3 · Club 3"
+        "display": "21 · SS · AA · Club 3"
       },
       "queueLine": {
-        "display": "Level 3 → Level 2",
+        "display": "AA → AAA",
         "hint": "The nearest move Player Development finds defensible"
       },
       "call": {
@@ -561,7 +561,7 @@
       "next": [
         {
           "move": {
-            "display": "Normal promotion to Level 2"
+            "display": "Normal promotion to AAA"
           },
           "destinations": [
             {
@@ -647,7 +647,7 @@
           "id": "evaluation:9102:0",
           "cells": {
             "move": {
-              "display": "Normal promotion to Level 2"
+              "display": "Normal promotion to AAA"
             },
             "judgment": {
               "display": "Defensible",
@@ -715,11 +715,11 @@
   "levels": [
     {
       "id": "2",
-      "name": "Level 2"
+      "name": "AAA"
     },
     {
       "id": "3",
-      "name": "Level 3"
+      "name": "AA"
     }
   ],
   "rows": [
@@ -733,7 +733,7 @@
           "display": "21"
         },
         "club": {
-          "display": "Level 2 · Club 2"
+          "display": "AAA · Club 2"
         },
         "role": {
           "display": "SS"
@@ -767,7 +767,7 @@
         "eligible"
       ],
       "listLine": {
-        "display": "21 · SS · Level 2 · Club 2"
+        "display": "21 · SS · AAA · Club 2"
       },
       "open": {
         "kind": "decision",
@@ -785,7 +785,7 @@
           "display": "21"
         },
         "club": {
-          "display": "Level 3 · Club 3"
+          "display": "AA · Club 3"
         },
         "role": {
           "display": "SS"
@@ -820,7 +820,7 @@
         "behind"
       ],
       "listLine": {
-        "display": "21 · SS · Level 3 · Club 3"
+        "display": "21 · SS · AA · Club 3"
       },
       "open": {
         "kind": "decision",
@@ -838,7 +838,7 @@
           "display": "21"
         },
         "club": {
-          "display": "Level 3 · Club 3"
+          "display": "AA · Club 3"
         },
         "role": {
           "display": "SS"
@@ -870,7 +870,7 @@
       "levelId": "3",
       "filters": [],
       "listLine": {
-        "display": "21 · SS · Level 3 · Club 3"
+        "display": "21 · SS · AA · Club 3"
       },
       "open": {
         "kind": "decision",

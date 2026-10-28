@@ -475,7 +475,7 @@ describe('expected production through the reader (fixture league)', () => {
     // The fixture exports no proneness column at all
     const none = readInjuryProneness([IDS.starter]).get(IDS.starter)!;
     expect(none.overall.value).toBeNull();
-    expect(none.overall.note).toMatch(/no prone_overall column/);
+    expect(none.overall.note).toBe('The export does not carry this rating.');
     db.exec(`ALTER TABLE players ADD COLUMN prone_overall REAL`);
     try {
       db.prepare(`UPDATE players SET prone_overall = ? WHERE player_id = ?`).run(70, HERE);
@@ -712,7 +712,7 @@ describe('expected production through the reader (hardening, 2026-09-23): the ex
     try {
       const lines = majorLeagueLines([BATTER, PITCHER], 2027, 2030, null);
       expect(lines.unavailable).toBeNull();
-      expect(lines.sides.pitching).toMatch(/bf/);
+      expect(lines.sides.pitching).toMatch(/career pitching lines lack a figure needed to read them/);
       expect(lines.sides.batting).toBeNull();
       expect(lines.byPlayer.get(BATTER)?.batting.length).toBeGreaterThan(0);
     } finally {

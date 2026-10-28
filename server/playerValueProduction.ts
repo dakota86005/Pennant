@@ -1389,7 +1389,7 @@ export function basisShell(input: ProductionInput, model: ProductionModel, prove
         ? 'The fit in use measured no proneness effect, so proneness moves nothing.'
         : !known
           ? 'Injury proneness unknown: the band is widened by the largest effect any proneness band showed, and the central is not moved.'
-          : `Injury proneness ${input.proneness} (owner-attested known fact), band ${band! + 1} of ${model.proneness.cuts.length + 1}.`,
+          : `Injury proneness ${input.proneness}, band ${band! + 1} of ${model.proneness.cuts.length + 1}.`,
     },
     coverage: { outer: PRODUCTION_POLICY.coverage.outer, inner: PRODUCTION_POLICY.coverage.inner },
     schedule: games !== null

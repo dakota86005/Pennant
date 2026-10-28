@@ -3,6 +3,7 @@ import { freshnessCue, getDataStatus, type DataStatus, type FreshnessCue } from 
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { contractSeasonFor, controlSummaryOf, playerValues, productionHeadlineOf, tradeValueOf, type TradeFigure, type TradeUnit } from './playerValue.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 /**
  * Who the rest of the league has actually put up for sale.
@@ -217,7 +218,7 @@ export function tradingBlock(opts: { teamId?: number; level?: number | 'all'; li
       team: r.name === r.nickname ? r.name : `${r.name} ${r.nickname}`,
       teamAbbr: r.abbr,
       level: r.level,
-      levelName: LEVEL_NAMES[r.level] ?? `L${r.level}`,
+      levelName: LEVEL_NAMES[r.level] ?? UNNAMED_LEVEL_SHORT,
       salaryNow: salary,
       control: v ? controlSummaryOf(v.control).text : 'Control not established',
       seasonLine: lines.get(r.player_id) ?? null,

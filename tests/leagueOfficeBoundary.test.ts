@@ -25,7 +25,7 @@ const PINNED: Record<string, string[]> = {
     'presentation/league/common', 'presentation/league/standings', 'presentation/league/types', 'presentation/league/usVsThem', 'schedule',
   ],
   'leagueHistoryViews.ts': [
-    'contract/presentation', 'dataStatus', 'franchise', 'gameplan', 'org', 'playerValue', 'presentation/league/common',
+    'contract/presentation', 'dataStatus', 'franchise', 'gameplan', 'org', 'playerValue', 'presentation/claim', 'presentation/league/common',
     'presentation/league/franchise', 'presentation/league/orgComparison', 'presentation/league/types',
   ],
   'leagueLeadersViews.ts': ['db', 'presentation/league/common', 'presentation/league/leaders', 'presentation/league/types', 'rosterops'],

@@ -96,7 +96,7 @@ export const PATH_TONE: Readonly<Record<string, Tone>> = { open: 'good', open_wi
 /** Where a rule comes from (Player Rights' basis). */
 export const BASIS: Readonly<Record<string, string>> = {
   export_state: 'stated by the export', observed: 'observed in OOTP', documented: 'OOTP documentation',
-  observed_and_documented: 'observed and documented', owner_attested: 'attested by the owner',
+  observed_and_documented: 'observed and documented', owner_attested: 'how OOTP behaves, as Pennant states it',
 };
 export const PATH_LABEL: Readonly<Record<string, string>> = { role_change: 'Change role', recall: 'Recall (40-man)', add_to_forty_man: 'Add to 40-man' };
 /** A transaction's status, as Player Rights answered (a status not established is never "allowed"). */

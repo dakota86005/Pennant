@@ -65,7 +65,7 @@ import {
   type SeasonRecord, type SeasonWar,
 } from './playerValueFinances.js';
 import { derivedFrom, unknownBecause, type Sourced } from './provenance.js';
-import type { CalibrationStamp } from './calibration.js';
+import { PARTLY_MEASURED_HERE, type CalibrationStamp } from './calibration.js';
 import { readInjuryProneness } from './injuryProneness.js';
 import {
   PRODUCTION_METHOD, PRODUCTION_POLICY, PRODUCTION_PRIOR, PRODUCTION_PRIOR_CALIBRATION, PRODUCTION_PRIOR_SOURCE, RATINGS_METHOD,
@@ -591,10 +591,10 @@ const WAR_COLUMNS = ['player_id', 'year', 'team_id', 'league_id', 'split_id', 'w
 function leagueWar(leagueId: number, seasons: number[]): { bySeason: Map<number, SeasonWar>; unavailable: string | null } {
   const bySeason = new Map<number, SeasonWar>();
   for (const table of WAR_TABLES) {
-    if (!tableExists(table)) return { bySeason, unavailable: `${table} is not in the export, so the league's WAR cannot be read.` };
+    if (!tableExists(table)) return { bySeason, unavailable: `The export's ${table.includes('pitching') ? 'pitching' : 'batting'} lines are not in it, so the league's WAR cannot be read.` };
     const present = new Set(tableColumns(table));
     const lacking = WAR_COLUMNS.filter((c) => !present.has(c));
-    if (lacking.length > 0) return { bySeason, unavailable: `${table} has no ${lacking.join(', ')} column, so the league's WAR cannot be read.` };
+    if (lacking.length > 0) return { bySeason, unavailable: `The export's ${table.includes('pitching') ? 'pitching' : 'batting'} lines lack a field it needs, so the league's WAR cannot be read.` };
   }
   const years = seasons.map(() => '?').join(', ');
   const part = (table: string) =>
@@ -701,7 +701,7 @@ function leagueMarket(leagueId: number, options: ValuationOptions = {}): {
   const stale = s !== null && standing.value !== null && standing.value > 0 && facts !== null && facts.firstSeason !== null && facts.firstSeason < s && !hasSeasonLines(marketId, s);
   const seasonPlayed: Sourced<number> = stale
     ? unknownBecause('not_exported_by_ootp', standing.source,
-      `The standings show games played beside ${s}, for which the league has no line: they are last season's (the season number moved on before ${s} began, D-08), so the share of ${s} played is not established, never a whole season played with nothing in it.`)
+      `The standings show games played beside ${s}, for which the league has no line: they are last season's (the season number moved on before ${s} began), so the share of ${s} played is not established, never a whole season played with nothing in it.`)
     : standing;
   // The share of this season's schedule each past season covered: its games per club over this season's games per team (B-13)
   const seasonShares = new Map(seasons.filter((y) => y !== s).map((y) => [y, scheduleShareOf(records.get(y) ?? null, gamesPerTeam)]));
@@ -864,13 +864,13 @@ function observedMarketOf(
   const prunedImports = imports.filter((i) => i.pruned).length;
   const retention = {
     kept: imports.length - prunedImports, pruned: prunedImports, olderMethod,
-    text: `Full contract snapshots are kept for the imports that bracket a winter and the most recent import (owner, 2026-09-24): ${imports.length - prunedImports} of ${plural(imports.length, 'import')} kept, ` +
+    text: `Full contract snapshots are kept for the imports that bracket a winter and the most recent import: ${imports.length - prunedImports} of ${plural(imports.length, 'import')} kept, ` +
       `${prunedImports} pruned; every pair of imports observed is kept as stored.${olderMethod > 0 ? ` ${plural(olderMethod, 'pair')} ${olderMethod === 1 ? 'is' : 'are'} read as stored under an earlier method (${SIGNINGS_POLICY.method} is current): a snapshot of ${olderMethod === 1 ? 'it' : 'each'} was pruned, so it cannot be read again.` : ''}`,
   };
   const acquisitions = freeAcquisitions(pairs);
   const replacement = measureReplacement(acquisitions, acquiredProduction(marketId, acquisitions));
   const dollars = finance.financials.value === false
-    ? 'The league runs no financials (rules_financials = 0): value is in wins, and no price of a win is measured in dollars.'
+    ? 'The league runs no financials: value is in wins, and no price of a win is measured in dollars.'
     : finance.financials.value === null ? 'Whether the league runs financials is not established: no price of a win is measured in dollars.' : null;
   // A signing's first season, once completed in the export: his WAR that season on its schedule's footing (review R4-01)
   const firstSeasons = [...new Set(pairs.flatMap((p) => p.changes.filter((c) => c.kind === 'free_agent_signing' && c.uses.includes('price') && c.firstSeason !== null)
@@ -1021,7 +1021,7 @@ function seasonStateOf(leagueId: number, season: number | null, played: number |
   }
   const facts = leagueFacts(leagueId, season);
   if (facts.firstSeason !== null && facts.firstSeason < season && !hasSeasonLines(leagueId, season)) {
-    return { notBegun: true, words: `No game of ${season} has a line in the export, while earlier seasons do: ${season} has not begun (standings beside it are last season's, D-08).` };
+    return { notBegun: true, words: `No game of ${season} has a line in the export, while earlier seasons do: ${season} has not begun (standings beside it are last season's).` };
   }
   return {
     notBegun: false,
@@ -1206,10 +1206,11 @@ function savedStamp(fit: StoredFit): CalibrationStamp {
   const calibrated = !r.label.startsWith(NOT_YET_CALIBRATED);
   return {
     status: calibrated ? 'calibrated' : 'provisional',
-    basis: `${calibrated ? 'Fitted on this save\'s own history' : 'Adopted on this save, but mostly the fallback prior'} (D-053): seasons ${r.window.seasons[0] ?? '—'}–${r.window.seasons[r.window.seasons.length - 1] ?? '—'}, ` +
+    basis: `${calibrated ? 'Fitted on this save\'s own history' : 'Adopted on this save, but mostly the fallback prior'}: seasons ${r.window.seasons[0] ?? '—'}–${r.window.seasons[r.window.seasons.length - 1] ?? '—'}, ` +
       `held out ${r.window.holdout[0] ?? '—'}–${r.window.holdout[r.window.holdout.length - 1] ?? '—'}; held-out coverage (80/50) ${cov || 'not evaluable'}; ` +
       `prior weight ${fit.priorWeight === null ? '—' : fit.priorWeight.toFixed(2)}.`,
     run: `value_production_fits ${r.id}, fitted at game date ${fit.gameDate ?? 'unknown'} (${fit.method})`,
+    ...(calibrated ? {} : { says: "Measured on this save in part; still mostly Pennant's starting values" }),
   };
 }
 
@@ -1317,11 +1318,13 @@ function savedRatingsStamp(fit: StoredRatingsFit): CalibrationStamp {
   const cov = r.mapping.coverage.served;
   return {
     status: 'calibrated',
-    basis: `Fitted on this save (D-053): ratings → rate on ${cov.cases} major leaguers, held-out coverage (80/50) ` +
+    basis: `Fitted on this save: ratings → rate on ${cov.cases} major leaguers, held-out coverage (80/50) ` +
       `${cov.outer === null ? '—' : Math.round(cov.outer * 100)}/${cov.inner === null ? '—' : Math.round(cov.inner * 100)}% (same-time); ` +
       `arrivals ${r.arrival.measured ? `from seasons ${r.arrival.window[0] ?? '—'}–${r.arrival.window[r.arrival.window.length - 1] ?? '—'}${arrivalAdoptionWords(r)}` : 'not measured'}; ` +
       `development ${r.development.source === 'save_fit' ? `from ${r.development.pairs} rating-snapshot pairs` : `not yet calibrated (${r.development.pairs} of ${r.development.minimumPairs} pairs)`}.`,
     run: `value_production_fits ${r.id}, fitted at game date ${fit.gameDate ?? 'unknown'} (${fit.method})`,
+    // Arrivals or development still on the starting values: measured in part, said so (batch 13 review, L4)
+    ...(r.arrival.measured && r.development.source === 'save_fit' ? {} : { says: PARTLY_MEASURED_HERE }),
   };
 }
 

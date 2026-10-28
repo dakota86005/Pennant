@@ -242,7 +242,7 @@ const OPTION_STATUS: Record<NonNullable<ContractSeason['option']>, ControlStatus
 };
 
 const OPT_OUT_TIMING =
-  "The export carries the opt-out as a count, read here as after that contract year; the timing is read, not established (R-6).";
+  "The export carries the opt-out as a count, read here as after that contract year; the timing is read, not established.";
 
 /** What a blank contract row leaves open after this season, where he is not on a major-league club with service. */
 const AFTER_BLANK_ROW =
@@ -276,7 +276,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
   if (contract.standing === 'unsigned') {
     return {
       ...base, standing: 'unsigned', thisSeason, seasons: [], controlEnds: null, continuesPastHorizon: false,
-      notes: [...notes, 'No club holds him (players.team_id is 0): he is under no club\'s control.'],
+      notes: [...notes, 'No club holds him (the export lists no club for him): he is under no club\'s control.'],
     };
   }
   if (thisSeason === null) {
@@ -294,7 +294,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
   const seasons: ControlSeason[] = [];
   let controlEnds: number | null = null;
 
-  // ── the opt-out, as the exported count reads (A-05) ──
+  // ── the opt-out, as the exported count reads (A-05); its column is never named in a served note (B-11) ──
   const optOutFrom = contract.optOutFrom;
   const covered = [...(contract.term?.seasons ?? []), ...(contract.extension?.seasons ?? [])].map((c) => c.season);
   const lastCovered = covered.length > 0 ? Math.max(...covered) : null;
@@ -302,12 +302,12 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
   if (optOutFrom !== null && contract.optOut.value !== null) {
     const n = contract.optOut.value;
     if (optOutFrom <= thisSeason) {
-      notes.push(`An opt-out is exported (opt_out ${n}); read as after contract year ${n}, before ${optOutFrom}, it has passed and he is playing under the deal. ${OPT_OUT_TIMING}`);
+      notes.push(`An opt-out is exported, read as after contract year ${n}, before ${optOutFrom}: it has passed and he is playing under the deal. ${OPT_OUT_TIMING}`);
     } else if (lastCovered === null || optOutFrom > lastCovered) {
-      notes.push(`An opt-out is exported (opt_out ${n}); read as after contract year ${n}, before ${optOutFrom}, it lies past the seasons the contract covers, so which season it follows is not established (R-6).`);
+      notes.push(`An opt-out is exported, read as after contract year ${n}, before ${optOutFrom}: that lies past the seasons the contract covers, so which season it follows is not established.`);
     } else {
       optOutLive = true;
-      notes.push(`An opt-out is exported (opt_out ${n}): read as after contract year ${n}, he may opt out before ${optOutFrom}, so every season from ${optOutFrom} shows both branches. ${OPT_OUT_TIMING}`);
+      notes.push(`An opt-out is exported, read as after contract year ${n}: he may opt out before ${optOutFrom}, so every season from ${optOutFrom} shows both branches. ${OPT_OUT_TIMING}`);
     }
   }
 
@@ -323,7 +323,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
       const term = cover.from === 'extension' ? contract.extension : contract.term;
       const afterOptOut = optOutLive && optOutFrom !== null && season >= optOutFrom;
       const optOutReason = afterOptOut
-        ? `He may opt out before ${optOutFrom} (opt_out ${contract.optOut.value}); if he does, he is ${fallback.status.replace('_', ' ')} this season. ${OPT_OUT_TIMING}`
+        ? `He may opt out before ${optOutFrom} (read as after contract year ${contract.optOut.value}); if he does, he is ${fallback.status.replace('_', ' ')} this season. ${OPT_OUT_TIMING}`
         : null;
       const unknownOption = k > 0 && cover.optionUnknown ? cover.optionUnknown : null;
       const extra = [optOutReason, unknownOption].filter((x): x is string => x !== null);
@@ -441,7 +441,7 @@ export function composeControlTimeline(input: ControlInput): ControlTimeline {
         declined: null, from: 'none',
         basis: 'After a minor-league contract.',
         reasons: [
-          'What follows a minor-league contract (renewal, a place on the 40-man, or minor-league free agency under rules_minor_league_fa_minimum_years, counted on a service the export does not name) is not established from the export.',
+          'What follows a minor-league contract (renewal, a place on the 40-man, or minor-league free agency after the league\'s minimum years, counted on a service the export does not name) is not established from the export.',
         ],
         crossings: [],
       });

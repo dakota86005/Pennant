@@ -22,7 +22,7 @@ import type { HistoryRowInput, ProspectInput } from './presentation/farm/input.j
 import type { FarmDecisionView } from './presentation/farm/types.js';
 import { computeScoutedDevelopment } from './scoutedDevelopment.js';
 import { loadSettings } from './settings.js';
-import { LEVEL_NAMES, ratingScaleMax } from './valuation.js';
+import { LEVEL_NAMES, UNNAMED_LEVEL_SHORT, ratingScaleMax } from './valuation.js';
 
 /** What one build of the farm's views is asked for. */
 export interface FarmViewsRequest {
@@ -105,7 +105,7 @@ export function buildFarmViews(request: FarmViewsRequest): FarmViewsResult {
     snapshots: historyRaw.snapshots,
     dates: historyRaw.dates,
     observationDays: historyRaw.observationDays,
-    rows: historyRaw.rows.map((r): HistoryRowInput => ({ ...r, levelName: LEVEL_NAMES[r.level] ?? `Level ${r.level}` })),
+    rows: historyRaw.rows.map((r): HistoryRowInput => ({ ...r, levelName: LEVEL_NAMES[r.level] ?? UNNAMED_LEVEL_SHORT })),
     ratingModeSwitches: historyRaw.ratingModeSwitches.map((s) => ({ text: s.text })),
     ratingSourceSwitches: historyRaw.ratingSourceSwitches.map((s) => ({ playerId: s.playerId, text: s.text })),
     history: historyRaw.history,

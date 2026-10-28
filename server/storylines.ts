@@ -11,6 +11,7 @@ import { LEVEL_NAMES, currentGameDate, seasonYear, teamFinances, rulesBriefing }
 import { jobStatus, startJob } from './jobs.js';
 import { storylinesNow, storylinesPath } from './aiSurfacesService.js';
 import { FrontOfficeRefusal, resolveOrg } from './orgParam.js';
+import { levelWord } from './levelWords.js';
 
 export const storylineRoutes = Router();
 
@@ -84,7 +85,7 @@ export function assembleContext(orgId: number) {
    */
   const year = seasonYear(team.league_id);
   const level = team.level ?? 1;
-  const levelName = LEVEL_NAMES[level] ?? `level ${level}`;
+  const levelName = LEVEL_NAMES[level] ?? levelWord(level);
   const batLeaders = db
     .prepare(
       `SELECT p.first_name || ' ' || p.last_name AS name, p.age, p.position,

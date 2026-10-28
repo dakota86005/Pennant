@@ -13,7 +13,7 @@ import type { WinsRange } from '../../frontOffice/rosterMap.js';
 import type { ClubFacts, DivisionPlace, PitcherLine, TeamSeasonFacts } from '../../frontOffice/teamSeason.js';
 import type { FarmNext } from '../../mlbEvidence.js';
 import type { ControlReading, MapPitcher, MapPosition, MorningMaterial, RosterMaterial } from '../../morningReport.js';
-import { basis, cell, claim, servedValue, target } from '../claim.js';
+import { basis, cell, claim, servedValue, stampWords, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { asOfCell, listWords, plural, type BuildContext } from './desk.js';
 import { needText, type MajorLeagueInput } from './majorLeague.js';
@@ -656,13 +656,6 @@ const POSITIONS: Record<number, { pos: string; name: string; at: string }> = {
   8: { pos: 'CF', name: 'Center field', at: 'center field' }, 9: { pos: 'RF', name: 'Right field', at: 'right field' },
   10: { pos: 'DH', name: 'Designated hitter', at: 'designated hitter' },
 };
-/**
- * OOTP's level numbers in words. Checked against a real save (N6 review): level 4 holds both the High-A and the Low-A
- * leagues (the Northwest, South Atlantic and Midwest with the California, Carolina and Florida State), level 5 holds
- * none, and level 6 the complex and Dominican leagues, so 4 and 5 are both "Single-A": the level number cannot tell the
- * two A levels apart, and the words never claim to.
- */
-export const LEVEL_WORDS: Record<number, string> = { 2: 'Triple-A', 3: 'Double-A', 4: 'Single-A', 5: 'Single-A', 6: 'Rookie ball' };
 
 const wins1 = (v: number) => v.toFixed(1).replace(/^-0\.0$/, '0.0').replace(/^-/, '−');
 
@@ -726,7 +719,7 @@ function notYetWords(f: FarmNext, level: string): { text: string; hint: string }
 
 /** The farm's next man in the roster map's words (exported at N12 for Finance's Horizon Board, which says him the same way). */
 export function farmMan(f: FarmNext): FarmNextMan {
-  const level = LEVEL_WORDS[f.level] ?? `Level ${f.level}`;
+  const level = f.levelName;
   const a = f.assessment;
   const state: ReadinessState = !a ? 'notAssessed' : a.judgment === 'defensible' ? 'ready' : a.judgment === 'indefensible' ? 'notYet' : 'cantTell';
   const bar = barOf(f);
@@ -917,7 +910,7 @@ function nodeWords(build: BuildContext, p: MapPosition, clubs: number, part: Ros
       hint: value ? fit(`${value.text}, ${part === 'rest_of_season' ? 'rest of season' : 'this season'}`) : holder ? NOT_VALUED_HINT : `Nobody on the club plays ${where.at}`,
       ...(p.place ? { place: { rank: p.place.rank, of: p.place.of, tiedWith: p.place.tiedWith, overlap: others } } : {}),
       basis: stamp && value
-        ? basis({ because, source: source(build, VALUE, plural(clubs, 'club')), unknown: [...new Set(unknown)], wouldChange: [], lean: null, certainty: stamp.status, stamp: stamp.basis })
+        ? basis({ because, source: source(build, VALUE, plural(clubs, 'club')), unknown: [...new Set(unknown)], wouldChange: [], lean: null, certainty: stamp.status, stamp: stampWords(stamp) })
         : basis({ because, source: source(build, VALUE, plural(clubs, 'club')), unknown: [...new Set(unknown.length ? unknown : ['He isn\'t valued, so he isn\'t placed.'])], wouldChange: [], lean: null, certainty: 'unknown' }),
       links: [
         ...(holder ? [target({ kind: 'player', playerId: holder.playerId })] : []),
@@ -958,7 +951,7 @@ function pitcherWords(build: BuildContext, p: MapPitcher, role: string, part: Ro
       tone: value ? 'neutral' : 'unknown',
       hint,
       basis: stamp && value
-        ? basis({ because, source: source(build, VALUE), unknown: [], wouldChange: [], lean: null, certainty: stamp.status, stamp: stamp.basis })
+        ? basis({ because, source: source(build, VALUE), unknown: [], wouldChange: [], lean: null, certainty: stamp.status, stamp: stampWords(stamp) })
         : basis({ because, source: source(build, VALUE), unknown: [`${p.name} isn't valued: ${p.why ?? 'his production is not established'}`], wouldChange: [], lean: null, certainty: 'unknown' }),
       links: [target({ kind: 'player', playerId: p.playerId }), target({ kind: 'view', department: 'majorLeague', view: 'pitchingStaff' })],
     }),

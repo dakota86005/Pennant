@@ -85,7 +85,7 @@ describe('Player Value: control (phase 1)', () => {
     expect(orphan.season.value).toBe(THIS_SEASON);
     expect(t2.seasons.filter((s) => s.season > THIS_SEASON).every((s) => s.status === 'indeterminate')).toBe(true);
     expect(t2.seasons.some((s) => s.status === 'reserve_clause' || s.status === 'free_agent')).toBe(false);
-    expect([...t2.notes, ...t2.seasons.flatMap((s) => s.reasons)].join(' ')).toMatch(/parent league 999/);
+    expect([...t2.notes, ...t2.seasons.flatMap((s) => s.reasons)].join(' ')).toMatch(/answers to a league the export carries no row for/);
     const noParentColumn = { ...minorLeagueRow(204) };
     delete noParentColumn.parent_league_id;
     expect(regimeOf(204, [noParentColumn]).freeAgencyYears).toMatchObject({ value: null, provenance: 'unknown' });
