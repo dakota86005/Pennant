@@ -15,7 +15,8 @@ import { computeFranchise, computeOrgComparison, franchiseRecordsCarry, franchis
 import { computeTenure } from './gameplan.js';
 import { catalogClubs } from './org.js';
 import { marketLeagueOfClub, productionModelFor, ratingsModelFor } from './playerValue.js';
-import { stampWords, type OfficeContext } from './presentation/league/common.js';
+import { stampWords } from './presentation/claim.js';
+import type { OfficeContext } from './presentation/league/common.js';
 import { franchiseUnreadView, franchiseView } from './presentation/league/franchise.js';
 import { orgComparisonUnreadView, orgComparisonView } from './presentation/league/orgComparison.js';
 import type { LeagueFranchiseView, LeagueOrgComparisonView } from './presentation/league/types.js';

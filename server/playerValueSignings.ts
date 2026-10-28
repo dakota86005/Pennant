@@ -1145,7 +1145,7 @@ export function scoreAwards(
   const previousUnknown = awards.filter((c) => c.previousSalary === null || c.previousSalary === undefined).length;
   const who = (b: AwardScore['belowPrevious'][number]) => `${b.name ?? `player ${b.playerId}`} (${millions(b.salary)} for ${b.firstSeason ?? 'the season'} after ${millions(b.previous)})`;
   const flagged = belowPrevious.length > 0
-    ? ` Flag: ${plural(belowPrevious.length, 'observed arbitration salary', 'observed arbitration salaries')} fell below the player's previous salary, contradicting OOTP's rule, as Pennant states it, that an arbitration salary never falls: ${belowPrevious.map(who).join('; ')}. Counted and scored as observed, not absorbed; the rule stays the owner's until he rules again.`
+    ? ` Flag: ${plural(belowPrevious.length, 'observed arbitration salary', 'observed arbitration salaries')} fell below the player's previous salary, contradicting OOTP's rule, as Pennant states it, that an arbitration salary never falls: ${belowPrevious.map(who).join('; ')}. Counted and scored as observed, not absorbed; Pennant keeps stating the rule until it is reviewed.`
     : awards.length - previousUnknown > 0 ? ` None of the ${awards.length - previousUnknown} whose previous salary is recorded fell below it (OOTP's rule that an arbitration salary never falls).` : '';
   const unchecked = previousUnknown > 0 ? ` ${plural(previousUnknown, 'arbitration salary', 'arbitration salaries')} could not be checked against the previous salary (not stated in the earlier record).` : '';
   const sharp = sharpness.medianRatio !== null
