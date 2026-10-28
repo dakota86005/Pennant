@@ -53,14 +53,16 @@ export interface NormalizedSeverity {
 export const SEVERITY_POLICY = {
   majorLeague: policy(
     'Major League Ops states critical, elevated or watch; they read critical, attention and noted on the desk, in the same order and never higher. A flag the philosophy shaded keeps its philosophy-free severity beside it.',
+    "Major League Ops' own urgency, never raised on the desk",
   ),
-  farm: policy('Farm & Development states critical, attention or noted, the desk\'s own scale, and passes unchanged.'),
+  farm: policy('Farm & Development states critical, attention or noted, the desk\'s own scale, and passes unchanged.', "Farm & Development's own urgency, passed to the desk unchanged"),
   fortyManClock: policy(
     'A running designation or waiver clock ends in a forced outcome on a known day, so it is critical with its days left.',
+    'A running designation or waiver clock ends on a known day, so it is critical with its days left',
   ),
-  fortyManNote: policy('An option note (last option year, out of options) is noted: it matters at the next move, and forces none.'),
-  contracts: policy('A contract decision date is noted with its days left; the desk never recommends what to do on it.'),
-  medical: policy('An injury is noted; when it forces a roster move, that return is Major League Ops\' item, not a second one here.'),
+  fortyManNote: policy('An option note (last option year, out of options) is noted: it matters at the next move, and forces none.', 'An option note matters at the next move and forces none, so it is noted'),
+  contracts: policy('A contract decision date is noted with its days left; the desk never recommends what to do on it.', 'A contract decision date is noted with its days left'),
+  medical: policy('An injury is noted; when it forces a roster move, that return is Major League Ops\' item, not a second one here.', 'An injury is noted; a roster move it forces is listed once, under Major League Ops'),
 } as const;
 
 class UnknownSeverity extends Error {

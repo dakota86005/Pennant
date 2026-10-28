@@ -848,6 +848,16 @@ and functions, the deployment gap, every philosophy threshold and the quantiles 
 mechanisms (results are sample-aware, a hitter is bat plus glove at his position, shading applies only after validity) are
 architecture and carry no stamp: tests pin them. `npm run calibrate` is not re-run for a policy constant.
 
+**Amended (N15a polish, batch 13, B-01 and B-11):** a stamp keeps its developer record apart from what the GM reads. Its
+`basis` and `run` (the method, the file, the command, the decision's id, the save it was measured on) are never served;
+a page says a stamp only through `stampWords` (`server/presentation/claim.ts`): the stamp's own plain `says` where it
+has one, else by its status ("Measured on this save's own seasons", "Pennant's starting value, used until this save's own
+measurement holds up", "A line Pennant states; it isn't measured"). The basis still says which of the three a number is
+(show the basis, D-053), in plain words. No served string carries a file, a command, a D-, Q-, R- or B-number, the
+developer's save or its league id, a level's id, a column, an enum code or a constant's name: `tests/servedText.test.ts`
+walks every string of every contract fixture (apart from ids, keys, sort keys and URLs) against those lists, and the
+contract test holds every live `/v2` payload to them.
+
 ## D-042 — The bench is a set of functions with a quality of cover, and the pen is read as a whole
 
 **Status:** Accepted. **Implementation:** Present (`server/benchReview.ts`, `bullpenRoles.ts`, `lineupPicture.ts`,
@@ -3518,4 +3528,16 @@ The owner found the first signed Mac build wordy and machine-like: sentences ass
   - On a save whose export uses the 20–80 scale, the face may give the grade as scouts say it ("a 70 glove"), as the export gives it (D-061).
   - The phrasebook is YAML with ICU messages, compiled to TypeScript.
   - Where a line has variants, the choice is fixed per player, so a page never changes on reload.
+
+## D-081 — No other website drives Pennant's server, and one bad request never ends it
+
+**Status:** Accepted by the owner, 2026-10-28 (N15a polish batch 7, the recommended answers to B-74 and B-75). Extends D-055 (the sidecar's token) to every server mode until the cutover retires Electron and the token-less modes; D-001, D-021 and D-055's stdin handshake are unchanged. **Implementation:** `server/serverApp.ts`, `server/sameOrigin.ts`, `server/requestBody.ts`, `server/asyncRoute.ts`, `server/apiToken.ts`, `electron/shellGuards.ts`; tests `tests/serverSafety.test.ts`, `tests/electronShell.test.ts`.
+
+The hunts found that on the Electron build, `npm run dev` and `npm start` any web page could start paid AI writing, imports and site exports (a `text/plain` POST needs no preflight, and only the Host was checked), that Electron's Dock reopen started a second server, and that a throw in an async handler ended the whole process on Node 24.
+
+- **A token in every mode that can hold one.** The sidecar keeps its stdin token. Electron makes a per-launch token and its window's session adds it to requests for the server's own `/api`, never elsewhere; the window, its IPC handlers and the token accept only the server's exact origin.
+- **Same-origin and JSON-only where a page cannot hold one** (`npm run dev`, `npm start`, applied in every mode): a request the browser marks as another site (`Sec-Fetch-Site`) or whose `Origin` is not the server's own is refused (403), and a write whose body is not JSON is refused (415) before any route runs. A JSON body forces a preflight the server never grants. Programs that are not browsers send neither header and are kept out by the token and the loopback bind, as before. `0.0.0.0` is no longer answered as a loopback name.
+- **One request chain** (`serverApp.ts`) serves every mode and the route tests: Host, other site, token, body, routes. A body is read only after the token check, within a stated limit (100 KB, or 1 MB for the AI conversations, whose threads the server also caps).
+- **A failure is answered, never fatal.** Every async handler goes through `asyncRoute` (a test walks the routers for bare ones); the sidecar, the dev server and Electron log an unhandled rejection and keep serving. A `/v2` failure is said in words with a reference to its server-log line, never the raw message.
+- **Until the cutover, not after.** Electron, the token-less modes and the React-only routes are retired at the cutover (owner decision, 2026-10-28); until then they are patched (Electron 41.10.7 inside `^41`). Express 5, which forwards rejections itself, comes after the cutover; `asyncRoute` goes then.
 

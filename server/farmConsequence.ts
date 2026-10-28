@@ -253,7 +253,7 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
       unresolvedIssues: [],
       confidence: 'established',
       evidence: [
-        'He is on an injury-rehab assignment from the parent club, so he was never counted as affiliate depth (D-026). His return costs the affiliate nothing.',
+        'He is on an injury-rehab assignment from the parent club, so he was never counted as affiliate depth. His return costs the affiliate nothing.',
       ],
       summary: `${leaving.name} is on a rehab assignment, so ${leaving.meta.label} loses nothing.`,
     };
@@ -338,7 +338,7 @@ export function farmConsequenceFor(orgId: number, playerId: number, session: Far
   const evidence: string[] = [];
   if (leaving.ambiguous) {
     evidence.push(
-      `Nothing in the export or the log explains why he is at ${leaving.meta.label}, so he is counted as one of its own; if he is in fact on a rehab assignment this overstates the cost (D-026).`
+      `Nothing in the export or the log explains why he is at ${leaving.meta.label}, so he is counted as one of its own; if he is in fact on a rehab assignment this overstates the cost.`
     );
   }
   /*

@@ -17,7 +17,7 @@
  * export carries UBR or zone rating for enough seasons; on a save without, they are inactive and say so.
  */
 
-import { policy, type CalibrationStamp } from './calibration.js';
+import { PARTLY_MEASURED_HERE, policy, type CalibrationStamp } from './calibration.js';
 import type { CalibrationCheck, CalibrationRecord } from './saveCalibrationStore.js';
 import type { CalibrationRun } from './saveCalibration.js';
 import { decide, describeComparison, DETECTOR_METHOD, DETECTOR_POLICY, ruleText, type DetectorDecision, type DetectorPolicy, type HeldOutCase, type ServedSource } from './calibrationDetector.js';
@@ -427,7 +427,13 @@ export function paramsOf(model: ResultsModel, basis: string): ResultsParams {
     // The results fit does not fit the tools weight: the starting value, until the tools fit serves the save's own (cycle 4)
     toolsWeight: RESULTS_PRIOR.toolsWeight,
     stamp: own.length
-      ? { status: 'calibrated', basis: `The save's own season weights and stabilization for ${own.join(', ')} (clearly better on its held-out seasons); the starting values for the rest.`, run: `save_calibration_fits ${RESULTS_METHOD} through ${basis}` }
+      ? {
+        status: 'calibrated',
+        basis: `The save's own season weights and stabilization for ${own.join(', ')} (clearly better on its held-out seasons); the starting values for the rest.`,
+        run: `save_calibration_fits ${RESULTS_METHOD} through ${basis}`,
+        // The tools weight is always the starting value, and any part not listed is too: measured in part, said so (L4)
+        says: PARTLY_MEASURED_HERE,
+      }
       : RESULTS_PRIOR.stamp,
   };
 }

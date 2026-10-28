@@ -21,7 +21,7 @@
 
 export const STANDING_CALIBRATION = {
   status: 'policy' as const,
-  note: 'The percentile gap that counts as clearly ahead is a policy threshold (roleStanding.ts), a decision about what to call a real difference, not an established baseball fact.',
+  note: 'The percentile gap that counts as clearly ahead is a policy threshold, a decision about what to call a real difference, not an established baseball fact.',
 };
 
 /** POLICY. Composite-percentile points that separate "clearly ahead or behind" from "comparable". */

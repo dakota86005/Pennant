@@ -40,7 +40,9 @@ describe('Super Two (owner ruling, 2026-09-22)', () => {
     expect(reason!.message).toMatch(/Super Two/);
     expect(reason!.message).toMatch(/cutoff/);
     expect(reason!.message).toMatch(/22%/);
-    expect(reason!.message).toMatch(/owner, 2026-09-22/);
+    // The attestation is the reason's basis code; the message says the rule plainly, with no name or date (B-01)
+    expect(reason!.message).toMatch(/OOTP applies Super Two under MLB rules/);
+    expect(reason!.message).not.toMatch(/owner|2026-09-22/);
   });
 
   it('below the cutoff he is pre-arbitration', () => {

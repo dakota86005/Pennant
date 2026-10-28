@@ -45,7 +45,7 @@ export interface PositionPlayer {
   /** Why he is not valued; null when he is. */
   why: string | null;
   /** How Player Value's production model in force is called, and on what it rests; null when he is not valued. */
-  stamp?: { status: 'calibrated' | 'provisional' | 'policy'; basis: string } | null;
+  stamp?: { status: 'calibrated' | 'provisional' | 'policy'; basis: string; run?: string | null; says?: string } | null;
 }
 
 /** A man's starts at a position for his club this season, from the club's own game log. */
@@ -224,7 +224,7 @@ export interface StaffInput {
   outs: number | null;
   wins: WinsRange | null;
   why: string | null;
-  stamp?: { status: 'calibrated' | 'provisional' | 'policy'; basis: string } | null;
+  stamp?: { status: 'calibrated' | 'provisional' | 'policy'; basis: string; run?: string | null; says?: string } | null;
 }
 
 /**

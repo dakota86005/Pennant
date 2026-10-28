@@ -343,7 +343,7 @@ struct SetupModelTests {
         try server.answer("setSave", fixture: "setSave-import-running", status: 409)
         await model.choose(PreviewFixtures.saves[0], status: try status())
         #expect(model.step == .findSave)
-        guard case .served(let sentence) = model.folderProblem else {
+        guard case .served(let sentence, _) = model.folderProblem else {
             Issue.record("expected the server's sentence")
             return
         }

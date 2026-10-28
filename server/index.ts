@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { api, finishInterruptedPostImport, upgradeLeagueInBackground, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
+import { finishInterruptedPostImport, upgradeLeagueInBackground, recordImportMarket, recoverInterruptedImport, refitAfterImport, runImport } from './api.js';
 import { warmFrontOffice } from './frontOfficeService.js';
 import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
 import { checkExport, startWatcher, stopWatcher } from './watcher.js';
@@ -12,88 +12,12 @@ import { closeLeagueDatabase, prepareLeagueDatabase, tableExists } from './db.js
 import { baselineSnapshot, historyDb } from './history.js';
 import { loadSettings } from './settings.js';
 import { lookAtTheServedSave, seedServedSave, startSaveWatch, stopSaveWatch } from './saveDiscovery.js';
-import { afterFirstAnswers, releaseAfterFirstAnswers, startupWorkClock } from './startupWork.js';
+import { afterFirstAnswers, startupWorkClock } from './startupWork.js';
 import { ratingScaleMax } from './valuation.js';
 import { warmTransactionLog } from './dataStatus.js';
-import { requireApiToken } from './apiToken.js';
 import { acquireDataLock, releaseDataLock } from './dataLock.js';
-import { readJsonBodies } from './requestBody.js';
-
-/**
- * Rejects requests whose Host header is not a loopback name.
- *
- * The server binds to 127.0.0.1, which stops other machines reaching it but
- * not the browser already running on this one. A page on the open web can
- * point a hostname it controls at 127.0.0.1 (DNS rebinding) and then have the
- * visitor's browser talk to this server — same-origin as far as the browser is
- * concerned, because the hostname matches. That would hand a stranger's page
- * the whole save and, worse, the ability to spend the user's API credits
- * through /api/chat.
- *
- * The defence is the Host header: a rebound request carries the attacker's
- * hostname, never `localhost` or a loopback IP. Only the hostname is checked,
- * not the port, so the Vite dev proxy (which forwards the original
- * `localhost:5173`) keeps working.
- */
-const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1', '0.0.0.0']);
-
-/** Where to listen. Loopback unless the user deliberately opens it up. */
-export const BIND_ADDRESS = process.env.OOTP_FO_BIND?.trim() || '127.0.0.1';
-// Note 0.0.0.0 is a valid Host header but is NOT a loopback bind — it means
-// every interface, which is exactly the case that opens the server up.
-const LOOPBACK_BINDS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-const OPEN_TO_NETWORK = !LOOPBACK_BINDS.has(BIND_ADDRESS.toLowerCase());
-
-/**
- * Host names this server will answer to.
- *
- * Serving the network does NOT mean answering to any Host. The rebinding attack
- * works by pointing a hostname the attacker owns at this machine's address, and
- * that hostname is never one of this machine's own — so the allowlist is built
- * from the real interface addresses rather than abandoned. A name that is not
- * on the list still gets a 403 even with the server bound to every interface.
- */
-function allowedHosts(): Set<string> {
-  const allowed = new Set(LOOPBACK_HOSTS);
-  if (OPEN_TO_NETWORK) {
-    for (const addrs of Object.values(os.networkInterfaces())) {
-      for (const a of addrs ?? []) {
-        allowed.add(a.family === 'IPv6' ? `[${a.address}]` : a.address);
-        allowed.add(a.address);
-      }
-    }
-    allowed.add(os.hostname().toLowerCase());
-    // Bonjour name, which is how a Mac is usually reached on a home network
-    allowed.add(`${os.hostname().replace(/\.local$/i, '').toLowerCase()}.local`);
-  }
-  for (const extra of (process.env.OOTP_FO_ALLOWED_HOSTS ?? '').split(',')) {
-    const name = extra.trim().toLowerCase();
-    if (name) allowed.add(name);
-  }
-  return allowed;
-}
-const ALLOWED_HOSTS = allowedHosts();
-
-function requireLocalHost(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-): void {
-  const host = req.headers.host ?? '';
-  // Strip the port; an IPv6 literal keeps its brackets
-  const name = host.startsWith('[')
-    ? host.slice(0, host.indexOf(']') + 1)
-    : host.split(':')[0];
-  if (ALLOWED_HOSTS.has(name.toLowerCase())) return next();
-  res
-    .status(403)
-    .type('text/plain')
-    .send(
-      OPEN_TO_NETWORK
-        ? `This server does not answer to the name "${name}". Add it to OOTP_FO_ALLOWED_HOSTS if it is yours.`
-        : 'This server only answers requests addressed to localhost.'
-    );
-}
+import { BIND_ADDRESS, OPEN_TO_NETWORK, serverApp } from './serverApp.js';
+import { logUnhandledRejections } from './asyncRoute.js';
 
 /**
  * Import on boot if needed, then watch for fresh OOTP exports.
@@ -214,16 +138,7 @@ export function startServer(port = 5178): Promise<number> {
   } catch (err) {
     return Promise.reject(err);
   }
-  const app = express();
-  app.use(requireLocalHost);
-  // A body that isn't JSON is answered in words, never with the parser's message or a stack (N13 review L3)
-  readJsonBodies(app);
-  // After the Host check: a request that fails both is told about the Host. No-op unless a token is set (sidecar)
-  app.use('/api', requireApiToken);
-  // The start-up's own work begins once the app's first answers are out (`startupWork.ts`)
-  app.use('/api', releaseAfterFirstAnswers);
-  app.use('/api', api);
-
+  const app = serverApp();
   const dist = path.join(APP_ROOT, 'dist');
   if (fs.existsSync(dist)) {
     app.use(express.static(dist));
@@ -288,6 +203,7 @@ export async function shutdownServer(): Promise<void> {
 
 // Running directly (npm run dev / npm start) rather than embedded in Electron or the Mac sidecar
 if (!process.env.OOTP_FO_EMBEDDED) {
+  logUnhandledRejections('server');
   startServer(portFromEnv(process.env.PORT)).catch((err) => {
     console.error('[server] failed to start:', err);
     process.exit(1);

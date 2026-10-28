@@ -116,7 +116,7 @@ bundle. Updates are consent-first: the app can check for releases, but downloadi
 Requirements:
 
 - OOTP Baseball 27 with at least one save
-- Node.js 20 or newer
+- Node.js 24 or newer
 - macOS or Windows for the supported save auto-detection paths
 - Optionally, an AI provider key, or a running local Ollama service
 

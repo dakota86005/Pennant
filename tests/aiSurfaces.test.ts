@@ -111,13 +111,9 @@ beforeAll(async () => {
   manName = (db.prepare("SELECT first_name || ' ' || last_name AS n FROM players WHERE player_id = ?").get(save.regular) as { n: string }).n;
   resetFrontOfficeCache();
   resetAiSurfaces();
-  const express = (await import('express')).default;
-  const { api } = await import('../server/api.js');
-  const { readJsonBodies } = await import('../server/requestBody.js');
-  const app = express();
-  // As the server reads bodies (`index.ts`)
-  readJsonBodies(app);
-  app.use('/api', api);
+  // Production's own request chain (`serverApp.ts`)
+  const { serverApp } = await import('../server/serverApp.js');
+  const app = serverApp();
   const listening = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => listening.once('listening', resolve));
   base = `http://127.0.0.1:${(listening.address() as { port: number }).port}`;

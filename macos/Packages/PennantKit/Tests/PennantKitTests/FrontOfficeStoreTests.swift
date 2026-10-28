@@ -119,17 +119,23 @@ struct FrontOfficeStoreTests {
         #expect(store.summary != nil)
     }
 
-    @Test("a server failure is a kind with its detail for the log, never shown as text")
+    @Test("a server failure is its sentence on the face, and its server-log reference in the app's log")
     func failure() async throws {
-        let failed = ("application/json", Data(#"{"error":"Pennant couldn't put this together. The details are in the server log.","detail":"boom"}"#.utf8))
+        let failed = ("application/json", Data(#"{"error":"Pennant couldn't put this together. The details are in the server log.","detail":"server log 1a2b3c4d"}"#.utf8))
         let transport = try transport(statuses: ["/api/v2/departments/1/farm": 500], extra: ["/api/v2/departments/1/farm": failed])
         var logged: [String] = []
         let store = FrontOfficeStore { logged.append($0) }
         await store.loadReport("farm", client: client(transport), key: key())
-        // A /v2 route's failure is its own sentence; the raw message is not on the face
-        #expect(store.reportProblems["farm"] == .served("Pennant couldn't put this together. The details are in the server log."))
+        // A /v2 route's failure is its own sentence; the reference is in the log, so it can be matched to the server's
+        // line (batch 7 review L2)
+        let problem = try #require(store.reportProblems["farm"])
+        guard case .served(let sentence, _) = problem else {
+            Issue.record("expected the server's sentence, got \(problem)")
+            return
+        }
+        #expect(sentence == "Pennant couldn't put this together. The details are in the server log.")
         #expect(store.reports["farm"] == nil)
-        #expect(logged.isEmpty)
+        #expect(logged == ["could not read the farm report: getDepartmentReport: HTTP 500: server log 1a2b3c4d"])
     }
 
     @Test("loads each department's report once per key")

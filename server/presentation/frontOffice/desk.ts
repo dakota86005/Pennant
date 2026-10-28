@@ -10,11 +10,12 @@
 import type { Cell, Claim, DeptId, Target } from '../../contract/presentation.js';
 import type { GameDate } from '../../dataFreshness.js';
 import type { CatalogDepartment } from '../catalog.js';
-import { basis, cell, claim, target } from '../claim.js';
+import { basis, cell, claim, stampWords, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { DESK_SEVERITIES, rankOf, type DepartmentReading, type DeskSeverity, type NormalizedSeverity } from '../severity.js';
 import type { DepartmentCard, DepartmentReport, Desk, DeskAttention, FoItem, FrontOfficeSummary, ReportSection } from './types.js';
 import type { MorningParts } from './morningTypes.js';
+
 
 /** What every claim of one build shares: the club, the import it reads and the game date it reflects. */
 export interface BuildContext {
@@ -139,7 +140,7 @@ function urgencyClaim(ctx: DepartmentContext, s: NormalizedSeverity, shading: re
       }
       : null,
     certainty: 'policy',
-    stamp: `${s.stamp.basis} ${DESK_PLACEMENT}`,
+    stamp: `${stampWords(s.stamp)}. ${DESK_PLACEMENT}`,
   });
   return claim({
     text: SEVERITY_WORDS[s.neutral],

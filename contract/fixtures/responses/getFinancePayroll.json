@@ -95,7 +95,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.budget"
+            "value": "The club's finances, as exported"
           }
         ],
         "source": {
@@ -128,7 +128,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.player_payroll"
+            "value": "The club's finances, as exported"
           }
         ],
         "source": {
@@ -162,7 +162,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.player_payroll_next_season — OOTP's own estimate of next season's payroll."
+            "value": "The club's finances, as exported — OOTP's own estimate of next season's payroll."
           }
         ],
         "source": {
@@ -196,7 +196,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.total_revenue — Which current-row columns are season-to-date and which are booked for the season is not established column by column (R-7)."
+            "value": "The club's finances, as exported — Which current-row columns are season-to-date and which are booked for the season is not established column by column."
           }
         ],
         "source": {
@@ -230,7 +230,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.total_expenses — Which current-row columns are season-to-date and which are booked for the season is not established column by column (R-7)."
+            "value": "The club's finances, as exported — Which current-row columns are season-to-date and which are booked for the season is not established column by column."
           }
         ],
         "source": {
@@ -263,7 +263,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.cash_trades_available — The cash a club can move in trades; `cash` is exported as zero for every club and is never read (R-7)."
+            "value": "The club's finances, as exported — The cash a club can move in trades; the club's cash on hand is exported as zero for every club and is never read."
           }
         ],
         "source": {
@@ -305,15 +305,15 @@
         },
         {
           "label": "The market",
-          "value": "A market contract is one whose holder Player Rights finds free-agency eligible this season (service at the last winter, when the salary was set). What \"the market\" is taken to mean is a decision (PLAYER_VALUE.md 4.1, Part 11), not a fit."
+          "value": "A market contract is one whose holder Player Rights finds free-agency eligible this season (service at the last winter, when the salary was set). What \"the market\" is taken to mean is a decision, not a fit."
         },
         {
           "label": "Most likely",
-          "value": "The central value is the median of the market bases that could be computed. R-5 prefers none of them, so none is chosen; the median is the reading that leans on no single one."
+          "value": "The central value is the median of the market bases that could be computed. No basis is preferred over another, so none is chosen; the median is the reading that leans on no single one."
         },
         {
           "label": "The range",
-          "value": "The band runs from the lowest to the highest market basis that could be computed: the spread of defensible bases, not a statistical interval (R-5). One reading is not a band."
+          "value": "The band runs from the lowest to the highest market basis that could be computed: the spread of defensible bases, not a statistical interval. One reading is not a band."
         },
         {
           "label": "The floor",
@@ -353,7 +353,7 @@
         },
         {
           "label": "When it narrows",
-          "value": "Only observed signings across imports narrow it: a measured price replaces this one when its band is narrower (owner Q-4, phase 4). Nothing in a single import narrows it."
+          "value": "Only observed signings across imports narrow it: a measured price replaces this one when its band is narrower. Nothing in a single import narrows it."
         },
         {
           "label": "Which price is in force",
@@ -365,11 +365,11 @@
         },
         {
           "label": "The rule",
-          "value": "The measured price replaces the opening one only when its band is narrower than the opening band with its sampling (owner Q-4): the evidence decides, not a count of signings. The measured price is per win produced in the first season (owner, 2026-09-24: the opening's own unit), its central and band that reading's alone; the readings per win projected at signing are its check on the projection, never the price. It is compared only when its signings cover each third of the winter's free-agent class (review 2026-09-24, a tightening): a winter of cheap deals alone never sets the price."
+          "value": "The measured price replaces the opening one only when its band is narrower than the opening band with its sampling: the evidence decides, not a count of signings. The measured price is per win produced in the first season (the opening's own unit), its central and band that reading's alone; the readings per win projected at signing are its check on the projection, never the price. It is compared only when its signings cover each third of the winter's free-agent class: a winter of cheap deals alone never sets the price."
         },
         {
           "label": "Imports kept",
-          "value": "Full contract snapshots are kept for the imports that bracket a winter and the most recent import (owner, 2026-09-24): 0 of 0 imports kept, 0 pruned; every pair of imports observed is kept as stored."
+          "value": "Full contract snapshots are kept for the imports that bracket a winter and the most recent import: 0 of 0 imports kept, 0 pruned; every pair of imports observed is kept as stored."
         }
       ],
       "source": {
@@ -430,7 +430,7 @@
         },
         {
           "label": "Reserve clause",
-          "value": "A reserve-clause renewal is not priced from one import: it is measured from the renewals observed across imports once enough are seen (phase 4b), and is unknown until then."
+          "value": "A reserve-clause renewal is not priced from one import: it is measured from the renewals observed across imports once enough are seen, and is unknown until then."
         },
         {
           "label": "Observed arbitration salaries",
@@ -1015,7 +1015,7 @@
       "lean": null,
       "certainty": "policy",
       "called": "A line chosen and stated",
-      "stamp": "The owner's rule for the club's range: players combined as independent"
+      "stamp": "Pennant's rule for the club's range: each player's range is added as if unrelated to the others'"
     },
     "links": []
   },
@@ -1693,7 +1693,7 @@
         },
         {
           "label": "Retained salary",
-          "value": "None in the export: it names this club as carrying no contract of a player now elsewhere. Retained salary itself is not exported. Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6)."
+          "value": "None in the export: it names this club as carrying no contract of a player now elsewhere. Retained salary itself is not exported. Zero on every contract in this export: the column is not populated, and that is not the same as none."
         }
       ],
       "source": {
@@ -1826,12 +1826,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -1925,7 +1925,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -1949,7 +1949,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -1993,12 +1993,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -2116,7 +2116,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2140,7 +2140,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2184,12 +2184,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -2307,7 +2307,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2331,7 +2331,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2375,12 +2375,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -2498,7 +2498,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2522,7 +2522,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2565,12 +2565,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -2664,7 +2664,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2688,7 +2688,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2729,12 +2729,12 @@
             "display": "$4.7M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -2780,7 +2780,7 @@
         "actions": [],
         "claims": [
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2804,7 +2804,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2846,12 +2846,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -2921,7 +2921,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2945,7 +2945,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -2988,12 +2988,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -3087,7 +3087,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3111,7 +3111,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3154,12 +3154,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -3253,7 +3253,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3277,7 +3277,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3318,12 +3318,12 @@
             "display": "$3.1M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -3369,7 +3369,7 @@
         "actions": [],
         "claims": [
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3393,7 +3393,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3437,12 +3437,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -3560,7 +3560,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3584,7 +3584,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3630,7 +3630,7 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -3724,7 +3724,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3772,7 +3772,7 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -3914,7 +3914,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -3957,12 +3957,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -4056,7 +4056,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4080,7 +4080,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4124,12 +4124,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -4247,7 +4247,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4271,7 +4271,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4314,12 +4314,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -4413,7 +4413,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4437,7 +4437,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4480,12 +4480,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -4579,7 +4579,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4603,7 +4603,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4644,12 +4644,12 @@
             "display": "$700K"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -4695,7 +4695,7 @@
         "actions": [],
         "claims": [
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4719,7 +4719,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4760,12 +4760,12 @@
             "display": "$700K"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -4811,7 +4811,7 @@
         "actions": [],
         "claims": [
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4835,7 +4835,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -4878,12 +4878,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -4977,7 +4977,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5001,7 +5001,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5045,12 +5045,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -5168,7 +5168,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5192,7 +5192,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5235,12 +5235,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -5334,7 +5334,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5358,7 +5358,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5402,12 +5402,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -5525,7 +5525,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5549,7 +5549,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5592,12 +5592,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -5691,7 +5691,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5715,7 +5715,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5757,12 +5757,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -5832,7 +5832,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5856,7 +5856,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -5899,12 +5899,12 @@
             "hint": "Could be $700K to $11.8M"
           },
           "y2044": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
           "y2045": {
-            "display": "Not known projected",
+            "display": "Not known",
             "tone": "unknown",
             "hint": "Not established"
           },
@@ -5998,7 +5998,7 @@
             "links": []
           },
           {
-            "text": "2044: Not known projected",
+            "text": "2044: Not known",
             "tone": "neutral",
             "basis": {
               "because": [
@@ -6022,7 +6022,7 @@
             "links": []
           },
           {
-            "text": "2045: Not known projected",
+            "text": "2045: Not known",
             "tone": "neutral",
             "basis": {
               "because": [

@@ -379,7 +379,8 @@ export function Settings({
               <div className="key-state">
                 <span className="badge promote">Key saved</span>
                 <span className="muted">
-                  ending in <code>…{apiKey.hint}</code>
+                  {/* No hint only when a saved key can't be decrypted here (saved on another computer or account) */}
+                  {apiKey.hint ? <>ending in <code>…{apiKey.hint}</code></> : "that this computer can't read"}
                   {apiKey.source === 'env'
                     ? ` — coming from a ${ENV_VAR[settings.provider] ?? 'provider'} environment variable, which takes priority over anything set here.`
                     : apiKey.encrypted

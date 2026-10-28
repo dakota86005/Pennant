@@ -804,18 +804,19 @@ export function projectFromRatings(input: RatingsProductionInput, production: { 
   if (!arrival) {
     // Measured but not adopted (the gate failed) is not "not measured": the label says which, and why
     return unknownArrival(ratings.provenance.source === 'fallback_prior' && /not adopted/.test(ratings.provenance.label)
-      ? `how often players at his level and age reach the majors is not established on this save: ${ratings.provenance.label.replace(/^not yet calibrated on this save: /, '')}`
+      // The fit's record (the prior's name, the gate's finding) is the developer's, never served (B-01): the plain reason
+      ? 'how often players at his level and age reach the majors is not established on this save: it was measured, but the measurement did not hold up.'
       : 'how often players at his level and age reach the majors has not been measured on this save.');
   }
-  if (!arrival.levels.includes(input.level)) return unknownArrival(`the save's history has no measured arrivals from level ${input.level}.`);
+  if (!arrival.levels.includes(input.level)) return unknownArrival(`the save's history has no measured arrivals from his level.`);
   const cell = arrivalCellFor(arrival, side, input.level, age);
-  if (!cell) return unknownArrival(`the save's history has no ${side === 'batting' ? 'hitters' : 'pitchers'} at level ${input.level} to measure from.`);
+  if (!cell) return unknownArrival(`the save's history has no ${side === 'batting' ? 'hitters' : 'pitchers'} at his level to measure from.`);
   // The arrival model adopted horizon by horizon (hardening F6): the seasons through the last adopted horizon are served,
   // and each later one is not established with the gate's finding there, never extrapolated or carried forward
   const adopted = arrival.adopted ?? null;
   const served = adopted ? Math.min(horizon, adopted.through + 1) : horizon;
   const missingHorizon = cell.horizons.slice(0, served).findIndex((h) => h === null);
-  if (missingHorizon !== -1) return unknownArrival(`the save's history does not reach ${missingHorizon} season${missingHorizon === 1 ? '' : 's'} ahead from level ${input.level}.`);
+  if (missingHorizon !== -1) return unknownArrival(`the save's history does not reach ${missingHorizon} season${missingHorizon === 1 ? '' : 's'} ahead from his level.`);
 
   const k = production.model.kinds[kind];
   // What is not known about his true rate given the ratings (the forecast reliability, or the kind's own K)

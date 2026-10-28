@@ -3,6 +3,7 @@ import { INJURED_DAYS_NOT_COUNTED, PLAYABLE_GRADE, STRONG_GRADE } from './farmCa
 import { POSITION_CODES } from './gloves.js';
 import { screenAffiliatePlayers } from './rehabAssignments.js';
 import { scoutedGloves } from './scoutedEvidence.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 /*
  * What an affiliate's active list is, counted: bodies, who can stand where, who is assigned to start
@@ -442,7 +443,7 @@ function computeAffiliate(
     label: affiliateLabel(team),
     level: team.level,
     levelName:
-      LEVEL_NAMES[team.level] ?? `L${team.level}`,
+      LEVEL_NAMES[team.level] ?? UNNAMED_LEVEL_SHORT,
 
     roster: {
       total: roster.length,

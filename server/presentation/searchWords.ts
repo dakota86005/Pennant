@@ -7,7 +7,7 @@
  */
 import type { SearchEntry, SearchQuery } from '../search.js';
 import { cell, target } from './claim.js';
-import { LEVEL_WORDS } from './frontOffice/morning.js';
+import { LEVEL_WORDS } from '../levelWords.js';
 import type { SearchAnswer, SearchGroup, SearchKind, SearchResult } from './frontOffice/leagueTypes.js';
 
 /** How many results each group shows (stated lines). */

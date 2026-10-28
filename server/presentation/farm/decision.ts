@@ -290,7 +290,7 @@ export function decisionView(
       tone: verdict.tone,
       hint: 'The same answer at every club: no philosophy enters it',
       basis: judgmentBasis(ctx, PLAYER_DEVELOPMENT, {
-        because: review.current.parts.map((x) => ({ label: plain(x.label), value: plain(`${x.value}${x.basis ? ` (${x.basis})` : ''}`) })),
+        because: review.current.parts.map((x) => ({ label: plain(x.label), value: plain(`${tierLabel(x.value)}${x.basis ? ` (${x.basis})` : ''}`) })),
         unknown: [...review.current.unknowns, ...review.current.missingEvidence.map((m) => m.detail)],
         called,
       }),
@@ -325,4 +325,5 @@ export function decisionView(
 }
 
 /** A part's value in the GM's words (a tier's code reads as its name). */
-const tierLabel = (value: string): string => TIER[value] ?? value;
+/** A part's value: a tier's code in words ("Protected prospect", B-11), "Not known" for an undetermined one, any other value as written. */
+const tierLabel = (value: string): string => TIER[value] ?? (value === 'indeterminate' ? 'Not known' : value);

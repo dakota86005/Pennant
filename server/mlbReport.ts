@@ -19,6 +19,7 @@
  */
 
 import type { MlbNeed } from './mlbNeeds.js';
+import { levelWord } from './levelWords.js';
 import type { LensEvidence } from './roleReview.js';
 import type { Plan } from './mlbPlans.js';
 import { estimateOf as workingEstimate, isFirmRead, type ReplacementComparison } from './roleReview.js';
@@ -379,7 +380,7 @@ function fillReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, candida
     const est = e ? workingEstimate(e, isPitcher(role), gloveWeights(ports)) : null;
     const row: RoleRow = {
       playerId: c.playerId, name: c.name, age: c.age, relation: 'subject',
-      status: `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, level ${c.level ?? '?'}`,
+      status: `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, ${levelWord(c.level)}`,
       composite: e?.ratingsPct ?? fit?.compositePercentile ?? null, resultsPct: est?.resultsPct ?? null,
       estimate: est ? est.value : fit?.compositePercentile ?? null, weightOnResults: est?.weightOnResults ?? 0,
       sample: e?.sample ?? 0, sampleUnit: e?.sampleUnit ?? 'BF', reliability: e?.reliability ?? 0, weakestCore: fit?.weakestCorePercentile ?? null,
@@ -426,13 +427,13 @@ function fillReport(need: MlbNeed, view: ClubView, ports: ResponsePorts, candida
       const st = rows.find((r) => r.playerId === c.playerId)?.standing ?? null;
       return {
         id: `candidate:${c.playerId}`,
-        title: `${PATH_WORDS[c.pathKind]}: ${c.name}${c.level ? ` (level ${c.level})` : ''}`,
+        title: `${PATH_WORDS[c.pathKind]}: ${c.name}${c.level ? ` (${levelWord(c.level)})` : ''}`,
         why: [
           ...(st ? st.reasons.slice(0, 2) : []),
           c.development.status === 'defensible' || c.development.status === 'context_dependent'
             ? `Player Development: ${c.development.status === 'context_dependent' && c.development.duration ? c.development.duration.explanation : 'defensible for this assignment'}.`
             : 'Player Development has not been asked, or has nothing to add.',
-          ...(lineText(c.performance) ? [`This season (level ${c.performance?.level}): ${lineText(c.performance)}.`] : []),
+          ...(lineText(c.performance) ? [`This season (${levelWord(c.performance?.level)}): ${lineText(c.performance)}.`] : []),
         ],
         steps: c.path.chain.length ? c.path.chain.map((l) => `${l.label}${l.detail ? ` — ${l.detail}` : ''}`) : c.path.steps.map((s) => s.label),
         moves: [], moreMoves: 0,
@@ -632,7 +633,7 @@ function replaceReport(
     const est = e ? workingEstimate(e, isPitcher(role), gloveWeights(ports)) : null;
     return {
       playerId: c.playerId, name: c.name, age: c.age, relation: 'subject' as const,
-      status: c.pathKind === 'role_change' ? 'On the bench' : `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, level ${c.level ?? '?'}`,
+      status: c.pathKind === 'role_change' ? 'On the bench' : `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, ${levelWord(c.level)}`,
       composite: e?.ratingsPct ?? null, resultsPct: est?.resultsPct ?? null, estimate: est ? est.value : null,
       weightOnResults: est?.weightOnResults ?? 0, sample: e?.sample ?? 0, sampleUnit: e?.sampleUnit ?? 'BF', reliability: e?.reliability ?? 0,
       weakestCore: c.roleFit?.evidence.weakestCorePercentile ?? null, evidenceStatus: e?.ratingsEvidence ?? 'unknown',
@@ -740,7 +741,7 @@ function complementReport(
       const cr = c.complement!;
       return {
         playerId: c.playerId, name: c.name, age: c.age, relation: 'subject',
-        status: c.pathKind === 'role_change' ? 'On the bench' : `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, level ${c.level ?? '?'}`,
+        status: c.pathKind === 'role_change' ? 'On the bench' : `${c.pathKind === 'recall' ? 'Recall' : 'Add to 40-man'}, ${levelWord(c.level)}`,
         composite: e?.ratingsPct ?? null, resultsPct: est?.resultsPct ?? null, estimate: est ? est.value : null, weightOnResults: est?.weightOnResults ?? 0,
         sample: e?.sample ?? 0, sampleUnit: e?.sampleUnit ?? 'PA', reliability: e?.reliability ?? 0, weakestCore: c.roleFit?.evidence.weakestCorePercentile ?? null,
         evidenceStatus: e?.ratingsEvidence ?? 'unknown', performance: c.performance, standing: null, group: c.group, usage: e?.usage ?? [], comparison: null,

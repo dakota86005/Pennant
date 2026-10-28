@@ -1,6 +1,9 @@
 import { db, tableColumns, tableExists } from './db.js';
 import { leagueRulesForLeague } from './leagueRules.js';
 import { rememberFact, rememberedFact } from './servedFacts.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
+/** The short label of a level the table does not name (B-11), for the readers that take their level names from here. */
+export { UNNAMED_LEVEL_SHORT };
 
 /**
  * SQL fragment restricting a `players p` query to men genuinely on the club.
@@ -159,7 +162,7 @@ export function orgBriefing(orgId: number): string {
 
   const said = clubs.map((c) => {
     const label = c.name === c.nickname ? c.name : `${c.name} ${c.nickname}`;
-    return `${label} (${LEVEL_NAMES[c.level] ?? `L${c.level}`}, team_id ${c.team_id})`;
+    return `${label} (${LEVEL_NAMES[c.level] ?? UNNAMED_LEVEL_SHORT}, team_id ${c.team_id})`;
   });
   return (
     `YOUR ORGANISATION, top to bottom: ${said.join('; ')}. ` +

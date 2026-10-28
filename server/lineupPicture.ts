@@ -16,7 +16,7 @@
 
 export const LINEUP_CALIBRATION = {
   status: 'policy' as const,
-  note: 'The share of a position\'s innings that makes a player its regular is a policy threshold (lineupPicture.ts): a decision about what to call a regular, not a fact about baseball.',
+  note: 'The share of a position\'s innings that makes a player its regular is a policy threshold: a decision about what to call a regular, not a fact about baseball.',
 };
 
 /** POLICY. Share of the team's innings at a position (or of its games, for DH) that makes a player the regular there. */

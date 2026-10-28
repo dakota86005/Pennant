@@ -192,6 +192,9 @@ export interface TradeDeskReply {
   notice: { message: string } | null;
 }
 
+/** The most turns of a resent thread read at all (the desk is shown fewer: `ai.ts` `THREAD_TURNS_KEPT`). */
+const THREAD_TURNS_READ = 24;
+
 /**
  * The AI desk's read of the deal, or its answer to the GM's question, worded for the Mac app (N12 Track C, D-073). The
  * deal is read here; the question is put by `ask` (`ai.ts`'s, which refuses in words with AI off or a side empty), and
@@ -212,7 +215,8 @@ export async function tradeAskNow(
   const sent = ids(question.sent);
   const received = ids(question.received).filter((id) => !sent.includes(id));
   if (sent.length > MOST_A_SIDE || received.length > MOST_A_SIDE) throw new TradesRefusal(TOO_MANY, 400);
-  const thread = (Array.isArray(question.thread) ? question.thread : [])
+  // Capped here as well as where the desk is asked (`ai.ts` `threadKept`): only the last turns are ever read
+  const thread = (Array.isArray(question.thread) ? question.thread.slice(-THREAD_TURNS_READ) : [])
     .filter((t): t is { role: 'user' | 'assistant'; content: string } =>
       !!t && (t.role === 'user' || t.role === 'assistant') && typeof t.content === 'string');
   const message = typeof question.message === 'string' && question.message.trim() ? question.message : undefined;

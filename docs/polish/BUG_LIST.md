@@ -24,7 +24,7 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 ### Tier 1
 
 **B-01 · Hover notes show developer details and a developer's local save**
-- Status: open
+- Status: fixed (batch 13)
 - Tier 1 · data · Front Office, MLB Ops, Farm, Player windows, League Office, Trades · size M · batch 2
 - The GM sees: Value and roster-map hovers read "fitted by production-3b.1 (playerValueProductionFit.ts) ... a developer's local save (its league id) ... npm run calibrate ... (D-053)", 20 times per club report; Org Comparison and the farm's lines table show "provisional ratings prior", "(a developer's local save, its export date)", "(Q-3)".
 - Cause: Developer provenance kept in calibration stamps is served raw as the GM-facing basis: server/playerValueCalibration.ts:366-372, :458-463, :1533-1538, :2319-2325; server/developmentFit.ts:64-70; server/calibration.ts:42-44 (CALIBRATION_RUN, preferred by dossier.ts:57 and leagueHistoryViews.ts:35); carried by server/presentation/frontOffice/morning.ts:920, :961, trades/desk.ts:55, frontOffice/desk.ts:142, league/orgComparison.ts:130, farm/organization.ts:109-120; drawn verbatim by PD/Depth.swift:223-224. Other stamps with the same provenance: resultsMetrics.ts, toolsModel.ts, roleStandards.ts, roleReview.ts, mlbCalibrationFit.ts, mlbResultsFit.ts, mlbToolsFit.ts, mlbPlatoonFit.ts.
@@ -94,7 +94,7 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 - Absorbs: MLB-13 (confirmed), MLB-24 (confirmed), MLB-26 (confirmed), MLB-29 (confirmed)
 
 **B-11 · Code words reach the screen ("level 2", column names)**
-- Status: open
+- Status: fixed (batch 13)
 - Tier 1 · data · MLB Ops, Player windows, Finance, Farm · size S · batch 2
 - The GM sees: "Season line (55 PA, level 2)", "Recall, level 2", the column name rules_minor_league_fa_minimum_years in Contract & Rights, "Not known projected" in 50 payroll cells (a raw protected_prospect on the farm Decision is tracked under FARM-20).
 - Cause: `level ${n}` interpolated: server/presentation/majorLeague/decision.ts:361, server/mlbResponses.ts:564, server/mlbReport.ts:382, :429, :435, :635, :743, server/playerValueRatings.ts:810-818, server/playerValueCone.ts:239-240; server/playerValueControl.ts:444, server/playerValueContract.ts:137; server/presentation/finance/payroll.ts:398; server/presentation/farm/words.ts:47, :77.
@@ -525,14 +525,14 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - Absorbs: SRVAI-07 (confirmed), SRVAI-09 (confirmed), SRVFARM-23 (confirmed), SRVSTATS-22 (unchecked)
 
 **B-74 · The old desktop app and the dev server accept commands from any website**
-- Status: open
+- Status: fixed (batch 7)
 - Tier 1 · security · Shell · size M · batch 7
 - The GM sees: On the Electron app, npm run dev and npm start, any web page can start paid AI writing, imports and site exports; reopening the Electron app from the Dock starts a second server; Electron itself has known security advisories. The Mac app is not affected (its server has a token).
 - Cause: server/index.ts:38, :77-96 (Host check only); server/apiToken.ts:38-39 (no-op without a token; Electron sets none); express.json ignores text/plain bodies; electron/main.ts:128, :188-195, :257-278, :284-286; package-lock.json electron 41.10.4. Owner decision: retire Electron and the token-less mode now or at cutover.
 - Absorbs: SRVINFRA-07 (confirmed), SRVHEALTH-06 (confirmed), SRVHEALTH-07 (confirmed), SRVHEALTH-16 (unchecked)
 
 **B-75 · One bad request can crash the app's server**
-- Status: open
+- Status: fixed (batch 7)
 - Tier 1 · behaviour · Staff room, Trades, All departments · size M · batch 7
 - The GM sees: A malformed AI reply request gets no answer and the unhandled rejection can take the server down, including from Ask Staff; raw internal error messages reach the app; an odd sort value crashes the old player list.
 - Cause: server/chat.ts:1182-1196, server/ai.ts:487, server/aiSurfacesService.ts:188 (async handlers outside try; Express 4 does not catch rejections); server/officeViewsBuild.ts:86 and server/v2Routes.ts:370-375 (err.message sent); server/league.ts:325, :335 (PLAIN_SORTS plain object); tests/request.ts:15 skips the real request checks.
@@ -593,6 +593,7 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - The GM sees: A long Staff room conversation keeps growing (540,000 characters stored, 400,000 sent) until every question fails; after about 20 questions it forgets what it already looked up; long trade-desk threads stop with 'request too large'.
 - Cause: server/chat.ts:688-698, :742-752 (trimming never cuts), :701-704 with server/aiSurfacesService.ts:48, :110 (resume window); server/requestBody.ts:33 with PK/TradesStore.swift:233-241 (whole thread resent, default body limit).
 - Absorbs: SRVAI-01 (proven), SRVAI-06 (proven), SRVHEALTH-02 (confirmed)
+- Note: SRVHEALTH-02 (the trade desk's 'request too large', a 413) is fixed in batch 7: the trade desk routes take a 1 MB body and the server keeps the last 12 turns of the thread, each cut to 16,000 characters (`server/requestBody.ts` `BODY_LIMITS`, `server/ai.ts` `threadKept`; `tests/serverSafety.test.ts`). B-76 stays open for the rest: the Mac app still resends the whole thread (PK/TradesStore.swift), and SRVAI-01 and SRVAI-06.
 
 **B-77 · Slow AI answers fail on the Mac yet keep running, and costing, on the server**
 - Status: open
@@ -632,7 +633,7 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - Absorbs: SRVDEV-04 (proven)
 
 **B-101 · Small security leaks: part of the AI key on disk, the settings file, stored keys**
-- Status: open
+- Status: fixed (batch 7)
 - Tier 2 · security · Settings, Shell · size S · batch 7
 - The GM sees: Part of each AI key (its length and last 6 characters) is written to a plain file; a Windows-style .env breaks keys and one in the data folder can flip test-only switches; saving a new key deletes the old one before the new one is stored; the app's server password would follow a malformed absolute link.
 - Cause: server/unusable.ts:39; server/config.ts:36-48, server/sidecar.ts:28-31; PK/KeychainItems.swift:162-183; PK/PennantClient.swift:24-31.

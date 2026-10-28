@@ -1,3 +1,4 @@
+import { asyncRoute } from './asyncRoute.js';
 import { Router } from 'express';
 import type Anthropic from '@anthropic-ai/sdk';
 import { anthropicSdk } from './aiSdk.js';
@@ -182,7 +183,7 @@ export async function supportsAdaptiveThinking(
 export const modelRoutes = Router();
 
 /** The model picker's options. `live` is false when this is the fallback list. */
-modelRoutes.get('/models', async (req, res) => {
+modelRoutes.get('/models', asyncRoute(async (req, res) => {
   const asked = req.query.provider;
   const provider = isProviderId(asked) ? asked : activeProvider();
   const { models, live } = await listModels(provider);
@@ -194,4 +195,4 @@ modelRoutes.get('/models', async (req, res) => {
     live,
     provider,
   });
-});
+}));

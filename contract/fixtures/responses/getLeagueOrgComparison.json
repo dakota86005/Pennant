@@ -95,7 +95,7 @@
         "lean": null,
         "certainty": "provisional",
         "called": "A starting number, not yet fitted on this save",
-        "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+        "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
       },
       "links": [],
       "hint": "League middle: 6.6 wins",
@@ -138,7 +138,7 @@
         "lean": null,
         "certainty": "provisional",
         "called": "A starting number, not yet fitted on this save",
-        "stamp": "Fallback ratings prior, fitted by the ratings method (playerValueRatingsFit.ts, no prior, no hold-out) on the Arizona historical save (export of 2026-05-16, league 203) with `npm run calibrate production -- --prior`: the same-time ratings → rate mapping on its major leaguers, the stamina cut, how often each hand faces left-handers, the largest scouted development by age, and a development path read from ONE cross-section of scouted gaps by age (not a path: survivors only, with its range from no further development to twice its central share). Never the save's own calibration (D-053). No arrivals: measured per save or unknown."
+        "stamp": "Pennant's starting reading of ratings, from real major leaguers, used until this save's own measurement holds up"
       },
       "links": [],
       "value": {
@@ -180,7 +180,7 @@
         "lean": null,
         "certainty": "provisional",
         "called": "A starting number, not yet fitted on this save",
-        "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+        "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
       },
       "links": [],
       "value": {
@@ -210,7 +210,7 @@
           },
           {
             "label": "Where it comes from",
-            "value": "team_financials.player_payroll"
+            "value": "This season's payroll, with the budget beside it, as OOTP's club finances state them. A figure the export doesn't carry says so; it's never read as $0."
           }
         ],
         "source": {
@@ -404,7 +404,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -453,7 +453,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback ratings prior, fitted by the ratings method (playerValueRatingsFit.ts, no prior, no hold-out) on the Arizona historical save (export of 2026-05-16, league 203) with `npm run calibrate production -- --prior`: the same-time ratings → rate mapping on its major leaguers, the stamina cut, how often each hand faces left-handers, the largest scouted development by age, and a development path read from ONE cross-section of scouted gaps by age (not a path: survivors only, with its range from no further development to twice its central share). Never the save's own calibration (D-053). No arrivals: measured per save or unknown."
+                  "stamp": "Pennant's starting reading of ratings, from real major leaguers, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -561,7 +561,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -710,7 +710,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -759,7 +759,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback ratings prior, fitted by the ratings method (playerValueRatingsFit.ts, no prior, no hold-out) on the Arizona historical save (export of 2026-05-16, league 203) with `npm run calibrate production -- --prior`: the same-time ratings → rate mapping on its major leaguers, the stamina cut, how often each hand faces left-handers, the largest scouted development by age, and a development path read from ONE cross-section of scouted gaps by age (not a path: survivors only, with its range from no further development to twice its central share). Never the save's own calibration (D-053). No arrivals: measured per save or unknown."
+                  "stamp": "Pennant's starting reading of ratings, from real major leaguers, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -867,7 +867,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -1015,7 +1015,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -1064,7 +1064,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback ratings prior, fitted by the ratings method (playerValueRatingsFit.ts, no prior, no hold-out) on the Arizona historical save (export of 2026-05-16, league 203) with `npm run calibrate production -- --prior`: the same-time ratings → rate mapping on its major leaguers, the stamina cut, how often each hand faces left-handers, the largest scouted development by age, and a development path read from ONE cross-section of scouted gaps by age (not a path: survivors only, with its range from no further development to twice its central share). Never the save's own calibration (D-053). No arrivals: measured per save or unknown."
+                  "stamp": "Pennant's starting reading of ratings, from real major leaguers, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -1172,7 +1172,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -1320,7 +1320,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -1369,7 +1369,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback ratings prior, fitted by the ratings method (playerValueRatingsFit.ts, no prior, no hold-out) on the Arizona historical save (export of 2026-05-16, league 203) with `npm run calibrate production -- --prior`: the same-time ratings → rate mapping on its major leaguers, the stamina cut, how often each hand faces left-handers, the largest scouted development by age, and a development path read from ONE cross-section of scouted gaps by age (not a path: survivors only, with its range from no further development to twice its central share). Never the save's own calibration (D-053). No arrivals: measured per save or unknown."
+                  "stamp": "Pennant's starting reading of ratings, from real major leaguers, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {
@@ -1477,7 +1477,7 @@
                   "lean": null,
                   "certainty": "provisional",
                   "called": "A starting number, not yet fitted on this save",
-                  "stamp": "Fallback prior, fitted by the production method production-3b.1 (playing time conditional on quality; tails by quality and usage tier) (playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 (2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness effect: proneness is measured on each save's own history or not used."
+                  "stamp": "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up"
                 },
                 "links": [],
                 "value": {

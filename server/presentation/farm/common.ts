@@ -90,7 +90,7 @@ export function stakesClaim(
     basis: judgmentBasis(ctx, PLAYER_DEVELOPMENT, {
       because: plainAll(protection.reasons).map((r, i) => ({ label: i === 0 ? 'Why' : 'And', value: r })),
       unknown: protection.missingEvidence.map((m) => m.detail),
-      called: policyCalled('Player Development\'s stakes (D-050): a ceiling, lowered by how much development is left'),
+      called: policyCalled('Player Development\'s stakes: a ceiling, lowered by how much development is left'),
     }),
   });
 }

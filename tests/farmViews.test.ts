@@ -200,7 +200,7 @@ describe('a decision\'s cascade is a chain that stops (D-045)', () => {
 /** A minor leaguer as scouted development serves him. */
 function scoutedPlayer(id: number, level: number, over: Partial<ScoutedDevelopmentPlayer['evidence']['peerDevelopment']> = {}, delta: number | null = null): ScoutedDevelopmentPlayer {
   return {
-    playerId: id, name: `Player ${id}`, age: 21, kind: 'hitter', teamId: 100 + level, team: `Club ${level}`, level, levelName: `Level ${level}`, current: 45, potential: 60,
+    playerId: id, name: `Player ${id}`, age: 21, kind: 'hitter', teamId: 100 + level, team: `Club ${level}`, level, levelName: ({ 2: 'AAA', 3: 'AA', 4: 'A' } as Record<number, string>)[level] ?? 'A', current: 45, potential: 60,
     protection: { tier: 'normal', reasons: [] }, transaction: { active: true, onInjuredList: false }, role: { listedPosition: 'SS', developmentalPitcherRole: null },
     evidence: {
       developmentHistory: { status: delta === null ? 'insufficient' : 'improving', snapshotCount: 3, observationDays: 90, currentDelta: delta, potentialDelta: null, reasons: [] },
@@ -211,7 +211,7 @@ function scoutedPlayer(id: number, level: number, over: Partial<ScoutedDevelopme
 
 describe('no hidden score orders the prospects (D-044)', () => {
   const prospect = (id: number, recommendation: string, readiness: number) => ({
-    player_id: id, team_id: 100, name: `Player ${id}`, age: 21, team: 'Club', level: 3, levelName: 'Level 3', cur: 45, pot: 60, pa: 200, opsVal: 0.8, hr: 5,
+    player_id: id, team_id: 100, name: `Player ${id}`, age: 21, team: 'Club', level: 3, levelName: 'AA', cur: 45, pot: 60, pa: 200, opsVal: 0.8, hr: 5,
     decision: { recommendation, confidence: 'moderate', evidence: { performance: 60, ageLevelUrgency: 50, ratingsMaturity: 50, sampleConfidence: 60, readiness }, positives: [], cautions: [], missingEvidence: [] },
     assignments: { evaluations: [], eligible: [], indeterminate: [] },
   });
@@ -284,7 +284,7 @@ describe('the lines the Organization reading used say what was set aside (D-068)
 
 describe('development tracking compares only this save\'s own history (D-064, D-061)', () => {
   const rowsFor = (id: number, dates: string[], cur: number[]): HistoryRowInput[] => dates.map((d, i) => ({
-    game_date: d, player_id: id, name: `Player ${id}`, team_id: 103, level: 3, levelName: 'Level 3', position: 6, age: 21, cur: cur[i], pot: 60,
+    game_date: d, player_id: id, name: `Player ${id}`, team_id: 103, level: 3, levelName: 'AA', position: 6, age: 21, cur: cur[i], pot: 60,
     con: 40 + i, gap: 40, pow: 40, eye: 40, avk: 40, spd: 50, stu: null, mov: null, ctl: null,
   }));
   const history = (rows: HistoryRowInput[], dates: string[]): DevelopmentHistoryInput => ({
@@ -575,14 +575,14 @@ describe('fixtures for the Mac app\'s farm previews (N10)', () => {
   it('prospects with development meetings', () => {
     const players = [scoutedPlayer(9101, 2, { pace: 'ahead', percentile: 86 }), scoutedPlayer(9102, 3, { pace: 'behind', percentile: 12 }), scoutedPlayer(9103, 3)];
     const meeting = (id: number, recommendation: string) => ({
-      player_id: id, team_id: 103, name: `Player ${id}`, age: 21, team: 'Club 3', level: 3, levelName: 'Level 3', cur: 45, pot: 60, pa: 240, opsVal: 0.842, hr: 9,
+      player_id: id, team_id: 103, name: `Player ${id}`, age: 21, team: 'Club 3', level: 3, levelName: 'AA', cur: 45, pot: 60, pa: 240, opsVal: 0.842, hr: 9,
       decision: {
         recommendation, confidence: 'moderate', evidence: { performance: 71, ageLevelUrgency: 55, ratingsMaturity: 62, sampleConfidence: 68, readiness: 74 },
         positives: ['His line is well above the league at his level.'], cautions: ['His sample is still short of a full season.'], missingEvidence: [],
       },
       assignments: {
-        evaluations: [{ kind: 'normal_promotion', direction: 'promotion' as const, target: { level: 2, levelName: 'Level 2', teams: [{ teamId: 102, label: 'Club 2' }], isMajorLeague: false }, judgment: 'defensible', preference: 'preferred', blockers: [], missingEvidence: [], destinationFit: { teams: [{ fit: { destinationTeamId: 102, destinationTeam: 'Club 2', classification: 'viable' } }], eligibleTeamIds: [102], indeterminateTeamIds: [] } }],
-        eligible: [{ kind: 'normal_promotion', direction: 'promotion' as const, target: { level: 2, levelName: 'Level 2', teams: [{ teamId: 102, label: 'Club 2' }], isMajorLeague: false }, judgment: 'defensible', preference: 'preferred', blockers: [], missingEvidence: [], destinationFit: { teams: [{ fit: { destinationTeamId: 102, destinationTeam: 'Club 2', classification: 'viable' } }], eligibleTeamIds: [102], indeterminateTeamIds: [] } }],
+        evaluations: [{ kind: 'normal_promotion', direction: 'promotion' as const, target: { level: 2, levelName: 'AAA', teams: [{ teamId: 102, label: 'Club 2' }], isMajorLeague: false }, judgment: 'defensible', preference: 'preferred', blockers: [], missingEvidence: [], destinationFit: { teams: [{ fit: { destinationTeamId: 102, destinationTeam: 'Club 2', classification: 'viable' } }], eligibleTeamIds: [102], indeterminateTeamIds: [] } }],
+        eligible: [{ kind: 'normal_promotion', direction: 'promotion' as const, target: { level: 2, levelName: 'AAA', teams: [{ teamId: 102, label: 'Club 2' }], isMajorLeague: false }, judgment: 'defensible', preference: 'preferred', blockers: [], missingEvidence: [], destinationFit: { teams: [{ fit: { destinationTeamId: 102, destinationTeam: 'Club 2', classification: 'viable' } }], eligibleTeamIds: [102], indeterminateTeamIds: [] } }],
         indeterminate: [],
       },
     });

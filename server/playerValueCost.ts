@@ -545,8 +545,8 @@ export function measureCostLadder(input: CostLadderInput): CostLadder {
   const { season } = input;
   const rows = season === null ? [] : input.candidates.map((c) => rowOf(c, season));
   let dollars: string | null = null;
-  if (input.financials.value === false) dollars = 'The league runs no financials (rules_financials = 0): value is in wins, and no season is priced in dollars.';
-  else if (input.financials.value === null) dollars = `Whether the league runs financials is not established (${input.financials.note ?? 'rules_financials is not exported'}): no season is priced in dollars.`;
+  if (input.financials.value === false) dollars = 'The league runs no financials: value is in wins, and no season is priced in dollars.';
+  else if (input.financials.value === null) dollars = `Whether the league runs financials is not established (${input.financials.note ?? 'the setting is not in the export'}): no season is priced in dollars.`;
   else if (season === null) dollars = "The league's season is not established, so this season's contracts cannot be read.";
   else if (input.minimumSalary.value === null) dollars = `The league minimum salary is not established (${input.minimumSalary.note ?? 'not exported'}): no renewal or arbitration season is priced, never at another league's minimum.`;
   const minimum = input.minimumSalary.value;
@@ -566,7 +566,7 @@ export function measureCostLadder(input: CostLadderInput): CostLadder {
       renewal: RENEWAL_RULE(),
       arbitration: ARBITRATION_RULE(),
       prior: COST_PRIOR_CALIBRATION.basis,
-      reserveClause: 'A reserve-clause renewal is not priced from one import: it is measured from the renewals observed across imports once enough are seen (phase 4b), and is unknown until then.',
+      reserveClause: 'A reserve-clause renewal is not priced from one import: it is measured from the renewals observed across imports once enough are seen, and is unknown until then.',
       band: BAND_RULE,
     },
     stamps: { policy: COST_POLICY_CALIBRATION, prior: COST_PRIOR_CALIBRATION },
@@ -775,12 +775,12 @@ function priceArbitration(
   const tendered = 'What he costs if tendered: a non-tender stays possible, and the export does not say whether the club will tender him.';
   if (rule.status === 'binds') {
     notes.push(above
-      ? `Every reading of the ladder (${millions(ladderBand.low)}–${millions(ladderBand.high)}) is below his previous salary, ${previous.words}, and an arbitration salary is never below it (owner-attested, 2026-09-24): the season is at his previous salary. ${tendered}`
+      ? `Every reading of the ladder (${millions(ladderBand.low)}–${millions(ladderBand.high)}) is below his previous salary, ${previous.words}, and an arbitration salary is never below it: the season is at his previous salary. ${tendered}`
       : lifts
-        ? `An arbitration salary is never below his previous salary (owner-attested, 2026-09-24): ${previous.words} lifts the low edge from ${millions(ladderBand.low)}. ${tendered}`
-        : `An arbitration salary is never below his previous salary (owner-attested, 2026-09-24): ${previous.words}, already below the band. ${tendered}`);
+        ? `An arbitration salary is never below his previous salary: ${previous.words} lifts the low edge from ${millions(ladderBand.low)}. ${tendered}`
+        : `An arbitration salary is never below his previous salary: ${previous.words}, already below the band. ${tendered}`);
   } else if (rule.status === 'unknown') {
-    notes.push(`${previous.words.charAt(0).toUpperCase()}${previous.words.slice(1)}, so his previous salary is not known and the owner-attested rule that an arbitration salary never falls (2026-09-24) cannot bind here. ${tendered}`);
+    notes.push(`${previous.words.charAt(0).toUpperCase()}${previous.words.slice(1)}, so his previous salary is not known and OOTP's rule that an arbitration salary never falls cannot bind here. ${tendered}`);
   }
   const floored = (v: number) => (floor === null ? v : Math.max(v, floor));
   const central = centralClass !== null ? centralByClass.get(centralClass) ?? null : null;

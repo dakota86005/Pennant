@@ -23,6 +23,7 @@
 
 import type { AssignmentContext } from './assignmentContext.js';
 import type { CrossRoleSupport, FarmConsequence, PerformanceLine, RoleFitEvidence } from './mlbEvidence.js';
+import { levelWord } from './levelWords.js';
 import type { LensEvidence, ReplacementComparison } from './roleReview.js';
 import type { Plan } from './mlbPlans.js';
 import type { CoverageFloors, MlbNeed, NeedFact } from './mlbNeeds.js';
@@ -561,7 +562,7 @@ function discover(need: MlbNeed, role: RoleRef, view: ClubView, ports: ResponseP
     if (!onForty && m.level !== 2) { skip('Non-40-man players below Triple-A (Player Development assesses AAA to MLB only)'); continue; }
     out.push({
       member: m, pathKind: onForty ? 'recall' : 'add_to_forty_man', roleMatch: 'direct',
-      source: `${onForty ? '40-man' : 'Non-40-man'} ${role.label}, level ${m.level}`,
+      source: `${onForty ? '40-man' : 'Non-40-man'} ${role.label}, ${levelWord(m.level)}`,
       evidence: alsoPlays ? [`Listed ${roleLabel(m.role)}; his visible grade at ${role.label} supports playing it.`] : [`Listed ${role.label}.`],
     });
   }

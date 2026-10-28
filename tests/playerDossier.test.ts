@@ -152,6 +152,22 @@ describe('his value is ranges with their basis, never a verdict (D-052, D-018, D
     }
   });
 
+  it("keeps the cone's plain explanation of how it is fitted, and leaves out a label that is the developer's record (B-01; L3)", () => {
+    const valuation = playerValue(save.regular, { currentState: 'current' })!;
+    const cone = productionCone(valuation.production, valuation.control);
+    const detailOf = (v: PlayerDossierView) => v.value.cone.checked.basis.because.find((l) => l.label === 'Detail')?.value ?? null;
+    // The starting values' explanation is words: it stays in the breakdown
+    const plainLine = view((input) => { input.cone = cone; });
+    expect(detailOf(plainLine)).toMatch(/this league's own mean/);
+    expect(bannedInPayload(plainLine, 'getPlayerDossier')).toEqual([]);
+    // A label carrying the method's id and its file is the developer's record: the line is left out, never served
+    const record = view((input) => {
+      input.cone = { ...cone, calibration: { ...cone.calibration, detail: 'production-3b.1 (playerValueProductionFit.ts, no prior, no hold-out)' } };
+    });
+    expect(detailOf(record)).toBeNull();
+    expect(bannedInPayload(record, 'getPlayerDossier')).toEqual([]);
+  });
+
   it('carries no verdict, no playoff odds and no posture anywhere, its bases included', () => {
     const { views } = buildPlayerDossiers({ orgId: save.org, importStamp: null, reportStamp: 'r1', playerIds: [...save.hitters.slice(0, 6), save.reliever] });
     for (const v of views) {

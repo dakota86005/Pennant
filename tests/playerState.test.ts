@@ -94,7 +94,7 @@ describe('current state comes from the export, with provenance', () => {
     const s = playerState(IDS.optioned)!; // the fixture leaves options_used NULL
     expect(s.options.used).toEqual({
       value: null, provenance: 'unknown', source: 'players_roster_status.options_used',
-      reason: 'not_exported_by_ootp', note: 'options_used is blank in the export.',
+      reason: 'not_exported_by_ootp', note: 'It is blank in the export.',
     });
     // ...and does not pretend it is zero
     expect(s.options.used.value).not.toBe(0);

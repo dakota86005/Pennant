@@ -16,6 +16,7 @@ import { contactProfiles } from './battedball.js';
 import { POSITION_CODES, glovesLine } from './gloves.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { blockedIds } from './tradingblock.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 /**
  * The Trade Center on Player Value (phase 6b; PLAYER_VALUE.md Part 8, consumer 3; D-052).
@@ -106,7 +107,7 @@ function rowOf(id: number, facts: PlayerFacts | undefined, value: PlayerValuatio
     team: facts?.team ?? null,
     teamAbbr: facts?.teamAbbr ?? null,
     organizationId: facts?.organizationId ?? null,
-    level: facts?.level ? LEVEL_NAMES[facts.level] ?? `L${facts.level}` : 'unknown',
+    level: facts?.level ? LEVEL_NAMES[facts.level] ?? UNNAMED_LEVEL_SHORT : 'unknown',
     listed: listed.has(id),
     control: value ? controlSummaryOf(value.control) : NO_CONTROL,
     production: value ? productionHeadlineOf(value.production) : NO_PRODUCTION,
@@ -711,7 +712,7 @@ function fieldingRecord(id: number, statYear: number | null): string | null {
       const zone = r.zr ? `, ${r.zr > 0 ? '+' : ''}${r.zr.toFixed(2)} ZR` : '';
       const when = r.year === statYear ? 'this year' : `${r.year}`;
       // Named, so a Triple-A glove is never read as a major-league one
-      const where = LEVEL_NAMES[r.level_id] ?? `L${r.level_id}`;
+      const where = LEVEL_NAMES[r.level_id] ?? UNNAMED_LEVEL_SHORT;
       return `${POSITION_CODES[(r.position ?? 1) - 1] ?? '?'} ${when} (${where}): ` +
         `${r.g}g, ${r.e}E, ${pct} fpct${zone}`;
     })

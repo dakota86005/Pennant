@@ -1,3 +1,4 @@
+import { asyncRoute } from './asyncRoute.js';
 import { Router } from 'express';
 import type Anthropic from '@anthropic-ai/sdk';
 import { anthropicSdk } from './aiSdk.js';
@@ -1085,7 +1086,7 @@ export async function answerStaff(q: StaffQuestion, send: (event: string, data: 
   }
 }
 
-chatRoutes.post('/chat', async (req, res) => {
+chatRoutes.post('/chat', asyncRoute(async (req, res) => {
   const {
     messages: history, orgId, persona: personaId, members: memberIds, addressed,
   } = req.body as {
@@ -1137,7 +1138,7 @@ chatRoutes.post('/chat', async (req, res) => {
     answered = true;
     res.end();
   }
-});
+}));
 
 // ── The Mac app's Staff room (N13, Stage A; D-074) ──────────────────────────
 
@@ -1207,30 +1208,41 @@ chatRoutes.delete('/v2/staff-room/:org/conversation', (req, res, next) => {
  * into the contract's by the service, which keeps the conversation in the React chat's file. Closing the request stops
  * the stream, and what had arrived is kept, as the React page keeps it when stopped.
  */
-chatRoutes.post('/v2/staff-room/:org/ask', async (req, res, next) => {
+chatRoutes.post('/v2/staff-room/:org/ask', asyncRoute(async (req, res, next) => {
+  // The checks before the stream starts: a refusal is said in words, and anything else they throw (a save without a
+  // column a check reads, say) is the router's failure, answered as one, never a request left hanging (B-75)
+  const body = (req.body ?? {}) as { with?: unknown; question?: unknown; about?: { playerId?: unknown }; members?: unknown };
   let orgId: number;
+  let people: ReturnType<typeof staffFor>;
+  let withId: ReturnType<typeof personOn>['withId'];
+  let person: ReturnType<typeof personOn>['person'];
+  let question: string;
+  let provider: ReturnType<typeof featureProvider>;
+  let model: ReturnType<typeof featureModel>;
+  let key: string;
+  let busy: string;
   try {
     orgId = resolveOrg(String(req.params.org));
+    people = staffFor(orgId);
+    ({ withId, person } = personOn(orgId, personaId(body.with)));
+    question = typeof body.question === 'string' ? body.question.trim() : '';
+    if (!question && body.about && typeof body.about === 'object') {
+      const asked = aboutQuestionFor(orgId, Number(body.about.playerId));
+      if (!asked) return res.status(404).json({ error: STAFF_NO_PLAYER });
+      question = asked;
+    }
+    if (!question) return res.status(400).json({ error: STAFF_NO_QUESTION });
+    if (question.length > LONGEST_QUESTION) return res.status(400).json({ error: STAFF_TOO_LONG });
+    provider = featureProvider('chat');
+    model = featureModel('chat');
+    const credential = providerCredential(provider);
+    if (!credential) return res.status(409).json({ error: STAFF_AI_OFF });
+    key = credential;
+    busy = `${orgId}|${withId}`;
+    if (answeringNow.has(busy)) return res.status(409).json({ error: STAFF_BUSY });
   } catch (err) {
     return refused(res, err, next);
   }
-  const body = (req.body ?? {}) as { with?: unknown; question?: unknown; about?: { playerId?: unknown }; members?: unknown };
-  const people = staffFor(orgId);
-  const { withId, person } = personOn(orgId, personaId(body.with));
-  let question = typeof body.question === 'string' ? body.question.trim() : '';
-  if (!question && body.about && typeof body.about === 'object') {
-    const asked = aboutQuestionFor(orgId, Number(body.about.playerId));
-    if (!asked) return res.status(404).json({ error: STAFF_NO_PLAYER });
-    question = asked;
-  }
-  if (!question) return res.status(400).json({ error: STAFF_NO_QUESTION });
-  if (question.length > LONGEST_QUESTION) return res.status(400).json({ error: STAFF_TOO_LONG });
-  const provider = featureProvider('chat');
-  const model = featureModel('chat');
-  const key = providerCredential(provider);
-  if (!key) return res.status(409).json({ error: STAFF_AI_OFF });
-  const busy = `${orgId}|${withId}`;
-  if (answeringNow.has(busy)) return res.status(409).json({ error: STAFF_BUSY });
 
   // The room: who is in it (the GM's choice, else the default), and one man asked by name joins it and answers alone
   const isRoom = withId === 'room';
@@ -1332,4 +1344,4 @@ chatRoutes.post('/v2/staff-room/:org/ask', async (req, res, next) => {
     release();
     if (res.headersSent && !res.writableEnded) res.end();
   }
-});
+}));

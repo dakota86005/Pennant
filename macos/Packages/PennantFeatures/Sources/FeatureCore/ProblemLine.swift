@@ -14,7 +14,7 @@ extension RequestProblem {
     /// shown as text (it is in the log and the help tag).
     public var title: Text {
         switch self {
-        case .served(let sentence): Text(verbatim: sentence)
+        case .served(let sentence, _): Text(verbatim: sentence)
         case .notRunning: Text("The Pennant server isn't running")
         case .unreachable: Text("Couldn't reach the Pennant server")
         case .failed: Text("The request failed")

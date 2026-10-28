@@ -19,6 +19,7 @@ import type { FinanceBudgetChange, FinancePayrollSeason, FinancePayrollSection, 
 import {
   COMBINED_LABEL, COST_BAND_WORDS, costCell, costExplanation, money, perWin, perWinRange, rangeWords, statusWords, type CostInput,
 } from './words.js';
+import { VALUE_POLICY_SAYS } from '../../calibration.js';
 
 type Payroll = ReturnType<typeof computePayroll>;
 type Commitment = Payroll['commitments'][number];
@@ -141,10 +142,14 @@ function seasonOf(ctx: OfficeContext, c: Commitment, thisSeason: number, budget:
   };
 }
 
-/** One money figure from Club Finances, with its source; "Not in the export" where the export doesn't state it. */
+/**
+ * One money figure from Club Finances, with what the export says of it; "Not in the export" where the export doesn't state
+ * it. The figure's column is the developer's locator and is never served (B-11): the basis says it is the club's finances
+ * as exported, and the note where there is one.
+ */
 function financeFigure(ctx: OfficeContext, text: string, s: { value: number | null; source?: string | null; note?: string | null } | undefined, extra: { hint?: string; tone?: 'good' | 'bad' } = {}) {
   const v = s?.value ?? null;
-  const source = [s?.source, s?.note].filter(Boolean).join(' — ');
+  const source = s?.source || s?.note ? ['The club\'s finances, as exported', s?.note].filter(Boolean).join(' — ') : '';
   return claim({
     text,
     tone: v === null ? 'unknown' : extra.tone ?? 'neutral',
@@ -395,7 +400,8 @@ function contractsTable(ctx: OfficeContext, payroll: Payroll): OfficeTable {
         sort[key] = null;
       } else if (projected) {
         const c = costCell(projected, 'Not established');
-        cells[key] = cell(`${c.cell.display} projected`, { ...(c.cell.tone ? { tone: c.cell.tone } : {}), hint: c.cell.hint ?? 'Projected, not committed' });
+        // A projected figure reads "$X projected"; one that is not known reads as its own sentence, never "Not known projected" (B-11)
+        cells[key] = cell(c.cell.tone === 'unknown' ? c.cell.display : `${c.cell.display} projected`, { ...(c.cell.tone ? { tone: c.cell.tone } : {}), hint: c.cell.hint ?? 'Projected, not committed' });
         sort[key] = c.sort;
         claims.push(explained(ctx, `${y}: ${cells[key].display}`, 'His cost', costExplanation(projected)));
       } else if (v !== null && v !== undefined && v > 0) {
@@ -494,7 +500,7 @@ export function payrollView(ctx: OfficeContext, input: PayrollInput): FinancePay
           wouldChange: [],
           lean: null,
           certainty: 'policy',
-          stamp: "The owner's rule for the club's range: players combined as independent",
+          stamp: VALUE_POLICY_SAYS.clubRange,
         }),
       })
     : null;

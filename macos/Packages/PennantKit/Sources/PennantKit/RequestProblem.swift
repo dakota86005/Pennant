@@ -5,8 +5,11 @@ import OpenAPIRuntime
 /// The server's own sentence is kept as it came; anything else is a kind with a structural title in the String
 /// Catalog, and the raw error goes to the log (`detail`), never onto the screen as text.
 public enum RequestProblem: Error, Hashable, Sendable {
-    /// The server refused and said why (an `ApiError`'s `error`, a failed import's `lastError`).
-    case served(String)
+    /// The server refused or failed and said why (an `ApiError`'s `error`, a failed import's `lastError`). A `/v2`
+    /// failure also carries its server-log reference as `reference` ("getTradeDesk: HTTP 500: server log 1a2b3c4d";
+    /// `server/v2Routes.ts` `v2Failed`): it goes to the app's log and the help tag (`detail`, `logLine`), so the app's
+    /// line can be matched to the server's, never onto the face (batch 7 review L2).
+    case served(String, reference: String? = nil)
     /// The server is not running, so nothing could be asked.
     case notRunning
     /// The server could not be reached (the connection failed or timed out).
@@ -14,10 +17,12 @@ public enum RequestProblem: Error, Hashable, Sendable {
     /// The server answered something this build did not expect, or the answer did not decode.
     case failed(detail: String)
 
-    /// The raw error, for the log and a help tag; nil for a served sentence or a server that is not running.
+    /// The raw error, for the log and a help tag: a served failure's server-log reference, else nil for a served
+    /// sentence or a server that is not running.
     public var detail: String? {
         switch self {
-        case .served, .notRunning: nil
+        case .served(_, let reference): reference
+        case .notRunning: nil
         case .unreachable(let detail), .failed(let detail): detail
         }
     }
@@ -69,15 +74,20 @@ public enum RequestProblem: Error, Hashable, Sendable {
     }
 
     /// An answer with a status code the contract does not document, read for what the server said. Only a `/v2` route
-    /// answers a failure in words (`{ "error": sentence, "detail": raw }`, `server/v2Routes.ts`), so only there is
-    /// `error` shown as the server's sentence. A reused route's undocumented answer (a legacy 500 carries the raw
-    /// exception message as its `error`) is a failure kind: its body goes to the log and the help tag, never the face.
+    /// answers a failure in words (`{ "error": sentence, "detail": "server log <ref>" }`, `server/v2Routes.ts`), so only
+    /// there is `error` shown as the server's sentence; its `detail`, the reference to the server's log line, is kept as
+    /// the problem's `reference`, so the store that logs `detail` (or `logLine`) writes it. A reused route's
+    /// undocumented answer (a legacy 500 carries the raw exception message as its `error`) is a failure kind: its body
+    /// goes to the log and the help tag, never the face.
     public static func undocumented(_ code: Int, body: HTTPBody?, operation: String, fromV2: Bool) async -> RequestProblem {
         var answer: ServedError?
         if let body, let data = try? await Data(collecting: body, upTo: 64 * 1024) {
             answer = try? JSONDecoder().decode(ServedError.self, from: data)
         }
-        if fromV2, let answer, !answer.error.isEmpty { return .served(answer.error) }
+        if fromV2, let answer, !answer.error.isEmpty {
+            let reference = answer.detail.flatMap { $0.isEmpty ? nil : "\(operation): HTTP \(code): \($0)" }
+            return .served(answer.error, reference: reference)
+        }
         guard let answer else { return undocumented(code, operation: operation) }
         let raw = [answer.error, answer.detail].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ": ")
         return .failed(detail: "\(operation): undocumented HTTP \(code): \(raw)")

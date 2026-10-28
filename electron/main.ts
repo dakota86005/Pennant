@@ -1,7 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, powerMonitor, shell, Menu } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, powerMonitor, session, shell, Menu, type IpcMainInvokeEvent } from 'electron';
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { initUpdater } from './updater.js';
+import { insideFolder, sameOrigin, serverOnce, withServerToken } from './shellGuards.js';
+import { logUnhandledRejections } from '../server/asyncRoute.js';
 import { PRODUCT_NAME, PROJECT_URL, UPSTREAM_URL } from '../server/project.js';
 
 /**
@@ -21,6 +24,9 @@ process.env.OOTP_FO_EMBEDDED = '1';
 // archive; Electron has already read it, so hand the answer to the server
 // (server/appInfo.ts) rather than have anything keep a second copy.
 process.env.OOTP_FO_APP_VERSION ??= app.getVersion();
+
+// A rejection nothing caught is logged; it never takes the embedded server down (B-75)
+logUnhandledRejections('electron');
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -71,6 +77,80 @@ async function windowIsBlank(): Promise<boolean> {
     return true;
   }
 }
+
+/**
+ * The per-launch token the embedded server requires on every /api request (B-74, D-081). The page never holds it: the
+ * window's session adds it to requests for the server's own /api (`withServerToken`), so no other website, and no page
+ * on another local port, can drive the server.
+ */
+const serverToken = randomBytes(32).toString('hex');
+
+/** Whether an IPC call comes from the app's own page, never a page the window was somehow pointed at (SRVHEALTH-16). */
+function fromOwnPage(event: IpcMainInvokeEvent): boolean {
+  return sameOrigin(event.senderFrame?.url, serverUrl);
+}
+
+/**
+ * Starts the embedded server and answers its address: once per process (`serverOnce`). Reopening the window from the
+ * Dock loads the same server; it used to start a second one beside it (SRVHEALTH-06).
+ */
+const embeddedServer = serverOnce(async (): Promise<string> => {
+  // Lazy import so the env vars above are set first
+  const { startServer } = await import('../server/index.js');
+  const { setApiToken } = await import('../server/apiToken.js');
+  setApiToken(serverToken);
+
+  // Let the server encrypt the stored API key against the OS keychain
+  // (Keychain on macOS, DPAPI on Windows) instead of writing it in plain text.
+  //
+  // Every call below is deferred. On macOS even isEncryptionAvailable() reads
+  // the app's Keychain entry, and macOS prompts for the login password when
+  // the requesting binary differs from the one that created the entry — which
+  // is every upgrade. Calling it at startup made a fresh install of a new
+  // version ask for a Keychain password before showing anything, including
+  // for the majority of users who never set an API key at all.
+  const { safeStorage } = await import('electron');
+  const { setSecretCrypto } = await import('../server/settings.js');
+  setSecretCrypto({
+    available: () => safeStorage.isEncryptionAvailable(),
+    encrypt: (plain) => safeStorage.encryptString(plain).toString('base64'),
+    decrypt: (cipher) => safeStorage.decryptString(Buffer.from(cipher, 'base64')),
+    label: process.platform === 'darwin' ? 'your macOS Keychain' : 'Windows Credential storage (DPAPI)',
+  });
+
+  // Reuse the port from last time.
+  //
+  // The window's origin includes the port, and localStorage is scoped per
+  // origin — so a fresh random port every launch handed the UI a brand new,
+  // empty store each time. That is what quietly threw away the conversation
+  // with Peter and the chosen stat columns on every restart. Falling back to
+  // a free port when the old one is taken keeps two copies from colliding.
+  const portFile = path.join(process.env.OOTP_FO_DATA_DIR ?? '', 'port.json');
+  let preferred = 0;
+  try {
+    preferred = Number(JSON.parse(fs.readFileSync(portFile, 'utf8')).port) || 0;
+  } catch {
+    // First run, or the file was removed
+  }
+
+  const { DataFolderLocked } = await import('../server/dataLock.js');
+  let port: number;
+  try {
+    port = await startServer(preferred);
+  } catch (err) {
+    // The Mac app (or another server) holds the data folder: another port would not help
+    if (err instanceof DataFolderLocked) throw err;
+    console.warn(`[server] port ${preferred} unavailable, taking another`);
+    port = await startServer(0);
+  }
+  try {
+    fs.writeFileSync(portFile, JSON.stringify({ port }));
+  } catch (err) {
+    console.warn('[server] could not remember the port:', (err as Error).message);
+  }
+  serverUrl = `http://127.0.0.1:${port}`;
+  return serverUrl;
+});
 
 /** True only for http and https, the two schemes safe to hand to the OS. */
 function isWebUrl(raw: string): boolean {
@@ -123,9 +203,9 @@ async function createWindow(): Promise<void> {
   // A link without target="_blank" would otherwise navigate this window away
   // from the local UI, leaving a remote page running inside the app shell with
   // the preload bridge attached. The window only ever shows the local server.
+  // Only the server's own origin: another local port is another program, and must not get the preload bridge (SRVHEALTH-16)
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const target = new URL(url);
-    if (target.hostname === '127.0.0.1' || target.hostname === 'localhost') return;
+    if (sameOrigin(url, serverUrl)) return;
     event.preventDefault();
     if (isWebUrl(url)) void shell.openExternal(url);
   });
@@ -147,60 +227,8 @@ async function createWindow(): Promise<void> {
   });
 
   try {
-    // Lazy import so the env vars above are set first
-    const { startServer } = await import('../server/index.js');
-
-    // Let the server encrypt the stored API key against the OS keychain
-    // (Keychain on macOS, DPAPI on Windows) instead of writing it in plain text.
-    //
-    // Every call below is deferred. On macOS even isEncryptionAvailable() reads
-    // the app's Keychain entry, and macOS prompts for the login password when
-    // the requesting binary differs from the one that created the entry — which
-    // is every upgrade. Calling it at startup made a fresh install of a new
-    // version ask for a Keychain password before showing anything, including
-    // for the majority of users who never set an API key at all.
-    const { safeStorage } = await import('electron');
-    const { setSecretCrypto } = await import('../server/settings.js');
-    setSecretCrypto({
-      available: () => safeStorage.isEncryptionAvailable(),
-      encrypt: (plain) => safeStorage.encryptString(plain).toString('base64'),
-      decrypt: (cipher) => safeStorage.decryptString(Buffer.from(cipher, 'base64')),
-      label: process.platform === 'darwin' ? 'your macOS Keychain' : 'Windows Credential storage (DPAPI)',
-    });
-
-    // Reuse the port from last time.
-    //
-    // The window's origin includes the port, and localStorage is scoped per
-    // origin — so a fresh random port every launch handed the UI a brand new,
-    // empty store each time. That is what quietly threw away the conversation
-    // with Peter and the chosen stat columns on every restart. Falling back to
-    // a free port when the old one is taken keeps two copies from colliding.
-    const portFile = path.join(process.env.OOTP_FO_DATA_DIR ?? '', 'port.json');
-    let preferred = 0;
-    try {
-      preferred = Number(JSON.parse(fs.readFileSync(portFile, 'utf8')).port) || 0;
-    } catch {
-      // First run, or the file was removed
-    }
-
-    const { DataFolderLocked } = await import('../server/dataLock.js');
-    let port: number;
-    try {
-      port = await startServer(preferred);
-    } catch (err) {
-      // The Mac app (or another server) holds the data folder: another port would not help
-      if (err instanceof DataFolderLocked) throw err;
-      console.warn(`[server] port ${preferred} unavailable, taking another`);
-      port = await startServer(0);
-    }
-    try {
-      fs.writeFileSync(portFile, JSON.stringify({ port }));
-    } catch (err) {
-      console.warn('[server] could not remember the port:', (err as Error).message);
-    }
-
-    serverUrl = `http://127.0.0.1:${port}`;
-    await mainWindow.loadURL(serverUrl);
+    // The one server this process runs: started by the first window, loaded again by a window reopened from the Dock
+    await mainWindow.loadURL(await embeddedServer());
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     dialog.showErrorBox(
@@ -254,7 +282,8 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   // Native folder picker, for when auto-detection can't find the user's save
-  ipcMain.handle('select-folder', async (_event, defaultPath?: string) => {
+  ipcMain.handle('select-folder', async (event, defaultPath?: string) => {
+    if (!fromOwnPage(event)) return null;
     const result = await dialog.showOpenDialog({
       title: 'Choose your OOTP save or CSV export folder',
       defaultPath: defaultPath && defaultPath.length > 0 ? defaultPath : app.getPath('home'),
@@ -266,20 +295,27 @@ if (!app.requestSingleInstanceLock()) {
 
   // Reveal a folder in Finder/Explorer. Restricted to the app's own data
   // directory so the renderer can't ask the shell to open arbitrary paths.
-  ipcMain.handle('open-path', async (_event, target: string) => {
+  ipcMain.handle('open-path', async (event, target: string) => {
+    if (!fromOwnPage(event) || typeof target !== 'string') return;
     const dataDir = process.env.OOTP_FO_DATA_DIR ?? '';
     if (!dataDir) return;
     // Anywhere inside the data directory is fine — exports live in a subfolder
     // — but nothing outside it, so the renderer still cannot open the disk.
-    const root = path.resolve(dataDir);
-    const wanted = path.resolve(target);
-    if (wanted !== root && !wanted.startsWith(root + path.sep)) return;
+    // Links are resolved first: a link inside the folder cannot reveal what it points at elsewhere (SRVHEALTH-16).
+    const wanted = insideFolder(dataDir, target);
+    if (!wanted) return;
     await shell.openPath(wanted);
   });
 
   app.whenReady().then(() => {
+    // The window's requests to its own server's /api carry the token; nothing else does (B-74, D-081)
+    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+      callback({ requestHeaders: withServerToken(details.url, details.requestHeaders, serverUrl, serverToken) });
+    });
     buildMenu();
-    initUpdater();
+    initUpdater(fromOwnPage);
+    // The server starts here, once; every window (the first, and one reopened from the Dock) loads it (SRVHEALTH-06)
+    void embeddedServer().catch(() => undefined);
     void createWindow();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) void createWindow();

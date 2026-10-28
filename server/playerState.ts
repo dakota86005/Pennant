@@ -153,11 +153,11 @@ function exported<T>(
   rowMissing = false
 ): Sourced<T> {
   const source = `${table}.${column}`;
-  if (!present.table) return unknownBecause('source_unavailable', source, `${table} is not in the export.`);
-  if (!present.column) return unknownBecause('not_exported_by_ootp', source, `${table} has no ${column} column.`);
-  if (rowMissing) return unknownBecause('not_exported_by_ootp', source, `${table} has no row for this player.`);
+  if (!present.table) return unknownBecause('source_unavailable', source, 'The table that holds it is not in the export.');
+  if (!present.column) return unknownBecause('not_exported_by_ootp', source, 'The export does not carry this field.');
+  if (rowMissing) return unknownBecause('not_exported_by_ootp', source, 'The export has no row for this player.');
   const n = numberOrNull(raw);
-  if (n === null) return unknownBecause('not_exported_by_ootp', source, `${column} is blank in the export.`);
+  if (n === null) return unknownBecause('not_exported_by_ootp', source, 'It is blank in the export.');
   return fromExport(convert(n), source);
 }
 

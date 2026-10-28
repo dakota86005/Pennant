@@ -105,14 +105,15 @@ export interface SeasonMemory {
   games: Array<{ gameId: number; date: string; scored: number; allowed: number; home: boolean; opponent: string }> | null;
 }
 
-type Stamp = { status: 'calibrated' | 'provisional' | 'policy'; basis: string };
+/** A value's stamp: its status and the developer's record, with its run and plain line where it has them (said by `stampWords`, B-01). */
+type Stamp = { status: 'calibrated' | 'provisional' | 'policy'; basis: string; run?: string | null; says?: string };
 const winsOf = (v: PlayerValuation | undefined): { wins: WinsRange | null; part: 'rest_of_season' | 'season' | null; why: string | null; stamp: Stamp | null } => {
   if (!v) return { wins: null, part: null, why: 'Player Value has no reading of him.', stamp: null };
   const h = productionHeadlineOf(v.production);
   if (!h.now) return { wins: null, part: null, why: h.reason ?? 'His production is not established.', stamp: null };
   const c = v.production.basis.calibration;
   const inner = h.now.inner ? { low: h.now.inner.low, high: h.now.inner.high } : null;
-  return { wins: { low: h.now.wins.low, likely: h.now.wins.central, high: h.now.wins.high, inner }, part: h.now.part, why: null, stamp: { status: c.status, basis: c.basis } };
+  return { wins: { low: h.now.wins.low, likely: h.now.wins.central, high: h.now.wins.high, inner }, part: h.now.part, why: null, stamp: { status: c.status, basis: c.basis, run: c.run, ...(c.says ? { says: c.says } : {}) } };
 };
 
 function controlOf(v: PlayerValuation | undefined): ControlReading | null {

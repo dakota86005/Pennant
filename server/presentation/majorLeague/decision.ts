@@ -29,6 +29,7 @@ import {
   hintIf, horizonText, KIND_LABEL, labelOf, needBadge, onScale, rankOf, DEV_ORDER, FIT_ORDER, PATH_ORDER, PREFERENCE_ORDER, RESPONSE_ORDER, scaleNumber, SCALE_HINT, PATH, PATH_LABEL, PATH_TONE, PREFERENCE, RIGHTS_TONE, ROLE_CHOICES, sentences,
   CERTAINTY_TEXT, EVIDENCE_TEXT, FIT_TEXT, FIT_TONE, GROUP_TEXT, STAKES_TIER, stakesWords, STANCE_TEXT, STANCE_TONE, STEP_STATUS, VERDICT_TEXT, VERDICT_TONE,
 } from './words.js';
+import { levelWord } from '../../levelWords.js';
 
 /** What the GM chose so far, as the request carried it. */
 export interface DecisionAsk {
@@ -358,7 +359,7 @@ function candidateDetail(v: ViewContext, c: ResponseCandidate): MlbBlock[] {
   }
   if (c.performance) {
     const p = c.performance;
-    blocks.push(block(`Season line (${p.sample} ${p.sampleUnit}, level ${p.level})`, [line(p.lines.map((l) => `${l.label} ${l.value}`).join(' · ') || 'No line yet')]));
+    blocks.push(block(`Season line (${p.sample} ${p.sampleUnit}, ${levelWord(p.level)})`, [line(p.lines.map((l) => `${l.label} ${l.value}`).join(' · ') || 'No line yet')]));
   }
   const path: MlbLine[] = [];
   if (c.path.chain.some((l) => l.kind === 'clear_spot')) path.push(...chainLines(c.path.chain));

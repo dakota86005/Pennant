@@ -1061,7 +1061,7 @@ describe('cross-save: league structure', () => {
     expect(broken.contract.season.value).toBe(orphan.season_year);
     expect(broken.contract.season.source).toBe('leagues.season_year');
     expect(broken.contract.freeAgencyYears.value).toBeNull();
-    expect(broken.contract.freeAgencyYears.note).toMatch(/parent league 555/);
+    expect(broken.contract.freeAgencyYears.note).toMatch(/answers to a league the export carries no row for/);
     // No parent_league_id column at all: the same
     const { parent_league_id: _drop, ...noParent } = majorLeagueRow();
     const flat = rows([noParent])(203);
@@ -1107,7 +1107,7 @@ describe('cross-save: league structure', () => {
       for (const s of v.control.seasons) texts.push(s.basis, ...s.reasons, s.cost?.note ?? '', s.cost?.reason ?? '');
       texts.push(...(v.control.notes ?? []), v.production.reason ?? '');
     }
-    expect(texts.some((t) => /No leagues row/.test(t)), 'the case is exercised').toBe(true);
+    expect(texts.some((t) => /no settings row for this club's league/.test(t)), 'the case is exercised').toBe(true);
     expect(texts.filter((t) => /[^.]\.\.(\s|$)/.test(t))).toEqual([]);
   }, SLOW);
 
@@ -1257,7 +1257,7 @@ describe('cross-save: environment and export shape', () => {
     sideIn(r, save.regular, base.season + 1);
     const pitcher = r.values.get(save.pitchers[0])!.production;
     expect(pitcher.status).toBe('unknown');
-    expect(pitcher.reason).toMatch(/players_career_pitching_stats has no bf column/);
+    expect(pitcher.reason).toMatch(/career pitching lines lack a figure needed to read them/);
   }, SLOW);
 
   it('D-15 (F1): with no schedule length or standings history, the calibration label says how many seasons of lines exist and why none is usable, never "(0 seasons)"', () => {

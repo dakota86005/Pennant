@@ -744,7 +744,7 @@ export function measureReplacement(acquisitions: FreeAcquisition[], after: Map<n
   const need = SIGNINGS_POLICY.replacement.minimumPlayers;
   const source = 'observed signings across imports + players_career_*_stats (war, pa, bf) for the club that took him, the season he joined it';
   const who = `${didNotPlay} of ${acquisitions.length} did not play for the club that took them that season and are not in it: it rests only on the pickups who played, which pushes it up`;
-  const shown = "Shown, never applied: the price of a win, the cost ladder and production stay in the export's WAR until surplus (phase 5) applies one level to both sides.";
+  const shown = "Shown, never applied: the price of a win, the cost ladder and production stay in the export's WAR until surplus applies one level to both sides.";
   const base = { players: cases.length, acquired: acquisitions.length, didNotPlay, opportunities, war, stamp: SIGNINGS_POLICY_CALIBRATION };
   if (cases.length < need) {
     const text = `Replacement stays the export's WAR convention (provisional): ${plural(acquisitions.length, 'freely acquired player')} observed, ${cases.length} with major-league opportunities for the club that took him in the season he joined it, fewer than the ${need} a measurement needs.`;
@@ -971,25 +971,25 @@ export function measurePriceOfWin(input: MeasuredPriceInput): MeasuredPrice {
   // reading exists nothing is measured in the price's unit, and the projected readings are the check, shown beside
   const realizedText = bases.find((b) => b.id === 'realized')!.text;
   if (!realizedBasis) {
-    return unknown('not_measured', `Not measured per win produced: ${counted}; the price of a win is per win produced in the first season (owner, 2026-09-24), and that reading waits for the signings' first season to be completed. ${realizedText}${check ? ` ${check.text}` : ''} Wins are the export's own WAR (replacement at its convention).`);
+    return unknown('not_measured', `Not measured per win produced: ${counted}; the price of a win is per win produced in the first season, and that reading waits for the signings' first season to be completed. ${realizedText}${check ? ` ${check.text}` : ''} Wins are the export's own WAR (replacement at its convention).`);
   }
   const value = { central: realizedBasis.central as number, low: realizedBasis.low as number, high: realizedBasis.high as number };
-  const text = `Measured on ${counted}: ${millions(value.central)} per win produced (the first season, the opening's own unit; owner, 2026-09-24), band ${millions(value.low)} to ${millions(value.high)}: ` +
+  const text = `Measured on ${counted}: ${millions(value.central)} per win produced (the first season, the opening's own unit), band ${millions(value.low)} to ${millions(value.high)}: ` +
     `its signings resampled. ${check ? `${check.text} ` : ''}${measured.map((b) => b.text).join(' ')} ` +
     "Wins are the export's own WAR (replacement at its convention): a replacement measured from free talent is shown beside it, never applied. " +
     "Each signing is in its own winter's dollars, and nothing is discounted. The projected bases read the earlier import's expected wins, which include the chance a player does not play at all: " +
     'for the players who did sign they sit below what signed players go on to produce, so the price per projected win reads high (the if-he-plays basis removes that chance, and the realized basis needs no projection). ' +
-    'Each band is a percentile bootstrap: at 20 to 40 signings it covers less than its 80% (about 75% in a Monte Carlo on the Arizona market; review R4-09).';
+    'Each band is a percentile bootstrap: at 20 to 40 signings it covers less than its 80% (about 75% in a Monte Carlo on a real major-league market).';
   return out('measured', derivedFrom(value, source, text), text);
 }
 
 // ── adoption (owner Q-4) ─────────────────────────────────────────────────────
 
 const ADOPTION_RULE =
-  'The measured price replaces the opening one only when its band is narrower than the opening band with its sampling (owner Q-4): the evidence decides, not a ' +
-  "count of signings. The measured price is per win produced in the first season (owner, 2026-09-24: the opening's own unit), its central and band that reading's " +
+  'The measured price replaces the opening one only when its band is narrower than the opening band with its sampling: the evidence decides, not a ' +
+  "count of signings. The measured price is per win produced in the first season (the opening's own unit), its central and band that reading's " +
   "alone; the readings per win projected at signing are its check on the projection, never the price. It is compared only when its signings cover each third of " +
-  "the winter's free-agent class (review 2026-09-24, a tightening): a winter of cheap deals alone never sets the price.";
+  "the winter's free-agent class: a winter of cheap deals alone never sets the price.";
 
 /** The measured price and its check, in their units, in words (owner decision 1: the price per win produced, the check per win projected at signing). */
 function unitWords(m: MeasuredPrice): string {
@@ -1048,14 +1048,14 @@ export function adoptPrice(opening: PriceOfWin, measured: MeasuredPrice): PriceO
     rules: {
       ...opening.rules,
       band: 'The band is the realized reading\'s, per win produced: the signings observed resampled, 10th to 90th percentile (the opening bases below are the opening reading, not in force; the readings per win projected at signing are the check, never in the band).',
-      central: 'The price per win produced: what the signings were paid in their first season above the minimum over the WAR they produced in it, the opening price\'s own unit (owner, 2026-09-24).',
+      central: 'The price per win produced: what the signings were paid in their first season above the minimum over the WAR they produced in it, the opening price\'s own unit.',
     },
     stamps: { ...opening.stamps, bases: SIGNINGS_POLICY_CALIBRATION },
     adoption: { inForce: 'measured', reason: `The measured price is in force: ${reason}${flagged}`, opening: openingSummary, measured, rule: ADOPTION_RULE },
   });
   const unmet: string[] = [];
   if (!measured.realized) {
-    unmet.push(`the price is per win produced (owner, 2026-09-24), and that reading waits for the signings' first season to be completed; ${units}`);
+    unmet.push(`the price is per win produced, and that reading waits for the signings' first season to be completed; ${units}`);
   }
   if (!measured.coverage.enough) unmet.push(measured.coverage.text.replace(/\.$/, '').replace(/^The /, 'the '));
   if (unmet.length > 0) return stays(`${counted}; the measured band ${measuredBand} is not compared: ${unmet.join('; ')}.${flagged}`);
@@ -1067,7 +1067,7 @@ export function adoptPrice(opening: PriceOfWin, measured: MeasuredPrice): PriceO
   if (m.high - m.low < comparable.high - comparable.low) {
     return takes(`${counted}; the measured band ${measuredBand} is narrower than the opening band ${openWords}. Its bases are ${units}.`);
   }
-  return stays(`${counted}; the measured band ${measuredBand} is wider than the opening band ${openWords}, so the opening price stays until the signings narrow it (Q-4). Its bases are ${units}.${flagged}`);
+  return stays(`${counted}; the measured band ${measuredBand} is wider than the opening band ${openWords}, so the opening price stays until the signings narrow it. Its bases are ${units}.${flagged}`);
 }
 
 // ── observed arbitration salaries ────────────────────────────────────────────
@@ -1145,8 +1145,8 @@ export function scoreAwards(
   const previousUnknown = awards.filter((c) => c.previousSalary === null || c.previousSalary === undefined).length;
   const who = (b: AwardScore['belowPrevious'][number]) => `${b.name ?? `player ${b.playerId}`} (${millions(b.salary)} for ${b.firstSeason ?? 'the season'} after ${millions(b.previous)})`;
   const flagged = belowPrevious.length > 0
-    ? ` Flag: ${plural(belowPrevious.length, 'observed arbitration salary', 'observed arbitration salaries')} fell below the player's previous salary, contradicting the owner-attested rule that an arbitration salary never falls (2026-09-24): ${belowPrevious.map(who).join('; ')}. Counted and scored as observed, not absorbed; the rule stays the owner's until he rules again.`
-    : awards.length - previousUnknown > 0 ? ` None of the ${awards.length - previousUnknown} whose previous salary is recorded fell below it (the owner-attested rule, 2026-09-24).` : '';
+    ? ` Flag: ${plural(belowPrevious.length, 'observed arbitration salary', 'observed arbitration salaries')} fell below the player's previous salary, contradicting OOTP's rule, as Pennant states it, that an arbitration salary never falls: ${belowPrevious.map(who).join('; ')}. Counted and scored as observed, not absorbed; Pennant keeps stating the rule until it is reviewed.`
+    : awards.length - previousUnknown > 0 ? ` None of the ${awards.length - previousUnknown} whose previous salary is recorded fell below it (OOTP's rule that an arbitration salary never falls).` : '';
   const unchecked = previousUnknown > 0 ? ` ${plural(previousUnknown, 'arbitration salary', 'arbitration salaries')} could not be checked against the previous salary (not stated in the earlier record).` : '';
   const sharp = sharpness.medianRatio !== null
     ? ` The bands scored were a median ${sharpness.medianRatio.toFixed(1)} times as high at their top as at their bottom${sharpness.medianWidthShare !== null ? ` (${pct(sharpness.medianWidthShare)} of the salary wide)` : ''}: coverage follows partly from that width, so it is read beside it.`

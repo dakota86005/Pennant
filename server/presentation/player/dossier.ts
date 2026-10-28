@@ -9,7 +9,7 @@
 import type { BasisLine, Cell, DeptId, Tone } from '../../contract/presentation.js';
 import { gameDateWords } from '../../dataStatus.js';
 import { parseGameDate } from '../../dataFreshness.js';
-import { basis, cell, claim, row, servedValue, target, unknownValue } from '../claim.js';
+import { basis, cell, claim, row, servableDetail, servedValue, stampWords, target, unknownValue } from '../claim.js';
 import { plain, plainAll, ratingText, type RatingDisplay } from '../farm/words.js';
 import type { DossierInput } from './input.js';
 import type {
@@ -54,9 +54,9 @@ function factBasis(ctx: DossierInput, because: BasisLine[], unknown: string[] = 
 /** How Player Value's figures are called: the save's own fit, or the starting numbers until it has one (D-041, D-053). */
 function valueCalled(ctx: DossierInput): { certainty: 'calibrated' | 'provisional' | 'policy'; stamp: string } {
   const stamp = ctx.surplus?.stamp;
-  if (stamp) return { certainty: stamp.status, stamp: stamp.run ?? (stamp.basis || 'Player Value') };
-  const checked = ctx.cone?.calibration.calibrated === true;
-  return { certainty: checked ? 'calibrated' : 'provisional', stamp: ctx.cone?.calibration.status || 'Player Value' };
+  if (stamp) return { certainty: stamp.status, stamp: stampWords(stamp) };
+  const certainty = ctx.cone?.calibration.calibrated === true ? 'calibrated' : 'provisional';
+  return { certainty, stamp: stampWords({ status: certainty }) };
 }
 
 function valueBasis(ctx: DossierInput, because: BasisLine[], unknown: string[] = [], wouldChange: string[] = []) {
@@ -232,7 +232,7 @@ const RULE_BASIS: Record<string, string> = {
   observed: 'Observed in OOTP',
   documented: 'OOTP documentation',
   observed_and_documented: 'Observed in OOTP and documented',
-  owner_attested: "The owner's statement of how OOTP behaves",
+  owner_attested: "How OOTP behaves, as Pennant states it",
 };
 
 const RIGHTS_STATUS: Record<string, { text: string; tone: Tone }> = {
@@ -794,7 +794,12 @@ function cone(ctx: DossierInput): PlayerConeView {
     checked: claim({
       text: checked ? "Checked against this save's own seasons" : "Not yet checked against this save's own seasons",
       tone: checked ? 'neutral' : 'caution',
-      basis: valueBasis(ctx, lines([['The ranges', words.tip], ['How it is fitted', plain(c.calibration.status)], ['Detail', c.calibration.detail ? plain(c.calibration.detail) : null]])),
+      // The model's own label, in plain words, where it reads as words; where it carries the developer's record of the
+      // fit (its method, file or gate) it is left out (B-01; batch 13 review, L3)
+      basis: valueBasis(ctx, lines([
+        ['The ranges', words.tip], ['How it is fitted', plain(c.calibration.status)],
+        ['Detail', c.calibration.detail ? servableDetail(plain(c.calibration.detail)) : null],
+      ])),
     }),
     notes: [...(c.control.note ? [cell(plain(c.control.note))] : [])],
     summary: `Expected wins above replacement per season. ${summarized.join('. ')}.`,

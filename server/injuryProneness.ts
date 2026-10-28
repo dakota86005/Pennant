@@ -19,7 +19,7 @@ import { fromExport, unknownBecause, type Sourced } from './provenance.js';
 
 export const PRONENESS_COLUMNS = ['prone_overall', 'prone_leg', 'prone_back', 'prone_arm'] as const;
 
-export const PRONENESS_ATTESTATION = 'Injury proneness is shown in game (owner, 2026-09-22): a known fact, basis owner_attested';
+export const PRONENESS_ATTESTATION = 'Injury proneness is shown in game: a known fact, basis owner_attested';
 
 export interface InjuryProneness {
   overall: Sourced<number>;
@@ -40,10 +40,10 @@ export function readInjuryProneness(ids: number[] | null): Map<number, InjuryPro
   const columns = PRONENESS_COLUMNS.filter((c) => present.has(c));
   const of = (row: Record<string, unknown>, column: (typeof PRONENESS_COLUMNS)[number]): Sourced<number> => {
     const source = `players.${column}`;
-    if (!present.has(column)) return unknownBecause('not_exported_by_ootp', source, `The export has no ${column} column.`);
+    if (!present.has(column)) return unknownBecause('not_exported_by_ootp', source, 'The export does not carry this rating.');
     const v = numberOrNull(row[column]);
-    if (v === null) return unknownBecause('not_exported_by_ootp', source, `${column} is blank.`);
-    if (v <= 0) return unknownBecause('not_exported_by_ootp', source, `${column} is 0: not filled in by the export.`);
+    if (v === null) return unknownBecause('not_exported_by_ootp', source, 'It is blank in the export.');
+    if (v <= 0) return unknownBecause('not_exported_by_ootp', source, 'It is 0: the export did not fill it in.');
     return { ...fromExport(v, source), note: PRONENESS_ATTESTATION };
   };
   const build = (row: Record<string, unknown>) => ({
