@@ -267,14 +267,14 @@ describe('the farm\'s readiness against its bar', () => {
     const blocker = 'Current-level evidence confidence 30 is below the minimum of 45.';
     m.map.positions[0] = {
       ...m.map.positions[0],
-      farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'indefensible', readiness: 98, required: 76, scale: { low: 0, high: 100 }, reasons: [], blockers: [blocker], missing: [] } },
+      farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, levelName: 'Triple-A', assessment: { judgment: 'indefensible', readiness: 98, required: 76, scale: { low: 0, high: 100 }, reasons: [], blockers: [blocker], missing: [] } },
     } as never;
     const node = rosterMapWords(build, m).positions[0];
     expect(node.farmNext).toMatchObject({ state: 'notYet', bar: { readiness: 98, required: 76 } });
     expect(node.farmNext!.readiness.hint).toBe('Player Development: not yet; readiness 98 clears its bar, another isn\'t met');
     expect(node.claim.basis.because.find((b) => b.label === 'The farm\'s next man')!.value).toContain(blocker);
     // A ready man's hover keeps his readiness and its bar whole, never cut mid-figure
-    m.map.positions[0] = { ...m.map.positions[0], farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, assessment: { judgment: 'defensible', readiness: 96, required: 81, scale: { low: 0, high: 100 }, reasons: [], blockers: [], missing: [] } } } as never;
+    m.map.positions[0] = { ...m.map.positions[0], farmNext: { playerId: 99, name: 'Adrian Castle', level: 2, levelName: 'Triple-A', assessment: { judgment: 'defensible', readiness: 96, required: 81, scale: { low: 0, high: 100 }, reasons: [], blockers: [], missing: [] } } } as never;
     expect(rosterMapWords(build, m).positions[0].farmNext!.readiness.hint).toBe('Player Development: a look is defensible now (readiness 96, bar 81)');
   });
 
@@ -282,7 +282,7 @@ describe('the farm\'s readiness against its bar', () => {
     const [r] = positionReadings(1, clubs, [player(11, 1, SS, 2.0), player(20, 2, SS, 1.0)], [SS]);
     const m = mapMaterial(r);
     const castle = (unmet: string[], readiness: number) => ({
-      playerId: 99, name: 'Adrian Castle', level: 2,
+      playerId: 99, name: 'Adrian Castle', level: 2, levelName: 'Triple-A',
       assessment: { judgment: 'indefensible', readiness, required: 76, scale: { low: 0, high: 100 }, reasons: [], blockers: ['x'], missing: [], unmet, sample: { have: 33, need: 45 } },
     });
     m.map.positions[0] = { ...m.map.positions[0], farmNext: castle(['sample_confidence'], 98) } as never;

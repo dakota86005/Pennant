@@ -134,14 +134,14 @@ export interface ContractTables {
 const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 const UNPOPULATED =
-  'Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).';
+  'Zero on every contract in this export: the column is not populated, and that is not the same as none.';
 
 function columnReader(table: string, row: ContractRow, present: Set<string>, populated: Set<string>) {
   const read = <T>(column: string, convert: (n: number) => T): Sourced<T> => {
     const source = `${table}.${column}`;
-    if (!present.has(column)) return unknownBecause<T>('not_exported_by_ootp', source, `${table} has no ${column} column.`);
+    if (!present.has(column)) return unknownBecause<T>('not_exported_by_ootp', source, 'The export does not carry this contract term.');
     const n = numberOrNull(row[column]);
-    if (n === null) return unknownBecause<T>('not_exported_by_ootp', source, `${column} is blank in the export.`);
+    if (n === null) return unknownBecause<T>('not_exported_by_ootp', source, 'This contract term is blank in the export.');
     if (n === 0 && (CLAUSE_COLUMNS as readonly string[]).includes(column) && !populated.has(column)) {
       return unknownBecause<T>('not_exported_by_ootp', source, UNPOPULATED);
     }
@@ -153,7 +153,7 @@ function columnReader(table: string, row: ContractRow, present: Set<string>, pop
 /** What the export's blank contract row is, in words (C-07). */
 export const BLANK_ROW =
   "The export's blank contract row: no term, no first season, no salary and no paying club. The export writes this row for " +
-  'thousands of players it carries no terms for, so its is_major 0 names no kind of contract: the kind, term and salary are not exported.';
+  'thousands of players it carries no terms for, so its contract-kind mark names no kind of contract: the kind, term and salary are not exported.';
 
 const asIs = (n: number): number => n;
 const flag = (n: number): boolean => n === 1;
@@ -169,7 +169,7 @@ function salaryOf(table: string, row: ContractRow, present: Set<string>, index: 
   if (n === null) return unknownBecause('not_exported_by_ootp', source, `${column} is blank in the export.`);
   if (n <= 0) {
     return unknownBecause('not_exported_by_ootp', source, minorLeague
-      ? 'A minor-league contract with a salary of 0: whether that is unpaid, not exported or off the major-league payroll is unresolved, so the cost is unknown, never $0 (R-6, Q-5).'
+      ? 'A minor-league contract with a salary of 0: whether that is unpaid, not exported or off the major-league payroll is unresolved, so the cost is unknown, never $0.'
       : 'A salary of 0 in a season the contract covers is not a cost of zero; the export does not state it.');
   }
   return fromExport(n, source);
@@ -238,7 +238,7 @@ export function contractFactsOf(
     notes: [note],
   });
 
-  if (tables.contract === null) return empty('unavailable', 'source_unavailable', 'players_contract is not in the export.');
+  if (tables.contract === null) return empty('unavailable', 'source_unavailable', 'Contracts are not in the export.');
   if (row === null) {
     return teamId.value === 0
       ? empty('unsigned', 'not_exported_by_ootp', 'No club holds him and the export has no contract row for him.')
@@ -266,7 +266,7 @@ export function contractFactsOf(
   }
   const optOut = read('opt_out', asIs);
   if (optOut.value !== null && optOut.value > 0) {
-    optOut.note = 'Exported as a count, not a flag; which season it follows is not established (R-6).';
+    optOut.note = 'Exported as a count, not a flag; which season it follows is not established.';
   }
   const termStart = term?.firstSeason.value ?? null;
   const optOutFrom = optOut.value !== null && optOut.value > 0 && termStart !== null ? termStart + optOut.value : null;

@@ -14,7 +14,7 @@
  * its own.
  */
 
-import { policy, provisional, type CalibrationStamp } from './calibration.js';
+import { VALUE_POLICY_SAYS, policy, provisional, type CalibrationStamp } from './calibration.js';
 import type { ProductionModel } from './playerValueProduction.js';
 import type { RatingsModel } from './playerValueRatings.js';
 
@@ -59,7 +59,7 @@ export const OPENING_PRICE_LABEL = 'opening: the imported market';
 
 /** When the opening price gives way (owner, Q-4). Nothing in one import narrows it. */
 export const PRICE_NARROWS_WHEN =
-  'Only observed signings across imports narrow it: a measured price replaces this one when its band is narrower (owner Q-4, phase 4). Nothing in a single import narrows it.';
+  'Only observed signings across imports narrow it: a measured price replaces this one when its band is narrower. Nothing in a single import narrows it.';
 
 /**
  * Which contracts are market prices: those of players Player Rights finds free-agency eligible THIS
@@ -69,7 +69,7 @@ export const PRICE_NARROWS_WHEN =
  */
 export const MARKET_CONTRACT_CALIBRATION: CalibrationStamp = policy(
   'A market contract is one whose holder Player Rights finds free-agency eligible this season (service at the last winter, when the salary was set). ' +
-    'What "the market" is taken to mean is a decision (PLAYER_VALUE.md 4.1, Part 11), not a fit.'
+    'What "the market" is taken to mean is a decision, not a fit.'
 );
 
 /**
@@ -83,7 +83,7 @@ export const OPENING_PRICE_CALIBRATION: CalibrationStamp = provisional(
 
 /** The central reading is the median of the market bases: no basis is preferred over another. */
 export const OPENING_PRICE_CENTRAL_CALIBRATION: CalibrationStamp = policy(
-  'The central value is the median of the market bases that could be computed. R-5 prefers none of them, so none is chosen; the median is the reading that leans on no single one.'
+  'The central value is the median of the market bases that could be computed. No basis is preferred over another, so none is chosen; the median is the reading that leans on no single one.'
 );
 
 /**
@@ -110,7 +110,7 @@ export const OPENING_PRICE_MINIMUMS = {
 
 export const OPENING_PRICE_MINIMUMS_CALIBRATION: CalibrationStamp = policy(
   'A basis of the opening price rests on at least a quarter of a season\'s schedule (a past season scaled to the full schedule by the share it covered, or this season\'s pace) ' +
-    'and on at least 20 contracts; below either it is not computed, and with fewer than two bases the price is unknown (hardening, B-13). ' +
+    'and on at least 20 contracts; below either it is not computed, and with fewer than two bases the price is unknown. ' +
     'Chosen so a basis\'s own sampling noise stays well inside the spread between bases; a decision, not a fit.'
 );
 
@@ -131,8 +131,8 @@ export const REPLACEMENT_LEVEL_CALIBRATION: CalibrationStamp = provisional(
  * is named and compared, never used and never blended.
  */
 export const FINANCE_ROW_CALIBRATION: CalibrationStamp = policy(
-  'Each figure is read from the row that names its season: team_financials for this season, team_history_financials for a past one. ' +
-    'team_last_financials names no season; it is reported beside last season where it disagrees, and never used or averaged (R-7).'
+  'Each figure is read from the export\'s finances for its own season: this season\'s row for this season, the history row for a past one. ' +
+    'The previous-season view names no season; it is reported beside last season where it disagrees, and never used or averaged.'
 );
 
 /**
@@ -368,7 +368,8 @@ export const PRODUCTION_PRIOR_CALIBRATION: CalibrationStamp = provisional(
     '(playerValueProductionFit.ts, no prior, no hold-out) on the real major-league history 2006–2025 ' +
     '(2020 skipped as short) that the Arizona historical save imports (export of 2026-05-16, league 203), with `npm run calibrate production -- --prior`. ' +
     "It describes real-world stability and aging, not OOTP's engine and not any save: never the save's own calibration (D-053). It carries no injury-proneness " +
-    "effect: proneness is measured on each save's own history or not used."
+    "effect: proneness is measured on each save's own history or not used.",
+  "Pennant's starting values, from real major-league seasons, used until this save's own measurement holds up",
 );
 
 /**
@@ -1534,7 +1535,8 @@ export const RATINGS_PRIOR_CALIBRATION: CalibrationStamp = provisional(
   'Fallback ratings prior, fitted by the ratings method (playerValueRatingsFit.ts, no prior, no hold-out) on the Arizona historical save (export of 2026-05-16, ' +
     'league 203) with `npm run calibrate production -- --prior`: the same-time ratings → rate mapping on its major leaguers, the stamina cut, how often each hand ' +
     "faces left-handers, the largest scouted development by age, and a development path read from ONE cross-section of scouted gaps by age (not a path: survivors " +
-    "only, with its range from no further development to twice its central share). Never the save's own calibration (D-053). No arrivals: measured per save or unknown."
+    "only, with its range from no further development to twice its central share). Never the save's own calibration (D-053). No arrivals: measured per save or unknown.",
+  "Pennant's starting reading of ratings, from real major leaguers, used until this save's own measurement holds up",
 );
 
 export const RATINGS_PRIOR: RatingsModel = {
@@ -2202,10 +2204,10 @@ export const COST_PRIOR: { source: string; renewal: { cases: number; highOverMin
 };
 
 export const COST_PRIOR_CALIBRATION: CalibrationStamp = provisional(
-  'The cost ladder on the imported real-world contracts (R-6: the Arizona import, 2026-05-16), by the review\'s method (a robust line and its bootstrap): ' +
+  'The cost ladder on the imported real-world contracts of a real major-league market, by the review\'s method (a robust line and its bootstrap): ' +
     "the renewal spread and median and the arbitration ladder by class, in minimums and shares of the price of a win. Used only where a save's own class is " +
     "below the policy minimum and its regime as read is MLB's, widened by the range the save paid the class, and always labelled provisional; replaced by the " +
-    "save's measurement as its classes fill, and by observed awards (phase 4b)."
+    "save's measurement as its classes fill, and by observed awards."
 );
 
 // ── phase 4b: the measured price of a win across imports (PLAYER_VALUE.md 4.2 to 4.4) ────────────────
@@ -2293,7 +2295,8 @@ export const COST_COMBINATION_POLICY_CALIBRATION: CalibrationStamp = policy(
   "Owner-approved (owner, 2026-09-24): Payroll's club range is the sum of centrals with each player's distance from his central combined as " +
     'independent across players (root sum of squares, low and high sides apart); a season between statuses, a range of arbitration classes and a ' +
     'season he may not be held stay at their edges, added. Labelled "players combined as independent; not a calibrated interval"; the edge-to-edge ' +
-    "sum is kept in the details, and no player's own band is narrowed."
+    "sum is kept in the details, and no player's own band is narrowed.",
+  VALUE_POLICY_SAYS.clubRange,
 );
 
 // ── phase 5a: neutral surplus and the retention margin (PLAYER_VALUE.md Part 5) ─────────────────────────────────────
@@ -2321,7 +2324,8 @@ export const SURPLUS_POLICY_CALIBRATION: CalibrationStamp = policy(
     "this season's remaining part weighs 1), and the price of a win is held flat, with no salary inflation assumed, unless the save's own " +
     "measured price history later shows drift. The rest of this season counts only its part still to be played (the share of the league's " +
     "games production reads); a major-league contract's covered salary is owed whatever the club does; a buyout the export does not " +
-    "populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3)."
+    "populate is read from nothing to the option's salary. Chosen and stated, never fitted (Q-3).",
+  VALUE_POLICY_SAYS.surplus,
 );
 
 // ── Phase 5b: the philosophy lens and the club's value of a win ──────────────
@@ -2409,5 +2413,6 @@ export const TRADE_COMBINATION_POLICY_CALIBRATION: CalibrationStamp = policy(
     "value and the difference between the sides are the sum of the players' most likely readings, each player's distance from his " +
     'on each side combined as independent across players (root sum of squares), an open season (option, status, whether he stays) ' +
     'kept at its edges, added. Labelled "players combined as independent; not a calibrated interval"; the edge-to-edge sum is kept ' +
-    "beside it and no player's own band is narrowed."
+    "beside it and no player's own band is narrowed.",
+  VALUE_POLICY_SAYS.dealRange,
 );

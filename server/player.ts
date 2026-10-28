@@ -13,6 +13,7 @@ import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
 import { loadScoutedAbilities, ratingFillOf, scoutedRatingRow, type ScoutedAbility } from './scoutedEvidence.js';
 import { twoWayBatters, twoWayPitchers } from './twoway.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 export const playerRoutes = Router();
 
@@ -193,7 +194,7 @@ export function computePlayerDossier(id: number, shared?: DossierShared) {
       const obpDen = ab + (y.bb as number) + (y.hp as number) + (y.sf as number);
       return {
         ...y,
-        levelName: LEVEL_NAMES[y.level_id as number] ?? `L${y.level_id}`,
+        levelName: LEVEL_NAMES[y.level_id as number] ?? UNNAMED_LEVEL_SHORT,
         avg: ab ? h / ab : null,
         obp: obpDen ? (h + (y.bb as number) + (y.hp as number)) / obpDen : null,
         slg: ab ? (singles + 2 * (y.d as number) + 3 * (y.t3 as number) + 4 * (y.hr as number)) / ab : null,
@@ -217,7 +218,7 @@ export function computePlayerDossier(id: number, shared?: DossierShared) {
       const ip = (y.outs as number) / 3;
       return {
         ...y,
-        levelName: LEVEL_NAMES[y.level_id as number] ?? `L${y.level_id}`,
+        levelName: LEVEL_NAMES[y.level_id as number] ?? UNNAMED_LEVEL_SHORT,
         ip: Number(ip.toFixed(1)),
         era: ip ? Number((((y.er as number) / ip) * 9).toFixed(2)) : null,
         whip: ip ? Number((((y.bb as number) + (y.ha as number)) / ip).toFixed(2)) : null,

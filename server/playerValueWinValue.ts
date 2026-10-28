@@ -80,7 +80,7 @@ const points = (v: number): string => {
 const games = (n: number): string => `${Number.isInteger(n) ? n : n.toFixed(1)} game${n === 1 ? '' : 's'}`;
 
 const CONTEXT = 'Context beside the value, never part of it: it enters neither the contract value nor the value of keeping him, and it is the same for every organization that reads it: a fact of the standings, never a preference.';
-const NO_DOLLARS = 'In playoff odds, never converted to dollars: the export cannot yet link a club\'s odds to its revenue (Q-6).';
+const NO_DOLLARS = 'In playoff odds, never converted to dollars: the export cannot yet link a club\'s odds to its revenue.';
 
 /** The club's value of a win now, and its curve over the rest of the season, from the odds model's readings. */
 export function winValueOf(input: WinValueInput): ClubWinValue {

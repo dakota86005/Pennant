@@ -315,7 +315,9 @@ describe('the cone states what the projection rests on, and is calibrated only w
     const cone = productionCone(production, controlled());
     expect(cone.basis).not.toMatch(/Major-league results/);
     expect(cone.basis).toMatch(/ratings/i);
-    expect(cone.basis).toMatch(/level 3/i);
+    // His level by its place, never its id (B-11)
+    expect(cone.basis).toMatch(/arrival from his level/);
+    expect(cone.basis).not.toMatch(/level \d/i);
     expect(cone.basis).toMatch(/development/i);
   });
 

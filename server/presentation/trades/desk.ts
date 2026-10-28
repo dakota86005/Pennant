@@ -10,7 +10,7 @@ import type { FreshnessCue } from '../../dataStatus.js';
 import type { TradeFigure, TradePlayerValue, TradeSideTotal, TradeUnit } from '../../playerValue.js';
 import type { TradeAnalysis, TradeBrief, TradeFits, TradeProposal, TradeRow, TradeTalkItem, ValueGlance } from '../../trade.js';
 import { aiNoteClaim, aiOffClaim, aiWrittenClaim } from '../aiMarking.js';
-import { basis, cell, claim, row, servedValue, target } from '../claim.js';
+import { basis, cell, claim, row, servedValue, stampWords, target } from '../claim.js';
 import { gameDateDisplay } from '../dataStatusWords.js';
 import { plainAll } from '../farm/words.js';
 import { listSeasons, money } from '../player/words.js';
@@ -23,6 +23,7 @@ import {
   PLAYER_VALUE, THE_INBOX, TIP_BAR, TIP_DIFFERENCE, TIP_EXPECTED, TIP_FITS, TIP_KEEPING_ROW, TIP_OFFER, TIP_OUR_VIEW_DEAL, TIP_SALARY,
   TIP_TOGETHER, TRADES, amountFor, evenDealText, fitWins, holdsEven, likelyText, matchesText, metaLine, scaleOf, sideTitle, signed, spanText, type Fmt,
 } from './words.js';
+
 
 /** What every Trade Desk payload is built for: the club, the build, the department's byline and the export's date. */
 export interface TradesContext {
@@ -52,7 +53,7 @@ function valueBasis(ctx: TradesContext, stamp: CalibrationStamp, because: BasisL
     because: because.length ? because : [{ label: 'From', value: PLAYER_VALUE }],
     source: source(ctx, PLAYER_VALUE),
     unknown: plainAll(unknown), wouldChange: plainAll(wouldChange), lean: null,
-    certainty: stamp.status, stamp: stamp.run ?? (stamp.basis || PLAYER_VALUE),
+    certainty: stamp.status, stamp: stampWords(stamp),
   });
 }
 

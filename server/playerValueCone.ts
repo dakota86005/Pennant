@@ -236,8 +236,8 @@ function basisOf(production: PlayerProduction): string {
     const parts = [
       `Scouted ratings (${a?.evidence.status ?? 'unknown'}${a?.currentRate != null ? `: ${a.currentRate.toFixed(1)} WAR per 600 now` : ''}${a?.potentialRate != null ? `, ${a.potentialRate.toFixed(1)} at potential` : ''})`,
       arrival?.band
-        ? `arrival from level ${arrival.level}, ages ${arrival.band.ageFrom}–${arrival.band.ageTo} on this save's history (${arrival.band.cases.toLocaleString('en-US')} player-seasons)`
-        : arrival ? `arrival from level ${arrival.level ?? '—'}` : 'arrival not established',
+        ? `arrival from his level, ages ${arrival.band.ageFrom}–${arrival.band.ageTo} on this save's history (${arrival.band.cases.toLocaleString('en-US')} player-seasons)`
+        : arrival ? 'arrival from his level' : 'arrival not established',
       a?.development ? DEVELOPMENT_WORDS[a.development.source] : 'development not established',
     ];
     return parts.join('; ');

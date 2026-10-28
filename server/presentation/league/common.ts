@@ -10,6 +10,8 @@ import type { ClubhouseContext } from '../clubhouse/common.js';
 export type OfficeContext = ClubhouseContext;
 
 export { clubCell, clubRow, column, officeClub, openClub } from './office.js';
+/** How a stamp is said (B-01), for League Office's readers that word a value's stamp. */
+export { stampWords } from '../claim.js';
 
 /** An ordinal ("1st", "2nd", "3rd", "11th"). */
 export function ordinal(n: number): string {

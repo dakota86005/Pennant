@@ -6,6 +6,7 @@ import { DATA_DIR, loadConfig } from './config.js';
 import { evidenceRecord, isModeSwitch, ratingModeNamed, type RatingMode, type RatingModeRecord } from './ratingMode.js';
 import { evidenceRatingMode, inPopulationView, populationSource, ratingFrom, ratingsFromOf } from './scoutedEvidence.js';
 import { boundKeyNow, currentHistoryKey, historyNote, releaseCarried, releaseCarriedPopulation, rollbackName, servedLeagueCertain } from './historyIdentity.js';
+import { levelWord } from './levelWords.js';
 
 /**
  * Persistent store that SURVIVES reimports (league.db is rebuilt on every
@@ -1619,7 +1620,7 @@ function peerDevelopmentTrendByPlayerForScope(
           `Observed current-skill change ranks at the ${Math.round(percentile)}th percentile among ${cohortValues.length} comparable ${observation.kind}s.`,
           `Development pace is ${paceLabel} the comparison cohort.`,
           levelMatched
-            ? `Comparison cohort matches player type, age band, and starting level ${observation.startingLevel}.`
+            ? `Comparison cohort matches player type, age band, and starting level (${levelWord(observation.startingLevel)}).`
             : 'Starting-level cohort was too small, so comparison falls back to player type and age band.',
         ],
       }

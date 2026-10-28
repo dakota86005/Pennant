@@ -783,7 +783,7 @@ function evaluatePlaceOnSixtyDayIl(ctx: RightsContext): ActionRights {
     reasons: [
       reason('sixty_day_leaves_forty_man', 'The 60-day list removes a player from the 40-man, opening a spot.', 'observed_and_documented', 'players_roster_status.is_on_dl60'),
       ...(daysLeft <= OBSERVED_SIXTY_DAY_REFUSAL_DAYS
-        ? [reason('at_or_below_observed_refusal', `OOTP refused this move once, for a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury; he has ${daysLeft}.`, 'observed', 'docs/RIGHTS_RESEARCH.md 4.8')]
+        ? [reason('at_or_below_observed_refusal', `OOTP refused this move once, for a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury; he has ${daysLeft}.`, 'observed', 'Pennant\'s research on how OOTP behaves')]
         : []),
     ],
     missing: [{ code: 'rule_not_established', message: `How long an injury has to be for OOTP to allow the 60-day list has not been measured (only a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury was tried, and refused). He has ${daysLeft} day(s) left.` }],
@@ -934,7 +934,7 @@ export interface ContractControlInput {
  * falls, so it is computed from the export's own class each winter, never taken from history
  * (the real world's has run about 2.115 to 2.140 years).
  */
-export const SUPER_TWO_ATTESTATION = 'OOTP applies Super Two under MLB rules (owner, 2026-09-22)';
+export const SUPER_TWO_ATTESTATION = 'OOTP applies Super Two under MLB rules';
 /** The share of the class that qualifies. */
 export const SUPER_TWO_SHARE = 0.22;
 /** Days of service a player must have banked in the season just ending. */
@@ -1007,7 +1007,7 @@ export function arbitrationRegimeOf(rules: ContractRules): ArbitrationRegime {
  * non-tender (the club not keeping him at all) is still possible, and the rule says nothing about it.
  */
 export const ARBITRATION_NO_CUT_ATTESTATION =
-  "An arbitration salary is never below the player's previous season's salary (owner-attested, 2026-09-24: \"I've never seen a drop\"); " +
+  "An arbitration salary is never below the player's previous season's salary (how OOTP behaves, as Pennant states it); " +
   'it binds a salary the club tenders, and a non-tender stays possible. Not MLB\'s cap on a cut.';
 
 /** Policy, not fitted: the game's rule as the owner attested it, changed only by the owner's decision (D-041). */
@@ -1185,7 +1185,7 @@ export function superTwoCutoffs(
         clock !== null
           ? `Projected to season end (${Math.max(0, Math.min(perYear - clock, calendar?.daysLeft ?? perYear))} of ${perYear} days left): from the men on a major-league roster now banking the rest of the season to every member banking it.`
           : 'The season clock is not exported, so each member may bank up to a full year less his days so far.',
-        `The cutoff's edges are readings, not bounds: within ${SUPER_TWO_MARGIN_DAYS} days of either the year is not decided (owner, 2026-09-23).`,
+        `The cutoff's edges are readings, not bounds: within ${SUPER_TWO_MARGIN_DAYS} days of either the year is not decided.`,
       ],
       missing: [],
     });
@@ -1431,7 +1431,7 @@ function seasonEligibility(
       if (inWindow) {
         if (st.kind === 'unresolved') missing.push(st.missing);
         else {
-          const parts = [`In the Super Two window: his service by then projects ${serviceText}; the Super Two cutoff projects ${cutText} (${classText}), and its edges are readings, so within ${SUPER_TWO_MARGIN_DAYS} days of either the year is not decided (owner, 2026-09-23).`];
+          const parts = [`In the Super Two window: his service by then projects ${serviceText}; the Super Two cutoff projects ${cutText} (${classText}), and its edges are readings, so within ${SUPER_TWO_MARGIN_DAYS} days of either the year is not decided.`];
           if (priorText === null) parts.push(`His days this season are not exported, so the ${SUPER_TWO_PRIOR_SEASON_DAYS}-day condition is unknown.`);
           else if ((st.priorDays.low as number) < SUPER_TWO_PRIOR_SEASON_DAYS && (st.priorDays.high as number) >= SUPER_TWO_PRIOR_SEASON_DAYS) {
             parts.push(`His days in ${st.priorSeason} project ${priorText}, and Super Two needs ${SUPER_TWO_PRIOR_SEASON_DAYS}.`);
@@ -1566,7 +1566,7 @@ export function evaluateContractControl(input: ContractControlInput): ContractCo
     limitation = UNVERIFIED_NOTE;
   }
   if (perYear === null) {
-    blocking.push({ code: 'rule_not_established', message: `The league's service-year length (rules_min_service_days) is not available, so service cannot be read in years: ${rules.serviceDaysPerYear.note ?? 'no source states it'}` });
+    blocking.push({ code: 'rule_not_established', message: `The league's service-year length is not available, so service cannot be read in years: ${rules.serviceDaysPerYear.note ?? 'no source states it'}` });
   }
 
   // ── service now and at the end of this season ──

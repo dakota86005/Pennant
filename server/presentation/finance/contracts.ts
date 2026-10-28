@@ -17,13 +17,14 @@ import {
   controlEndCell, costCell, costExplanation, costRangeText, financeCards, money, perWinLine, rangeText, signedMoney, signedTenths,
   totalCell, winsCell,
 } from './words.js';
+import { VALUE_POLICY_SAYS } from '../../calibration.js';
 
 type Contracts = ReturnType<typeof computeContracts>;
 type ContractRow = Contracts['players'][number];
 
 const SPECIALIST = 'Player Value';
 /** How a contract's value is called: the owner's stated surplus policy over Player Value's figures (D-052, Q-3). */
-export const VALUE_STAMP = "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat";
+export const VALUE_STAMP = VALUE_POLICY_SAYS.surplus;
 
 /** The groups in the order a GM works through them after the season, with what each means. */
 const GROUPS = ['leaving', 'option', 'arbitration', 'pre_arbitration', 'reserve', 'not_settled', 'signed', 'long_term'] as const;

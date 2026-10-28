@@ -664,7 +664,9 @@ describe('owner decision 3 (2026-09-24): an arbitration salary is never below th
     const regime = arbitrationRegimeOf(mlbRules());
     expect(regime.salaryFloor).toBeTruthy();
     expect(regime.salaryFloor!.basis).toBe('owner_attested');
-    expect(regime.salaryFloor!.text).toMatch(/2026-09-24/);
+    // The attestation is recorded in its basis code and its stamp's record; the text says it plainly, with no date or name (B-01)
+    expect(regime.salaryFloor!.text).toMatch(/how OOTP behaves, as Pennant states it/);
+    expect(regime.salaryFloor!.text).not.toMatch(/2026-09-24|owner/);
     expect(regime.salaryFloor!.text).not.toMatch(/20%|80%/);
     // Stated once, by Player Rights: the floor is the previous salary itself, and an unknown one cannot bind
     expect(arbitrationSalaryFloor(regime, 6_000_000)).toMatchObject({ status: 'binds', floor: 6_000_000 });
@@ -685,7 +687,8 @@ describe('owner decision 3 (2026-09-24): an arbitration salary is never below th
     expect(b.low).toBe(6_000_000);
     expect(b.central!).toBeGreaterThanOrEqual(6_000_000);
     expect(b.high).toBeGreaterThan(b.low);
-    expect(next.cost!.note).toMatch(/owner-attested/);
+    expect(next.cost!.note).toMatch(/An arbitration salary is never below his previous salary/);
+    expect(next.cost!.note).not.toMatch(/owner|2026-09-24/);
     expect(next.cost!.note).toMatch(/tender/);
     // Not the CBA's 80% of it: the floor is his salary itself
     expect(b.low).not.toBe(4_800_000);

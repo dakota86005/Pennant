@@ -29,6 +29,7 @@ import {
 import { playerStates } from './playerState.js';
 import { loadScoutedAbilities } from './scoutedEvidence.js';
 import { LEVEL_NAMES } from './valuation.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 export const scoutedDevelopmentRoutes = Router();
 
@@ -138,7 +139,7 @@ export function computeScoutedDevelopment(orgId: number): ScoutedDevelopmentResp
         teamId: r.team_id,
         team: r.team,
         level: r.level,
-        levelName: LEVEL_NAMES[r.level] ?? `L${r.level}`,
+        levelName: LEVEL_NAMES[r.level] ?? UNNAMED_LEVEL_SHORT,
         current: ability.current,
         potential: ability.potential,
         protection: { tier: protection.tier, reasons: protection.reasons },

@@ -220,7 +220,8 @@ export interface FinanceCards {
 
 export function financeCards(teamId: number): FinanceCards {
   const f = clubFinances(teamId);
-  const why = (s: Sourced<number>) => [s.source, s.note].filter(Boolean).join(' — ') || null;
+  // Where it comes from in words: the column is the developer's locator, never served (B-11)
+  const why = (s: Sourced<number>) => (s.source || s.note ? ['The club\'s finances, as exported', s.note].filter(Boolean).join(' — ') : null);
   return {
     budget: f.budget.value,
     payroll: f.payroll.now.value,

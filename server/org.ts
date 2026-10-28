@@ -28,6 +28,7 @@ import {
 } from './assignmentPreference.js';
 import { openDevelopmentalContext } from './developmentalContext.js';
 import type { Integer } from './contract/primitives.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 export const orgRoutes = Router();
 
@@ -193,7 +194,7 @@ function depthChartOf(orgId: number) {
   const teams = orgTeams(orgId).map((t) => ({
     ...t,
     label: `${t.name} ${t.nickname}`,
-    levelName: LEVEL_NAMES[t.level] ?? `L${t.level}`,
+    levelName: LEVEL_NAMES[t.level] ?? UNNAMED_LEVEL_SHORT,
   }));
   const roster = orgPlayers(orgId);
   const abilities = loadScoutedAbilities(roster.map((p) => p.player_id));
@@ -472,7 +473,7 @@ export function computeProspects(orgId: number): {
 
     return {
       level: nextLevel,
-      levelName: LEVEL_NAMES[nextLevel] ?? `L${nextLevel}`,
+      levelName: LEVEL_NAMES[nextLevel] ?? UNNAMED_LEVEL_SHORT,
       teams: teamList
         .filter((team) => team.level === nextLevel)
         .map((team) => ({
@@ -497,7 +498,7 @@ export function computeProspects(orgId: number): {
 
     return {
       level: lowerLevel,
-      levelName: LEVEL_NAMES[lowerLevel] ?? `L${lowerLevel}`,
+      levelName: LEVEL_NAMES[lowerLevel] ?? UNNAMED_LEVEL_SHORT,
       teams: teamList
         .filter((team) => team.level === lowerLevel)
         .map((team) => ({
@@ -520,7 +521,7 @@ export function computeProspects(orgId: number): {
       .map((level) => ({
         level,
         levelName:
-          LEVEL_NAMES[level] ?? `L${level}`,
+          LEVEL_NAMES[level] ?? UNNAMED_LEVEL_SHORT,
         teams: teamList
           .filter((team) => team.level === level)
           .map((team) => ({
@@ -543,7 +544,7 @@ export function computeProspects(orgId: number): {
       .map((level) => ({
         level,
         levelName:
-          LEVEL_NAMES[level] ?? `L${level}`,
+          LEVEL_NAMES[level] ?? UNNAMED_LEVEL_SHORT,
         teams: teamList
           .filter((team) => team.level === level)
           .map((team) => ({
@@ -645,7 +646,7 @@ export function computeProspects(orgId: number): {
       age: p.age,
       team: `${team.name} ${team.nickname}`,
       level: team.level,
-      levelName: LEVEL_NAMES[team.level] ?? `L${team.level}`,
+      levelName: LEVEL_NAMES[team.level] ?? UNNAMED_LEVEL_SHORT,
       cur,
       pot,
       /** What cur/pot rest on: organization-visible scouted tools, and what is missing. */

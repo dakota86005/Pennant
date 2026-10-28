@@ -373,7 +373,7 @@ export function priceHistory(leagueId: number): PriceHistoryEntry[] {
     if (!a) {
       return {
         gameDate: h.gameDate, season: h.season, inForce: 'opening', opening: h.price, measured: null, reason: null,
-        note: 'The measured reading was not recorded at this import (written before phase 4b): its price is the opening one.',
+        note: 'The measured reading was not recorded at this import (written before Pennant recorded it): its price is the opening one.',
       };
     }
     const m = a.measured;

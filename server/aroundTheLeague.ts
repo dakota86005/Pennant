@@ -22,7 +22,7 @@ import { importedAt } from './playerStateRoutes.js';
 import { cell } from './presentation/claim.js';
 import { followingWords, type ClubNow, type PlayerNow } from './presentation/frontOffice/following.js';
 import type { ClubReport, FollowChange, FollowUpdate, Following, SearchAnswer, Wire, WireTop } from './presentation/frontOffice/leagueTypes.js';
-import { LEVEL_WORDS } from './presentation/frontOffice/morning.js';
+import { LEVEL_WORDS } from './levelWords.js';
 import { KIND_ORDER, wireEntries, wireOrder, wireTopWords, wireWords, type WireQuery } from './presentation/frontOffice/wire.js';
 import { searchWords } from './presentation/searchWords.js';
 import { POSITION_NAMES } from './positionNeeds.js';

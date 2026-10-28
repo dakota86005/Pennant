@@ -739,7 +739,8 @@ describe('owner decision 3 (2026-09-24): an observed arbitration salary below th
     const s = scoreAwards([pair], { status: 'arbitration', classes: 3, mlb: false }, (id) => `Player ${id} Name`);
     expect(s.belowPrevious.map((b) => b.playerId)).toEqual([1, 2]);
     expect(s.text).toMatch(/2 (observed )?arbitration salaries/);
-    expect(s.text).toMatch(/owner-attested/);
+    expect(s.text).toMatch(/OOTP's rule, as Pennant states it, that an arbitration salary never falls/);
+    expect(s.text).not.toMatch(/owner-attested|2026-09-24/);
     expect(s.text).toMatch(/Player 1 Name/);
     expect(s.text).toMatch(/Player 2 Name/);
     // Still scored: flagged, not dropped

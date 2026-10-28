@@ -15,7 +15,7 @@ import { computeFranchise, computeOrgComparison, franchiseRecordsCarry, franchis
 import { computeTenure } from './gameplan.js';
 import { catalogClubs } from './org.js';
 import { marketLeagueOfClub, productionModelFor, ratingsModelFor } from './playerValue.js';
-import type { OfficeContext } from './presentation/league/common.js';
+import { stampWords, type OfficeContext } from './presentation/league/common.js';
 import { franchiseUnreadView, franchiseView } from './presentation/league/franchise.js';
 import { orgComparisonUnreadView, orgComparisonView } from './presentation/league/orgComparison.js';
 import type { LeagueFranchiseView, LeagueOrgComparisonView } from './presentation/league/types.js';
@@ -30,9 +30,9 @@ const clubName = (orgId: number): string | null => catalogClubs().find((c) => c.
  */
 function valueCalled(orgId: number, model: 'production' | 'ratings'): { how: Certainty; stamp: string } {
   const league = marketLeagueOfClub(orgId);
-  if (league === null) return { how: 'provisional', stamp: 'Player Value: the starting numbers, not yet fitted on this save' };
+  if (league === null) return { how: 'provisional', stamp: stampWords({ status: 'provisional' }) };
   const stamp = (model === 'ratings' ? ratingsModelFor(league) : productionModelFor(league)).provenance.stamp;
-  return { how: stamp.status, stamp: (stamp.run ?? stamp.basis).trim() || 'Player Value' };
+  return { how: stamp.status, stamp: stampWords(stamp) };
 }
 
 /** The two refusals the comparison's route is known to give, in the GM's words; anything else is not a refusal. */

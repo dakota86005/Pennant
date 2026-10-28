@@ -17,7 +17,7 @@
   "teamId": 102,
   "name": "Player 9201",
   "line": {
-    "display": "21 · SS · Level 2 · Club 2"
+    "display": "21 · SS · AAA · Club 2"
   },
   "pace": {
     "display": "Ahead · 88th",
@@ -103,7 +103,7 @@
           "display": "April 1, 2040"
         },
         "level": {
-          "display": "Level 2"
+          "display": "AAA"
         },
         "current": {
           "display": "44"
@@ -126,7 +126,7 @@
           "display": "May 15, 2040"
         },
         "level": {
-          "display": "Level 2"
+          "display": "AAA"
         },
         "current": {
           "display": "46"
@@ -149,7 +149,7 @@
           "display": "July 1, 2040"
         },
         "level": {
-          "display": "Level 2"
+          "display": "AAA"
         },
         "current": {
           "display": "48"

@@ -71,7 +71,7 @@
           "because": [
             {
               "label": "Upper-minors players at 2B",
-              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "0 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -114,13 +114,13 @@
               "display": "0"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at 2B",
             "value": "0",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -187,7 +187,7 @@
           "because": [
             {
               "label": "Upper-minors players at 3B",
-              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "0 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -230,13 +230,13 @@
               "display": "0"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at 3B",
             "value": "0",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -303,7 +303,7 @@
           "because": [
             {
               "label": "Upper-minors players at CF",
-              "value": "1 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "1 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -352,13 +352,13 @@
               "display": "1"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at CF",
             "value": "1",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -438,7 +438,7 @@
           "because": [
             {
               "label": "Upper-minors players at C",
-              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "0 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -477,13 +477,13 @@
               "display": "0"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at C",
             "value": "0",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -531,7 +531,7 @@
           "because": [
             {
               "label": "Upper-minors players at 1B",
-              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "0 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -570,13 +570,13 @@
               "display": "0"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at 1B",
             "value": "0",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -624,7 +624,7 @@
           "because": [
             {
               "label": "Upper-minors players at SS",
-              "value": "1 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "1 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -669,13 +669,13 @@
               "display": "1"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at SS",
             "value": "1",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -736,7 +736,7 @@
           "because": [
             {
               "label": "Upper-minors players at LF",
-              "value": "0 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "0 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -775,13 +775,13 @@
               "display": "0"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at LF",
             "value": "0",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -829,7 +829,7 @@
           "because": [
             {
               "label": "Upper-minors players at RF",
-              "value": "1 (Players at AAA or L3 with a revealed grade there or listed there.)"
+              "value": "1 (Players at AAA or AA with a revealed grade there or listed there.)"
             },
             {
               "label": "Thin below",
@@ -874,13 +874,13 @@
               "display": "1"
             },
             "why": {
-              "display": "Players at AAA or L3 with a revealed grade there or listed there."
+              "display": "Players at AAA or AA with a revealed grade there or listed there."
             }
           },
           "sort": {
             "label": "Upper-minors players at RF",
             "value": "1",
-            "why": "Players at AAA or L3 with a revealed grade there or listed there."
+            "why": "Players at AAA or AA with a revealed grade there or listed there."
           }
         },
         {
@@ -1797,7 +1797,7 @@
       "id": "line:CEILING_LINES (Pennant's starting lines)",
       "cells": {
         "name": {
-          "display": "Pennant's starting lines: where a visible ceiling composite stops projecting as a major leaguer of each kind. The composite (the unweighted mean of the visible tools) of the weakest tenth, the median and the best tenth of the active major leaguers of one import (Arizona, 2026-5-16): hitters 45 / 50 / 56, pitchers 45 / 48 / 53. Kind-aware because the composite is. Each league's own lines are measured from its major leaguers at every import and used once they hold up; these are used only where that has not happened or cannot (a small or fictional league), and say so."
+          "display": "Pennant's starting ceiling lines: the visible ceiling at which a prospect projects as a fringe major leaguer, a regular or an impact player. A league's own lines replace them once measured and holding up."
         },
         "value": {
           "display": "hitters 45 / 50 / 56 · pitchers 45 / 48 / 53"
@@ -1813,17 +1813,17 @@
         "name": "CEILING_LINES (Pennant's starting lines)",
         "value": "hitters 45 / 50 / 56 · pitchers 45 / 48 / 53",
         "kind": "provisional",
-        "why": "Pennant's starting lines: where a visible potential composite stops projecting as a major leaguer of each kind. The composite (the unweighted mean of the visible tools) of the weakest tenth, the median and the best tenth of the active major leaguers of one import (Arizona, 2026-5-16): hitters 45 / 50 / 56, pitchers 45 / 48 / 53. Kind-aware because the composite is. Each league's own lines are measured from its major leaguers at every import and used once they hold up; these are used only where that has not happened or cannot (a small or fictional league), and say so."
+        "why": "Pennant's starting ceiling lines: the visible potential at which a prospect projects as a fringe major leaguer, a regular or an impact player. A league's own lines replace them once measured and holding up."
       }
     },
     {
       "id": "line:CEILING_LINES (the quantiles they stand for)",
       "cells": {
         "name": {
-          "display": "What \"a major leaguer\", \"a regular\" and \"an impact player\" are taken to mean: clearing the weakest tenth, the median and the best tenth of major leaguers of his kind. A decision about where a ceiling starts to be worth protecting, not a fact about baseball."
+          "display": "What \"a major leaguer\", \"a regular\" and \"an impact player\" are taken to mean: where a ceiling starts to be worth protecting."
         },
         "value": {
-          "display": "p10 / p50 / p90 of major leaguers of his kind"
+          "display": "the weakest tenth, the median and the best tenth of major leaguers of his kind"
         },
         "kind": {
           "display": "Policy"
@@ -1834,16 +1834,16 @@
       },
       "sort": {
         "name": "CEILING_LINES (the quantiles they stand for)",
-        "value": "p10 / p50 / p90 of major leaguers of his kind",
+        "value": "the weakest tenth, the median and the best tenth of major leaguers of his kind",
         "kind": "policy",
-        "why": "What \"a major leaguer\", \"a regular\" and \"an impact player\" are taken to mean: clearing the weakest tenth, the median and the best tenth of major leaguers of his kind. A decision about where a ceiling starts to be worth protecting, not a fact about baseball."
+        "why": "What \"a major leaguer\", \"a regular\" and \"an impact player\" are taken to mean: where a ceiling starts to be worth protecting."
       }
     },
     {
       "id": "line:DEVELOPMENT_AGE",
       "cells": {
         "name": {
-          "display": "The age through which most, some and little of a player's development is still ahead of him. The bands of the youth curve the absolute composite used (72 or more through 22, 45 to 60 at 23-24, 18 to 30 at 25-26, 5 from 27), so the historical judgment about youth is kept and only its use changed. Not fitted: how players develop can only be measured from the same players' ratings a season apart, and the save does not hold those yet. Today's ratings agree with where the bands end: the gap between current and ceiling closes between 24 and 26."
+          "display": "The age through which most, some and little of a player's development is still ahead of him."
         },
         "value": {
           "display": "most 22 · some 24 · little 26"
@@ -1859,14 +1859,14 @@
         "name": "DEVELOPMENT_AGE",
         "value": "{\"most\":22,\"some\":24,\"little\":26}",
         "kind": "provisional",
-        "why": "The age through which most, some and little of a player's development is still ahead of him. The bands of the youth curve the absolute composite used (72 or more through 22, 45 to 60 at 23-24, 18 to 30 at 25-26, 5 from 27), so the historical judgment about youth is kept and only its use changed. Not fitted: how players develop can only be measured from the same players' ratings a season apart, and the save does not hold those yet. Today's ratings agree with where the bands end: the gap between current and potential closes between 24 and 26."
+        "why": "The age through which most, some and little of a player's development is still ahead of him."
       }
     },
     {
       "id": "line:PROJECTION_REALIZED_UNDER",
       "cells": {
         "name": {
-          "display": "Points of ceiling over current under which what the scouts project has, in effect, happened. With tools graded in steps of five, a gap under three composite points is at most two tool grades in five for a hitter and at most one in three for a pitcher. How much projection counts as none is a policy line; not fitted."
+          "display": "Points of ceiling over current under which what the scouts project has, in effect, happened."
         },
         "value": {
           "display": "3"
@@ -1882,7 +1882,7 @@
         "name": "PROJECTION_REALIZED_UNDER",
         "value": "3",
         "kind": "provisional",
-        "why": "Points of potential over current under which what the scouts project has, in effect, happened. With tools graded in steps of five, a gap under three composite points is at most two tool grades in five for a hitter and at most one in three for a pitcher. How much projection counts as none is a policy line; not fitted."
+        "why": "Points of potential over current under which what the scouts project has, in effect, happened."
       }
     }
   ],

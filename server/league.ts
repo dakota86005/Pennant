@@ -3,6 +3,7 @@ import { db, tableExists } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { answer, refuse, type Computed } from './computed.js';
+import { UNNAMED_LEVEL_SHORT } from './levelWords.js';
 
 export const leagueRoutes = Router();
 
@@ -437,7 +438,7 @@ export function computePlayers(query: Record<string, unknown>, within?: { player
       if (weight > prior) {
         statsById.set(row.player_id, {
           ...computed,
-          statsLevel: LEVEL_NAMES[row.level_id] ?? `L${row.level_id}`,
+          statsLevel: LEVEL_NAMES[row.level_id] ?? UNNAMED_LEVEL_SHORT,
         });
       }
     }
@@ -479,7 +480,7 @@ export function computePlayers(query: Record<string, unknown>, within?: { player
         playerId,
         list.map((r) => ({
           team: (r.abbr as string) ?? '?',
-          level: LEVEL_NAMES[r.level_id as number] ?? `L${r.level_id}`,
+          level: LEVEL_NAMES[r.level_id as number] ?? UNNAMED_LEVEL_SHORT,
           ...(group === 'pitching'
             ? { ip: Math.round(((r.outs as number) / 3) * 10) / 10 }
             : { pa: r.pa as number, h: r.h as number, hr: r.hr as number }),

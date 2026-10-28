@@ -411,14 +411,14 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
   };
   const fraction = input.seasonFraction.value;
   const assumptions = [
-    "WAR is the export's own WAR (OOTP's formula), batting plus pitching, the overall split, the league's own rows summed over clubs (R-4).",
-    "Salary is this season's contract salary. Signing bonuses, incentives, buyouts and deferrals are not in it (R-6). A minor-league contract's salary is unknown, never $0 (Q-5), and it is left out.",
+    "WAR is the export's own WAR (OOTP's formula), batting plus pitching, the overall split, the league's own rows summed over clubs.",
+    "Salary is this season's contract salary. Signing bonuses, incentives, buyouts and deferrals are not in it. A minor-league contract's salary is unknown, never $0, and it is left out.",
     'A market contract is one whose holder Player Rights finds free-agency eligible this season, by service at the last winter when the salary was set. ' +
-      "The alternative, service including this season's days (R-5's reading), would also count players who crossed the line this season, whose salaries were set before they could reach the market; it is not used.",
+      "The alternative, service including this season's days, would also count players who crossed the line this season, whose salaries were set before they could reach the market; it is not used.",
     "A replacement player is paid the league minimum and is worth 0 WAR, at the export's own replacement level (see the replacement level for each season).",
     'Prior-season WAR stands in for the production a salary was paid for. A market pays for expected wins and the best players regress, so a first-year basis understates the price of a multi-year deal.',
     'A player with no line in the league in a season produced no WAR in it and counts 0, while his salary stays in; that raises the price for players signed from outside the league.',
-    'The contracts are the ones the export holds. On a historical start they are the real world\'s, so the price describes that market and gives way to OOTP\'s simulated signings as they are observed (R-1).',
+    'The contracts are the ones the export holds. On a historical start they are the real world\'s, so the price describes that market and gives way to OOTP\'s simulated signings as they are observed.',
     fraction !== null
       ? `The pace bases rest on ${round(fraction * 100, 1)}% of a season and are the widest.`
       : 'The pace bases need the share of the season played, which is not established here.',
@@ -435,13 +435,13 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
     floor,
     bases,
     notUsed: [
-      "R-5's basis D (free-agency contracts signed three or more seasons ago, against this season's pace) is not used: it prices the decline years of long contracts, wins a club bought years ago, and is a ceiling artefact.",
+      "Free-agency contracts signed three or more seasons ago, against this season's pace, are not used as a basis: it prices the decline years of long contracts, wins a club bought years ago, and is a ceiling artefact.",
     ],
     population,
     assumptions,
     rules: {
       market: MARKET_CONTRACT_CALIBRATION.basis,
-      band: 'The band runs from the lowest to the highest market basis that could be computed: the spread of defensible bases, not a statistical interval (R-5). One reading is not a band.',
+      band: 'The band runs from the lowest to the highest market basis that could be computed: the spread of defensible bases, not a statistical interval. One reading is not a band.',
       central: OPENING_PRICE_CENTRAL_CALIBRATION.basis,
       floor: 'The floor divides every major leaguer\'s pay above the minimum by his WAR (A), and by the league\'s WAR (A2). Pre-arbitration and arbitration pay is held below the market by rule, so it understates what a win costs on the open market.',
       minimums: OPENING_PRICE_MINIMUMS_CALIBRATION.basis,
@@ -461,10 +461,10 @@ export function openingPriceOfWin(input: OpeningPriceInput): PriceOfWin {
     return result(u(), u(), [], 'wins');
   };
   if (input.financials.value === false) {
-    return noDollars('The league runs no financials (rules_financials = 0): value is in wins, and dollars are unknown.');
+    return noDollars('The league runs no financials: value is in wins, and dollars are unknown.');
   }
   if (input.financials.value === null) {
-    return noDollars(`Whether the league runs financials is not established (${input.financials.note ?? 'rules_financials is not exported'}): value is in wins, and dollars are unknown.`);
+    return noDollars(`Whether the league runs financials is not established (${input.financials.note ?? 'the setting is not in the export'}): value is in wins, and dollars are unknown.`);
   }
   if (input.minimumSalary.value === null || season === null) {
     return noDollars(season === null
@@ -607,7 +607,7 @@ function samplingOf(specs: BasisSpec[], bases: PriceBasis[], minimum: number, se
     comparable,
     text: comparable
       ? `Each market basis resampled over its own contracts ${replicates} times (${Math.round(low * 100)}th to ${Math.round(high * 100)}th percentile); ` +
-        `the spread of the bases with that sampling in it is ${millions(comparable.low)} to ${millions(comparable.high)}, the band a measured price must be narrower than (Q-4).`
+        `the spread of the bases with that sampling in it is ${millions(comparable.low)} to ${millions(comparable.high)}, the band a measured price must be narrower than.`
       : `Each market basis resampled over its own contracts ${replicates} times; at least one has no upper edge (too many resamples price no positive win), so the opening band with its sampling is unbounded.`,
   };
 }
@@ -697,7 +697,7 @@ export const FINANCE_COLUMNS = [
 
 const numberOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
-const PLACEHOLDER_NOTE = 'Every money field in this row is zero: the export wrote the row without figures, so it is unknown, never $0 (R-1).';
+const PLACEHOLDER_NOTE = 'Every money field in this row is zero: the export wrote the row without figures, so it is unknown, never $0.';
 
 function isPlaceholder(row: Record<string, unknown>, present: Set<string>): boolean {
   const money = MONEY_COLUMNS.filter((c) => present.has(c));
@@ -718,7 +718,7 @@ function financeReader(table: string, t: FinanceTable | { present: Set<string> |
   };
 }
 
-const SEASON_TO_DATE = 'Which current-row columns are season-to-date and which are booked for the season is not established column by column (R-7).';
+const SEASON_TO_DATE = 'Which current-row columns are season-to-date and which are booked for the season is not established column by column.';
 
 /**
  * Club money in a league that runs no financials is not in dollars (D-052): the export may still
@@ -726,8 +726,8 @@ const SEASON_TO_DATE = 'Which current-row columns are season-to-date and which a
  * a figure stays as exported and says so.
  */
 function moneyUnder(financials: Sourced<boolean>) {
-  const off = `The league runs no financials (rules_financials = 0): club money is not in dollars, and the figure the export still carries is not read.`;
-  const unsure = `Whether the league runs financials is not established (${financials.note ?? 'rules_financials is not exported'}).`;
+  const off = `The league runs no financials: club money is not in dollars, and the figure the export still carries is not read.`;
+  const unsure = `Whether the league runs financials is not established (${financials.note ?? 'the setting is not in the export'}).`;
   return (figure: Sourced<number>): Sourced<number> => {
     if (financials.value === false) return unknownBecause('not_exported_by_ootp', figure.source, off);
     if (financials.value === null && figure.value !== null) return { ...figure, note: figure.note ? `${figure.note} ${unsure}` : unsure };
@@ -764,7 +764,7 @@ export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
     const s: FinanceSeason = lastRow
       ? seasonOf(lastRow)
       : (() => {
-        const u = unknownBecause<number>('not_exported_by_ootp', 'team_history_financials', `team_history_financials has no ${season - 1} row for this club.`);
+        const u = unknownBecause<number>('not_exported_by_ootp', 'team_history_financials', `The export's finance history has no ${season - 1} row for this club.`);
         return { season: season - 1, revenue: u, expenses: u, budget: u };
       })();
     const differs = s.revenue.value !== null && revenueView.value !== null && s.revenue.value !== revenueView.value;
@@ -773,20 +773,20 @@ export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
       unnamedView: {
         revenue: revenueView, expenses: expensesView, used: false,
         note: differs
-          ? `team_last_financials reads revenue ${millions(revenueView.value as number)} against the ${season - 1} history row's ${millions(s.revenue.value as number)}. It names no season, so it is not used; which is authoritative is unresolved (R-7).`
-          : 'team_last_financials names no season, so it is not used (R-7).',
+          ? `The export's previous-season view reads revenue ${millions(revenueView.value as number)} against the ${season - 1} history row's ${millions(s.revenue.value as number)}. It names no season, so it is not used; which is authoritative is unresolved.`
+          : 'The export\'s previous-season view names no season, so it is not used.',
       },
     };
   }
 
-  const MEANING = 'Shown as exported: its scale or code meanings are not in the export (R-7).';
+  const MEANING = 'Shown as exported: its scale or code meanings are not in the export.';
   return {
     teamId: input.teamId,
     season,
     authority: {
       rule: FINANCE_ROW_CALIBRATION.basis,
       alternatives: [
-        'team_last_financials: a previous-season view that names no season; it disagrees with the history row for the same clubs (R-7).',
+        'The export\'s previous-season view names no season, and it disagrees with the history row for the same clubs.',
         'Blending the rows (an average, or one column from each): rejected, because it would state a figure no row holds.',
       ],
       stamp: FINANCE_ROW_CALIBRATION,
@@ -801,8 +801,8 @@ export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
     expenses: now('total_expenses', SEASON_TO_DATE),
     market: raw('market', MEANING),
     fans: { interest: exported('fan_interest', "OOTP's own scale, as exported."), loyalty: exported('fan_loyalty', "OOTP's own scale, as exported.") },
-    cashForTrades: now('cash_trades_available', 'The cash a club can move in trades; `cash` is exported as zero for every club and is never read (R-7).'),
-    ownerExpectation: raw('owner_expectation', "Shown as the exported code: the code meanings are not in the export (R-7)."),
+    cashForTrades: now('cash_trades_available', 'The cash a club can move in trades; the club\'s cash on hand is exported as zero for every club and is never read.'),
+    ownerExpectation: raw('owner_expectation', "Shown as the exported code: the code meanings are not in the export."),
     mode: raw('mode', MEANING),
     media: {
       local: now('local_media_contract'),
@@ -811,8 +811,8 @@ export function clubFinancesOf(input: ClubFinanceInput): ClubFinances {
       nationalExpires: raw('national_media_contract_expires', 'Shown as exported: whether it counts seasons left or names a season is not established.'),
     },
     sharing: {
-      revenueSharing: raw('revenue_sharing', 'Zero while the rule is on: it may settle at season end. Not established (R-7).'),
-      luxurySharing: raw('luxury_sharing', 'Zero while the rule is on: it may settle at season end. Not established (R-7).'),
+      revenueSharing: raw('revenue_sharing', 'Zero while the rule is on: it may settle at season end. Not established.'),
+      luxurySharing: raw('luxury_sharing', 'Zero while the rule is on: it may settle at season end. Not established.'),
     },
     lastSeason,
     revenueTrend: {

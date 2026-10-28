@@ -47,6 +47,7 @@ import { mlbDiscussionAssessments, type MlbDiscussionAssessment } from './org.js
 import { READINESS_SCALE } from './prospectDecision.js';
 import { organizationPlayerStates } from './playerState.js';
 import type { DevelopmentalJudgment } from './developmentJudgment.js';
+import { levelWord } from './levelWords.js';
 
 export interface RoleFitEvidence {
   /** Player Development's destination-fit classification at the MLB club; null when it cannot be computed. */
@@ -607,6 +608,8 @@ export interface FarmNext {
   name: string;
   /** His level, as Player State reads it (2 is Triple-A). */
   level: number;
+  /** His level by its name ("Triple-A"), never its id (B-11). */
+  levelName: string;
   /** Player Development's answer as served; null where it has not assessed him (only Triple-A players are). */
   assessment: {
     judgment: DevelopmentalJudgment;
@@ -636,7 +639,7 @@ export function farmNextByPosition(orgId: number): Map<number, FarmNext[]> {
   for (const s of states) {
     const a = assessed.get(s.playerId);
     const entry: FarmNext = {
-      playerId: s.playerId, name: s.name, level: s.level.value!,
+      playerId: s.playerId, name: s.name, level: s.level.value!, levelName: levelWord(s.level.value),
       assessment: a ? {
         judgment: a.judgment, readiness: a.evidence.readiness, required: a.requirements.readiness, scale: { ...READINESS_SCALE },
         reasons: a.reasons, blockers: a.blockers, missing: a.missingEvidence.map((m) => m.detail),

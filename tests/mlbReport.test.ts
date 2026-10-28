@@ -169,7 +169,7 @@ describe('a hole to fill', () => {
 
   it('a candidate who would be the weakest still gets a pathway when the role is short: a body is needed', () => {
     const paths = p.report!.pathways;
-    expect(paths.map((x) => x.title)).toEqual(['Recall: Reno Better (level 2)', 'Recall: Reno Same (level 2)', 'Recall: Reno Worse (level 2)']);
+    expect(paths.map((x) => x.title)).toEqual(['Recall: Reno Better (Triple-A)', 'Recall: Reno Same (Triple-A)', 'Recall: Reno Worse (Triple-A)']);
     expect(paths[0].steps.join(' ')).toMatch(/recall/i);
     expect(p.report!.orderingNote).toMatch(/not a ranking of players/);
   });

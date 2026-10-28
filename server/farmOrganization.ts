@@ -27,6 +27,7 @@ const upperMinorsWho = (n: number): string =>
   n === 0 ? 'no one in the upper minors' : `only ${countInWords(n)} ${n === 1 ? 'player' : 'players'} in the upper minors`;
 const capitalized = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 import type { AssignmentConclusion } from './farmAssignments.js';
+import { levelShort } from './levelWords.js';
 
 export interface OrgPlayerFact {
   playerId: number;
@@ -112,7 +113,7 @@ export function buildOrganizationView(input: OrganizationInput): OrganizationVie
 
   const levels = [...new Set(input.affiliates.map((a) => a.level))].sort((a, b) => a - b);
   const levelName = (level: number): string =>
-    input.affiliates.find((a) => a.level === level)?.levelName ?? `L${level}`;
+    input.affiliates.find((a) => a.level === level)?.levelName ?? levelShort(level);
 
   /* ── where the organization's players are, by position and level ───────────────────────────── */
 

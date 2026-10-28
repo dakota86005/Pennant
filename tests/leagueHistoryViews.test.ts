@@ -8,7 +8,7 @@ import { computeTenure } from '../server/gameplan.js';
 import { ORG_COMPARISON_UNREAD, franchiseUnread, franchiseViewOf, orgComparisonUnread, orgComparisonViewOf } from '../server/leagueHistoryViews.js';
 import { marketLeagueOfClub, productionModelFor, ratingsModelFor } from '../server/playerValue.js';
 import { officeContextFor } from '../server/leagueViewsBuild.js';
-import { assertAuthored } from '../server/presentation/claim.js';
+import { assertAuthored, stampWords } from '../server/presentation/claim.js';
 import type { OfficeContext } from '../server/presentation/league/common.js';
 import { orgComparisonView } from '../server/presentation/league/orgComparison.js';
 import { bannedInPayload } from './bannedJargon';
@@ -470,7 +470,8 @@ describe('Org Comparison: Player Value\'s bands with their basis, never a verdic
   it('stamps the farm\'s figure with the ratings model it rests on, the roster\'s with production\'s (review, L4)', () => {
     const view = orgComparisonViewOf(v, save.org);
     const league = marketLeagueOfClub(save.org)!;
-    const stampOf = (s: { run?: string | null; basis: string }) => (s.run ?? s.basis).trim();
+    // A stamp is said in the GM's words, never its developer record (B-01)
+    const stampOf = (s: Parameters<typeof stampWords>[0]) => stampWords(s);
     const farm = view.figures.find((f) => f.text.startsWith('Farm, '))!;
     const roster = view.figures.find((f) => f.text.startsWith('Roster, '))!;
     expect(farm.basis.stamp).toBe(stampOf(ratingsModelFor(league).provenance.stamp));

@@ -32,15 +32,38 @@
 
 export interface CalibrationStamp {
   status: 'calibrated' | 'provisional' | 'policy';
-  /** What the numbers rest on, in words. */
+  /**
+   * What the numbers rest on: the developer's record (the method, the file, the command, the decision's id, the save it
+   * was measured on). Never served: a page says a stamp in the GM's words (`stampWords`, presentation/claim.ts; B-01).
+   */
   basis: string;
-  /** The tuning run, for a calibrated stamp. */
+  /** The tuning run, for a calibrated stamp: the developer's record too, never served. */
   run: string | null;
+  /**
+   * The stamp in the GM's words, where a plain line says more than how it is called: a stated line's own terms ("a season
+   * further out counts 5% less"). One short sentence with no file, command, doc id or save name; without it a page says the
+   * stamp by its status alone.
+   */
+  says?: string;
 }
 
 /** The run the current calibrated constants come from. One edit here re-points every stamp. */
 export const CALIBRATION_RUN = 'scripts/calibrate.ts on the 2026-05-16 Arizona save (real MLB history 2003-2025), recorded in docs/CALIBRATION.md';
 
-export const calibrated = (basis: string): CalibrationStamp => ({ status: 'calibrated', basis, run: CALIBRATION_RUN });
-export const provisional = (basis: string): CalibrationStamp => ({ status: 'provisional', basis, run: null });
-export const policy = (basis: string): CalibrationStamp => ({ status: 'policy', basis, run: null });
+/** `says`, where given, is the stamp's plain line for the GM (`CalibrationStamp.says`); `basis` stays the developer's record. */
+const withSays = (stamp: CalibrationStamp, says: string | undefined): CalibrationStamp => (says ? { ...stamp, says } : stamp);
+/** A constant fitted once on real major-league history (`CALIBRATION_RUN`), said so: never "this save's own" (D-053). */
+export const MEASURED_ELSEWHERE = 'Measured on real major-league seasons, not on this save';
+export const calibrated = (basis: string, says: string = MEASURED_ELSEWHERE): CalibrationStamp => withSays({ status: 'calibrated', basis, run: CALIBRATION_RUN }, says);
+
+/**
+ * The plain lines of Player Value's stated policies: each policy stamp's `says`, and what a page that states the policy
+ * without reading the value modules says (Finance's Contracts and Payroll; B-01).
+ */
+export const VALUE_POLICY_SAYS = {
+  surplus: "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat",
+  clubRange: "Pennant's rule for the club's range: each player's range is added as if unrelated to the others'",
+  dealRange: "Pennant's rule for a deal's range: each player's range is added as if unrelated to the others'",
+} as const;
+export const provisional = (basis: string, says?: string): CalibrationStamp => withSays({ status: 'provisional', basis, run: null }, says);
+export const policy = (basis: string, says?: string): CalibrationStamp => withSays({ status: 'policy', basis, run: null }, says);

@@ -7,7 +7,6 @@
  * Never through a season the league has not completed (a reverted save), like every per-save fit.
  */
 
-import { calibrated } from './calibration.js';
 import { db, tableColumns, tableExists } from './db.js';
 import { adoptedCalibrationOnSource } from './saveCalibrationStore.js';
 import { populationSource } from './scoutedEvidence.js';
@@ -40,7 +39,12 @@ export function toolsParamsOf(model: ToolsModel, basis: string): ToolsParams {
   const slopes = Object.fromEntries(keys.map((k, i) => [k, model.bat.served[i]])) as Record<keyof typeof HITTER_TOOL_SLOPES, number>;
   return {
     slopes, running: TOOLS_PRIOR.running, source: 'save',
-    stamp: { ...calibrated('The save\'s own bat slopes, direction and scale: clearly better than the starting slopes at forecasting its forward seasons (ratings stored before a season against that season); the running slopes are the starting values.'), run: `save_calibration_fits ${TOOLS_METHOD} through ${basis}` },
+    // The save's own fit, said as this save's (B-01): never the reference run's line `calibrated()` carries
+    stamp: {
+      status: 'calibrated',
+      basis: 'The save\'s own bat slopes, direction and scale: clearly better than the starting slopes at forecasting its forward seasons (ratings stored before a season against that season); the running slopes are the starting values.',
+      run: `save_calibration_fits ${TOOLS_METHOD} through ${basis}`,
+    },
   };
 }
 

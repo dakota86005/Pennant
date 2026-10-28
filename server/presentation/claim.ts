@@ -20,6 +20,7 @@ import type {
   Basis, BasisLine, BasisSource, Cell, Certainty, Claim, DeptId, Lean, Place, Row, ServedValue, Target, Tone, Unit,
 } from '../contract/presentation.js';
 import type { Integer } from '../contract/primitives.js';
+import type { CalibrationStamp } from '../calibration.js';
 
 declare const builtBasis: unique symbol;
 
@@ -39,6 +40,36 @@ export const CERTAINTY_WORDS: Readonly<Record<Certainty, string>> = {
   policy: 'A line chosen and stated',
   unknown: 'Not known',
 };
+
+/**
+ * A calibration or policy stamp in the GM's words (B-01): the one way a page says how a number is called.
+ *
+ * A stamp (`CalibrationStamp`, calibration.ts) keeps two things apart. Its `basis` and `run` are the developer's record of
+ * where the number came from: the method, the file, the command, the decision's id, the save it was measured on. What the
+ * GM reads under "How it's called" is whether the number is measured on this save, Pennant's starting value, or a line
+ * Pennant states (show the basis, D-053). The developer's record is never served: a stamp's own `says`, where it has one,
+ * is its plain line, and every other stamp is said by its status.
+ */
+export const STAMP_WORDS = {
+  /** A number fitted on this save's own history (D-053). */
+  measuredHere: "Measured on this save's own seasons",
+  /** The fallback a save uses until its own measurement holds up. */
+  starting: "Pennant's starting value, used until this save's own measurement holds up",
+  /** A line chosen and stated, never fitted. */
+  stated: "A line Pennant states; it isn't measured",
+} as const;
+
+/** What `stampWords` reads: a stamp's status, and its plain line where it has one (never its `basis` or `run`). */
+export type StampLike = Pick<CalibrationStamp, 'status'> & Partial<Pick<CalibrationStamp, 'says'>>;
+
+/** A stamp in the GM's words: its own plain line, else what its status says it rests on. */
+export function stampWords(stamp: StampLike): string {
+  const own = stamp.says?.trim();
+  if (own) return own;
+  if (stamp.status === 'calibrated') return STAMP_WORDS.measuredHere;
+  if (stamp.status === 'provisional') return STAMP_WORDS.starting;
+  return STAMP_WORDS.stated;
+}
 
 /** The HIG's help tag: one line, at most about 75 characters (SWIFTUI_REBUILD.md section 3.3). */
 export const HINT_MAX = 75;

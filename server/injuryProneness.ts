@@ -19,7 +19,7 @@ import { fromExport, unknownBecause, type Sourced } from './provenance.js';
 
 export const PRONENESS_COLUMNS = ['prone_overall', 'prone_leg', 'prone_back', 'prone_arm'] as const;
 
-export const PRONENESS_ATTESTATION = 'Injury proneness is shown in game (owner, 2026-09-22): a known fact, basis owner_attested';
+export const PRONENESS_ATTESTATION = 'Injury proneness is shown in game: a known fact, basis owner_attested';
 
 export interface InjuryProneness {
   overall: Sourced<number>;

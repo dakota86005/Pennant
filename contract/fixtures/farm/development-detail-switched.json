@@ -17,7 +17,7 @@
   "teamId": 103,
   "name": "Player 9203",
   "line": {
-    "display": "21 · SS · Level 3 · Club 3"
+    "display": "21 · SS · AA · Club 3"
   },
   "pace": {
     "display": "Typical · 50th",
@@ -138,7 +138,7 @@
           "display": "May 15, 2040"
         },
         "level": {
-          "display": "Level 3"
+          "display": "AA"
         },
         "current": {
           "display": "46"
@@ -161,7 +161,7 @@
           "display": "July 1, 2040"
         },
         "level": {
-          "display": "Level 3"
+          "display": "AA"
         },
         "current": {
           "display": "48"

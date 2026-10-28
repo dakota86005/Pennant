@@ -126,7 +126,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.budget"
+            "value": "The club's finances, as exported"
           }
         ],
         "source": {
@@ -159,7 +159,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.player_payroll"
+            "value": "The club's finances, as exported"
           }
         ],
         "source": {
@@ -221,7 +221,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.player_payroll_next_season — OOTP's own estimate of next season's payroll."
+            "value": "The club's finances, as exported — OOTP's own estimate of next season's payroll."
           }
         ],
         "source": {
@@ -284,7 +284,7 @@
           },
           {
             "label": "Source",
-            "value": "team_financials.cash_trades_available — The cash a club can move in trades; `cash` is exported as zero for every club and is never read (R-7)."
+            "value": "The club's finances, as exported — The cash a club can move in trades; the club's cash on hand is exported as zero for every club and is never read."
           }
         ],
         "source": {
@@ -586,7 +586,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -888,7 +888,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -1190,7 +1190,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -1492,7 +1492,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -1794,7 +1794,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -2095,7 +2095,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -2397,7 +2397,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -2699,7 +2699,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -3000,7 +3000,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -3044,7 +3044,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -3304,7 +3304,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -3348,7 +3348,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -3608,7 +3608,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -3652,7 +3652,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2042: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2042: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -3911,7 +3911,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -3955,7 +3955,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -4215,7 +4215,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -4259,7 +4259,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -4519,7 +4519,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -4563,7 +4563,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2042: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2042: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -4821,7 +4821,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -4865,7 +4865,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -5125,7 +5125,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -5169,7 +5169,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -5429,7 +5429,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -5473,7 +5473,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -5733,7 +5733,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -5777,7 +5777,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -6037,7 +6037,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -6081,7 +6081,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -6341,7 +6341,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -6385,7 +6385,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -6645,7 +6645,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -6689,7 +6689,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2042: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2042: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -6948,7 +6948,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -6992,7 +6992,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2041: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -7252,7 +7252,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -7296,7 +7296,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -7554,7 +7554,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -7598,7 +7598,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -7856,7 +7856,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -7900,7 +7900,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",
@@ -8158,7 +8158,7 @@
               "lean": null,
               "certainty": "policy",
               "called": "A line chosen and stated",
-              "stamp": "The owner's value policy: seasons further out count 5% a season less, the price of a win held flat"
+              "stamp": "Pennant's value policy: a season further out counts 5% less, and the price of a win is held flat"
             },
             "links": []
           },
@@ -8202,7 +8202,7 @@
                 },
                 {
                   "label": "Contract",
-                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none (R-6).)."
+                  "value": "2043: Whether this season is a club option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a player option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.); Whether this season is a vesting option is not exported (Zero on every contract in this export: the column is not populated, and that is not the same as none.)."
                 },
                 {
                   "label": "Value",

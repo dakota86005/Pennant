@@ -184,7 +184,7 @@ function unknownContract(reason: UnknownKind, note: string): ContractRules {
   };
 }
 
-const MEANING_NOT_ESTABLISHED = 'Shown as exported: what this value means is not established (PLAYER_VALUE_RESEARCH.md R-2, R-11).';
+const MEANING_NOT_ESTABLISHED = 'Shown as exported: what this value means is not established.';
 
 function unknownFinance(reason: UnknownKind, note: string): FinancialRules {
   const u = <T>(column: string): Sourced<T> => unknownBecause<T>(reason, `leagues.${column}`, note);
@@ -287,7 +287,7 @@ function regimeRulesFrom(
   }
   const regimeId = numberOrNull(regime.row.league_id);
   const note = regime.viaParent
-    ? `Read from league ${regimeId}, the parent league whose contract rules a minor leaguer lives under; a minor league's own row exports zeros (R-2).`
+    ? `Read from the parent league, whose contract rules a minor leaguer lives under; a minor league's own row exports zeros.`
     : undefined;
   const read = reader(regime.row, present, note);
   const raw = (column: Column): Uninterpreted<number> => uninterpreted(read(column, asIs), MEANING_NOT_ESTABLISHED);
@@ -299,7 +299,7 @@ function regimeRulesFrom(
   const minimumSalary = read('rules_minimum_salary', nonNegative);
   const financialCoefficient = read('financial_coefficient', positive);
   const salaryCap = read('rules_salary_cap', nonNegative);
-  if (salaryCap.value === 0) salaryCap.note = [salaryCap.note, 'A cap of 0 is read as no salary cap (R-2).'].filter(Boolean).join(' ');
+  if (salaryCap.value === 0) salaryCap.note = [salaryCap.note, 'A cap of 0 is read as no salary cap.'].filter(Boolean).join(' ');
   return {
     contract: {
       regimeLeagueId,
@@ -308,7 +308,7 @@ function regimeRulesFrom(
       arbitrationYears: read('rules_salary_arbitration_minimum_years', nonNegative),
       minorLeagueFreeAgencyYears: read('rules_minor_league_fa_minimum_years', nonNegative),
       minimumSalary,
-      serviceDaysPerYear: read('rules_min_service_days', positive, 'rules_min_service_days is not a positive number of days, so a service year has no length.'),
+      serviceDaysPerYear: read('rules_min_service_days', positive, 'The league\'s service-year length is not a positive number of days, so a service year has no length.'),
       financialCoefficient,
       season: seasonOf(row, present, read('season_year', positive)),
     },
