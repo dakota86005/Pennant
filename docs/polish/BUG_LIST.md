@@ -977,7 +977,9 @@ Each batch is one PR and fixes one root cause or one module family everywhere it
 - Size M · depends on: batch 13 · owner decision first: no
 - Items: B-10 Walls of "on the 0–100 scale"; B-30 Department names and method terms speak on screen; B-31 The same caveat is repeated row after row; B-51 Titles, labels and column heads are inconsistent; B-52 "the Club 1 N" and "him" for everyone; B-53 Some words and numbers are written in the app instead of served; B-106 Some labels overstate or misplace what is known
 
-## Owner decisions (pending)
+## Owner decisions
+
+**Decided 2026-10-28: the owner accepted every recommendation below ("all as recommended").** Each batch follows them as written.
 
 Each is one question with a recommendation. The batch that waits on it is in brackets.
 
