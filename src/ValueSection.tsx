@@ -152,13 +152,15 @@ const possessive = (club: string | null): string => (club ? `the ${club}${club.e
 
 const TIP_WIN_VALUE =
   "What one more win would be worth to this club right now, beside what a win costs on the market. It depends on the " +
-  "club's chances in the race, and Pennant has no model of those it relies on yet, so it isn't given. It's never part " +
+  "club's chances in the race, and Pennant doesn't have a reliable read on that yet, so it isn't given. It's never part " +
   'of any value figure.';
 
 /** This club's value of a win now, as context: not established since the odds left Player Value (D-060), never part of any value. */
-export function ClubWinValueLine({ value }: { value: ClubWinValue }) {
+export function ClubWinValueLine({ value, everyClub = false }: { value: ClubWinValue; everyClub?: boolean }) {
   const club = possessive(value.club);
-  return <div className="muted value-win"><Tip label={`${club.charAt(0).toUpperCase()}${club.slice(1)} value of a win now isn't known`} tip={TIP_WIN_VALUE} focusable />: {value.reason}</div>;
+  // A trade names several clubs, and none of their values of a win is known: one line says so for all of them
+  const label = everyClub ? "Each club's value of a win now isn't known" : `${club.charAt(0).toUpperCase()}${club.slice(1)} value of a win now isn't known`;
+  return <div className="muted value-win"><Tip label={label} tip={TIP_WIN_VALUE} focusable />: {value.reason}</div>;
 }
 
 function OurViewBlock({ ours: r, unit }: { ours: OurViewResponse; unit: 'dollars' | 'wins' }) {

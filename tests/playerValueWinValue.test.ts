@@ -62,7 +62,7 @@ describe('the club\'s value of a win is not established: the odds left Player Va
     const reads = [tight, far, holder].map((id) => clubWinValue(id));
     for (const v of reads) {
       expect(v.status).toBe('unknown');
-      expect(v.reason).toMatch(/no model/i);
+      expect(v.reason).toMatch(/doesn't have a reliable read/i);
       expect(v.text).toMatch(/isn't established/);
     }
     // Only the club's own name differs: nothing about its record, runs or place reaches it

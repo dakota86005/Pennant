@@ -66,7 +66,8 @@ The pure core (`mlbRoster`, `mlbNeeds`, `mlbResponses`) opens no table; it takes
 - A hitter is bat plus REVEALED glove at his position; an unseen grade is never read or assumed (D-033).
 - Concern is against the role's standard, shown; peers are major leaguers only (D-039, D-040).
 - Ratings only through `scoutedEvidence.ts`; approved families are D-017 and D-035, nothing else.
-- Philosophy and season: urgency, bar, tie-breaks, order, wording, after validity, each lean shown (D-036).
+- Philosophy, never the season: urgency, the bar for "act", tie-breaks and wording come from the window, after
+  validity, each lean shown; needs are ordered by the neutral severity. No odds or posture (D-036, D-060 amended).
 - Constants declared once, stamped calibrated / provisional / policy; policy is never fitted (D-037, D-041).
 - Bench is functions and cover quality; the pen is read whole; views own one question (D-042, D-043).
 - The Lineup page (`lineup.ts`, phase 6d) reads bats and gloves only through `scoutedEvidence.ts`: the bat is the tools

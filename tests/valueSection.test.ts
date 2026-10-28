@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { ClubWinValue, OurView, OurViewResponse, PlayerSurplus, SurplusSeason } from '../src/api';
-import { ValueView } from '../src/ValueSection';
+import { ClubWinValueLine, ValueView } from '../src/ValueSection';
 import { bannedIn } from './bannedJargon';
 
 /*
@@ -68,7 +68,7 @@ const lens = (over: Partial<OurView> = {}): OurView => ({
 
 const winValue = (over: Partial<ClubWinValue> = {}): ClubWinValue => ({
   teamId: 1, club: 'Arizona Diamondbacks', status: 'unknown',
-  reason: 'What one more win is worth to the club depends on its chances in the race, and Pennant has no model of those it relies on yet.',
+  reason: 'What one more win is worth to the club depends on its chances in the race, and Pennant doesn\'t have a reliable read on that yet.',
   text: 'The Arizona Diamondbacks\' value of a win now isn\'t established.', basis: [], ...over,
 });
 
@@ -190,6 +190,12 @@ describe('the card\'s Value section', () => {
     expect(text).toMatch(/Arizona Diamondbacks' value of a win now isn't known\s*:\s*What one more win is worth/);
     expect(out).toMatch(/tip-pop">[^<]*never part of any value figure/i);
     expect(out).not.toMatch(/playoff odds|postseason|\bodds\b/i);
+  });
+
+  it('a trade names several clubs and says once that none of their values of a win is known (batch 6 review L4)', () => {
+    const one = visible(renderToStaticMarkup(createElement(ClubWinValueLine, { value: winValue(), everyClub: true })));
+    expect(one.trim()).toMatch(/^Each club's value of a win now isn't known\s*:\s*What one more win is worth/);
+    expect(one).not.toMatch(/Arizona/);
   });
 
   it('is no verdict', () => {

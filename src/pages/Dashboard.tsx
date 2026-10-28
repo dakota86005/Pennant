@@ -18,18 +18,6 @@ interface Playoffs {
   summary: string;
 }
 
-/** Buy, hold or sell — see server/posture.ts for how it is worked out. */
-interface DeadlineRead {
-  posture: 'buy' | 'lean-buy' | 'hold' | 'lean-sell' | 'sell';
-  odds: number;
-  headline: string;
-  reasons: string[];
-  gamesLeft: number;
-  runDiff: number;
-  daysToDeadline: number | null;
-  deadlinePassed: boolean;
-}
-
 interface DashboardData {
   streaks?: Array<{
     player_id: number; name: string; positionName: string; games: number; kind: string;
@@ -40,7 +28,6 @@ interface DashboardData {
   standings: Array<{ team_id: number; team: string; w: number; l: number; gb: number; streak: number }>;
   /** Absent on a save imported before this existed. */
   playoffs?: Playoffs | null;
-  deadline?: DeadlineRead | null;
   recent: Array<{ date: string; opponent: string; isHome: boolean; score: string; won: boolean; innings: number }>;
   upcoming: Array<{
     date: string; isHome: boolean; opponent: string;
@@ -92,19 +79,6 @@ export function Dashboard({ orgId, onNavigate }: { orgId: number; onNavigate: (p
 
   return (
     <div className="dash">
-      {/* What the season says to do about it, above the things to do */}
-      {data.deadline && (
-        <section className={`posture posture-${data.deadline.posture}`}>
-          <div className="posture-head">
-            <span className="posture-verdict">{data.deadline.posture.replace('-', ' ')}</span>
-            <span className="posture-odds">{Math.round(data.deadline.odds * 100)}%</span>
-            <span className="muted">to reach the postseason</span>
-          </div>
-          <ul className="posture-why">
-            {data.deadline.reasons.map((r, i) => <li key={i}>{r}</li>)}
-          </ul>
-        </section>
-      )}
       {/* Each chip is a door to the workspace that owns the question, not a
           verdict: the two operations modules first, then the rest of the desk */}
       <p className="muted dash-caption">Where the organization wants your attention. Each opens the workspace that owns it.</p>

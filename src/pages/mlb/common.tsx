@@ -171,7 +171,6 @@ export function ContextStrip({ ctx }: { ctx: Context }) {
   return (
     <section className={`mlb-context ${ctx.urgency}`}>
       <div><b>How your club is read:</b> <Chip cls={ctx.urgency === 'high' ? 'ineligible' : ctx.urgency === 'low' ? '' : 'indeterminate'}>{URGENCY_TEXT[ctx.urgency]}</Chip> <span>{ctx.headline}</span></div>
-      {ctx.conflict && <div className="mlb-conflict">⚑ {ctx.conflict}</div>}
       <details>
         <summary className="muted">What this rests on, and what it leans on</summary>
         <ul className="mlb-why">{ctx.lines.map((l) => <li key={l}>{l}</li>)}</ul>

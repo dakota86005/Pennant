@@ -8,8 +8,9 @@ export type Status = 'eligible' | 'ineligible' | 'indeterminate';
 export interface Shade { dimension: string; value: number | null; effect: string; text: string }
 
 export interface Context {
-  window: { label: string; value: number | null }; season: { read: string; odds: number | null; headline: string | null };
-  urgency: 'high' | 'normal' | 'low'; headline: string; lines: string[]; conflict: string | null; used: string[]; notUsed: string[];
+  /** The club's stated competitive window: the one input about its direction (D-036, amended). No season, no odds (D-060). */
+  window: { label: string; value: number | null };
+  urgency: 'high' | 'normal' | 'low'; headline: string; lines: string[]; used: string[]; notUsed: string[];
 }
 
 export interface ExplainedPart { label: string; value: number | null; weight: number | null; basis: string }

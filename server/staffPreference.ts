@@ -101,7 +101,7 @@ export function readContext(ctx: OrganizationContext | null): ContextRead | null
     : urgency === 'low'
       ? 'Your competitive window leaves room to be patient.'
       : value === null
-        ? 'No competitive window is set, so the advice is not leaned either way.'
+        ? 'No competitive window is set, so nothing leans on this advice.'
         : 'Your competitive window does not press either way.';
   return { window: { label, value }, urgency, headline, lines, used: DIMENSIONS_USED, notUsed: DIMENSIONS_NOT_USED, calibration: STAFF_PREFERENCE_CALIBRATION };
 }

@@ -24,7 +24,7 @@ export interface ClubWinValue {
 
 /** Why it is not established, in one sentence: what a win is worth to the club depends on a model Pennant doesn't have. */
 export const WIN_VALUE_NOT_ESTABLISHED =
-  "What one more win is worth to the club depends on its chances in the race, and Pennant has no model of those it relies on yet.";
+  "What one more win is worth to the club depends on its chances in the race, and Pennant doesn't have a reliable read on that yet.";
 
 const BASIS = [
   'The league\'s market price of a win (what a win costs to buy) is known where the save measures it; this is the other price: what one more win is worth to this club now.',
