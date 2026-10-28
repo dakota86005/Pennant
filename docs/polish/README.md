@@ -6,7 +6,8 @@ The owner's instruction is that **every item here gets addressed**.
 
 | File | What it is |
 |---|---|
-| [BUG_LIST.md](BUG_LIST.md) | The ranked bug list. Round 1 is a screen-and-payload hunt of every department (205 findings, each checked against the code, merged by root cause into B-01 to B-56). The deep code hunt adds its items from B-57. It also lists the refuted findings and the fix batches. |
+| [BUG_LIST.md](BUG_LIST.md) | The ranked bug list. Round 1 hunted screens and payloads in every department: 205 findings, merged into B-01 to B-56. Round 2 was eleven deep code reviews: 240 findings, merged into B-57 to B-106. It also lists refuted findings, the 25 fix batches and the owner decisions they wait on. |
+| [reviews/](reviews/) | The eleven round-2 code reviews in full, plus every finding's verdict. |
 | [bugs.json](bugs.json) | The same items and batches, machine-readable, each with a `status`. |
 | [VOICE.md](VOICE.md) | How Pennant talks: the owner's anchor sample and the rules. Approved 2026-10-14 (D-077). |
 | [SAMPLES.md](SAMPLES.md) | Six of the owner's screens rewritten in that voice, with the facts each rewrite needs from the deterministic code. |
@@ -32,6 +33,12 @@ The owner's instruction is that **every item here gets addressed**.
 
 ## The order
 
-1. Batches 1 to 9 (behaviour, data and layout), from [BUG_LIST.md](BUG_LIST.md) "Proposed fix batches". Each batch fixes one cause in every department.
-2. The phrasebook (D-077) and batch 10 (words), department by department, once the owner approves the voice.
-3. The visual finish, then N15 acceptance.
+The 25 batches in [BUG_LIST.md](BUG_LIST.md) "Fix batches" run in order:
+1. Data loss, save-switch and identity, and doctrine breaches.
+2. Correctness.
+3. Robustness and performance.
+4. Mac behaviour and accessibility.
+5. Retiring and modernising old code.
+6. The words, last (the phrasebook, D-077).
+
+A batch that waits on an owner decision starts only after the owner has answered it.
