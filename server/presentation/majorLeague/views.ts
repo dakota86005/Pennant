@@ -131,8 +131,8 @@ function glances(v: OverviewContext): MlbGlance[] {
 function philosophy(v: OverviewContext) {
   const c = v.overview.context;
   if (!c) return null;
-  // The season's line and the conflict carry the postseason odds: never served (D-060). What the window says stays in the basis.
-  const read = c.lines.filter((l) => !/^The season:/.test(l));
+  // What the window says stays in the basis; the season's odds never reach the read (D-060, amended 2026-10-28)
+  const read = c.lines;
   return claim({
     text: 'Your philosophy shades the order and wording of this advice',
     hint: 'Never a scouting read, a right or a development finding',

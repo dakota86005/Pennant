@@ -47,7 +47,7 @@ export const VERDICT_CLASS: Record<string, string> = { strengthens: 'eligible', 
 export const QUALITY_TEXT: Record<string, string> = { regular_quality: 'regular quality', credible: 'credible backup', emergency: 'emergency only', unknown: 'quality not established' };
 export const QUALITY_CLASS: Record<string, string> = { regular_quality: 'eligible', credible: 'eligible', emergency: 'ineligible', unknown: 'indeterminate' };
 export const DIMENSION_LABEL: Record<string, string> = {
-  competitiveWindow: 'Window and season', riskTolerance: 'Risk tolerance', ageCurveSensitivity: 'Age-curve sensitivity', upsidePreference: 'Upside preference',
+  competitiveWindow: 'Competitive window', riskTolerance: 'Risk tolerance', ageCurveSensitivity: 'Age-curve sensitivity', upsidePreference: 'Upside preference',
   defenseEmphasis: 'Defense emphasis', rosterDepth: 'Roster depth', pitchingDepth: 'Pitching depth', versatility: 'Versatility', usage: 'How he is used',
 };
 export const POSITION_ABBR: Record<number, string> = { 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF', 10: 'DH' };
@@ -175,7 +175,7 @@ export function ContextStrip({ ctx }: { ctx: Context }) {
       <details>
         <summary className="muted">What this rests on, and what it leans on</summary>
         <ul className="mlb-why">{ctx.lines.map((l) => <li key={l}>{l}</li>)}</ul>
-        <p className="muted">Your philosophy and the season shade the <b>order and wording</b> of advice: how urgently a flag is raised, which of several equivalent replacements leads, how high the bar for "recommend" is. They never change a scouting read, a right or a development finding, and every lean is listed with the recommendation.</p>
+        <p className="muted">Your philosophy shades the <b>order and wording</b> of advice: how urgently a flag is raised, which of several equivalent replacements leads, how high the bar for "recommend" is. They never change a scouting read, a right or a development finding, and every lean is listed with the recommendation.</p>
         <p className="muted">Used: {ctx.used.join(', ')}. Not used yet: {ctx.notUsed.join(', ')} (contract and prospect-capital data are not part of the review).</p>
       </details>
     </section>

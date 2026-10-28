@@ -104,7 +104,7 @@ describe('finding him a partner', () => {
   it('a bench partner on a problem the ratings support is recommended; a club that is not pressed is told it is worth pursuing', () => {
     expect(p.report?.recommendation).toMatchObject({ stance: 'act' });
     expect(p.report?.recommendation?.because.join(' ')).toMatch(/needs no transaction/);
-    const patient = packetFor({ dimensions: { competitiveWindow: 10 }, posture: { posture: 'sell', odds: 0.03, gamesLeft: 100, deadlinePassed: false, headline: 'Sell.' } });
+    const patient = packetFor({ dimensions: { competitiveWindow: 10 } });
     expect(patient.report?.recommendation?.stance).toBe('explore');
     expect(patient.report?.recommendation?.shading?.length).toBeGreaterThan(0);
   });

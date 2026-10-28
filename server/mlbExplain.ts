@@ -3,7 +3,7 @@
  *
  * A finding is only useful if the GM can ask it the questions a scouting director would be asked, and get answers that do not have to be
  * reconstructed from prose: why was this flagged, what evidence moved it, what would a club with no philosophy have been told, what did
- * this club's window and season change, what did they NOT change, and what would change the conclusion.
+ * this club's competitive window change, what did it NOT change, and what would change the conclusion.
  *
  * This composes what the review already decided (`roleReview.ts`) and what the context shaded (`staffPreference.ts`); it decides nothing.
  * Pure: a review and a context in, an explanation out.
@@ -44,7 +44,7 @@ export interface FlagExplanation {
   };
   /** What the estimate is made of. */
   parts: ExplainedPart[];
-  /** How urgently a club with no philosophy and no season would have been told to look. */
+  /** How urgently a club with no stated philosophy would have been told to look. */
   neutralSeverity: 'elevated' | 'watch';
   /** What this club's context did to the urgency, and what it did not touch. */
   context: { changed: ShadeReason[]; notChanged: readonly string[] };

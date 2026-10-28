@@ -224,8 +224,9 @@ describe('the club\'s season shades nothing on the views\' face', () => {
     department: servedDepartments(null).find((d) => d.id === 'majorLeague')!,
     office: departmentOffice('majorLeague'),
   };
-  const at = (odds: number | null) => {
-    const context = readContext({ dimensions: { competitiveWindow: 80 }, posture: odds === null ? null : { posture: 'buy', odds, gamesLeft: 80, deadlinePassed: false, headline: `${Math.round(odds * 100)}% to reach the postseason: buyers` } });
+  // The one lean left is the philosophy's window (the season's odds lean on nothing, D-060, amended 2026-10-28)
+  const at = (window: number | null) => {
+    const context = readContext({ dimensions: window === null ? {} : { competitiveWindow: window } });
     const needs = reviewNeeds(club, groups, context);
     return majorLeagueViews({
       ctx,
@@ -238,9 +239,9 @@ describe('the club\'s season shades nothing on the views\' face', () => {
     });
   };
 
-  it('keeps the badge at the department\'s plain reading at any odds, and the odds out of every word', () => {
+  it('keeps the badge at the department\'s plain reading under any lean, and the odds out of every word', () => {
     const plain = at(null);
-    const high = at(0.75);
+    const high = at(80);
     const badges = (v: typeof plain) => v.overview.inbox.flatMap((g) => g.needs.map((n) => [n.needId, n.badge.display, n.badge.tone]));
     expect(badges(high)).toEqual(badges(plain));
     for (const v of [plain, high]) {

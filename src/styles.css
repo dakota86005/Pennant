@@ -5156,7 +5156,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .mlb-recommendation p { margin: 4px 0 8px; font-size: 14.5px; line-height: 1.5; max-width: 80ch; }
 
 
-/* organization context: how the window and the season lean on the advice */
+/* organization context: how the competitive window leans on the advice */
 .mlb-context { border: 1px solid var(--border, #d8d8d8); border-left: 4px solid var(--accent, #4a7); border-radius: 6px; padding: 10px 14px; margin: 12px 0; background: var(--surface, transparent); }
 .mlb-context.high { border-left-color: #c0392b; }
 .mlb-context.low { border-left-color: #7f8c8d; }

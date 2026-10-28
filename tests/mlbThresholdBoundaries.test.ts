@@ -8,7 +8,7 @@ import { BULLPEN_PRIOR } from '../server/bullpenRoles';
 import { CONCERN, isFirmRead, reviewGroup, type LensEvidence, type ReviewSubject } from '../server/roleReview';
 import { reliability, RESULTS_PRIOR } from '../server/resultsMetrics';
 import { hitterStandard, relieverStandard, starterStandard } from '../server/roleStandards';
-import { readContext, SEASON, WINDOW } from '../server/staffPreference';
+import { readContext, WINDOW } from '../server/staffPreference';
 import { shiftOptions, SHIFT_MIN_EDGE, SHIFT_MIN_GAIN } from '../server/lineupShifts';
 import type { BattingLine } from '../server/resultsMetrics';
 import { healthy26, viewOf } from './mlbFixtures';
@@ -151,19 +151,20 @@ describe('roster floors and the window for an injured player\'s return', () => {
   });
 });
 
-describe('the club\'s context: the window and the season cut-offs', () => {
-  const read = (window: number | undefined, odds: number | null) => readContext({ dimensions: window === undefined ? {} : { competitiveWindow: window }, posture: odds === null ? null : { posture: 'hold', odds, gamesLeft: 100, deadlinePassed: false, headline: '' } });
+describe('the club\'s context: the window cut-offs (the season\'s odds lean on nothing, D-060)', () => {
+  const read = (window: number | undefined) => readContext({ dimensions: window === undefined ? {} : { competitiveWindow: window } });
   it('the window: contending at the line, building at the line, balanced between', () => {
-    expect(read(WINDOW.contending, null)?.window.label).toBe('contending');
-    expect(read(WINDOW.contending - 1, null)?.window.label).toBe('balanced');
-    expect(read(WINDOW.building, null)?.window.label).toBe('building');
-    expect(read(WINDOW.building + 1, null)?.window.label).toBe('balanced');
+    expect(read(WINDOW.contending)?.window.label).toBe('contending');
+    expect(read(WINDOW.contending - 1)?.window.label).toBe('balanced');
+    expect(read(WINDOW.building)?.window.label).toBe('building');
+    expect(read(WINDOW.building + 1)?.window.label).toBe('balanced');
   });
-  it('the season: in it at the line, out of it at the line', () => {
-    expect(read(50, SEASON.inIt)?.season.read).toBe('in_it');
-    expect(read(50, SEASON.inIt - 0.01)?.season.read).toBe('on_the_fence');
-    expect(read(50, SEASON.outOfIt)?.season.read).toBe('out_of_it');
-    expect(read(50, SEASON.outOfIt + 0.01)?.season.read).toBe('on_the_fence');
+  it('the urgency: pressed at the contending line, patient at the building line, neutral between and with no window', () => {
+    expect(read(WINDOW.contending)?.urgency).toBe('high');
+    expect(read(WINDOW.contending - 1)?.urgency).toBe('normal');
+    expect(read(WINDOW.building)?.urgency).toBe('low');
+    expect(read(WINDOW.building + 1)?.urgency).toBe('normal');
+    expect(read(undefined)?.urgency).toBe('normal');
   });
 });
 

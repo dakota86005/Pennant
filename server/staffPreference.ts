@@ -1,5 +1,5 @@
 /**
- * How the organization's philosophy and where the season stands shade the staff's advice.
+ * How the organization's philosophy shades the staff's advice.
  *
  * A scouting department does not give the same advice to every club. It tells a contender that a
  * modest upgrade in the rotation is worth doing now, and tells a club that is building that the young
@@ -17,20 +17,16 @@
  *   - It never hides. Every adjustment is a named `ShadeReason` (which dimension, what value, what it
  *     did), so the GM can see exactly how their philosophy leaned on a recommendation.
  *
- * Two inputs, kept apart and both shown:
- *
- *   window    the organization's stated competitive window (the philosophy dimension): identity
- *   season    where the club actually stands (the deadline read: chance of the postseason): the present
- *
- * They can disagree (a win-now philosophy on a club 10 games out), and when they do the read says so
- * and does not pretend to resolve it.
+ * Its one input about the club's direction is the organization's stated competitive window (the philosophy
+ * dimension). The season's postseason odds once leaned here too; the owner retired them from the decision path
+ * (2026-10-28, D-036 and D-060 amended): the odds never move the staff's advice. With no window set nothing leans, and
+ * the advice is the neutral advice any club would hear.
  *
  * Every threshold is a provisional policy parameter, declared here and nowhere else.
  */
 
 import { policy, type CalibrationStamp } from './calibration.js';
 import type { PhilosophyDimensionId } from './philosophy.js';
-import type { Posture } from './posture.js';
 
 export const STAFF_PREFERENCE_CALIBRATION: CalibrationStamp = policy(
   'The window cut-offs, the lean thresholds, the age gap, the tie band and the upside gap are policy parameters: they say when a philosophy leans on a recommendation, not how baseball works.'
@@ -50,8 +46,6 @@ export const UPSIDE_GAP = 15;
 export const SKILL_GAP = 15;
 /** PROVISIONAL (policy). At or below this age a holder is still developing: a weak line is a development question before it is a replacement one. */
 export const DEVELOPING_AGE = 25;
-/** PROVISIONAL (policy). Chance of the postseason at or above which the season is "in it", and at or below which it is "out of it". */
-export const SEASON = { inIt: 0.55, outOfIt: 0.25 } as const;
 
 /** The philosophy dimensions this layer reads. Anything else is named as not used, so the GM knows what does not lean on a recommendation. */
 export const DIMENSIONS_USED: readonly PhilosophyDimensionId[] = [
@@ -61,18 +55,17 @@ export const DIMENSIONS_NOT_USED: readonly PhilosophyDimensionId[] = [
   'payrollFlexibility', 'costEfficiency', 'teamControl', 'prospectPreservation', 'promotionAggressiveness', 'positionalScarcity', 'starConcentration',
 ];
 
+/** The organization's philosophy, as the staff reads it. Nothing about the season's odds: they never lean on advice (D-060). */
 export interface OrganizationContext {
   dimensions: Partial<Record<PhilosophyDimensionId, number>>;
-  posture: { posture: Posture; odds: number; gamesLeft: number; deadlinePassed: boolean; headline: string } | null;
 }
 
 export type WindowLabel = 'contending' | 'balanced' | 'building';
-export type SeasonRead = 'in_it' | 'on_the_fence' | 'out_of_it' | 'unknown';
 export type Urgency = 'high' | 'normal' | 'low';
 
 export interface ShadeReason {
   dimension: string;
-  /** The value of that dimension (0-100), or null for the season read. */
+  /** The value of that dimension (0-100), or null where the lean is not a philosophy value (a role's usage). */
   value: number | null;
   effect: 'raises' | 'lowers' | 'favors' | 'against' | 'notes';
   text: string;
@@ -80,12 +73,9 @@ export interface ShadeReason {
 
 export interface ContextRead {
   window: { label: WindowLabel; value: number | null };
-  season: { read: SeasonRead; odds: number | null; headline: string | null };
   urgency: Urgency;
   headline: string;
   lines: string[];
-  /** Set when the stated window and the season point opposite ways. */
-  conflict: string | null;
   used: readonly PhilosophyDimensionId[];
   notUsed: readonly PhilosophyDimensionId[];
   calibration: typeof STAFF_PREFERENCE_CALIBRATION;
@@ -93,34 +83,27 @@ export interface ContextRead {
 
 const WINDOW_WORD: Record<WindowLabel, string> = { contending: 'win-now', balanced: 'balanced', building: 'building for the future' };
 
+/**
+ * How the club is read: from its stated competitive window alone (D-036, amended 2026-10-28). A contender is pressed, a
+ * club building is patient, and a balanced club or one with no window set is neither: the neutral bar.
+ */
 export function readContext(ctx: OrganizationContext | null): ContextRead | null {
   if (!ctx) return null;
   const value = ctx.dimensions.competitiveWindow ?? null;
   const label: WindowLabel = value === null ? 'balanced' : value >= WINDOW.contending ? 'contending' : value <= WINDOW.building ? 'building' : 'balanced';
-  const odds = ctx.posture?.odds ?? null;
-  const season: SeasonRead = odds === null ? 'unknown' : odds >= SEASON.inIt ? 'in_it' : odds <= SEASON.outOfIt ? 'out_of_it' : 'on_the_fence';
-  const lines: string[] = [];
-  lines.push(value === null
+  const lines = [value === null
     ? 'No competitive window is set, so the philosophy does not lean on this advice.'
-    : `Your competitive window is ${value} (${WINDOW_WORD[label]}).`);
-  if (ctx.posture) lines.push(`The season: ${ctx.posture.headline}${ctx.posture.deadlinePassed ? ' (the deadline has passed)' : ''}`);
-  // Urgency is the present (the season) moderated by the identity (the window).
-  let urgency: Urgency = 'normal';
-  if (season === 'in_it' && label !== 'building') urgency = 'high';
-  else if (season === 'on_the_fence' && label === 'contending') urgency = 'high';
-  else if (season === 'out_of_it' && label !== 'contending') urgency = 'low';
-  else if (season === 'unknown' && label === 'contending') urgency = 'high';
-  else if (season === 'unknown' && label === 'building') urgency = 'low';
-  else if (season === 'in_it' && label === 'building') urgency = 'normal';
-  let conflict: string | null = null;
-  if (label === 'contending' && season === 'out_of_it') conflict = `Your philosophy is win-now but the club is ${Math.round((odds ?? 0) * 100)}% to reach the postseason: a change that helps only this season is worth less than usual, and that is your call to make.`;
-  if (label === 'building' && season === 'in_it') conflict = `Your philosophy is building for the future but the club is ${Math.round((odds ?? 0) * 100)}% to reach the postseason: the season may be worth more than the philosophy says, and that is your call to make.`;
+    : `Your competitive window is ${value} (${WINDOW_WORD[label]}).`];
+  // Only a stated window leans: with none set, the advice is the neutral advice
+  const urgency: Urgency = value === null ? 'normal' : label === 'contending' ? 'high' : label === 'building' ? 'low' : 'normal';
   const headline = urgency === 'high'
-    ? 'The window and the season both favor acting now.'
+    ? 'Your competitive window favors acting now.'
     : urgency === 'low'
-      ? 'Neither the window nor the season presses: there is room to be patient.'
-      : 'The window and the season do not press either way.';
-  return { window: { label, value }, season: { read: season, odds, headline: ctx.posture?.headline ?? null }, urgency, headline, lines, conflict, used: DIMENSIONS_USED, notUsed: DIMENSIONS_NOT_USED, calibration: STAFF_PREFERENCE_CALIBRATION };
+      ? 'Your competitive window leaves room to be patient.'
+      : value === null
+        ? 'No competitive window is set, so the advice is not leaned either way.'
+        : 'Your competitive window does not press either way.';
+  return { window: { label, value }, urgency, headline, lines, used: DIMENSIONS_USED, notUsed: DIMENSIONS_NOT_USED, calibration: STAFF_PREFERENCE_CALIBRATION };
 }
 
 /** The equivalence bucket a replacement's gain falls in: within a bucket two replacements are the same kind of improvement, so the philosophy may choose between them. */
@@ -150,7 +133,7 @@ export function flagShading(read: ContextRead | null, facts: FlagFacts): { level
   }
   if (read && read.urgency === 'low' && facts.strength === 'strong' && facts.subjectAge !== null && facts.subjectAge <= DEVELOPING_AGE) {
     level = 'watch';
-    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'lowers', text: `At ${facts.subjectAge} he is still developing and the season does not press: a weak line is a development question before it is a replacement one.` });
+    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'lowers', text: `At ${facts.subjectAge} he is still developing and the club is building: a weak line is a development question before it is a replacement one.` });
   }
   if (facts.stakes === 'high' && facts.strength === 'moderate' && level === 'watch') {
     level = 'elevated';
@@ -250,12 +233,12 @@ export function actBar(ctx: OrganizationContext | null): ActBar {
   const why: ActBar['why'] = { allowModerate: null, patient: null, older: null };
   if (read?.urgency === 'high') {
     allowModerate = true;
-    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'lowers', text: 'The window and the season both favor acting now, so a clear upgrade over a moderate concern is enough to act on.' });
+    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'lowers', text: 'Your competitive window favors acting now, so a clear upgrade over a moderate concern is enough to act on.' });
     why.allowModerate = reasons[reasons.length - 1];
   }
   if (read?.urgency === 'low') {
     patient = true;
-    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'raises', text: 'Neither the window nor the season presses, so only a strong case is pursued now; a moderate one is watched.' });
+    reasons.push({ dimension: 'competitiveWindow', value: read.window.value, effect: 'raises', text: 'Your competitive window leaves room to be patient, so only a strong case is pursued now; a moderate one is watched.' });
     why.patient = reasons[reasons.length - 1];
   }
   if (read?.window.label === 'building' || lean(ctx?.dimensions.ageCurveSensitivity) === 'high') {

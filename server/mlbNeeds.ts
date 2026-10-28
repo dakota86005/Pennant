@@ -109,7 +109,7 @@ export interface MlbNeed {
   /** For a role-holder review: the player under review and the scouting read on him (a flag for attention, never a trigger). */
   subject?: { playerId: number; name: string };
   review?: HolderReview;
-  /** How the organization's philosophy and the season shaded this flag's urgency (D-036); empty when they did not. */
+  /** How the organization's philosophy shaded this flag's urgency (D-036); empty when it did not. */
   shading?: ShadeReason[];
   /** Why the flag exists, what its estimate is made of, what a club with no philosophy would have been told, and what context did and did not change. */
   explanation?: FlagExplanation;
