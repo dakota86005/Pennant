@@ -5,6 +5,7 @@
  * grades are our scouts' (`loadScoutedAbilities`, D-017), with OSA's view filling in said per player (D-067).
  */
 import type { DepthChart } from '../../org.js';
+import { whoseGrades, type WhoseGrades } from '../../ratingMode.js';
 import { cell } from '../claim.js';
 import { column, tableRow } from '../majorLeague/common.js';
 import { ageWords, factClaim, head, hintIf, player, type ClubhouseContext } from './common.js';
@@ -93,7 +94,7 @@ export function depthChartView(v: ClubhouseContext, input: DepthInput): MlbDepth
     });
     return { teamId: t.team_id, title: cell(t.label.trim() || t.name), level: cell(t.levelName === 'ORG' ? 'Not assigned' : t.levelName), positions };
   });
-  return { ...base, clubs, byPosition: byPosition(chart, orgId, input), note, empty: clubs.length ? null : cell('No clubs in this organization.') };
+  return { ...base, clubs, byPosition: byPosition(chart, orgId, input, whoseGrades(v.ctx.build.ratings)), note, empty: clubs.length ? null : cell('No clubs in this organization.') };
 }
 
 const BY_POSITION_COLUMNS = [
@@ -106,7 +107,7 @@ const BY_POSITION_COLUMNS = [
  * down, the unassigned last) and each club's men deepest first, so who is behind a man reads straight down. Sorted by
  * served keys: the level is the club's place in that order, a grade not given is null (unknown, last).
  */
-function byPosition(chart: DepthChart, orgId: number, input: DepthInput): MlbTableSection[] {
+function byPosition(chart: DepthChart, orgId: number, input: DepthInput, whose: WhoseGrades): MlbTableSection[] {
   const order = new Map(chart.teams.map((t, i) => [t.team_id, i]));
   return POSITIONS.map((pos) => {
     const rows = chart.teams.flatMap((t) => {
@@ -123,8 +124,9 @@ function byPosition(chart: DepthChart, orgId: number, input: DepthInput): MlbTab
           depth: cell(String(i + 1), { hint: `His place at ${pos.title.toLowerCase()} on this club` }),
           player: cell(p.name),
           age: age === null ? cell('Not known', { tone: 'unknown' }) : cell(age),
-          now: fillHint(now === null ? cell('Not scouted', { tone: 'unknown', hint: 'The scouts haven\'t graded him' }) : cell(now, { hint: 'Your scouts\' grade of him now' }), fill),
-          ceiling: fillHint(ceiling === null ? cell('Not scouted', { tone: 'unknown', hint: 'The scouts haven\'t graded his ceiling' }) : cell(ceiling, { hint: 'Your scouts\' grade of his ceiling' }), fill),
+          // Whose grades they are, from the evidence's kind (B-34)
+          now: fillHint(now === null ? cell('Not scouted', { tone: 'unknown', hint: 'The scouts haven\'t graded him' }) : cell(now, { hint: `${whose.possessive} grade of him now` }), fill),
+          ceiling: fillHint(ceiling === null ? cell('Not scouted', { tone: 'unknown', hint: 'The scouts haven\'t graded his ceiling' }) : cell(ceiling, { hint: `${whose.possessive} grade of his ceiling` }), fill),
         }, {
           level: order.get(t.team_id) ?? null, club, depth: i + 1, player: p.name, age: age === null ? null : p.age,
           now: now === null ? null : Number(now), ceiling: ceiling === null ? null : Number(ceiling),

@@ -111,7 +111,7 @@
             "id": "rating.contact",
             "title": {
               "display": "Con",
-              "hint": "Your scouts' contact grade"
+              "hint": "The export's contact grade"
             },
             "numeric": true
           },
@@ -119,7 +119,7 @@
             "id": "rating.gap",
             "title": {
               "display": "Gap",
-              "hint": "Your scouts' gap power grade"
+              "hint": "The export's gap power grade"
             },
             "numeric": true
           },
@@ -127,7 +127,7 @@
             "id": "rating.power",
             "title": {
               "display": "Pow",
-              "hint": "Your scouts' power grade"
+              "hint": "The export's power grade"
             },
             "numeric": true
           },
@@ -135,7 +135,7 @@
             "id": "rating.eye",
             "title": {
               "display": "Eye",
-              "hint": "Your scouts' eye grade"
+              "hint": "The export's eye grade"
             },
             "numeric": true
           },
@@ -143,7 +143,7 @@
             "id": "rating.avoidK",
             "title": {
               "display": "AvK",
-              "hint": "Your scouts' avoiding strikeouts grade"
+              "hint": "The export's avoiding strikeouts grade"
             },
             "numeric": true
           },
@@ -151,7 +151,7 @@
             "id": "rating.speed",
             "title": {
               "display": "Spd",
-              "hint": "Your scouts' speed grade"
+              "hint": "The export's speed grade"
             },
             "numeric": true
           },
@@ -4535,7 +4535,7 @@
             "id": "rating.stuff",
             "title": {
               "display": "Stu",
-              "hint": "Your scouts' stuff grade"
+              "hint": "The export's stuff grade"
             },
             "numeric": true
           },
@@ -4543,7 +4543,7 @@
             "id": "rating.movement",
             "title": {
               "display": "Mov",
-              "hint": "Your scouts' movement grade"
+              "hint": "The export's movement grade"
             },
             "numeric": true
           },
@@ -4551,7 +4551,7 @@
             "id": "rating.control",
             "title": {
               "display": "Ctl",
-              "hint": "Your scouts' control grade"
+              "hint": "The export's control grade"
             },
             "numeric": true
           },

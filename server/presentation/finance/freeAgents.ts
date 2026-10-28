@@ -14,7 +14,8 @@ import {
   column, fact, filterChoice, hintIf, officeHead, officeLede, officePlayer, officeRow, officeSource, paneTable,
   type OfficeContext, type OfficeFact, type OfficeFilterGroup, type OfficeRow,
 } from '../officeTable.js';
-import { TIP_SCOUTED } from '../player/words.js';
+import { tipScouted } from '../player/words.js';
+import { whoseGrades, type RatingMode, type WhoseGrades } from '../../ratingMode.js';
 import type { FinanceFreeAgentDetail, FinanceFreeAgentList, FinanceFreeAgentsView } from './types.js';
 import { financeCards, marketMoney, money, perWinLine, rangeText, signedTenths, winsCell } from './words.js';
 
@@ -29,13 +30,13 @@ const TIP_THINNEST =
   "projections. It says where your roster is thin, not who to sign: fit and role are yours to judge.";
 
 /** The column tips the React page's headings carried, in each list's lede. */
-function columnWords(y: string, n: string, price: FreeAgents['price']): BasisLine[] {
+function columnWords(y: string, n: string, price: FreeAgents['price'], whose: WhoseGrades): BasisLine[] {
   const minimum = price?.minimum != null ? ` (${money(price.minimum)})` : '';
   const perWin = price ? ` (about ${money(price.band.central)})` : '';
   return [
     { label: 'Player', value: 'Every name opens his own window.' },
     { label: 'Age', value: 'His age as the export states it.' },
-    { label: 'Scouted', value: TIP_SCOUTED },
+    { label: 'Scouted', value: tipScouted(whose) },
     { label: `${y} wins`, value: `His projected wins above replacement (WAR) for the rest of ${y} (the whole of it before it starts), most likely, with the range it could be. It rests on his major-league record and his scouted tools, and on how much he has played.` },
     { label: `${n} wins`, value: `His projected wins above replacement (WAR) in ${n}, most likely, with the range it could be. A player whose production can't be projected says why and sorts last.` },
     { label: `${n} at the market`, value: `What this league's market pays for a season of his expected play in ${n}: the league minimum${minimum} plus his projected wins × what a win costs here${perWin}. Most likely, with the range it could be. It isn't his asking price or an offer, and it isn't what he's worth to your club: fit, need and budget are yours to weigh. Below the minimum means he is expected to play below a replacement-level player.` },
@@ -54,7 +55,7 @@ const keyOf = (v: number | null, places: number): number | null => (v === null ?
 
 /** A row of the list (its cells, sort keys and filter keys), and its detail, served on its own when he is chosen. */
 function rowOf(
-  ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<string, { name: string; wins: number }>, fillOf: FillOf, n: string,
+  ctx: OfficeContext, p: FreeAgentRow | MightReachRow, thin: Map<string, { name: string; wins: number }>, fillOf: FillOf, n: string, whose: WhoseGrades,
 ): { row: OfficeRow; detail: FinanceFreeAgentDetail } {
   const why = 'why' in p ? p.why : null;
   const fill = fillOf(p.player_id);
@@ -64,7 +65,7 @@ function rowOf(
     ? cell(`${p.scouted.now} → ${p.scouted.ceiling}`, fill ? { hint: fill.hint } : {})
     : p.scouted.now !== null || p.scouted.ceiling !== null
       ? cell(`${p.scouted.now ?? 'Not scouted'} → ${p.scouted.ceiling ?? 'not scouted'}`, { hint: fill ? fill.hint : 'Now → ceiling; a grade not given is left blank' })
-      : cell('Not scouted', { tone: 'unknown', hint: "His tools haven't been graded by your scouts" });
+      : cell('Not scouted', { tone: 'unknown', hint: whose.agent ? `His tools haven't been graded by ${whose.agent}` : 'His tools have no grades in the export' });
   const winsNow = winsCell(p.winsNow, p.winsReason);
   const winsNext = winsCell(p.winsNext, p.winsReason);
   const m = p.market;
@@ -154,10 +155,10 @@ function listOf(
   title: string,
   explain: string,
   players: ReadonlyArray<FreeAgentRow | MightReachRow>,
-  args: { thin: Map<string, { name: string; wins: number }>; fillOf: FillOf; y: string; n: string; empty: string; note: string | null; order: string; price: FreeAgents['price'] },
+  args: { thin: Map<string, { name: string; wins: number }>; fillOf: FillOf; y: string; n: string; empty: string; note: string | null; order: string; price: FreeAgents['price']; whose: WhoseGrades },
   details: Map<number, FinanceFreeAgentDetail>,
 ): FinanceFreeAgentList {
-  const read = players.map((p) => rowOf(ctx, p, args.thin, args.fillOf, args.n));
+  const read = players.map((p) => rowOf(ctx, p, args.thin, args.fillOf, args.n, args.whose));
   for (const r of read) details.set(r.detail.playerId, r.detail);
   const rows = read.map((r) => r.row);
   const filters: OfficeFilterGroup[] = [];
@@ -180,7 +181,7 @@ function listOf(
     ...(id === 'mightReach' ? [column('why', 'Why')] : []),
     column('club', 'Club', false, { hidden: id === 'available' }),
     column('age', 'Age', true),
-    column('scouted', 'Scouted', true, { hint: 'Now → ceiling, your scouts\' grades' }),
+    column('scouted', 'Scouted', true, { hint: `Now → ceiling, ${args.whose.inSentence} grades` }),
     column('winsNow', `${args.y} wins`, true),
     column('winsNext', `${args.n} wins`, true),
     column('market', `${args.n} at the market`, true),
@@ -202,7 +203,7 @@ function listOf(
       text: title,
       tone: 'neutral',
       basis: basis({
-        because: [{ label: 'Who is listed', value: explain }, { label: 'Order', value: args.order }, ...columnWords(args.y, args.n, args.price)],
+        because: [{ label: 'Who is listed', value: explain }, { label: 'Order', value: args.order }, ...columnWords(args.y, args.n, args.price, args.whose)],
         source: officeSource(ctx, 'Player Rights, through Player Value'),
         unknown: args.note ? [args.note] : [],
         wouldChange: [],
@@ -219,13 +220,14 @@ function listOf(
 
 /** Free Agents, and each listed player's detail by id (served when his row is chosen, never with the lists). */
 export function freeAgentsViewAndDetails(
-  ctx: OfficeContext, f: FreeAgents, fillOf: FillOf,
+  ctx: OfficeContext, f: FreeAgents, fillOf: FillOf, ratings: RatingMode | null = null,
 ): { view: FinanceFreeAgentsView; details: Map<number, FinanceFreeAgentDetail> } {
   const y = f.seasonYear !== null ? String(f.seasonYear) : 'this season';
   const n = f.nextSeason !== null ? String(f.nextSeason) : 'next season';
   const thinList = f.needs.positions.filter((p) => p.best !== null).slice(0, 3);
   const thin = new Map(thinList.map((p) => [p.positionName, { name: p.best!.name, wins: p.best!.wins }]));
-  const args = { thin, fillOf, y, n, order: f.order, price: f.price };
+  // Whose grades the Scouted column shows: the evidence's kind, never assumed to be the scouts' (B-34)
+  const args = { thin, fillOf, y, n, order: f.order, price: f.price, whose: whoseGrades(ratings) };
   const details = new Map<number, FinanceFreeAgentDetail>();
   const lists = [
     listOf(ctx, 'available', 'Available now', "Players no club holds, who last played in this league: free to sign today.", f.currentFAs,

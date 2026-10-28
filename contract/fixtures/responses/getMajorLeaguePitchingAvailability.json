@@ -1410,7 +1410,7 @@
               },
               "stamina": {
                 "display": "65",
-                "hint": "Your scouts' stamina grade"
+                "hint": "The export's stamina grade"
               },
               "rest": {
                 "display": "5 days",
@@ -1513,7 +1513,7 @@
               },
               "stamina": {
                 "display": "65",
-                "hint": "Your scouts' stamina grade"
+                "hint": "The export's stamina grade"
               },
               "rest": {
                 "display": "4 days",
@@ -1615,7 +1615,7 @@
               },
               "stamina": {
                 "display": "65",
-                "hint": "Your scouts' stamina grade"
+                "hint": "The export's stamina grade"
               },
               "rest": {
                 "display": "2 days",
@@ -1717,7 +1717,7 @@
               },
               "stamina": {
                 "display": "65",
-                "hint": "Your scouts' stamina grade"
+                "hint": "The export's stamina grade"
               },
               "rest": {
                 "display": "1 day",
@@ -1819,7 +1819,7 @@
               },
               "stamina": {
                 "display": "65",
-                "hint": "Your scouts' stamina grade"
+                "hint": "The export's stamina grade"
               },
               "rest": {
                 "display": "0 days",

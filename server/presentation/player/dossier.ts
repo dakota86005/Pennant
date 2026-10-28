@@ -9,6 +9,7 @@
 import type { BasisLine, Cell, DeptId, Tone } from '../../contract/presentation.js';
 import { gameDateWords } from '../../dataStatus.js';
 import { parseGameDate } from '../../dataFreshness.js';
+import { RATING_MODE_WORDS, whoseGrades } from '../../ratingMode.js';
 import { basis, cell, claim, row, servedValue, target, unknownValue } from '../claim.js';
 import { plain, plainAll, ratingText, type RatingDisplay } from '../farm/words.js';
 import type { DossierInput } from './input.js';
@@ -18,7 +19,7 @@ import type {
   PlayerRatingRow, PlayerRatingsView, PlayerRightsAction, PlayerTable, PlayerTableRow, PlayerTile, PlayerValueTotal, PlayerValueView,
 } from './types.js';
 import {
-  TIP_CONTACT, TIP_CONTRACT, TIP_CONTRACT_VALUE, TIP_OPTION_YEARS, TIP_COULD_BE, TIP_IF_KEPT, TIP_KEEPING_HIM, TIP_NO_SINGLE, TIP_OUR_VIEW, TIP_SCOUTED,
+  TIP_CONTACT, TIP_CONTRACT, TIP_CONTRACT_VALUE, TIP_OPTION_YEARS, TIP_COULD_BE, TIP_IF_KEPT, TIP_KEEPING_HIM, TIP_NO_SINGLE, TIP_OUR_VIEW, tipScouted,
   TIP_SPLITS, TIP_WINS_ONLY, afterColon, afterLine, capitalized, coneCostText, coneRangeWords, controlEndWords, costRangeText, heldText,
   listSeasons, money, notValuedLine, ordinal, perWin, plural, rangeText, rate3, salaryLine, scaleLow, scaleWords, seasonsText, sentence,
   signedMoney, signedTenths, termLine, totalHeadline, usageText, winsText, type SeasonInput, type TotalInput, type ViewInput,
@@ -172,11 +173,11 @@ function header(ctx: DossierInput): PlayerHeaderView {
     const text = s.now === null && s.ceiling === null ? 'Not scouted' : `${part(s.now)} → ${part(s.ceiling)}`;
     tiles.push({
       id: 'scouted',
-      title: cell('Scouted', { hint: "Your scouts' grades for his tools, averaged" }),
+      title: cell('Scouted', { hint: `${whoseGrades(d.ratingsFill ? 'osa' : ctx.ratingSource.mode).possessive} grades for his tools, averaged` }),
       figure: claim({
         text, tone: s.now === null && s.ceiling === null ? 'unknown' : 'neutral',
         basis: basis({
-          because: lines([['What it is', TIP_SCOUTED], ['Whose grades', d.ratingsFill?.hint ?? ctx.ratingSource.text], ['Now', part(s.now)], ['Ceiling', part(s.ceiling)]]),
+          because: lines([['What it is', tipScouted(whoseGrades(d.ratingsFill ? 'osa' : ctx.ratingSource.mode))], ['Whose grades', d.ratingsFill?.hint ?? ctx.ratingSource.text], ['Now', part(s.now)], ['Ceiling', part(s.ceiling)]]),
           source: sourceOf(ctx, 'scouting', SCOUTING),
           unknown: [...s.missing.now.map((t) => `Now: ${t} not graded.`), ...s.missing.ceiling.map((t) => `Ceiling: ${t} not graded.`)],
           wouldChange: ['A new scouting report on him.'], lean: null, certainty: 'fact',
@@ -522,9 +523,16 @@ function ratingHistory(ctx: DossierInput): PlayerRatingsView['history'] {
 /** Whose grades the chart draws (review M2): our scouts', OSA's view filling in for him, or the export's kind. */
 function historyHint(ctx: DossierInput): string {
   if (ctx.body.ratingsFill) return 'OSA\'s average grades at each import: our scouts haven\'t rated him';
-  if (ctx.ratingSource.mode === 'scouted-complete' || ctx.ratingSource.mode === 'scouted') return 'Your scouts\' average grades at each import';
-  if (ctx.ratingSource.mode === 'osa') return 'OSA\'s average grades at each import';
-  return `${ctx.ratingSource.short}: the average grades at each import`;
+  return `${whoseGrades(ctx.ratingSource.mode).possessive} average grades at each import`;
+}
+
+/**
+ * The Ratings tab's "whose ratings" heading: the kind's name, or, where the kind isn't known, whose they are (the export's), never
+ * "Not known" above a full set of grades (B-34, FARM-29). The hover says the kind isn't known and why.
+ */
+function sourceHeading(ctx: DossierInput): string {
+  const mode = ctx.ratingSource.mode;
+  return mode ? RATING_MODE_WORDS[mode].heading ?? ctx.ratingSource.short : RATING_MODE_WORDS.unknown.heading ?? ctx.ratingSource.short;
 }
 
 
@@ -537,7 +545,7 @@ function ratings(ctx: DossierInput): PlayerRatingsView {
   return {
     scale: { low, high, words: cell(scaleWords(low, high)) },
     source: claim({
-      text: d.ratingsFill ? d.ratingsFill.hint : ctx.ratingSource.short,
+      text: d.ratingsFill ? d.ratingsFill.hint : sourceHeading(ctx),
       tone: d.ratingsFill ? 'caution' : 'neutral',
       basis: basis({
         because: lines([['Whose grades', d.ratingsFill ? d.ratingsFill.hint : ctx.ratingSource.text], ['The scale', scaleWords(low, high)]]),

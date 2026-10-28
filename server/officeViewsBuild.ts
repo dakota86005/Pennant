@@ -169,7 +169,7 @@ export function buildOfficeViews(request: OfficeViewsRequest): OfficeViewsResult
   const freeAgentDetails: Record<string, FinanceFreeAgentDetail> = {};
   const freeAgents = partOf(failed, ms, 'freeAgents', 'Free agents', () => {
     const f = computeFreeAgents(orgId, status);
-    const { view, details } = freeAgentsViewAndDetails(plain('finance', f.freshness.limitations), f, ratingFillOf);
+    const { view, details } = freeAgentsViewAndDetails(plain('finance', f.freshness.limitations), f, ratingFillOf, status.import?.evidenceMode ?? null);
     for (const [id, detail] of details) freeAgentDetails[String(id)] = detail;
     return view;
   });

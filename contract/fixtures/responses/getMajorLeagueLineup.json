@@ -165,8 +165,8 @@
       "choices": [
         {
           "text": {
-            "display": "Scouts' Grades",
-            "hint": "Your scouts' view of each bat against this hand"
+            "display": "Grades",
+            "hint": "The export's view of each bat against this hand"
           },
           "selected": true,
           "query": {
@@ -234,15 +234,15 @@
         },
         {
           "label": "What it is built from",
-          "value": "Ranked on your scouts' view of each bat against right-handers: a projection from their grades, not this season's results."
+          "value": "Ranked on the export's view of each bat against right-handers: a projection from those grades, not this season's results."
         },
         {
           "label": "The bat",
-          "value": "What your scouts' hitting grades against right-handed pitching say he'd hit, in points of wOBA above an average major-league hitter: +20 is a good regular, −20 a bench bat. It reads contact, power, eye and gap power the way they have predicted results in this league's history, and the order is built from it. Where a hitter has no split grades it is read on his overall grades, and says so. It isn't this season's production (read it beside OPS+ and wRC+), and it isn't OOTP's own valuation, which your front office can't see."
+          "value": "What the export's hitting grades against right-handed pitching say he'd hit, in points of wOBA above an average major-league hitter: +20 is a good regular, −20 a bench bat. It reads contact, power, eye and gap power the way they have predicted results in this league's history, and the order is built from it. Where a hitter has no split grades it is read on his overall grades, and says so. It isn't this season's production (read it beside OPS+ and wRC+), and it isn't OOTP's own valuation, which your front office can't see."
         },
         {
           "label": "The glove",
-          "value": "Your scouts' 20–80 grade for him at the position he's assigned. Positions are chosen on the bat adjusted for the glove: the best bat plays a spot he can actually field, and a player only plays where the game has shown a grade for him."
+          "value": "The export's 20–80 grade for him at the position he's assigned. Positions are chosen on the bat adjusted for the glove: the best bat plays a spot he can actually field, and a player only plays where the game has shown a grade for him."
         },
         {
           "label": "OPS+ and wRC+",
@@ -265,7 +265,7 @@
       "stamp": "How the staff writes a card: stated, not fitted"
     },
     "links": [],
-    "hint": "Built from your scouts' grades"
+    "hint": "Built from the export's grades"
   },
   "notes": [],
   "order": {
@@ -370,7 +370,7 @@
           },
           "glove": {
             "display": "61",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "L"
@@ -609,7 +609,7 @@
           },
           "glove": {
             "display": "45",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "L"
@@ -728,7 +728,7 @@
           },
           "glove": {
             "display": "69",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "R"
@@ -847,7 +847,7 @@
           },
           "glove": {
             "display": "52",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "L"
@@ -966,7 +966,7 @@
           },
           "glove": {
             "display": "70",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "R"
@@ -1085,7 +1085,7 @@
           },
           "glove": {
             "display": "38",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "R"
@@ -1204,7 +1204,7 @@
           },
           "glove": {
             "display": "74",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "R"
@@ -1323,7 +1323,7 @@
           },
           "glove": {
             "display": "41",
-            "hint": "Your scouts' 20–80 grade at this position"
+            "hint": "The export's 20–80 grade at this position"
           },
           "bats": {
             "display": "L"

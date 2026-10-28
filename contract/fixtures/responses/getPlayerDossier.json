@@ -148,7 +148,7 @@
         "id": "scouted",
         "title": {
           "display": "Scouted",
-          "hint": "Your scouts' grades for his tools, averaged"
+          "hint": "The export's grades for his tools, averaged"
         },
         "figure": {
           "text": "54 → 54",
@@ -157,7 +157,7 @@
             "because": [
               {
                 "label": "What it is",
-                "value": "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
+                "value": "The export's grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
               },
               {
                 "label": "Whose grades",
@@ -399,7 +399,7 @@
       }
     },
     "source": {
-      "text": "Not known",
+      "text": "The export's ratings",
       "tone": "neutral",
       "basis": {
         "because": [
@@ -613,7 +613,7 @@
     "history": {
       "title": {
         "display": "Rating history",
-        "hint": "Not known: the average grades at each import"
+        "hint": "The export's average grades at each import"
       },
       "points": [],
       "table": null,

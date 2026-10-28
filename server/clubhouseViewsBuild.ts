@@ -90,6 +90,8 @@ function contextFor(request: ClubhouseViewsRequest): ClubhouseContext {
     importStamp: request.importStamp,
     reportStamp: request.reportStamp,
     gameDate: status.csv.simulatedThrough ?? status.csv.currentDate,
+    // Whose grades the clubhouse shows, so its labels name them truly (B-34)
+    ratings: status.import?.evidenceMode ?? null,
   };
   const department = servedDepartments(request.orgId).find((d) => d.id === MLB)!;
   const ctx: DepartmentContext = { build, department, office: departmentOffice(MLB) };

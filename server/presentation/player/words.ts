@@ -7,6 +7,8 @@
  * Nothing here computes a figure about a player: every number is Player Value's, Player Rights' or the export's, as handed in.
  */
 
+import type { WhoseGrades } from '../../ratingMode.js';
+
 // ── numbers ──────────────────────────────────────────────────────────────────
 
 /** Dollars at a precision: millions to `digits` places, or thousands below a million. */
@@ -106,9 +108,11 @@ export const TIP_CONTRACT =
   "His deal as the export states it: this season's salary, the last season it covers (a signed extension included), and " +
   "what happens after this season: signed, an option, arbitration, pre-arbitration or free agency, with when the club's " +
   'control of him ends. Options and a no-trade clause are listed where the export records them.';
-export const TIP_SCOUTED =
-  "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the " +
-  "organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't " +
+/** The "Scouted" figure's tip, naming whose grades it averages (B-34: never "your scouts'" for true ratings or OSA's view). */
+export const tipScouted = (whose: WhoseGrades): string =>
+  `${whose.possessive} grades for his tools, averaged on the rating scale: what he is now, and his ceiling. ` +
+  (whose.agent === 'your scouts' ? "It's the organization's own view. " : '') +
+  "It isn't the game's hidden rating of him, which weighs the tools by position and isn't " +
   "something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed.";
 export const TIP_COULD_BE =
   "The range covers every reasonable combination of how he plays, what a win costs and what he'll be paid. It is " +

@@ -117,7 +117,7 @@
         "state": {
           "display": "Not known",
           "tone": "caution",
-          "hint": "Imported before Pennant noted which kind of ratings it carries"
+          "hint": "Imported before Pennant noted the kind; the next import will note it"
         }
       },
       "sort": {

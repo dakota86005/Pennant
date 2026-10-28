@@ -286,13 +286,15 @@ export function developmentViews(
       { label: 'No pace yet', value: String(ready ? noPace : tracked.length) },
     ]),
   });
+  const setAside = history.setAside?.count ?? 0;
   const figures = [
     claim({
       text: 'Scouting snapshots',
       tone: 'neutral',
       hint: dates.length > 1 ? span : undefined,
       value: servedValue(history.snapshots, 'count', String(history.snapshots)),
-      basis: basisOf([{ label: 'Snapshots in this save', value: String(history.snapshots) }, { label: 'From', value: span }]),
+      basis: basisOf([{ label: 'Snapshots in this save', value: String(history.snapshots) }, { label: 'From', value: span },
+        ...(setAside > 0 ? [{ label: 'Set aside', value: `${setAside}: ${(history.setAside?.reasons ?? []).join(' ') || 'not comparable with the rest'}` }] : [])]),
     }),
     claim({
       text: 'Days of history',
@@ -311,11 +313,17 @@ export function developmentViews(
     building: ready
       ? null
       : claim({
-        text: history.snapshots === 0
-          ? 'No snapshot of our scouts\' ratings is kept for this organization yet. Import a later point in the save to start comparing.'
-          : 'One snapshot of our scouts\' ratings is kept so far. Import a later point in the save to start comparing how our read changes.',
+        // A snapshot kept but set aside is never "none kept" (B-34, FARM-18): the player's Ratings tab says it is set aside
+        text: history.snapshots === 0 && setAside > 0
+          ? `No snapshot can be compared yet: ${setAside === 1 ? 'the one kept is' : `the ${setAside} kept are`} set aside. Import a later point in the save to start comparing.`
+          : history.snapshots === 0
+            ? 'No snapshot of our scouts\' ratings is kept for this organization yet. Import a later point in the save to start comparing.'
+            : 'One snapshot of our scouts\' ratings is kept so far. Import a later point in the save to start comparing how our read changes.',
         tone: 'unknown',
-        basis: factBasis(ctx, PLAYER_DEVELOPMENT, [{ label: 'Snapshots in this save', value: String(history.snapshots) }], [SNAPSHOT_RULE]),
+        basis: factBasis(ctx, PLAYER_DEVELOPMENT, [
+          { label: 'Snapshots in this save', value: String(history.snapshots) },
+          ...(setAside > 0 ? [{ label: 'Set aside', value: String(setAside) }] : []),
+        ], [SNAPSHOT_RULE, ...(history.setAside?.reasons ?? [])]),
       }),
     figures,
     historyNotes: [

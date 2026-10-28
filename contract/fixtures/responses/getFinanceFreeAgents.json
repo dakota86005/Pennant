@@ -358,7 +358,7 @@
             },
             {
               "label": "Scouted",
-              "value": "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
+              "value": "The export's grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
             },
             {
               "label": "2040 wins",
@@ -435,7 +435,7 @@
             "id": "scouted",
             "title": {
               "display": "Scouted",
-              "hint": "Now → ceiling, your scouts' grades"
+              "hint": "Now → ceiling, the export's grades"
             },
             "numeric": true,
             "sortable": true
@@ -506,7 +506,7 @@
             },
             {
               "label": "Scouted",
-              "value": "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
+              "value": "The export's grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
             },
             {
               "label": "2040 wins",
@@ -580,7 +580,7 @@
             "id": "scouted",
             "title": {
               "display": "Scouted",
-              "hint": "Now → ceiling, your scouts' grades"
+              "hint": "Now → ceiling, the export's grades"
             },
             "numeric": true,
             "sortable": true
@@ -659,7 +659,7 @@
             },
             {
               "label": "Scouted",
-              "value": "Your scouts' grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It's the organization's own view. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
+              "value": "The export's grades for his tools, averaged on the rating scale: what he is now, and his ceiling. It isn't the game's hidden rating of him, which weighs the tools by position and isn't something your front office can see. Where a tool hasn't been graded, the average is left blank rather than guessed."
             },
             {
               "label": "2040 wins",
@@ -741,7 +741,7 @@
             "id": "scouted",
             "title": {
               "display": "Scouted",
-              "hint": "Now → ceiling, your scouts' grades"
+              "hint": "Now → ceiling, the export's grades"
             },
             "numeric": true,
             "sortable": true

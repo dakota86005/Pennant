@@ -144,13 +144,14 @@ function sourceLines(s: DataStatus): Line[] {
 
   // Whose ratings the evidence reads: our scouts' full reports when the export carries them (D-067), otherwise the kind
   // the export's main tables carry (D-061): the scouts' view, true ratings, OSA's, none, or not known
-  const mode = s.import?.ourScouts ? 'scouted-complete' : s.import?.ratingMode?.mode ?? 'unknown';
+  // (the evidence's own kind where the status carries it: OSA's view read in place of true ratings is OSA's, D-067)
+  const mode = s.import?.ourScouts ? 'scouted-complete' : s.import?.evidenceMode ?? s.import?.ratingMode?.mode ?? 'unknown';
   const ratings: Line = {
     id: 'ratings',
     source: 'Ratings',
     state: RATING_MODE_WORDS[mode].short,
     tone: mode === 'unknown' || mode === 'none' ? 'caution' : 'neutral',
-    hint: s.import?.ourScouts || s.import?.ratingMode ? RATING_MODE_WORDS[mode].hint : 'Imported before Pennant noted which kind of ratings it carries',
+    hint: ratingsHint(s, mode),
     order: 0,
   };
 
@@ -162,6 +163,20 @@ function sourceLines(s: DataStatus): Line[] {
     order: 0,
   };
   return [league, transactions, save, ratings, evidence];
+}
+
+/**
+ * The Ratings row's hover, with the way forward where the kind isn't known (B-34, FO-25): "Not known" said nothing of what makes it
+ * known. An import from before Pennant noted the kind: the next import notes it. Settings changed after the export: export again.
+ * Two kinds switched on: choose one in OOTP's export settings. Otherwise the kind's own help tag.
+ */
+function ratingsHint(s: DataStatus, mode: keyof typeof RATING_MODE_WORDS): string {
+  if (!s.import?.ourScouts && !s.import?.ratingMode) return 'Imported before Pennant noted the kind; the next import will note it';
+  if (mode !== 'unknown') return RATING_MODE_WORDS[mode].hint;
+  const record = s.import?.ratingMode;
+  if (record?.source === 'settings_changed_after_export') return 'OOTP\'s export settings changed after this export; export again to note it';
+  if (record?.source === 'export_settings' && /more than one/.test(record.reason ?? '')) return 'Choose one kind of ratings in OOTP\'s export settings, then export again';
+  return RATING_MODE_WORDS.unknown.hint;
 }
 
 /** The headline for each level, in the GM's words, from the freshness model's own states and lags. */

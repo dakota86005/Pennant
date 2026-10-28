@@ -5956,6 +5956,10 @@
                 "$ref": "#/components/schemas/OurScoutsRatings",
                 "description": "Our scouts' full reports, when the export carries them for our club and they are the scouted evidence (D-067): our club's id and how many players they rate; null otherwise (the main tables are the evidence, of `ratingMode`'s kind)."
               },
+              "evidenceMode": {
+                "$ref": "#/components/schemas/RatingMode",
+                "description": "The kind the scouted evidence is read in now (`evidenceRatingMode`): our scouts' full reports, OSA's view in place of true ratings (D-067), else the export's kind; null for an import from before the kind was recorded. Pages that name whose grades they show read it, so a label never calls true ratings or OSA's view the scouts' (B-34)."
+              },
               "leftOut": {
                 "type": "array",
                 "items": {

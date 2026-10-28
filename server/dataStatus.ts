@@ -27,10 +27,10 @@ import {
 } from './dataFreshness.js';
 import type { Integer } from './contract/primitives.js';
 import { currentRatingMode } from './history.js';
-import { ourScoutsRatings, type OurScoutsRatings } from './scoutedEvidence.js';
+import { evidenceRatingMode, ourScoutsRatings, type OurScoutsRatings } from './scoutedEvidence.js';
 import { historyNote } from './historyIdentity.js';
 import { leftOutOfServedImport, upgradeState, type LeftOutFile } from './importer.js';
-import type { RatingModeRecord } from './ratingMode.js';
+import type { RatingMode, RatingModeRecord } from './ratingMode.js';
 
 export interface LogSourceStatus {
   /** The live transaction database exists in the save's temp folder. */
@@ -78,6 +78,12 @@ export interface DataStatus {
      * club's id and how many players they rate; null otherwise (the main tables are the evidence, of `ratingMode`'s kind).
      */
     ourScouts: OurScoutsRatings | null;
+    /**
+     * The kind the scouted evidence is read in now (`evidenceRatingMode`): our scouts' full reports, OSA's view in place of true
+     * ratings (D-067), else the export's kind; null for an import from before the kind was recorded. Pages that name whose grades
+     * they show read it, so a label never calls true ratings or OSA's view the scouts' (B-34).
+     */
+    evidenceMode?: RatingMode | null;
     /** Files the import left out (older than the rest of the export, or unreadable), and what their tables hold. */
     leftOut: LeftOutFile[];
     /**
@@ -451,6 +457,7 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
     import: {
       ratingMode: hasData ? currentRatingMode() : null,
       ourScouts: hasData ? ourScoutsRatings() : null,
+      evidenceMode: hasData ? evidenceRatingMode() : null,
       leftOut: hasData ? leftOutOfServedImport() : [],
       upgradeNote: upgradeState.note,
     },

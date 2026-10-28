@@ -111,7 +111,7 @@ export function readRatingMode(lgPath: string | null, exportWrittenAtMs: number 
  * The mode in the GM's words, for the data status and a rating's basis: a name, a help tag (75 characters at most), a
  * sentence, and the name a switch between two kinds uses where two kinds share a short name.
  */
-export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string; long: string; named?: string }> = {
+export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string; long: string; named?: string; heading?: string }> = {
   scouted: {
     short: 'Your scouts\' view',
     hint: 'OOTP\'s export shows the ratings as your scouts see them',
@@ -142,8 +142,37 @@ export const RATING_MODE_WORDS: Record<RatingMode, { short: string; hint: string
     short: 'Not known',
     hint: 'Pennant couldn\'t tell which kind of ratings the export carries',
     long: 'Which kind of ratings the export carries isn\'t known.',
+    heading: 'The export\'s ratings',
   },
 };
+
+/**
+ * Whose grades these are, for a label or a hover that names them (B-34, deep hunt SRVDEV-08): grades were called "your scouts'"
+ * whatever the export carried, so true ratings and OSA's view were passed off as the club's own scouting. Served from the evidence's
+ * kind (`ratingSource().mode`), never assumed to be the scouts' (an unknown kind is the export's).
+ */
+export interface WhoseGrades {
+  /** Before "grade" or "view", capitalized: "Your scouts'", "OSA's", "The true", "The export's". */
+  possessive: string;
+  /** The same inside a sentence: "your scouts'", "OSA's", "the true", "the export's". */
+  inSentence: string;
+  /** Who graded him, for "graded by …": "your scouts", "OSA"; null where nobody can be named (true ratings, an unknown kind). */
+  agent: string | null;
+}
+
+export function whoseGrades(mode: RatingMode | null | undefined): WhoseGrades {
+  switch (mode) {
+    case 'scouted':
+    case 'scouted-complete':
+      return { possessive: 'Your scouts\'', inSentence: 'your scouts\'', agent: 'your scouts' };
+    case 'osa':
+      return { possessive: 'OSA\'s', inSentence: 'OSA\'s', agent: 'OSA' };
+    case 'real':
+      return { possessive: 'The true', inSentence: 'the true', agent: null };
+    default:
+      return { possessive: 'The export\'s', inSentence: 'the export\'s', agent: null };
+  }
+}
 
 /** Whether two recorded modes are a switch: both known and different. An unrecorded or unknown mode is never evidence of one. */
 export function isModeSwitch(a: RatingMode | null | undefined, b: RatingMode | null | undefined): boolean {

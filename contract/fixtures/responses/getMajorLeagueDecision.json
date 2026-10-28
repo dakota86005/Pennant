@@ -113,7 +113,7 @@
       "because": [
         {
           "label": "Minimum",
-          "value": "two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
+          "value": "two healthy catchers: Pennant's minimum for a 26-man active roster, not a league rule or an ideal roster"
         },
         {
           "label": "Active in role",
@@ -191,7 +191,7 @@
       },
       {
         "text": {
-          "display": "Minimum: two healthy catchers: Pennant's first-pass minimum, not a league rule or an ideal roster"
+          "display": "Minimum: two healthy catchers: Pennant's minimum for a 26-man active roster, not a league rule or an ideal roster"
         },
         "quiet": true,
         "chips": [],

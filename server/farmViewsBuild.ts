@@ -108,6 +108,7 @@ export function buildFarmViews(request: FarmViewsRequest): FarmViewsResult {
     rows: historyRaw.rows.map((r): HistoryRowInput => ({ ...r, levelName: LEVEL_NAMES[r.level] ?? `Level ${r.level}` })),
     ratingModeSwitches: historyRaw.ratingModeSwitches.map((s) => ({ text: s.text })),
     ratingSourceSwitches: historyRaw.ratingSourceSwitches.map((s) => ({ playerId: s.playerId, text: s.text })),
+    setAside: historyRaw.setAside,
     history: historyRaw.history,
   };
   const consequences = new Map<number, FarmConsequenceV2 | { problem: string }>();

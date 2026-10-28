@@ -291,6 +291,14 @@ describe('development tracking compares only this save\'s own history (D-064, D-
     snapshots: dates.length, dates, observationDays: dates.length > 1 ? 90 : null, rows, ratingModeSwitches: [], ratingSourceSwitches: [], history: { note: null, because: [] },
   });
 
+  it('never says no snapshot is kept when one is kept but set aside, and says why (B-34, FARM-18)', () => {
+    const aside = { ...history([], []), setAside: { count: 1, reasons: ['The kind of ratings in the snapshot of May 6, 2040 couldn\'t be read, so it is not compared.'] } };
+    const { view } = developmentViews(ctx, [scoutedPlayer(1, 3)], aside, RATING);
+    expect(view.building?.text).toMatch(/the one kept is set aside/);
+    expect(view.building?.text).not.toMatch(/No snapshot of our scouts' ratings is kept/);
+    expect(JSON.stringify(view.building?.basis)).toMatch(/May 6, 2040 couldn't be read/);
+  });
+
   it('says the history is building with fewer than two snapshots, never a change of zero', () => {
     const { view, details } = developmentViews(ctx, [scoutedPlayer(1, 3)], history(rowsFor(1, ['2040-4-1'], [45]), ['2040-4-1']), RATING);
     expect(view.ready).toBe(false);

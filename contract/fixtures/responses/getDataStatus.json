@@ -55,6 +55,7 @@
   "import": {
     "ratingMode": null,
     "ourScouts": null,
+    "evidenceMode": null,
     "leftOut": [],
     "upgradeNote": null
   },

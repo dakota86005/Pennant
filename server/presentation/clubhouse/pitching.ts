@@ -7,6 +7,7 @@
  */
 import type { Cell, Tone } from '../../contract/presentation.js';
 import type { BullpenCode, PitchingStaff } from '../../pitching.js';
+import { whoseGrades } from '../../ratingMode.js';
 import { cell } from '../claim.js';
 import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbBlock, MlbLine, MlbRow, MlbTable } from '../majorLeague/types.js';
@@ -79,8 +80,9 @@ function lastOuting(arm: AnyArm, gameLog: boolean, today: number | null): MlbLin
   return line(`Last outing ${date}${ago}: ${pitches}, ${plural(arm.lastOuting.outs, 'out')}`);
 }
 
-function stamina(arm: AnyArm): Cell {
-  return arm.stamina === null ? cell('Not graded', { tone: 'unknown', hint: 'His stamina hasn\'t been graded' }) : cell(String(arm.stamina), { hint: 'Your scouts\' stamina grade' });
+function stamina(v: ClubhouseContext, arm: AnyArm): Cell {
+  // Whose grade it is, from the evidence's kind (B-34)
+  return arm.stamina === null ? cell('Not graded', { tone: 'unknown', hint: 'His stamina hasn\'t been graded' }) : cell(String(arm.stamina), { hint: `${whoseGrades(v.ctx.build.ratings).possessive} stamina grade` });
 }
 
 function bullpenTable(v: ClubhouseContext, staff: Staff): { table: MlbTable; limited: number; total: number } {
@@ -181,7 +183,7 @@ function starterRow(v: ClubhouseContext, p: Starter, gameLog: boolean, today: nu
     fip: statCell(stat('fip'), p.stats?.fip, p.stats, 'No line'),
     whip: statCell(stat('whip'), p.stats?.whip, p.stats, 'No line'),
     k9: statCell(stat('k9'), p.stats?.k9, p.stats, 'No line'),
-    stamina: stamina(p),
+    stamina: stamina(v, p),
     rest,
     next,
     health: healthCell(p),

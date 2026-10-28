@@ -7,6 +7,7 @@
  */
 import type { Cell } from '../../contract/presentation.js';
 import type { ClubRoster } from '../../roster.js';
+import { whoseGrades, type WhoseGrades } from '../../ratingMode.js';
 import { cell } from '../claim.js';
 import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbColumn, MlbRow } from '../majorLeague/types.js';
@@ -37,8 +38,8 @@ export interface RostersInput {
   clubs: Array<{ teamId: number; label: string; levelName: string }>;
 }
 
-function scoutedCell(s: RosterPlayer['scouted']): { cell: Cell; sort: number | null } {
-  if (!s || (s.now === null && s.ceiling === null)) return { cell: cell('Not scouted', { tone: 'unknown', hint: 'Your scouts haven\'t graded his tools' }), sort: null };
+function scoutedCell(s: RosterPlayer['scouted'], whose: WhoseGrades): { cell: Cell; sort: number | null } {
+  if (!s || (s.now === null && s.ceiling === null)) return { cell: cell('Not scouted', { tone: 'unknown', hint: whose.agent ? `His tools haven't been graded by ${whose.agent}` : 'His tools have no grades in the export' }), sort: null };
   const part = (n: number | null) => (n === null ? 'not scouted' : String(n));
   return {
     cell: cell(`${part(s.now)} → ${part(s.ceiling)}`, { hint: 'His scouted tools now → at their ceiling, 20–80' }),
@@ -58,6 +59,8 @@ const statsFor = (pitching: boolean): StatDef[] => (pitching ? [...PITCHING_STAT
 
 function section(v: ClubhouseContext, roster: ClubRoster, pitching: boolean): MlbTableSection {
   const orgId = v.ctx.build.orgId;
+  // Whose grades the columns show: the evidence's kind, never assumed to be the scouts' (B-34)
+  const whose = whoseGrades(v.ctx.build.ratings);
   const players = roster.players.filter((p) => (p.position === 1) === pitching);
   const ratings = (pitching ? PITCHER_RATINGS : BATTER_RATINGS).filter(([k]) => (roster.ratingKeys as readonly string[]).includes(k));
   const defs = statsFor(pitching);
@@ -65,13 +68,13 @@ function section(v: ClubhouseContext, roster: ClubRoster, pitching: boolean): Ml
   const columns: MlbColumn[] = [
     column('player', 'Player'), column('age', 'Age', true), column('position', 'Pos'), column('bt', 'B/T'), column('standing', 'Standing'),
     column('scouted', 'Scouted', true),
-    ...ratings.map(([k, label, name]) => ({ ...column(`rating.${k}`, label, true), title: cell(label, { hint: `Your scouts' ${name.toLowerCase()} grade` }) })),
+    ...ratings.map(([k, label, name]) => ({ ...column(`rating.${k}`, label, true), title: cell(label, { hint: `${whose.possessive} ${name.toLowerCase()} grade` }) })),
     ...defs.map((d) => ({ ...column(`stat.${d.key}`, d.label, true), title: cell(d.label, hintIf(d.desc) ? { hint: hintIf(d.desc) } : {}), ...(shown.has(d.key) ? {} : { hidden: true }) })),
   ];
   const rows: MlbRow[] = players.map((p) => {
     const name = `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim();
     const stats = (pitching ? p.pitching : p.batting) as Record<string, number | null> | null;
-    const scouted = scoutedCell(p.scouted);
+    const scouted = scoutedCell(p.scouted, whose);
     const standing = standingCell(p);
     const cells: Record<string, Cell> = {
       player: cell(name || 'Unnamed player'),

@@ -1943,12 +1943,26 @@ export function developmentHistoryFor(orgId: number) {
     // Snapshots on another display scale than today's, left out the same way, in words (B-90)
     ratingScaleSwitches: scaleFilter().texts,
 
+    // The organization's snapshots kept but set aside (another kind, an unknown kind or another scale), and why, so a page that
+    // counts none to compare never says none is kept (B-34, FARM-18)
+    setAside: setAsideOf(allRows.map((r) => r.game_date), dates),
+
     // Players whose ratings changed source (our scouts' full reports, OSA's view): their other rows are left out (D-067)
     ratingSourceSwitches: [...sourceSwitches].map(([playerId, text]) => ({ playerId, text })),
 
     // Whether any of this save's rating history is not used or started fresh, in a sentence, with its basis (D-064)
     history: historyNote(),
   };
+}
+
+/** How many of these snapshot dates were kept but set aside, and why, in sentences (the dates in words). */
+function setAsideOf(all: readonly string[], used: readonly string[]): { count: number; reasons: string[] } {
+  const usedDates = new Set(used);
+  const aside = [...new Set(all)].filter((d) => !usedDates.has(d));
+  if (aside.length === 0) return { count: 0, reasons: [] };
+  const { unknownKind, scale } = modeFilter();
+  const unknown = unknownKindReason(unknownKind.filter((d) => aside.includes(d)));
+  return { count: aside.length, reasons: [...(unknown ? [unknown] : []), ...(aside.some((d) => scale.excluded.has(d)) ? scale.texts : [])] };
 }
 
 /**

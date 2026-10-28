@@ -122,6 +122,8 @@ export interface DevelopmentHistoryInput {
   ratingModeSwitches: Array<{ text: string }>;
   /** Players whose ratings changed source between snapshots (D-067): his rows from the other source are already left out. */
   ratingSourceSwitches: Array<{ playerId: number; text: string }>;
+  /** Snapshots kept but set aside (another kind, an unknown kind or another scale), and why: never counted as none kept (B-34). */
+  setAside?: { count: number; reasons: string[] };
   history: { note: string | null; because: string[] };
 }
 

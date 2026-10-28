@@ -7,6 +7,7 @@
  * (D-001). An item's severity comes from `severity.ts` and is never raised; a department that could not be read is
  * `unavailable` and never all clear; a department with no report yet says so.
  */
+import type { RatingMode } from '../../ratingMode.js';
 import type { Cell, Claim, DeptId, Target } from '../../contract/presentation.js';
 import type { GameDate } from '../../dataFreshness.js';
 import type { CatalogDepartment } from '../catalog.js';
@@ -31,6 +32,11 @@ export interface BuildContext {
    * D-059), so a line that says "us" says "this club" instead. The facts and places are the same either way.
    */
   subject?: 'ours' | 'theirs';
+  /**
+   * Whose grades the evidence reads now (`ratingSource().mode`, D-061/D-067), so a label names them truly (B-34): absent where a
+   * build doesn't show grades, and then read as the export's, never assumed to be the scouts'.
+   */
+  ratings?: RatingMode | null;
 }
 
 /** One department as the report needs it: the catalog's entry (name, head, "prepared by") and its staff in words. */

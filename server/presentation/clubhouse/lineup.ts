@@ -8,6 +8,7 @@
 import type { Cell } from '../../contract/presentation.js';
 import type { NextGame } from '../../dashboard.js';
 import type { LineupAsk, LineupCard } from '../../lineup.js';
+import { whoseGrades, type WhoseGrades } from '../../ratingMode.js';
 import { cell } from '../claim.js';
 import { block, column, line, tableRow } from '../majorLeague/common.js';
 import type { MlbBlock, MlbLine, MlbRow } from '../majorLeague/types.js';
@@ -32,21 +33,22 @@ const queryOf = (ask: LineupAsk): MlbLineupQuery => ({ vs: ask.vs, style: ask.st
 
 const handWord = (vs: 'r' | 'l') => (vs === 'r' ? 'right-handers' : 'left-handers');
 
-const TIP_BAT = (vs: 'r' | 'l') =>
-  `What your scouts' hitting grades against ${vs === 'r' ? 'right' : 'left'}-handed pitching say he'd hit, in points of wOBA above an average ` +
+// Whose grades these are, from the evidence's kind, never assumed to be the scouts' (B-34)
+const TIP_BAT = (vs: 'r' | 'l', whose: WhoseGrades) =>
+  `What ${whose.inSentence} hitting grades against ${vs === 'r' ? 'right' : 'left'}-handed pitching say he'd hit, in points of wOBA above an average ` +
   'major-league hitter: +20 is a good regular, −20 a bench bat. It reads contact, power, eye and gap power the way they have predicted ' +
   'results in this league\'s history, and the order is built from it. Where a hitter has no split grades it is read on his overall ' +
   'grades, and says so. It isn\'t this season\'s production (read it beside OPS+ and wRC+), and it isn\'t OOTP\'s own valuation, which ' +
   'your front office can\'t see.';
-const TIP_GLOVE =
-  'Your scouts\' 20–80 grade for him at the position he\'s assigned. Positions are chosen on the bat adjusted for the glove: the best ' +
+const TIP_GLOVE = (whose: WhoseGrades) =>
+  `${whose.possessive} 20–80 grade for him at the position he's assigned. ` + 'Positions are chosen on the bat adjusted for the glove: the best ' +
   'bat plays a spot he can actually field, and a player only plays where the game has shown a grade for him.';
 
 function choice(text: string, selected: boolean, ask: LineupAsk, hint?: string): MlbLineupChoice {
   return { text: cell(text, hint ? { hint } : {}), selected, query: queryOf(ask) };
 }
 
-function choices(ask: LineupAsk, card: LineupCard | null): MlbLineupChoices[] {
+function choices(ask: LineupAsk, card: LineupCard | null, whose: WhoseGrades): MlbLineupChoices[] {
   const groups: MlbLineupChoices[] = [
     {
       title: cell('Against'),
@@ -65,7 +67,7 @@ function choices(ask: LineupAsk, card: LineupCard | null): MlbLineupChoices[] {
     {
       title: cell('Built from'),
       choices: [
-        choice('Scouts\' Grades', ask.sort === 'talent', { ...ask, sort: 'talent' }, 'Your scouts\' view of each bat against this hand'),
+        choice(whose.agent === 'your scouts' ? 'Scouts\' Grades' : 'Grades', ask.sort === 'talent', { ...ask, sort: 'talent' }, `${whose.possessive} view of each bat against this hand`),
         choice('This Season', ask.sort === 'production', { ...ask, sort: 'production' }, 'This season\'s hitting, steadied by playing time'),
       ],
     },
@@ -115,7 +117,7 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
       });
     const glove: Cell = l.defRating === null
       ? cell(l.positionName === 'DH' ? 'Doesn\'t field' : 'Not graded', { tone: 'unknown', hint: l.positionName === 'DH' ? 'A designated hitter doesn\'t field' : 'No grade at this position' })
-      : cell(String(l.defRating), { hint: 'Your scouts\' 20–80 grade at this position' });
+      : cell(String(l.defRating), { hint: `${whoseGrades(v.ctx.build.ratings).possessive} 20–80 grade at this position` });
     const name = l.dayToDay ? `${l.name} (day-to-day)` : l.name;
     const fill = fills.get(l.player_id) ?? null;
     // A line he has whose league-relative part can't be worked out is not known; no line at all is said as such
@@ -141,7 +143,7 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
       batLines.push(line(`${signedBat(l.off)} against ${handWord(ask.vs)}, in points of wOBA above an average major-league hitter`));
       if (l.batBasis === 'overall') batLines.push(line(`No split grades against ${handWord(ask.vs)} for him in the export, so this reads his overall grades.`, { quiet: true }));
     } else {
-      batLines.push(line(pitcherBatting ? 'A pitcher batting ninth has no bat read: a number would read as a measured one.' : 'His hitting tools haven\'t been graded by your scouts, so his bat can\'t be ranked against the others.', { quiet: true }));
+      batLines.push(line(pitcherBatting ? 'A pitcher batting ninth has no bat read: a number would read as a measured one.' : `His hitting tools haven't been graded${by(v)}, so his bat can't be ranked against the others.`, { quiet: true }));
     }
     const detail = withFill(fill, cells, ['bat', 'glove'], [block('Why he bats here', why), block('His bat', batLines)]);
     return tableRow(`slot-${l.slot}`, cells, {
@@ -161,26 +163,30 @@ function orderRows(v: ClubhouseContext, card: LineupCard, ask: LineupAsk, fills:
   });
 }
 
+/** " by your scouts" / " by OSA", or nothing where nobody can be named (true ratings, an unknown kind). */
+const by = (v: ClubhouseContext): string => { const a = whoseGrades(v.ctx.build.ratings).agent; return a ? ` by ${a}` : ''; };
+
 function headline(v: ClubhouseContext, card: LineupCard, ask: LineupAsk) {
+  const whose = whoseGrades(v.ctx.build.ratings);
   const ordering = ask.style === 'saber'
     ? 'Ordering per The Book (Tango et al.): your three best hitters bat first, second and fourth, not third, fourth and fifth.'
     : 'Classic ordering: speed leads off, bat control second, the best hitter third, power cleanup.';
   const ranked = ask.sort === 'talent'
-    ? `Ranked on your scouts' view of each bat against ${handWord(ask.vs)}: a projection from their grades, not this season's results.`
+    ? `Ranked on ${whose.inSentence} view of each bat against ${handWord(ask.vs)}: a projection from those grades, not this season's results.`
     : 'Ranked on this season\'s wRC+, steadied toward the league average by plate appearances so a hot twenty at-bats doesn\'t lead off. ' +
       'It reads the whole season, not the split, so the choice of hand moves only who plays where.';
   const because = [
     { label: 'How the order is written', value: ordering },
     { label: 'What it is built from', value: ranked },
-    { label: 'The bat', value: TIP_BAT(ask.vs) },
-    { label: 'The glove', value: TIP_GLOVE },
+    { label: 'The bat', value: TIP_BAT(ask.vs, whose) },
+    { label: 'The glove', value: TIP_GLOVE(whose) },
     { label: 'OPS+ and wRC+', value: `${stat('opsPlus').desc} ${stat('wrcPlus').desc}` },
   ];
   return factClaim(v, `Staff's view: the card against ${handWord(ask.vs)}`, {
     specialist: CARD,
     because,
-    hint: ask.sort === 'talent' ? 'Built from your scouts\' grades' : 'Built from this season\'s hitting',
-    unknown: card.notScouted.length ? ['Hitters your scouts haven\'t graded can\'t be ranked, so the card leaves them out unless a position needs them.'] : [],
+    hint: ask.sort === 'talent' ? `Built from ${whose.inSentence} grades` : 'Built from this season\'s hitting',
+    unknown: card.notScouted.length ? [`Hitters with no grades${by(v)} can't be ranked, so the card leaves them out unless a position needs them.`] : [],
     wouldChange: ['A new export, a different opposing hand, or another way of ordering.'],
     how: 'policy',
     stamp: 'How the staff writes a card: stated, not fitted',
@@ -248,7 +254,7 @@ export function lineupView(v: ClubhouseContext, input: LineupInput): MlbLineupVi
     againstTonight: theirHand && theirHand !== ask.vs && next?.theirStarter
       ? choice(`Against ${next.theirStarter.name}`, false, { ...ask, vs: theirHand }, 'Build the card against their probable starter\'s hand')
       : null,
-    choices: choices(ask, built),
+    choices: choices(ask, built, whoseGrades(v.ctx.build.ratings)),
     headline: built ? headline(v, built, ask) : null,
     notes: built ? notes(v, built) : [],
     order: {
