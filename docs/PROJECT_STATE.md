@@ -867,10 +867,11 @@ D-052, [PLAYER_VALUE.md](PLAYER_VALUE.md) Part 9. Present in the worktree:
   viewing organization's philosophy at read time (`/api/player-value/:playerId/our-view`,
   `server/ourViewRoutes.ts`), every lean named with its amount, the neutral
   figures unchanged beside it; the default philosophy (the owner's configured
-  one on this save) leans on nothing. The club's value of a win is points of
+  one on this save) leans on nothing. The club's value of a win was points of
   playoff odds per win and its curve over the rest of the season, from the
   deadline read's odds model (`posture.ts` exports it), never dollars and never in
-  the value; served on Club Finances (Payroll's line under the price of a win) and
+  the value (since 2026-10-28, polish batch 6, D-060 amended: not established, no
+  odds, and no value module reads `posture.ts`); served on Club Finances (Payroll's line under the price of a win) and
   on the card. `playoffs.ts` now measures a division leader's cushion against its
   nearest rival (it had used the last-placed club). The card's Value section is in
   plain words with the explanations on hover (`src/Tip.tsx`, keyboard-reachable),

@@ -911,6 +911,11 @@ fitted yet. Until it can, the club's marginal value of a win is stated in odds, 
 invented curve. Philosophy's competitive window is a *different* thing, an identity: it can lean through the lens
 and never replaces this fact (D-036 keeps window and season apart for the same reason).
 
+**Retired 2026-10-28 (owner decision, polish batch 6; D-052 and D-060 amended).** The club's marginal value of a win is
+**not established**: the odds left Player Value, and nothing replaces them until ROADMAP "Playoff odds from the roster".
+`clubWinValue` says so for every club, with its reason, and carries no odds; no value module reads `posture.ts`. The rest
+of this section and the two rows in Part 11 for the win curve are the history of what was built in phase 5b.
+
 **As built (phase 5b, 2026-09-24).** `playerValueWinValue.ts` (pure, `winValueOf`) reads the deadline read's odds model as
 the entry point hands it over (`clubWinValue(teamId)`); `posture.ts` now exports the model it always used (`oddsModelOf`,
 `oddsAt`, `shownOdds`, `RIVAL_TALENT`), and the deadline read is computed from it unchanged. The model: talent from this
@@ -2361,8 +2366,8 @@ save's imports. The owner's decisions of 2026-09-24 add `COST_COMBINATION_POLICY
 | Widening outside the organization | **none** | Not applied: one rating row per player makes it unmeasurable (R-9, Q-2) |
 | Personality bands (low / normal / high) | **policy** | The central mass at 80–120 on a 1–200 scale (R-8). No claim about OOTP's bands |
 | Personality effects on price (greed, loyalty, play-for-winner) | **none until measured** | Shown as facts. They move no number until observed signings show their effect; phase 4b records the signings but does not yet read personality against them |
-| Win curve (playoff odds per win) | **provisional** | The deadline read's odds model (`posture.ts` `oddsModelOf` / `oddsAt`, `playoffs.ts`): Pythagorean talent from this season's runs, the rival for the place a .520 club (`RIVAL_TALENT`), the difference over the games left read as normal. Not fitted on the save; in playoff odds only (Q-6). `WIN_CURVE_CALIBRATION` (phase 5b) |
-| The win curve's extent | **policy** | Three wins fewer to five more over the rest of the season (`WIN_VALUE_POLICY`, phase 5b); a display choice |
+| Win curve (playoff odds per win) | **retired 2026-10-28** (D-060) | The deadline read's odds model (`posture.ts` `oddsModelOf` / `oddsAt`, `playoffs.ts`): Pythagorean talent from this season's runs, the rival for the place a .520 club (`RIVAL_TALENT`), the difference over the games left read as normal. Not fitted on the save; in playoff odds only (Q-6). `WIN_CURVE_CALIBRATION` (phase 5b) |
+| The win curve's extent | **retired 2026-10-28** (D-060) | Three wins fewer to five more over the rest of the season (`WIN_VALUE_POLICY`, phase 5b); a display choice |
 | Lens weights | **policy** | `LENS_POLICY`, stamped `LENS_POLICY_CALIBRATION` (phase 5b, 6.1): no lean inside 40–60 (D-036's thresholds), linear to the limit at 0 or 100; the window's discount 0% to 15% against the neutral 5%; risk tolerance up to half way from the centre to the low edge; team control, cost efficiency and payroll flexibility ±20%; an aging season at 33 or older (words only). Each shown as a named lean with its amount |
 
 The mechanisms (bands only widen with thinner evidence, the lens after the neutral value, sunk money cancels, unknown

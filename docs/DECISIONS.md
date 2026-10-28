@@ -748,6 +748,15 @@ club with no stated philosophy would hear says what that would have been. `tests
 are identical across clubs; `tests/mlbOperationsBoundary.test.ts` proves the ordering (readiness, then verdict, then
 equivalence, then preference, then size) and that no MLB module names a philosophy dimension.
 
+**Amended 2026-10-28 (owner decision, polish batch 6, B-62; with D-060's amendment).** The season no longer leans. The
+deadline read's chance of the postseason is retired from the staff's decision path: it sets no urgency, moves no bar for
+"act" and orders no needs. The one input about the club's direction is the window. With no philosophy set (or a balanced
+window) the staff is at the neutral bar and nothing leans, so the advice is what any club would hear; a win-now window may
+press and a building one may be patient, each a named `ShadeReason`, never the odds. Needs are ordered by the neutral
+severity (no philosophy, no season); a lean is shown beside a need, never deciding its place. The read carries no season,
+no odds and no conflict with the season (`staffPreference.ts`, `mlbOperations.ts` `organizationContext`, `mlbReview.ts`;
+`tests/oddsNeverMoveAdvice.test.ts`, `tests/staffPreference.test.ts`, `tests/frontOfficeLanding.test.ts`).
+
 ## D-037 — Scouting constants are tuned against outcomes, declared once, and stamped
 
 **Status:** Accepted. **Implementation:** Present (`server/calibration.ts`, `scripts/calibrate.ts`,
@@ -1677,6 +1686,15 @@ position may name a **league place**. The owner: "OOTP itself shows rankings for
 
 Not built: the first consumer is the Club Profile's roster map (milestone N6).
 
+**Amended 2026-10-28 (owner decision, polish batch 6, B-62; with D-060's amendment).** The club's marginal value of a win
+is **not established**. It was read on the deadline read's odds model (`posture.ts`); the owner retired the odds from
+Player Value, and nothing in this decision or D-036 replaces them. So `clubWinValue` says, for every club, that it is not
+established and why, never a number, a default or a level race, and carries no odds (`playerValueWinValue.ts`). No value
+module reads `posture.ts` or `playoffs.ts` (`tests/playerValueBoundary.test.ts`). ROADMAP "Playoff odds from the roster" is
+what could establish it. Knock-on: the Trade Center's and the React pages' club-context line says it isn't known, the
+AI's trade context no longer carries `clubValueOfAWin`, and the win-curve constants (`WIN_VALUE_POLICY`,
+`WIN_CURVE_CALIBRATION`) are gone. The league's market price of a win is unchanged.
+
 ## D-053 — Calibration belongs to the save
 
 **Status:** Accepted 2026-09-22 (owner decision). **Implementation:** Partial. Player Value's expected production
@@ -2275,6 +2293,21 @@ we" with objective facts only: record, standings place and games back, run diffe
 deadline date. Neither the odds, the posture nor the season-window labels are headlined there, and the landing payload
 does not import them (a boundary test). They appear only in League Office standings, labelled with their basis, until
 ROADMAP "Playoff odds from the roster" replaces them.
+
+**Amended 2026-10-28 (owner decisions, polish batch 6, B-62).** The odds and the posture leave every decision and every
+AI surface, not only the landing page:
+
+- **Standings is the one reader.** The deadline read (`posture.ts`) is read only by League Office's Standings, as the
+  staff's rough read with its basis. It reads the regular season only: the club's games left count `game_type = 0`, and its
+  runs are its one row at the major league in the league's season (`frontOffice/teamSeason.ts`'s reader); runs that are not
+  established leave the read unmade, never a level club.
+- **Out of the decision path.** Major League Ops reads no odds: urgency, the bar for "act" and the needs order come from
+  the philosophy's window and the neutral severity (D-036, amended). Player Value reads no odds: the club's value of a win is
+  not established (D-052, amended). The React dashboard no longer serves the buy/hold/sell read.
+- **Out of every AI surface.** No assistant's tool, tool payload, trade-desk context, or writer's context or prompt
+  carries the postseason odds, the deadline posture, a playoff chance or the club's value of a win. The `get_dashboard`
+  tool is retired; the race is answered from the standings' facts. `tests/aiOddsBoundary.test.ts` holds it: no AI payload
+  has a key named `deadline`, `odds`, `playoffs` or `posture`, at any depth.
 
 ## D-061 — The import is all or nothing and automatic; the export's ratings are read as it gives them, labelled
 

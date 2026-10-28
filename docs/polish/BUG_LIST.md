@@ -511,14 +511,14 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - Absorbs: SRVDEV-03 (proven), SRVDEV-15 (plausible), SRVFARM-17 (unchecked), SRVSTATS-20 (unchecked), SRVSTATS-21 (unchecked)
 
 **B-62 · Postseason odds still steer the staff's advice and reach the AI**
-- Status: open
+- Status: fixed (batch 6)
 - Tier 1 · doctrine · MLB Ops, Staff room, Trades, Finance · size M · batch 6
 - The GM sees: With no club philosophy set, the odds quietly move the staff's act bar and the reason given is 'the window'; the needs list order shifts with the odds; the AI assistants can look up and repeat odds and buy/sell posture; the old web pages show playoff odds outside Standings.
 - Cause: server/staffPreference.ts:96-123, :245-256 (odds fill in for a missing window); server/mlbReview.ts:309 (sort by odds-shaded severity); server/chat.ts:319-331 with server/dashboard.ts:383 (get_dashboard serves deadlineRead to the shared tools); server/clubFinanceRoutes.ts:38, server/ourViewRoutes.ts:46, src/pages/Payroll.tsx:529 (winValue). posture.ts is also read by server/playerValue.ts and server/mlbOperations.ts. Owner decisions: retire posture.ts from the decision path; does D-060 cover AI tool answers.
 - Absorbs: SRVAI-02 (confirmed), SRVMLB-03 (proven), SRVMLB-13 (confirmed), SRVVALUE-10 (confirmed)
 
 **B-63 · The AI writers are handed promotion calls, unknowns as zero and wrong labels**
-- Status: open
+- Status: fixed (batch 6)
 - Tier 1 · doctrine · Staff room, Farm, Front Office · size S · batch 6
 - The GM sees: The storylines writer is asked 'who is earning a promotion' without the briefing's farm rules; farm context sent to the AI carries readiness codes under a 'never a call-up' label and age 0 when unknown; the AI is told the prospect list is ranked when it is alphabetical; an unknown budget is given to it as zero.
 - Cause: server/storylines.ts:260-265; server/farmOperations.ts:1295-1305; server/chat.ts:289-296 (list sorted by name at server/org.ts:749); server/valuation.ts:314-335.
