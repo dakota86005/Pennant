@@ -2307,7 +2307,9 @@ AI surface, not only the landing page:
 - **Out of every AI surface.** No assistant's tool, tool payload, trade-desk context, or writer's context or prompt
   carries the postseason odds, the deadline posture, a playoff chance or the club's value of a win. The `get_dashboard`
   tool is retired; the race is answered from the standings' facts. `tests/aiOddsBoundary.test.ts` holds it: no AI payload
-  has a key named `deadline`, `odds`, `playoffs` or `posture`, at any depth.
+  has a key named `deadline`, `odds`, `playoffs` or `posture`, at any depth, and every tool's whole payload is checked. A
+  saved Staff room transcript written before the retirement is not resumed with its old tool results; the thread
+  rebuilds from its plain text (`chat.ts` `resumable`).
 
 ## D-061 — The import is all or nothing and automatic; the export's ratings are read as it gives them, labelled
 
