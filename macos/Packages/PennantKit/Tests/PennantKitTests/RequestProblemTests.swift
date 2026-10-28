@@ -10,9 +10,22 @@ import Testing
 struct RequestProblemTests {
     @Test("a /v2 route's undocumented answer shows the server's sentence")
     func v2Sentence() async {
-        let body = HTTPBody(#"{"error":"Pennant couldn't put this together. The details are in the server log.","detail":"no such table: x"}"#)
+        let body = HTTPBody(#"{"error":"Pennant couldn't put this together. The details are in the server log.","detail":"server log 1a2b3c4d"}"#)
         let problem = await RequestProblem.undocumented(500, body: body, operation: "getCatalog", fromV2: true)
-        #expect(problem == .served("Pennant couldn't put this together. The details are in the server log."))
+        #expect(problem == .served("Pennant couldn't put this together. The details are in the server log.",
+                                   reference: "getCatalog: HTTP 500: server log 1a2b3c4d"))
+    }
+
+    @Test("a /v2 failure's server-log reference reaches the app's log line, never the sentence (batch 7 review L2)")
+    func v2Reference() async {
+        let body = HTTPBody(#"{"error":"Pennant couldn't put this together. The details are in the server log.","detail":"server log 1a2b3c4d"}"#)
+        let problem = await RequestProblem.undocumented(500, body: body, operation: "getCatalog", fromV2: true)
+        #expect(RequestProblem.logLine(problem) == "getCatalog: HTTP 500: server log 1a2b3c4d")
+        #expect(problem.detail == "getCatalog: HTTP 500: server log 1a2b3c4d")
+        // A refusal with no reference is logged as one, as before
+        let refusal = await RequestProblem.undocumented(409, body: HTTPBody(#"{"error":"Busy."}"#), operation: "ask", fromV2: true)
+        #expect(refusal == .served("Busy."))
+        #expect(RequestProblem.logLine(refusal) == "a served refusal")
     }
 
     @Test("a reused route's raw 500 message is never shown as a sentence; it stays in the detail")

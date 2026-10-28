@@ -83,7 +83,7 @@ struct OfficeStoreTests {
         #expect(change == nil)
         #expect(!undoManager.canUndo)
         #expect(model.office.budgetDone == nil)
-        if case .served(let words) = model.office.budgetProblem { #expect(words.contains("$10 billion")) } else { Issue.record("not refused in the server's words") }
+        if case .served(let words, _) = model.office.budgetProblem { #expect(words.contains("$10 billion")) } else { Issue.record("not refused in the server's words") }
         await model.shutdown()
     }
 
