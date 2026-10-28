@@ -314,8 +314,8 @@ function compute(leagueId: number | null): RosterReviewCalibration {
         const source = populationSource().id;
         const on = adoptedCalibrationOnSource<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound, source);
         if (on.setAside) setAside[component] = on.setAside.text;
-        const attempt = latestCalibrationAttempt<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound);
-        return { adopted: on.fit, latest: attempt && sameRatingSource(attempt.record.ratingSource, source) ? attempt : null };
+        // The latest attempt on today's ratings, not the latest of any source filtered afterwards (B-67)
+        return { adopted: on.fit, latest: latestCalibrationAttempt<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, { ...bound, ratingSource: source }) };
       }
       const adopted = adoptedCalibration<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound);
       const latest = latestCalibrationAttempt<M>(leagueId, MLB_CALIBRATION_SUBSYSTEM, component, method, bound);

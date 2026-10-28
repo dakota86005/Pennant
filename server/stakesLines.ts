@@ -27,7 +27,7 @@
  */
 
 import { startingLines, type CeilingLines, type CeilingLinesInForce } from './developmentFit.js';
-import { adoptedCalibrationOnSource, latestCalibrationAttempt, type CalibrationCheck, type CalibrationRecord } from './saveCalibrationStore.js';
+import { adoptedCalibrationOnSource, calibrationSourceAt, latestCalibrationAttempt, otherSourceText, type CalibrationCheck, type CalibrationRecord } from './saveCalibrationStore.js';
 import { populationSource } from './scoutedEvidence.js';
 import { sameRatingSource } from './ratingMode.js';
 import { leagueGameDate } from './saveIdentity.js';
@@ -208,6 +208,18 @@ export function measureCeilingLines(
   return { model: { measured, players: counts, clubs: clubs.length, passed, inForce }, record };
 }
 
+/** The ratings source of the measurement the league's own lines were measured on (that date's attempt); null when not recorded. */
+function sourceOfMeasurement(leagueId: number, measuredOn: string | null): string | null {
+  const date = measuredOn === null ? null : parseGameDate(measuredOn);
+  if (date === null) return null;
+  return calibrationSourceAt(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, date) ?? null;
+}
+
+/** Whether the league's own lines measured on `measuredOn` were measured on today's ratings. */
+function measuredOnSource(leagueId: number, measuredOn: string | null, source: string): boolean {
+  return sameRatingSource(sourceOfMeasurement(leagueId, measuredOn), source);
+}
+
 /**
  * The ceiling lines in force for a league: its latest adopted measurement at or before the export's game date (a reverted save never
  * serves a later export's), else Pennant's starting lines with the true reason. Null league: the starting lines, "no_league".
@@ -219,13 +231,19 @@ export function stakesLinesFor(leagueId: number | null): CeilingLinesInForce {
   // Only lines measured on today's ratings serve (D-068, the owner's decision): lines on other ratings are set aside, said so
   const source = populationSource().id;
   const { fit: adopted, setAside } = adoptedCalibrationOnSource<StakesLinesModel>(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, bound, source);
-  const attempt = latestCalibrationAttempt<StakesLinesModel>(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, bound);
-  const latest = attempt && sameRatingSource(attempt.record.ratingSource, source) ? attempt : null;
-  const found = adopted?.model?.inForce && latest?.basis === adopted.basis
+  // The latest attempt on today's ratings (B-67): an attempt on other ratings is never read as this source's
+  const latest = latestCalibrationAttempt<StakesLinesModel>(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, { ...bound, ratingSource: source });
+  const recorded = adopted?.model?.inForce && latest?.basis === adopted.basis
     ? adopted.model.inForce
     // The latest attempt did not hold up: it recorded what stayed in force (the league's own carried, or the starting lines)
     : latest?.model?.inForce ?? adopted?.model?.inForce ?? startingLines('not_measured');
-  const inForce = setAside && found.source === 'starting' ? { ...found, setAside: setAside.text } : found;
+  // Lines served as the league's own rest on a measurement on today's ratings: lines an attempt recorded as carried from a
+  // measurement on other ratings (an attempt stored before this check) are set aside, and the starting lines serve, said so
+  const measuredHere = recorded.source !== 'save' || measuredOnSource(leagueId, recorded.measuredOn, source);
+  const found = measuredHere ? recorded : startingLines('not_measured');
+  const otherLines = measuredHere ? null : otherSourceText(sourceOfMeasurement(leagueId, recorded.measuredOn), source);
+  const aside = setAside?.text ?? otherLines;
+  const inForce = aside && found.source === 'starting' ? { ...found, setAside: aside } : found;
   // The lines they replaced are served only on the export the move was measured on: later, his own ratings may have moved too, so a
   // tier can no longer be said to have changed because of the lines alone (review finding B2)
   const onThisExport = inForce.measuredOn !== null && today !== null && parseGameDate(today) === parseGameDate(inForce.measuredOn);

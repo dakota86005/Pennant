@@ -274,6 +274,11 @@ export interface CalibrationBound {
   throughMax?: number | null;
   /** The export's game date now; a measurement from a later export (a reverted save) is never served. Any OOTP date form. */
   gameDateMax?: string | null;
+  /**
+   * Only a fit or attempt on these ratings (`sameRatingSource`, D-068): one on other ratings, or whose source wasn't recorded,
+   * is passed over for the latest that is on them. Absent for a component that reads no ratings.
+   */
+  ratingSource?: string;
 }
 
 /** Normalize a bound: a date that cannot be read admits no dated measurement (never a guess); an absent one admits all. */
@@ -300,13 +305,22 @@ export function adoptedCalibration<M = unknown>(leagueId: number, subsystem: str
   ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined));
 }
 
-/** The most recent attempt within the same bound, adopted or not (so a rejection's reason is visible, never a later export's). */
+/**
+ * The most recent attempt within the same bound, adopted or not (so a rejection's reason is visible, never a later export's). With a
+ * `ratingSource`, the most recent on those ratings: an attempt on other ratings is never read as this source's (B-67, deep hunt
+ * SRVDEV-02: the stakes lines carried, then served, lines measured on another source as the league's own).
+ */
 export function latestCalibrationAttempt<M = unknown>(leagueId: number, subsystem: string, component: string, method: string, bound: CalibrationBound = {}): StoredCalibration<M> | null {
   const b = bounds(bound);
-  return inScope(parse<M>(historyDb.prepare(
-    `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ?
-       ${WITHIN} ${ORDER}, fitted_at DESC LIMIT 1`
-  ).get(saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date) as Row | undefined));
+  const args = [saveIdentity(leagueId), leagueId, subsystem, component, method, b.through, b.noDated ? 1 : 0, b.date, b.date];
+  const sql = `SELECT ${COLUMNS} FROM save_calibration_fits WHERE save_name = ? AND league_id = ? AND subsystem = ? AND component = ? AND method = ?
+       ${WITHIN} ${ORDER}, fitted_at DESC`;
+  if (bound.ratingSource === undefined) return inScope(parse<M>(historyDb.prepare(`${sql} LIMIT 1`).get(...args) as Row | undefined));
+  for (const row of historyDb.prepare(sql).iterate(...args) as IterableIterator<Row>) {
+    const stored = parse<M>(row);
+    if (stored && sameRatingSource(stored.record.ratingSource, bound.ratingSource)) return inScope(stored);
+  }
+  return null;
 }
 
 /**

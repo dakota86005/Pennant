@@ -8,7 +8,7 @@
  */
 
 import { db, tableColumns, tableExists } from './db.js';
-import { inPopulationView, loadScoutedAbilities } from './scoutedEvidence.js';
+import { inPopulationView, loadScoutedAbilities, populationSource } from './scoutedEvidence.js';
 import { registerCalibration, type CalibrationBasis } from './saveCalibration.js';
 import { latestCalibrationAttempt } from './saveCalibrationStore.js';
 import {
@@ -52,13 +52,16 @@ function dayBefore(gameDate: string): string | null {
 }
 
 /**
- * The lines in force before this export's measurement: what the latest earlier measurement left in force (its own lines, or the lines
- * it carried), else the starting lines.
+ * The lines in force before this export's measurement: what the latest earlier measurement ON TODAY'S RATINGS left in force (its own
+ * lines, or the lines it carried), else the starting lines. A measurement on other ratings is never carried into today's: a thin or
+ * failed measurement after a change of source serves the starting lines, labelled, never the other source's as the league's own
+ * (D-068, the owner's decision; B-67, deep hunt SRVDEV-02). Read explicitly here, not left to the driver's scope.
  */
 function inForceBefore(leagueId: number, gameDate: string | null): CeilingLinesInForce {
   const before = gameDate === null ? null : dayBefore(gameDate);
   if (before === null) return startingLines('not_measured');
-  const latest = latestCalibrationAttempt<StakesLinesModel>(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD, { gameDateMax: before });
+  const latest = latestCalibrationAttempt<StakesLinesModel>(leagueId, STAKES_SUBSYSTEM, STAKES_LINES_COMPONENT, STAKES_LINES_METHOD,
+    { gameDateMax: before, ratingSource: populationSource().id });
   return latest?.model?.inForce ?? startingLines('not_measured');
 }
 
