@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { briefingContext, briefingSystem, tradeSystem } from '../server/ai.js';
-import { TOOLS, runTool } from '../server/chat.js';
+import { TOOLS, runTool, toolPayload } from '../server/chat.js';
 import { tradeVoice } from '../server/staff.js';
 import { assembleContext, storylinesSystem } from '../server/storylines.js';
 import { tradeContext } from '../server/trade.js';
@@ -46,16 +46,34 @@ describe('the AI tools offer no odds and no posture (D-060)', () => {
     for (const t of TOOLS) expect(String(t.description), t.name).not.toMatch(ODDS_WORDS);
   });
 
+  /*
+   * Every tool, in full. A tool that cannot answer is a tool whose payload is never checked, so none may be skipped: the
+   * fixture carries what each needs (a division for the standings), and the payloads are read before the cap, since a
+   * truncated one (the contracts, the roster crunch) cannot be parsed for its keys.
+   */
   it('no tool payload carries a deadline read, odds, playoffs or posture key, at any depth', async () => {
     const found: string[] = [];
+    const answered: string[] = [];
+    const failed: string[] = [];
     for (const t of TOOLS) {
-      let out: string;
-      try { out = await runTool(t.name, argsFor(t.name)); } catch { continue; } // no data for this fixture: nothing handed over
-      let parsed: unknown;
-      try { parsed = JSON.parse(out); } catch { expect(out, `${t.name} returned text`).not.toMatch(ODDS_WORDS); continue; }
-      found.push(...bannedKeysIn(parsed, t.name));
+      let payload: unknown;
+      try { payload = await toolPayload(t.name, argsFor(t.name)); } catch (e) { failed.push(`${t.name}: ${(e as Error).message}`); continue; }
+      answered.push(t.name);
+      found.push(...bannedKeysIn(payload, t.name));
+      expect(JSON.stringify(payload), t.name).not.toMatch(/"(?:deadline|odds|playoffs|posture)"\s*:/);
     }
+    expect(failed).toEqual([]);
+    expect(answered).toEqual(TOOLS.map((t) => t.name));
     expect(found).toEqual([]);
+  }, 60_000);
+
+  it('the capped answer the model reads is the same payload, cut only past the cap', async () => {
+    for (const name of ['get_injuries', 'get_contracts']) {
+      const payload = JSON.stringify(await toolPayload(name, argsFor(name)));
+      const out = await runTool(name, argsFor(name));
+      if (payload.length <= 60_000) expect(out, name).toBe(payload);
+      else expect(out, name).toMatch(/^\[TRUNCATED/);
+    }
   }, 60_000);
 });
 

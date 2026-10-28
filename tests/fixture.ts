@@ -119,6 +119,8 @@ export function buildFixture(): string {
       runs0 INTEGER DEFAULT 0, runs1 INTEGER DEFAULT 0, innings INTEGER DEFAULT 9
     );
     CREATE TABLE sub_leagues (league_id INTEGER, sub_league_id INTEGER, name TEXT, designated_hitter INTEGER);
+    -- The standings group clubs by division, as every export carries one (the AI's standings tool reads it)
+    CREATE TABLE divisions (league_id INTEGER, sub_league_id INTEGER, division_id INTEGER, name TEXT, gender INTEGER);
     CREATE TABLE teams (
       team_id INTEGER, name TEXT, nickname TEXT, abbr TEXT, level INTEGER, league_id INTEGER,
       sub_league_id INTEGER, division_id INTEGER, parent_team_id INTEGER, allstar_team INTEGER,
@@ -295,6 +297,7 @@ export function buildFixture(): string {
              1, 1, 7, 3, 26, 28, 0, 40)`
   ).run(IDS.league, SEASON);
   db.prepare(`INSERT INTO sub_leagues VALUES (?, 0, 'Only', 1)`).run(IDS.league);
+  db.prepare(`INSERT INTO divisions VALUES (?, 0, 0, 'Central', 0)`).run(IDS.league);
 
   const team = db.prepare(
     `INSERT INTO teams (team_id, name, nickname, abbr, level, league_id, sub_league_id,
