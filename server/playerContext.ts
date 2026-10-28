@@ -15,6 +15,7 @@ import {
   organizationPlayerStates, playerState, playerStates, seasonServiceCalendars, seasonServiceClocks, serviceClassMembers,
   type PlayerState, type ServiceCalendar,
 } from './playerState.js';
+import { plural } from './numberWords.js';
 import { unknownBecause, type Sourced } from './provenance.js';
 import type { TransactionEvent } from './transactionLog.js';
 
@@ -143,7 +144,7 @@ export function playerPicture(playerId: number, chronologyLimit = 25): PlayerPic
   const chronologyNote = !log
     ? 'The OOTP transaction log is unavailable, so no transaction history is shown.'
     : status.freshness.log.state === 'behind'
-      ? `The transaction log is ${status.freshness.log.lagDays} day(s) behind the save; recent moves may be missing.`
+      ? `The transaction log is ${plural(status.freshness.log.lagDays, 'day')} behind the save; recent moves may be missing.`
       : null;
   const assignment = assignmentContextFor(state, events, logAvailability(status));
   const orgId = state.organizationId.value;

@@ -311,7 +311,7 @@ export function farmConsequence(
     rosterNotes.push(`${plural(others.length, 'other player')} on this club (${others.slice(0, 3).map((p) => p.name).join(', ')}${others.length > 3 ? ', …' : ''}) may be on rehab; ${others.length === 1 ? 'he is' : 'they are'} counted, so its depth may be overstated.`);
   }
   if (health.rosterTreatment.injured.length) {
-    rosterNotes.push(`${health.rosterTreatment.injured.length} injured player(s) on this club (${health.rosterTreatment.injured.slice(0, 3).map((p) => p.name).join(', ')}${health.rosterTreatment.injured.length > 3 ? ', …' : ''}) are not counted as cover.`);
+    rosterNotes.push(`${plural(health.rosterTreatment.injured.length, 'injured player')} on this club (${health.rosterTreatment.injured.slice(0, 3).map((p) => p.name).join(', ')}${health.rosterTreatment.injured.length > 3 ? ', …' : ''}) ${health.rosterTreatment.injured.length === 1 ? 'is' : 'are'} not counted as cover.`);
   }
 
   const meta = session.assembled().metas.find((m) => m.teamId === affiliateTeamId);

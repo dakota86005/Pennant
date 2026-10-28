@@ -693,8 +693,8 @@ function evaluateActivateFromIl(ctx: RightsContext): ActionRights {
   if (sixty) requirements.push(spotRequirement('forty_man_spot', ctx.counts.fortyMan, ctx.league.fortyManLimit.value, 'The 40-man roster'));
 
   const missing: MissingEvidence[] = [];
-  if (healed === false) {
-    missing.push({ code: 'rule_not_established', message: `He has ${daysLeft} injury day(s) left. Whether OOTP lets a manager activate an injured player early has not been observed.` });
+  if (healed === false && daysLeft !== null) {
+    missing.push({ code: 'rule_not_established', message: `He has ${plural(daysLeft, 'injury day')} left. Whether OOTP lets a manager activate an injured player early has not been observed.` });
   }
   if (requirements.some((r) => r.status === 'unmet')) {
     missing.push({ code: 'rule_not_established', message: sixty && requirements.find((r) => r.kind === 'forty_man_spot')?.status === 'unmet'
@@ -787,7 +787,7 @@ function evaluatePlaceOnSixtyDayIl(ctx: RightsContext): ActionRights {
         ? [reason('at_or_below_observed_refusal', `OOTP refused this move once, for a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury; he has ${daysLeft}.`, 'observed', 'docs/RIGHTS_RESEARCH.md 4.8')]
         : []),
     ],
-    missing: [{ code: 'rule_not_established', message: `How long an injury has to be for OOTP to allow the 60-day list has not been measured (only a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury was tried, and refused). He has ${daysLeft} day(s) left.` }],
+    missing: [{ code: 'rule_not_established', message: `How long an injury has to be for OOTP to allow the 60-day list has not been measured (only a ${OBSERVED_SIXTY_DAY_REFUSAL_DAYS}-day injury was tried, and refused). He has ${plural(daysLeft, 'day')} left.` }],
     facts,
     limitation: 'Activating him later needs a 40-man spot again (see activateFromInjuredList).',
   });
@@ -1146,7 +1146,7 @@ export function superTwoCutoffs(
     if (unstated > 0) {
       out.set(regimeId, {
         ...base, applies: 'yes', basis: [regimeBasis],
-        missing: [{ code: 'field_not_exported', message: `${unstated} held player(s) have service or days this season that are not exported, so the Super Two class cannot be ranked.` }],
+        missing: [{ code: 'field_not_exported', message: `${plural(unstated, 'held player')} ${unstated === 1 ? 'has' : 'have'} service or days this season that are not exported, so the Super Two class cannot be ranked.` }],
       });
       continue;
     }

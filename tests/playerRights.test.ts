@@ -481,9 +481,14 @@ describe('activation from an injured list stays indeterminate, and says exactly 
     expect(a.facts).toMatchObject({ list: '10-day', injuryDaysLeft: 8, healed: false, activeRosterCount: 26 });
     expect(a.requirements).toEqual([expect.objectContaining({ kind: 'active_roster_spot', status: 'unmet' })]);
     const codes = a.missing.map((m) => m.message).join(' ');
-    expect(codes).toMatch(/injury day\(s\) left/);
+    expect(codes).toMatch(/He has 8 injury days left/);
     expect(codes).toMatch(/active roster is full/);
     expect(a.limitation).toMatch(/AI clubs/);
+  });
+
+  it('one day left reads in the singular, never "day(s)" (B-06)', () => {
+    const a = rights({ il: true, active: false, injuryDaysLeft: 1 }, { counts: { active: 25, fortyMan: 30 } }).actions.activateFromInjuredList;
+    expect(a.missing.map((m) => m.message).join(' ')).toMatch(/He has 1 injury day left\./);
   });
 
   it('a healed player with a spot open is still not established: the rule was never observed', () => {
