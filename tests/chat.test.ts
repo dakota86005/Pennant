@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type Anthropic from '@anthropic-ai/sdk';
-import { appendPlain, continuesThread, trimTranscript } from '../server/chat.js';
+import { appendPlain, continuesThread, resumable, trimTranscript, TRANSCRIPT_PAYLOADS, type StoredContext } from '../server/chat.js';
 
 /**
  * The assistant's memory of a conversation is the transcript it gets resent,
@@ -111,5 +111,38 @@ describe('trimming an oversized transcript', () => {
   it('keeps the most recent exchange, which is the one being answered', () => {
     const messages = [...exchange(1, 300_000), ...exchange(2, 300_000)];
     expect(JSON.stringify(trimTranscript(messages))).toContain('question 2');
+  });
+});
+
+/*
+ * D-060, amended 2026-10-28 (B-62; batch 6 review L2): a stored Staff room transcript resends its old tool results. One
+ * that called the retired dashboard tool carries the deadline read and the odds, so it is never resumed: the thread
+ * rebuilds from its plain text. Neither is one written before the payloads changed (the prospects' legacy codes, B-63).
+ */
+describe('a stored transcript from before the odds were retired', () => {
+  const call = (name: string): Anthropic.MessageParam[] => [
+    { role: 'user', content: 'How is the race looking?' },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name, input: { team_id: 1 } }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: '{"deadline":{"posture":"buy","odds":0.62}}' }] },
+    { role: 'assistant', content: 'Sixty-two per cent.' },
+  ];
+  const stored = (messages: Anthropic.MessageParam[], payloads: number | null = TRANSCRIPT_PAYLOADS): StoredContext => ({
+    visible: [{ role: 'user', content: 'How is the race looking?' }, { role: 'assistant', content: 'Sixty-two per cent.' }],
+    messages,
+    ...(payloads === null ? {} : { payloads }),
+  });
+
+  it('is not resumed when it called the retired dashboard tool', () => {
+    expect(resumable(stored(call('get_dashboard')))).toBe(false);
+  });
+
+  it('is not resumed when it was written before the payloads changed, whatever it called', () => {
+    expect(resumable(stored(call('get_standings'), null))).toBe(false); // no stamp: written before it existed
+    expect(resumable(stored(call('get_prospects'), 1))).toBe(false);
+  });
+
+  it('a current one calling only offered tools still resumes, tool results and all', () => {
+    expect(resumable(stored(call('get_standings')))).toBe(true);
+    expect(resumable(stored([{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Morning.' }]))).toBe(true);
   });
 });

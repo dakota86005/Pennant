@@ -1,13 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../server/db.js';
-import { FARM_RULES, NO_ADVICE, NULL_MEANS_UNKNOWN, VALUE_FIGURES_NOTE, WRITER_GUARDRAILS } from '../server/aiGuardrails.js';
+import { FARM_RULES, FARM_TOOL_RULES, NO_ADVICE, NULL_MEANS_UNKNOWN, VALUE_FIGURES_NOTE, WRITER_GUARDRAILS } from '../server/aiGuardrails.js';
 import { briefingContext, briefingSystem } from '../server/ai.js';
-import { TOOLS } from '../server/chat.js';
-import { promotionDirectionOf } from '../server/farmOperations.js';
+import { TOOLS, systemPrompt, toolPayload } from '../server/chat.js';
+import { promotionDirectionOf, prospectsForAi } from '../server/farmOperations.js';
+import { personasFor } from '../server/staff.js';
+import request from './request.js';
 import type { AssignmentReview } from '../server/farmAssignments.js';
 import { assembleContext, storylinesSystem } from '../server/storylines.js';
 import { teamFinances } from '../server/valuation.js';
-import { IDS } from './fixture.js';
+import { IDS, SEASON } from './fixture.js';
 
 /*
  * B-63 (SRVAI-07, SRVAI-09, SRVFARM-23, SRVSTATS-22): the AI writers share one set of guardrails, are handed the farm
@@ -63,6 +65,26 @@ describe('the farm the writers are handed is the farm review\'s conclusions (SRV
     expect(JSON.stringify(listed)).not.toMatch(LEGACY_CODES);
   });
 
+  it('the Staff room\'s prospects carry the review\'s conclusion per man, not Player Development\'s codes, and null where it has not judged him', () => {
+    const decision = { recommendation: 'strong_promotion_case', possibleRecommendations: ['consider_promotion', 'mlb_ready_discussion'] };
+    const assignments = [{ level: 2, judgment: 'defensible' }];
+    const out = prospectsForAi({
+      batters: [
+        { player_id: 1, name: 'A Prospect', pa: 300, decision, assignments },
+        { player_id: 2, name: 'B Prospect', pa: 250, decision, assignments },
+        { player_id: 3, name: 'C Prospect', pa: 90, decision, assignments },
+      ],
+      pitchers: [],
+      baselines: {},
+    }, [review({ playerId: 1 }), review({ playerId: 2, conclusion: 'current_assignment_defensible' })]);
+    expect(out.batters).toEqual([
+      { player_id: 1, name: 'A Prospect', pa: 300, farmReview: { review: 'Beyond AA; a more demanding assignment is defensible.', defensibleAt: ['AAA'] } },
+      { player_id: 2, name: 'B Prospect', pa: 250, farmReview: { review: 'AA is a defensible assignment.', defensibleAt: [] } },
+      { player_id: 3, name: 'C Prospect', pa: 90, farmReview: null },
+    ]);
+    expect(JSON.stringify(out)).not.toMatch(LEGACY_CODES);
+  });
+
   it('an unknown age is null, never 0', () => {
     for (const age of [null, 0, Number.NaN] as unknown as number[]) {
       expect(promotionDirectionOf([review({ age })])[0].age).toBeNull();
@@ -83,6 +105,62 @@ describe('the prospects tool is described as it is ordered (SRVAI-09)', () => {
     expect(tool.description).toMatch(/Listed by name/);
     expect(tool.description).toMatch(/not a ranking/);
     expect(tool.description).not.toMatch(/ranked by|promotion signal|reasoning behind each ranking/i);
+  });
+});
+
+describe('the Staff room reads the farm as the writers do (B-63, review M1)', () => {
+  /*
+   * A minor leaguer with a real line at AAA this season, so Player Development's engine has something to judge and the
+   * prospects list is not empty: the legacy codes are there to leak, and the Staff room must not be handed them.
+   */
+  const seeded = db.prepare(
+    `INSERT INTO players_career_batting_stats VALUES (?, ?, ?, ?, 2, 1, 240, 210, 75, 15, 2, 12, 25, 1, 2, 2, 40, 6, 2, 35, 40, 2.1)`
+  );
+  beforeAll(async () => {
+    seeded.run(IDS.minorDeal, SEASON, IDS.aaaTeam, IDS.league);
+    await request('/api/status'); // the tools answer through the app's own API
+  }, 30_000);
+  afterAll(() => {
+    db.prepare('DELETE FROM players_career_batting_stats WHERE player_id = ? AND year = ? AND level_id = 2').run(IDS.minorDeal, SEASON);
+  });
+
+  it('the prospects route still carries Player Development\'s codes, so the seed reaches the engine', async () => {
+    const raw = (await request(`/api/prospects/${IDS.mlbTeam}`)) as { batters: Array<{ player_id: number }> };
+    expect(raw.batters.map((b) => b.player_id)).toContain(IDS.minorDeal);
+    expect(JSON.stringify(raw)).toMatch(LEGACY_CODES);
+  });
+
+  it('the prospects tool hands over his line and the farm review\'s conclusion, and no legacy code', async () => {
+    const out = (await toolPayload('get_prospects', { team_id: IDS.mlbTeam })) as { batters: Array<Record<string, unknown>> };
+    const him = out.batters.find((b) => b.player_id === IDS.minorDeal)!;
+    expect(him).toBeDefined();
+    expect(him.pa).toBe(240);
+    expect(him).not.toHaveProperty('decision');
+    expect(him).not.toHaveProperty('assignments');
+    expect(him).toHaveProperty('farmReview');
+    if (him.farmReview !== null) expect(Object.keys(him.farmReview as object).sort()).toEqual(['defensibleAt', 'review']);
+    expect(JSON.stringify(out)).not.toMatch(LEGACY_CODES);
+    expect(JSON.stringify(out)).not.toMatch(/possibleRecommendations|mlb_ready|consider_demotion/);
+    // Still listed by name, as the tool says
+    const names = out.batters.map((b) => String(b.name));
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it('every voice in the Staff room is given the farm rules and told a null is not known', () => {
+    for (const persona of personasFor(IDS.mlbTeam)) {
+      const system = systemPrompt(IDS.mlbTeam, persona);
+      expect(system, persona.id).toContain(FARM_TOOL_RULES);
+      expect(system, persona.id).toContain(NULL_MEANS_UNKNOWN);
+      expect(system, persona.id).not.toMatch(LEGACY_CODES);
+    }
+  });
+
+  it('the Staff room\'s farm rules hold the writers\' no-verdict lines word for word, and name only its own field', () => {
+    const noVerdict = FARM_RULES.slice(FARM_RULES.indexOf('Never say a player'));
+    expect(noVerdict).toMatch(/^Never say a player has earned/);
+    expect(FARM_TOOL_RULES.endsWith(noVerdict)).toBe(true);
+    expect(FARM_TOOL_RULES).toMatch(/'farmReview'/);
+    expect(FARM_TOOL_RULES).not.toMatch(/farm\.attention|farm\.promotionDirection/);
   });
 });
 

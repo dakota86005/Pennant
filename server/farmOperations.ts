@@ -1297,12 +1297,46 @@ export function promotionDirectionOf(assignments: readonly AssignmentReview[]): 
       age: typeof r.age === 'number' && Number.isFinite(r.age) && r.age > 0 ? r.age : null,
       level: r.levelName,
       team: r.team,
-      review: summarizeReview(r),
-      defensibleAt: [...new Set(r.alternatives
-        .filter((a) => a.direction === 'promotion' && a.judgment === 'defensible')
-        .map((a) => a.levelName))],
+      ...farmReviewOf(r),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** What the farm review found about one player, as an AI writer or the Staff room is handed it. */
+export interface FarmReviewForAi {
+  /** The review's one line: what it found. */
+  review: string;
+  /** Where it finds a more demanding assignment defensible, when that is what it found; otherwise empty. */
+  defensibleAt: string[];
+}
+
+function farmReviewOf(r: AssignmentReview): FarmReviewForAi {
+  return {
+    review: summarizeReview(r),
+    defensibleAt: r.conclusion !== 'promotion_direction_defensible' ? [] : [...new Set(r.alternatives
+      .filter((a) => a.direction === 'promotion' && a.judgment === 'defensible')
+      .map((a) => a.levelName))],
+  };
+}
+
+/**
+ * The prospects list as the Staff room's prospects tool hands it to the AI (B-63; SRVFARM-23 for the third AI surface):
+ * each man's line, his scouted tools and the farm review's conclusion about him (`farmReview`), in the list's own order
+ * (by name). Player Development's legacy recommendation codes (`decision`, with `consider_promotion`,
+ * `mlb_ready_discussion` and the rest) and its per-level assignment calls (`assignments`) are not handed over: the farm
+ * review is the conclusion, and a code beside it would be read as a promotion verdict, or contradict it. A man the farm
+ * review has not judged carries `farmReview: null`, not known (D-018).
+ */
+export function prospectsForAi(
+  prospects: { batters?: unknown[]; pitchers?: unknown[] } & Record<string, unknown>,
+  assignments: readonly AssignmentReview[],
+): Record<string, unknown> {
+  const reviews = new Map(assignments.map((r) => [r.playerId, farmReviewOf(r)]));
+  const shape = (list: unknown[] | undefined) => (list ?? []).map((p) => {
+    const { decision: _decision, assignments: _assignments, ...facts } = p as Record<string, unknown>;
+    return { ...facts, farmReview: reviews.get(Number(facts.player_id)) ?? null };
+  });
+  return { ...prospects, batters: shape(prospects.batters), pitchers: shape(prospects.pitchers) };
 }
 
 /**

@@ -1,5 +1,6 @@
 /**
- * The rules every AI writer works under: the GM Briefing, the Storylines and (for the value figures) the Staff room.
+ * The rules every AI writer works under: the GM Briefing, the Storylines and (for the value figures, the farm and the
+ * unknowns) the Staff room.
  *
  * One set, shared, so no writer is handed the farm, the contracts or Pennant's value figures without the rules that go
  * with them (B-63). The application decides; AI explains (D-001): a writer describes what the data and the specialists
@@ -31,15 +32,28 @@ export const NULL_MEANS_UNKNOWN =
   "NOT KNOWN: a null figure (an age, a budget, a market, a value) means the save doesn't say. Say it isn't known, or leave " +
   'it out; never read it as zero, as average or as none.';
 
+/** What no AI says about a prospect, whichever farm data it is handed (D-003, D-044). */
+const FARM_NO_VERDICT =
+  'Never say a player has earned, deserves or should get a promotion. Only a player currently at AAA may be described as ' +
+  'an MLB call-up candidate, and do not say a minor-league promotion fills an MLB bench or bullpen need. Do not rank ' +
+  'prospects or invent a top-prospect list.';
+
 /** The farm as Minor League Operations and Player Development describe it: their conclusions, never a verdict (D-044). */
 export const FARM_RULES =
   "FARM: 'farm.attention' is what Minor League Operations says needs a decision (a prospect who cannot get the work, an " +
   "affiliate that cannot field a team, a roster spot in question). 'farm.promotionDirection' lists players for whom the " +
   "farm review finds a more demanding assignment developmentally defensible ('review' says what it found, 'defensibleAt' " +
-  'the levels): a conclusion about his development, never a call-up and never a promotion verdict. Never say a player ' +
-  'has earned, deserves or should get a promotion. Only a player currently at AAA may be described as an MLB call-up ' +
-  'candidate, and do not say a minor-league promotion fills an MLB bench or bullpen need. Do not rank prospects or ' +
-  'invent a top-prospect list.';
+  'the levels): a conclusion about his development, never a call-up and never a promotion verdict. ' + FARM_NO_VERDICT;
+
+/**
+ * The same farm rules for the Staff room, whose prospects come through its prospects tool rather than a writer's `farm`
+ * block: the tool's own field is named, so the model is never told about keys it isn't handed (B-63).
+ */
+export const FARM_TOOL_RULES =
+  "FARM: each prospect from the prospects tool carries 'farmReview', the farm review's conclusion about him ('review' says " +
+  "what it found; 'defensibleAt' the more demanding levels it finds defensible, when that is what it found): a conclusion " +
+  "about his development, never a call-up and never a promotion verdict. A null 'farmReview' means the farm review has " +
+  'not judged him. ' + FARM_NO_VERDICT;
 
 /** Contracts as Player Value describes them: facts and ranges, no recommendation (D-052). */
 export const CONTRACT_RULES =
