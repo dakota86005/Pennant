@@ -41,4 +41,4 @@ The 25 batches in [BUG_LIST.md](BUG_LIST.md) "Fix batches" run in order:
 5. Retiring and modernising old code.
 6. The words, last (the phrasebook, D-077).
 
-A batch that waits on an owner decision starts only after the owner has answered it.
+The owner answered every decision on 2026-10-28 ("all as recommended"); they're recorded at the end of BUG_LIST.md.
