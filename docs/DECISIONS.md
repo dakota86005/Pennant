@@ -839,6 +839,16 @@ and functions, the deployment gap, every philosophy threshold and the quantiles 
 mechanisms (results are sample-aware, a hitter is bat plus glove at his position, shading applies only after validity) are
 architecture and carry no stamp: tests pin them. `npm run calibrate` is not re-run for a policy constant.
 
+**Amended (N15a polish, batch 13, B-01 and B-11):** a stamp keeps its developer record apart from what the GM reads. Its
+`basis` and `run` (the method, the file, the command, the decision's id, the save it was measured on) are never served;
+a page says a stamp only through `stampWords` (`server/presentation/claim.ts`): the stamp's own plain `says` where it
+has one, else by its status ("Measured on this save's own seasons", "Pennant's starting value, used until this save's own
+measurement holds up", "A line Pennant states; it isn't measured"). The basis still says which of the three a number is
+(show the basis, D-053), in plain words. No served string carries a file, a command, a D-, Q-, R- or B-number, the
+developer's save or its league id, a level's id, a column, an enum code or a constant's name: `tests/servedText.test.ts`
+walks every string of every contract fixture (apart from ids, keys, sort keys and URLs) against those lists, and the
+contract test holds every live `/v2` payload to them.
+
 ## D-042 — The bench is a set of functions with a quality of cover, and the pen is read as a whole
 
 **Status:** Accepted. **Implementation:** Present (`server/benchReview.ts`, `bullpenRoles.ts`, `lineupPicture.ts`,
