@@ -241,7 +241,7 @@ struct AppModelRequestTests {
         await model.start()
         #expect(await eventually { model.settings != nil })
         let problem = await model.startImport()
-        guard case .served(let sentence) = problem else {
+        guard case .served(let sentence, _) = problem else {
             Issue.record("expected the server's sentence, got \(String(describing: problem))")
             return
         }

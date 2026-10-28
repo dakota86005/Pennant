@@ -525,14 +525,14 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - Absorbs: SRVAI-07 (confirmed), SRVAI-09 (confirmed), SRVFARM-23 (confirmed), SRVSTATS-22 (unchecked)
 
 **B-74 · The old desktop app and the dev server accept commands from any website**
-- Status: open
+- Status: fixed (batch 7)
 - Tier 1 · security · Shell · size M · batch 7
 - The GM sees: On the Electron app, npm run dev and npm start, any web page can start paid AI writing, imports and site exports; reopening the Electron app from the Dock starts a second server; Electron itself has known security advisories. The Mac app is not affected (its server has a token).
 - Cause: server/index.ts:38, :77-96 (Host check only); server/apiToken.ts:38-39 (no-op without a token; Electron sets none); express.json ignores text/plain bodies; electron/main.ts:128, :188-195, :257-278, :284-286; package-lock.json electron 41.10.4. Owner decision: retire Electron and the token-less mode now or at cutover.
 - Absorbs: SRVINFRA-07 (confirmed), SRVHEALTH-06 (confirmed), SRVHEALTH-07 (confirmed), SRVHEALTH-16 (unchecked)
 
 **B-75 · One bad request can crash the app's server**
-- Status: open
+- Status: fixed (batch 7)
 - Tier 1 · behaviour · Staff room, Trades, All departments · size M · batch 7
 - The GM sees: A malformed AI reply request gets no answer and the unhandled rejection can take the server down, including from Ask Staff; raw internal error messages reach the app; an odd sort value crashes the old player list.
 - Cause: server/chat.ts:1182-1196, server/ai.ts:487, server/aiSurfacesService.ts:188 (async handlers outside try; Express 4 does not catch rejections); server/officeViewsBuild.ts:86 and server/v2Routes.ts:370-375 (err.message sent); server/league.ts:325, :335 (PLAIN_SORTS plain object); tests/request.ts:15 skips the real request checks.
@@ -593,6 +593,7 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - The GM sees: A long Staff room conversation keeps growing (540,000 characters stored, 400,000 sent) until every question fails; after about 20 questions it forgets what it already looked up; long trade-desk threads stop with 'request too large'.
 - Cause: server/chat.ts:688-698, :742-752 (trimming never cuts), :701-704 with server/aiSurfacesService.ts:48, :110 (resume window); server/requestBody.ts:33 with PK/TradesStore.swift:233-241 (whole thread resent, default body limit).
 - Absorbs: SRVAI-01 (proven), SRVAI-06 (proven), SRVHEALTH-02 (confirmed)
+- Note: SRVHEALTH-02 (the trade desk's 'request too large', a 413) is fixed in batch 7: the trade desk routes take a 1 MB body and the server keeps the last 12 turns of the thread, each cut to 16,000 characters (`server/requestBody.ts` `BODY_LIMITS`, `server/ai.ts` `threadKept`; `tests/serverSafety.test.ts`). B-76 stays open for the rest: the Mac app still resends the whole thread (PK/TradesStore.swift), and SRVAI-01 and SRVAI-06.
 
 **B-77 · Slow AI answers fail on the Mac yet keep running, and costing, on the server**
 - Status: open
@@ -632,7 +633,7 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - Absorbs: SRVDEV-04 (proven)
 
 **B-101 · Small security leaks: part of the AI key on disk, the settings file, stored keys**
-- Status: open
+- Status: fixed (batch 7)
 - Tier 2 · security · Settings, Shell · size S · batch 7
 - The GM sees: Part of each AI key (its length and last 6 characters) is written to a plain file; a Windows-style .env breaks keys and one in the data folder can flip test-only switches; saving a new key deletes the old one before the new one is stored; the app's server password would follow a malformed absolute link.
 - Cause: server/unusable.ts:39; server/config.ts:36-48, server/sidecar.ts:28-31; PK/KeychainItems.swift:162-183; PK/PennantClient.swift:24-31.

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, type IpcMainInvokeEvent } from 'electron';
 import type { UpdateInfo } from 'electron-updater';
 import { RELEASES_URL, releaseTag } from '../server/project.js';
 
@@ -60,7 +60,12 @@ function plainNotes(notes: UpdateInfo['releaseNotes']): string | null {
   return text.length > 0 ? text.slice(0, 4000) : null;
 }
 
-export function initUpdater(): void {
+/** Whether an IPC call comes from the app's own page (`main.ts`); every other caller is answered with nothing (SRVHEALTH-16). */
+type OwnPage = (event: IpcMainInvokeEvent) => boolean;
+let ownPage: OwnPage = () => false;
+
+export function initUpdater(fromOwnPage: OwnPage): void {
+  ownPage = fromOwnPage;
   // In dev there is no packaged app to replace, and electron-updater throws
   // rather than no-oping. Surface that as a state the UI can explain.
   if (!app.isPackaged) {
@@ -134,9 +139,13 @@ export function initUpdater(): void {
 }
 
 function registerIpc(autoUpdater: typeof import('electron-updater').autoUpdater | null): void {
-  ipcMain.handle('update:state', () => state);
+  // Every handler answers the app's own page only
+  const handle = (channel: string, listener: (event: IpcMainInvokeEvent) => unknown): void => {
+    ipcMain.handle(channel, (event) => (ownPage(event) ? listener(event) : undefined));
+  };
+  handle('update:state', () => state);
 
-  ipcMain.handle('update:check', async () => {
+  handle('update:check', async () => {
     if (!autoUpdater) return state;
     if (checking) return state;
     checking = true;
@@ -154,7 +163,7 @@ function registerIpc(autoUpdater: typeof import('electron-updater').autoUpdater 
     return state;
   });
 
-  ipcMain.handle('update:download', async () => {
+  handle('update:download', async () => {
     if (!autoUpdater || state.status !== 'available') return state;
     broadcast({ status: 'downloading', version: currentVersion(), newVersion: state.newVersion, percent: 0 });
     try {
@@ -169,12 +178,12 @@ function registerIpc(autoUpdater: typeof import('electron-updater').autoUpdater 
     return state;
   });
 
-  ipcMain.handle('update:install', () => {
+  handle('update:install', () => {
     if (!autoUpdater || state.status !== 'ready') return;
     // isSilent=false so the Windows installer UI shows; isForceRunAfter=true so
     // the app comes back up rather than leaving the user staring at a closed window.
     setImmediate(() => autoUpdater.quitAndInstall(false, true));
   });
 
-  ipcMain.handle('update:open-releases', () => shell.openExternal(RELEASES_URL));
+  handle('update:open-releases', () => shell.openExternal(RELEASES_URL));
 }

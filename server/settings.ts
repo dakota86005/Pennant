@@ -1,3 +1,4 @@
+import { asyncRoute } from './asyncRoute.js';
 import { Router, type Response } from 'express';
 import { clearClubOwed, clubOwed, type ClubOwed } from './clubOwed.js';
 import fs from 'node:fs';
@@ -325,8 +326,12 @@ function activeCrypto(): SecretCrypto | null {
 interface StoredKey {
   encrypted: boolean;
   value: string;
-  /** Last four characters, so the UI can show which key is saved. */
-  hint: string;
+  /**
+   * An earlier build kept the key's last four characters here, in plain text beside the encrypted key. None is written
+   * now: the hint the Settings screen shows is read from the key itself when it is asked for (`statusOf`), so no character
+   * of an encrypted key is on disk, and a file that still has one is rewritten without it (B-101, batch 7 review L3).
+   */
+  hint?: string;
 }
 
 /**
@@ -355,8 +360,21 @@ function readKeyFile(): KeyFile {
   }
   if (!raw || typeof raw !== 'object') return {};
   // The old one-key file, recognised by having a value at the top level
-  if ('value' in (raw as Record<string, unknown>)) return { anthropic: raw as StoredKey };
-  return raw as KeyFile;
+  const file: KeyFile = 'value' in (raw as Record<string, unknown>) ? { anthropic: raw as StoredKey } : (raw as KeyFile);
+  return withoutHints(file);
+}
+
+/** The file without an earlier build's plain-text hints, written back once when it had any. */
+function withoutHints(file: KeyFile): KeyFile {
+  const entries = Object.entries(file) as Array<[ProviderId, StoredKey]>;
+  if (!entries.some(([, stored]) => stored && typeof stored === 'object' && 'hint' in stored)) return file;
+  const next = Object.fromEntries(entries.map(([id, { hint: _hint, ...kept }]) => [id, kept])) as KeyFile;
+  try {
+    writeKeyFile(next);
+  } catch (err) {
+    console.warn('[settings] could not rewrite the key file without its hints:', err instanceof Error ? err.message : 'unknown');
+  }
+  return next;
 }
 
 function writeKeyFile(next: KeyFile): void {
@@ -370,9 +388,10 @@ export function saveApiKey(key: string, provider: ProviderId = 'anthropic'): voi
     return;
   }
   const active = activeCrypto();
+  // No hint beside the key: it is read from the key when the status is asked for (`statusOf`)
   const record: StoredKey = active
-    ? { encrypted: true, value: active.encrypt(trimmed), hint: trimmed.slice(-4) }
-    : { encrypted: false, value: trimmed, hint: trimmed.slice(-4) };
+    ? { encrypted: true, value: active.encrypt(trimmed) }
+    : { encrypted: false, value: trimmed };
   writeKeyFile({ ...readKeyFile(), [provider]: record });
 }
 
@@ -474,7 +493,9 @@ function statusOf(provider: ProviderId): KeyStatus {
   }
   const stored = readKeyFile()[provider];
   if (stored) {
-    return keyStatus({ configured: true, source: 'stored', hint: stored.hint, encrypted: stored.encrypted });
+    // The hint is read from the key itself, as for the other sources; a key this machine can't decrypt (saved on another
+    // machine or account) is still configured, with no hint
+    return keyStatus({ configured: true, source: 'stored', hint: decrypt(stored)?.slice(-4) ?? null, encrypted: stored.encrypted });
   }
   return keyStatus({ configured: false, source: null, hint: null, encrypted: false });
 }
@@ -765,10 +786,10 @@ export function keyStorageKind(): 'keychain' | 'stored' | 'env' {
 }
 
 /** Verifies a key against the API before saving, so a typo is caught here. */
-settingsRoutes.post('/settings/api-key', async (req, res) => {
-  const { key, provider: raw } = req.body as { key?: string; provider?: string };
+settingsRoutes.post('/settings/api-key', asyncRoute(async (req, res) => {
+  const { key, provider: raw } = (req.body ?? {}) as { key?: unknown; provider?: unknown };
   const provider: ProviderId = isProviderId(raw) ? raw : 'anthropic';
-  if (!key?.trim()) return res.status(400).json({ ok: false, error: 'Enter a key first.' });
+  if (typeof key !== 'string' || !key.trim()) return res.status(400).json({ ok: false, error: 'Enter a key first.' });
   const candidate = key.trim();
   const shape = KEY_SHAPE[provider];
   if (!shape) {
@@ -798,7 +819,7 @@ settingsRoutes.post('/settings/api-key', async (req, res) => {
   // of the reasons somebody changes key in the first place
   forgetUnusable(provider);
   res.json({ ok: true, apiKey: apiKeyStatus(), keys: allKeyStatus() });
-});
+}));
 
 settingsRoutes.delete('/settings/api-key', (req, res) => {
   const raw = (req.query.provider ?? req.body?.provider) as string | undefined;

@@ -1,3 +1,4 @@
+import { asyncRoute } from './asyncRoute.js';
 import { Router } from 'express';
 import fs from 'node:fs';
 import { db, tableExists } from './db.js';
@@ -382,6 +383,25 @@ const TRADE_REPLY_BRIEF =
   'rather than saying you have not got the data: the roster, the farm and every player in ' +
   'the league are yours to look up.';
 
+/** The turns of a desk conversation the desk is shown: enough to keep the argument coherent without resending an hour of it. */
+export const THREAD_TURNS_KEPT = 12;
+/** The most of one turn the desk is shown (an answer runs to about 4,000 tokens, some 16,000 characters). */
+export const THREAD_TURN_CHARS = 16_000;
+
+/**
+ * The thread as the desk is shown it, capped on the server whatever the app sends (B-75; the Mac app resends the whole
+ * thread with every question): the last `THREAD_TURNS_KEPT` well-formed turns, each cut to `THREAD_TURN_CHARS`.
+ * Anything that is not a turn (a wrong role, content that is not text) is left out.
+ */
+export function threadKept(thread: unknown): Array<{ role: 'user' | 'assistant'; content: string }> {
+  if (!Array.isArray(thread)) return [];
+  return thread
+    .filter((m): m is { role: 'user' | 'assistant'; content: string } =>
+      !!m && typeof m === 'object' && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim() !== '')
+    .slice(-THREAD_TURNS_KEPT)
+    .map((m) => ({ role: m.role, content: m.content.length > THREAD_TURN_CHARS ? m.content.slice(0, THREAD_TURN_CHARS) : m.content }));
+}
+
 /**
  * The trade desk's answer: its read of the deal, or, with a `message`, its reply to the GM's question about it. The one
  * place the desk is asked, for `/trade/ai-eval`, `/trade/ai-reply` and the Mac app's Trade Desk (N12, D-073): the same
@@ -396,16 +416,13 @@ async function deskAnswer(
   const system = tradeSystem(voice, body.orgLabel, leagueId, options);
   let notice: FallbackNotice | null = null;
   const onFallback = (n: FallbackNotice) => { notice = n; };
-  const message = body.message?.trim();
+  const message = typeof body.message === 'string' ? body.message.trim() : '';
   const text = message
     ? await askTheDesk(
       system + TRADE_REPLY_BRIEF,
       [
         { role: 'user', content: `The deal on the table:\n${JSON.stringify(context, null, 1)}` },
-        ...(body.thread ?? [])
-          .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content?.trim())
-          // Enough to keep the argument coherent without resending an hour of it
-          .slice(-12),
+        ...threadKept(body.thread),
         { role: 'user', content: message },
       ],
       onFallback,
@@ -459,9 +476,9 @@ aiRoutes.get('/trade/voice/:orgId', (req, res) => {
   res.json({ name, role });
 });
 
-aiRoutes.post('/trade/ai-eval', async (req, res) => {
+aiRoutes.post('/trade/ai-eval', asyncRoute(async (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
-  const body = req.body as TradeBody;
+  const body = (req.body ?? {}) as TradeBody;
   try {
     // The opening read: a message in the body is not a question here
     const { text: verdict, voice, notice } = await deskAnswer({ ...body, message: undefined });
@@ -471,7 +488,7 @@ aiRoutes.post('/trade/ai-eval', async (req, res) => {
     if (status === 500) console.error('[trade-eval] failed:', err);
     res.status(status).json({ error: message });
   }
-});
+}));
 
 /**
  * Answering back.
@@ -481,10 +498,10 @@ aiRoutes.post('/trade/ai-eval', async (req, res) => {
  * by the page rather than on disk: it belongs to the two lists of players
  * currently on screen, and both change with every click.
  */
-aiRoutes.post('/trade/ai-reply', async (req, res) => {
+aiRoutes.post('/trade/ai-reply', asyncRoute(async (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
-  const body = req.body as TradeBody;
-  if (!body.message?.trim()) return res.status(400).json({ error: 'Nothing to send' });
+  const body = (req.body ?? {}) as TradeBody;
+  if (typeof body.message !== 'string' || !body.message.trim()) return res.status(400).json({ error: 'Nothing to send' });
   try {
     const { text: reply, voice, notice } = await deskAnswer(body);
     res.json({ reply, voice: { name: voice.name, role: voice.role }, notice });
@@ -493,20 +510,20 @@ aiRoutes.post('/trade/ai-reply', async (req, res) => {
     if (status === 500) console.error('[trade-reply] failed:', err);
     res.status(status).json({ error: message });
   }
-});
+}));
 
 /**
  * The Mac app's AI desk (`askTradeDesk`, N12 Track C, D-073), on the AI router so no other module reaches an AI module
  * (D-001): the deal is read and the answer worded by the Trade Desk's service; the answer is this module's.
  */
-aiRoutes.post('/v2/views/:org/trades/ask', async (req, res, next) => {
+aiRoutes.post('/v2/views/:org/trades/ask', asyncRoute(async (req, res, next) => {
   try {
     res.json(await tradeAskNow(String(req.params.org), req.body, askForTheMac));
   } catch (err) {
     if (err instanceof TradesRefusal) res.status(err.status).json({ error: err.message });
     else next(err);
   }
-});
+}));
 
 // ── The Mac app's GM Briefing and AI keys (N13, Stage A; D-074) ─────────────
 
@@ -570,7 +587,7 @@ const KEY_CHECK_WAIT_MS = 15_000;
  * provider (`validateKey`, the call Settings already makes before saving one), never served back, never logged, and
  * never written: the Mac app keeps a key in its Keychain and hands it to the server itself.
  */
-aiRoutes.post('/v2/ai/keys/check', async (req, res) => {
+aiRoutes.post('/v2/ai/keys/check', asyncRoute(async (req, res) => {
   const body = (req.body ?? {}) as { provider?: unknown; key?: unknown };
   if (!isProviderId(body.provider)) return res.status(400).json({ error: KEY_CHECK_UNKNOWN });
   const provider = body.provider;
@@ -597,4 +614,4 @@ aiRoutes.post('/v2/ai/keys/check', async (req, res) => {
   } finally {
     if (timer) clearTimeout(timer);
   }
-});
+}));

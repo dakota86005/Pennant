@@ -332,7 +332,8 @@ export function computePlayers(query: Record<string, unknown>, within?: { player
   };
   const sortKey = typeof query.sort === 'string' ? query.sort : null;
   const descending = query.dir !== 'asc';
-  const plainSort = sortKey !== null ? PLAIN_SORTS[sortKey] : undefined;
+  // Own keys only: `constructor` or `__proto__` would otherwise be found on the prototype and crash the query (B-75)
+  const plainSort = sortKey !== null && Object.hasOwn(PLAIN_SORTS, sortKey) ? PLAIN_SORTS[sortKey] : undefined;
   /** A stat sort: not a plain column, so it needs every match computed first. */
   const statSort = sortKey !== null && plainSort === undefined ? sortKey : null;
 

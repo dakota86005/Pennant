@@ -4535,7 +4535,7 @@
           },
           "detail": {
             "type": "string",
-            "description": "The raw message behind it, for the log and a help tag (a `/v2` route's failure); never the visible line."
+            "description": "Where to look: a `/v2` route's failure names its line in the server log (`server log 1a2b3c4d`); never the raw message, never the visible line."
           }
         },
         "required": [

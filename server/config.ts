@@ -31,19 +31,51 @@ const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 /** Older versions kept config.json in the project root — migrate it once. */
 const LEGACY_CONFIG_PATH = path.join(APP_ROOT, 'config.json');
 
+/**
+ * The `OOTP_FO_*` settings a `.env` may set: the user-facing ones (DEVELOPMENT.md "Application id and compatibility
+ * holds"). Every other `OOTP_FO_*` name is a switch for tests and tools (`OOTP_FO_DB_WRITABLE` opens the served league
+ * writable, `OOTP_FO_EXPORT_QUIET_MS=0` imports half-written exports, ...) and is read only from the real environment,
+ * never from a file in the data folder (B-101, SRVINFRA-28).
+ */
+export const ENV_FILE_SETTINGS = new Set(['OOTP_FO_BIND', 'OOTP_FO_ALLOWED_HOSTS', 'OOTP_FO_API_PORT', 'OOTP_FO_UPDATER_LOG']);
+
+/**
+ * A `.env` file's settings, in order: `NAME=value` lines, Windows line endings or not, with an optional `export `, a
+ * value in matching single or double quotes taken as written inside them, and an unquoted value trimmed and cut at a
+ * ` #` comment. Lines that are not settings are skipped.
+ */
+export function parseEnvFile(text: string): Array<[name: string, value: string]> {
+  const settings: Array<[string, string]> = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/\r$/, '');
+    const m = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
+    if (!m) continue;
+    const value = m[2];
+    const quoted = /^(["'])(.*)\1$/.exec(value);
+    settings.push([m[1], quoted ? quoted[2] : value.replace(/\s+#.*$/, '')]);
+  }
+  return settings;
+}
+
+/** Whether a `.env` may set a name: anything but an `OOTP_FO_*` switch outside `ENV_FILE_SETTINGS`. */
+export const envFileMaySet = (name: string): boolean => !name.startsWith('OOTP_FO_') || ENV_FILE_SETTINGS.has(name);
+
 // Minimal .env loader. Checks the writable data directory first so a packaged
 // app's user can drop a key beside their data without touching the app bundle.
+// A variable already set in the environment wins.
 for (const envPath of [path.join(DATA_DIR, '.env'), path.join(APP_ROOT, '.env')]) {
+  let envText: string;
   try {
-    const envText = fs.readFileSync(envPath, 'utf8');
-    for (const line of envText.split('\n')) {
-      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-      if (m && process.env[m[1]] === undefined) {
-        process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-      }
-    }
+    envText = fs.readFileSync(envPath, 'utf8');
   } catch {
-    // no .env at this location — fine
+    continue; // no .env at this location — fine
+  }
+  for (const [name, value] of parseEnvFile(envText)) {
+    if (!envFileMaySet(name)) {
+      console.warn(`[config] ${envPath}: ${name} is ignored here; set it in the environment if it is meant`);
+      continue;
+    }
+    if (process.env[name] === undefined) process.env[name] = value;
   }
 }
 

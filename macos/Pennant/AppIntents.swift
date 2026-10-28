@@ -92,7 +92,7 @@ struct ImportNotStarted: Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
         switch problem {
         // Served words, shown as served
-        case .served(let sentence): LocalizedStringResource(stringLiteral: sentence)
+        case .served(let sentence, _): LocalizedStringResource(stringLiteral: sentence)
         case .notRunning: "The Pennant server isn't running"
         case .unreachable: "Couldn't reach the Pennant server"
         case .failed: "The request failed"

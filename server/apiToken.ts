@@ -2,13 +2,15 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 
 /**
- * The bearer token the Mac app's sidecar requires on every `/api` request (D-055).
+ * The bearer token the Mac app's sidecar and the Electron build require on every `/api` request (D-055, D-081).
  *
  * The sidecar listens on 127.0.0.1 at a random port, which keeps other machines out but not other programs run by
  * the same user, and not a web page that finds the port. The Mac app makes a fresh token for each launch and hands
- * it over on stdin (`server/sidecar.ts`), so only the process that started the server can talk to it. The
- * Electron build and `npm run dev` set no token and keep answering as before: the middleware does nothing until
- * `setApiToken` is called.
+ * it over on stdin (`server/sidecar.ts`), so only the process that started the server can talk to it. Electron makes
+ * its own per launch and its window's session adds it (`electron/shellGuards.ts`). `npm run dev` and `npm start`
+ * serve a browser page that cannot hold one: they set none, and the other-site check (`sameOrigin.ts`) with JSON-only
+ * writes (`requestBody.ts`) is what keeps other websites out. The middleware does nothing until `setApiToken` is
+ * called.
  */
 let token: Buffer | null = null;
 let raw: string | null = null;

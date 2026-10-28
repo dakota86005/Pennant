@@ -66,7 +66,7 @@ import { farmRoutes } from './farmRoutes.js';
 import { appInfo, type AppInfo } from './appInfo.js';
 import { scoutedDevelopmentRoutes } from './scoutedDevelopment.js';
 import { eventStream, progressThrottle, publish } from './serverEvents.js';
-import { v2Routes } from './v2Routes.js';
+import { v2Failed, v2Routes } from './v2Routes.js';
 import { currentReportStamp, holdFrontOfficeRebuilds, relocateLiveLog, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
 import { afterImport } from './frontOfficeAttention.js';
 import { EXPORT_NOT_FOUND, LEAGUE_UPGRADE_LINE, importNote, importWords, leftOutNote, type ImportNote, type LeagueUpgradeLine } from './presentation/importWords.js';
@@ -663,7 +663,7 @@ export interface Ok {
 export interface ApiError {
   /** What went wrong, as a sentence. */
   error: string;
-  /** The raw message behind it, for the log and a help tag (a `/v2` route's failure); never the visible line. */
+  /** Where to look: a `/v2` route's failure names its line in the server log (`server log 1a2b3c4d`); never the raw message, never the visible line. */
   detail?: string;
 }
 
@@ -997,7 +997,9 @@ api.get('/roster/:teamId', (req, res) => {
  * their own machine, so there is nothing to leak by telling them which column
  * their save is missing, and a specific complaint is one they can report.
  */
-api.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+api.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  // The Mac app's routes (`/v2/...`, some registered by the React modules' routers) are answered in words only (B-75)
+  if (req.path.startsWith('/v2/')) return v2Failed(err, req, res, next);
   const message = err instanceof Error ? err.message : String(err);
   console.error(`[api] ${req.method} ${req.originalUrl} failed:`, err);
   if (res.headersSent) return;

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { forgetUnusable, isUnusable, markUnusable, unusableModels } from '../server/unusable.js';
 
@@ -77,5 +77,30 @@ describe('a model that was refused', () => {
     markUnusable('gemini', 'gemini-2.5-pro', KEY, '404');
     const raw = readFileSync(join(process.env.OOTP_FO_DATA_DIR!, 'unusable-models.json'), 'utf8');
     expect(raw).not.toContain(KEY);
+  });
+
+  it('stores no character of the key: a salted hash, never its length or its end (B-101, SRVAI-17)', () => {
+    markUnusable('gemini', 'gemini-2.5-pro', KEY, '404');
+    const stored = JSON.parse(readFileSync(join(process.env.OOTP_FO_DATA_DIR!, 'unusable-models.json'), 'utf8'));
+    const fp = stored.gemini[0].keyFingerprint as string;
+    expect(fp).toMatch(/^hmac-sha256:[0-9a-f]{64}$/);
+    expect(fp).not.toContain(KEY.slice(-6));
+    expect(fp).not.toContain(KEY.slice(-4));
+    expect(fp).not.toContain(`${KEY.length}:`);
+    expect(stored.salt).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("tells two keys apart that share their length and their end (the old fingerprint didn't)", () => {
+    const one = 'AIzaSyAAAAAAAAsameEnd123';
+    const two = 'AIzaSyBBBBBBBBsameEnd123';
+    markUnusable('gemini', 'gemini-2.5-pro', one, '404');
+    expect(isUnusable('gemini', 'gemini-2.5-pro', two)).toBe(false);
+  });
+
+  it("rewrites an earlier build's file without the key characters it kept", () => {
+    const file = join(process.env.OOTP_FO_DATA_DIR!, 'unusable-models.json');
+    writeFileSync(file, JSON.stringify({ gemini: [{ model: 'gemini-2.5-pro', keyFingerprint: `${KEY.length}:${KEY.slice(-6)}`, reason: '404', notedAt: '2026-01-01' }] }));
+    expect(isUnusable('gemini', 'gemini-2.5-pro', KEY)).toBe(false);
+    expect(readFileSync(file, 'utf8')).not.toContain(KEY.slice(-6));
   });
 });

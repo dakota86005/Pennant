@@ -24,7 +24,7 @@ import Security
 /// copy, under `<id>.2`, `<id>.3`…. Reading takes the item this copy can read (its own; of several, the most recently
 /// modified); a provider with items but none readable is `unreadable` (the app shows the server's "enter it again"), and
 /// one whose readable key is older than another copy's item is `newerElsewhere` (the server's "a newer key elsewhere";
-/// review N13B, L2). Saving deletes what it may and adds the key under the first free name; removing deletes what it may
+/// review N13B, L2). Saving adds the key under a free name and then deletes what it may of the old; removing deletes what it may
 /// and says when another copy's item is left. Only `errSecInvalidOwnerEdit` is read as "another copy's": any other refusal
 /// is a failure (review N13B, M4). The context is passed as well, for the data-protection keychain's sake.
 ///
@@ -155,34 +155,57 @@ public struct KeychainItems: Sendable {
         }
     }
 
-    /// Keeps a provider's key: deletes the items this copy may delete, then adds the key under the first free name
-    /// (another copy's item, which cannot be deleted, is left where it is). With no switch, nothing but an item this
-    /// process added is deleted, and the key is added under a free name: adding a new item never asks about access (it
-    /// is this copy's own), though the system could still ask to unlock a locked login keychain.
+    /// Keeps a provider's key: adds it under a name none of the provider's items uses, and only then deletes the older
+    /// items this copy may delete (another copy's item, which cannot be deleted, is left where it is). A failed add leaves
+    /// the old key as it was (B-101, MACKIT-11: it used to be deleted first). With no switch, nothing but an item this
+    /// process added is deleted: adding a new item never asks about access (it is this copy's own), though the system
+    /// could still ask to unlock a locked login keychain.
     public func save(_ secret: String, account provider: String) throws(Failure) {
         let status: (step: String, code: OSStatus) = Self.withoutInteraction(switchFound: switchFound) { forbidden in
-            var held = Set<Int>()
-            for item in listed() where Self.parse(item.account).provider == provider {
-                let generation = Self.parse(item.account).generation
-                guard Self.mayTry(item.account, service: service, dialogsForbidden: forbidden) else { held.insert(generation); continue }
-                let deleted = SecItemDelete(query(item.account) as CFDictionary)
-                if deleted == errSecSuccess || deleted == errSecItemNotFound {
-                    Self.forget(service, item.account)
-                    continue
+            Self.replace(
+                provider,
+                among: listed(),
+                mayTry: { Self.mayTry($0, service: service, dialogsForbidden: forbidden) },
+                add: { account in
+                    var add = query(account)
+                    add[kSecValueData as String] = Data(secret.utf8)
+                    add[kSecAttrLabel as String] = service
+                    add.removeValue(forKey: kSecUseAuthenticationContext as String)
+                    let added = SecItemAdd(add as CFDictionary, nil)
+                    if added == errSecSuccess, !forbidden { Self.remember(service, account) }
+                    return added
+                },
+                delete: { account in
+                    let deleted = SecItemDelete(query(account) as CFDictionary)
+                    if deleted == errSecSuccess || deleted == errSecItemNotFound { Self.forget(service, account) }
+                    return deleted
                 }
-                guard Self.belongsToAnother(deleted) else { return ("delete", deleted) }
-                held.insert(generation)
-            }
-            let account = Self.account(provider, generation: (1...).first { !held.contains($0) } ?? 1)
-            var add = query(account)
-            add[kSecValueData as String] = Data(secret.utf8)
-            add[kSecAttrLabel as String] = service
-            add.removeValue(forKey: kSecUseAuthenticationContext as String)
-            let added = SecItemAdd(add as CFDictionary, nil)
-            if added == errSecSuccess, !forbidden { Self.remember(service, account) }
-            return ("add", added)
+            )
         }
         guard status.code == errSecSuccess else { throw Failure(step: status.step, status: status.code) }
+    }
+
+    /// The order a key is replaced in (pure, so it is tested without a Keychain): the new item is added first, under the
+    /// first generation no item of the provider holds; the old items this copy may touch are deleted only once it is
+    /// there. Another copy's item is left; any other refused delete is said as a failure, with the new key kept (it is
+    /// the newest, so it is the one read).
+    static func replace(
+        _ provider: String, among items: [Listed], mayTry: (String) -> Bool,
+        add: (String) -> OSStatus, delete: (String) -> OSStatus
+    ) -> (step: String, code: OSStatus) {
+        let old = items.filter { parse($0.account).provider == provider }
+        let used = Set(old.map { parse($0.account).generation })
+        let account = Self.account(provider, generation: (1...).first { !used.contains($0) } ?? 1)
+        let added = add(account)
+        guard added == errSecSuccess else { return ("add", added) }
+        var failure: OSStatus?
+        for item in old where mayTry(item.account) {
+            let deleted = delete(item.account)
+            if deleted == errSecSuccess || deleted == errSecItemNotFound || belongsToAnother(deleted) { continue }
+            failure = failure ?? deleted
+        }
+        if let failure { return ("delete", failure) }
+        return ("add", errSecSuccess)
     }
 
     /// Deletes a provider's items this copy may delete; none there is not a failure, and another copy's item left is

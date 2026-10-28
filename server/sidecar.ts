@@ -22,6 +22,7 @@
 import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import { logUnhandledRejections } from './asyncRoute.js';
 
 // Before any server module loads: config.ts reads these at import time, and its `.env` loader only fills variables
 // that are unset, so setting them here means a `.env` in the data folder cannot open the server to the network.
@@ -65,6 +66,9 @@ function parseHandshake(line: string): Handshake | null {
 }
 
 async function main(): Promise<void> {
+  // A rejection no handler caught is logged, never the end of the server (B-75: on Node 24 it would exit, and the app
+  // gives up after five restarts)
+  logUnhandledRejections('sidecar');
   if (!process.env.OOTP_FO_DATA_DIR) {
     fail('configuration', 'OOTP_FO_DATA_DIR is not set; the sidecar never falls back to a folder inside the app.', 1);
   }

@@ -121,7 +121,7 @@ struct StaffRoomTests {
         )
         #expect(store.ask(.about(playerId: 1000), with: "analyst", members: nil, client: client, key: key))
         await store.settle("analyst")
-        guard case .served(let sentence)? = store.askProblems["analyst"] else { Issue.record("served"); return }
+        guard case .served(let sentence, _)? = store.askProblems["analyst"] else { Issue.record("served"); return }
         #expect(sentence.isEmpty == false)
         #expect(store.answers["analyst"] == nil)
         #expect(store.isAnswering("analyst") == false)

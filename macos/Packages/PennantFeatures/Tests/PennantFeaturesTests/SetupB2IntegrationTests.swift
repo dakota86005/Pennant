@@ -293,7 +293,7 @@ struct SetupB2IntegrationTests {
             try await model.answerRatingHistory(carry.id, choice: .undo)
             Issue.record("a stale undo was not refused")
         } catch {
-            guard case .served(let sentence) = error else {
+            guard case .served(let sentence, _) = error else {
                 Issue.record("expected the server's sentence, got \(error)")
                 return
             }

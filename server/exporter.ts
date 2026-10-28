@@ -1,3 +1,4 @@
+import { asyncRoute } from './asyncRoute.js';
 import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -221,7 +222,7 @@ exportRoutes.get('/export-site/progress', (_req, res) => {
   res.json(exportProgress());
 });
 
-exportRoutes.post('/export-site/:orgId', async (req, res) => {
+exportRoutes.post('/export-site/:orgId', asyncRoute(async (req, res) => {
   if (!tableExists('players')) return res.status(400).json({ error: 'No data imported yet' });
   try {
     res.json(await exportSite(Number(req.params.orgId)));
@@ -229,4 +230,4 @@ exportRoutes.post('/export-site/:orgId', async (req, res) => {
     progress = { running: false, phase: '', done: 0, total: 0 };
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
-});
+}));
