@@ -2,8 +2,8 @@
  * No developer or code text on screen (B-01, B-11; SRVPRES-06). Every string the server sends to the Mac app, on every
  * committed contract fixture, is read: a shown field against the jargon list as before, and every string, a basis's
  * stamp and source included, against the developer-provenance and code-text lists. Only the code fields (`CODE_FIELDS`:
- * ids, keys, sort keys, URLs, a folder's path) and a single token outside a shown field (an enum's code, a date, a
- * colour) are left out.
+ * ids, keys, sort keys, URLs, a folder's path) and a single token in a named enum or reference field (`TOKEN_FIELDS`)
+ * are left out.
  *
  * The fixtures are what the Swift tests decode and the previews draw, written by the live routes on the synthetic save
  * (`npm run contract:fixtures`), so a leak a route serves lands here.
@@ -61,7 +61,10 @@ describe('the provenance and code-text lists', () => {
       'value_production_fits 12, fitted at game date 2040-5-6',
       'scripts/calibrate.ts on the 2026-05-16 Arizona save',
     ]) expect(bannedIn(leak, [PROVENANCE]), leak).not.toEqual([]);
-    for (const code of ['Season line (55 PA, level 2)', 'Recall, level 2', 'rules_minor_league_fa_minimum_years', 'protected_prospect', 'CEILING_LINES', 'p10 / p50 / p90']) {
+    for (const code of [
+      'Season line (55 PA, level 2)', 'Recall, level 2', 'rules_minor_league_fa_minimum_years', 'protected_prospect', 'CEILING_LINES',
+      'p10 / p50 / p90', 'players_career_*_stats', 'Read from players_career_*_stats.', 'team_*_stats',
+    ]) {
       expect(bannedIn(code, [CODE_TEXT]), code).not.toEqual([]);
     }
   });
@@ -82,5 +85,16 @@ describe('the provenance and code-text lists', () => {
       claim: { text: 'Fine', basis: { because: [{ label: 'Why', value: 'ok' }], stamp: 'See D-053', source: { specialist: 'npm run calibrate' }, certainty: 'policy' } },
     };
     expect(bannedInPayload(payload).map((f) => f.path)).toEqual(['$.title', '$.claim.basis.stamp', '$.claim.basis.source.specialist']);
+  });
+
+  it('read a single token in a title, a label or a name, and skip one only in a named enum or reference field (L1)', () => {
+    const payload = {
+      title: 'CEILING_LINES', label: 'protected_prospect', name: 'rules_rule_5',
+      status: 'pre_arbitration', group: 'long_term', context: 'bench_role', needId: 'mlb:role_below_standard:catcher',
+      line: 'Fine words',
+    };
+    expect(bannedInPayload(payload).map((f) => f.path)).toEqual(['$.title', '$.label', '$.name']);
+    // A string with a space in an enum field is still read
+    expect(bannedInPayload({ status: 'Read from rules_rule_5' }).map((f) => f.path)).toEqual(['$.status']);
   });
 });

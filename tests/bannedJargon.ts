@@ -78,6 +78,8 @@ export const CODE_TEXT: readonly RegExp[] = [
   // (a folder's own name, in a path or named as a folder ("its import_export folder"), is the folder, and a URL's own
   // query is the URL: neither is a code)
   /(?<![/=&])\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b(?![\w/]| folder\b)/, /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/,
+  // A wildcard name (`players_career_*_stats`, a family of tables), which the word boundary before its `_` misses
+  /\b[a-z][a-z0-9]*(?:_[a-z0-9*]+)*_\*(?:_[a-z0-9*]+)*/,
   // A quantile's code
   /\bp(?:10|25|50|75|90)\b/,
 ];
@@ -244,10 +246,24 @@ export function basisStrings(payload: unknown): Array<{ path: string; text: stri
 
 /**
  * The fields that hold a code, never words (B-01, B-11): an id, a key, a sort key, a URL or a folder's path. Every
- * other string the server sends is read, apart from a single token in a field that is not shown (an enum's code, a
- * date, a colour), which is data the app maps, never text it draws as served.
+ * other string the server sends is read, apart from a single token in one of `TOKEN_FIELDS`.
  */
 export const CODE_FIELDS: ReadonlySet<string> = new Set(['id', 'key', 'sort', 'url', 'projectUrl', 'upstreamUrl', 'csvDir', 'lgPath', 'dataDir', 'folder']);
+
+/**
+ * The enum and reference fields whose single token is data the app maps, never text it draws as served (an enum's code
+ * such as a contract group's `pre_arbitration`, or a need's or a row's reference). Named one by one (batch 13 review,
+ * L1): a single token anywhere else (a title, a label, a name, a heading) is read like any other string, so a
+ * `CEILING_LINES` or a `protected_prospect` there is caught. A string with a space in one of these fields is read too.
+ */
+export const TOKEN_FIELDS: ReadonlySet<string> = new Set([
+  // Enums (the OpenAPI schema's, and the views' own kinds and groups)
+  'tone', 'kind', 'status', 'certainty', 'unit', 'severity', 'neutralSeverity', 'state', 'outcome', 'result', 'reason',
+  'unavailableReason', 'discovery', 'context', 'group', 'action', 'format', 'dir', 'side', 'style', 'theme', 'phase',
+  'mode', 'from', 'homeAway', 'dh', 'vs', 'source',
+  // References to another row, need or table (an import's progress names the table it reads; its words say it plainly)
+  'evidence', 'need', 'needId', 'order', 'row', 'rowId', 'rows', 'nextRow', 'table',
+]);
 
 /** Where a served string sits, which decides the lists it is held to. */
 export type ServedPlace = 'shown' | 'basis' | 'stamp' | 'other';
@@ -255,14 +271,14 @@ export type ServedPlace = 'shown' | 'basis' | 'stamp' | 'other';
 /**
  * Every string a payload serves, with where it sits: a shown field (`text`, `hint`, `display`), a basis's sentences
  * (`because`, `unknown`, `wouldChange`, `lean`), a basis's stamp and source, or any other string (a title, a label, a
- * table's name or reason, a line). The code fields and a single token outside a shown field are left out.
+ * table's name or reason, a line). The code fields and a single token in an enum or reference field are left out.
  */
 export function servedStrings(payload: unknown): Array<{ path: string; text: string; place: ServedPlace }> {
   const found: Array<{ path: string; text: string; place: ServedPlace }> = [];
   const visit = (node: unknown, path: string, key: string, inside: ServedPlace | null): void => {
     if (typeof node === 'string') {
       const shown = (SHOWN_FIELDS as readonly string[]).includes(key);
-      if (!shown && inside === null && !/\s/.test(node.trim())) return;
+      if (!shown && inside === null && TOKEN_FIELDS.has(key) && !/\s/.test(node.trim())) return;
       found.push({ path, text: node, place: shown && inside !== 'stamp' ? 'shown' : (inside ?? 'other') });
     } else if (Array.isArray(node)) {
       node.forEach((item, i) => visit(item, `${path}[${i}]`, key, inside));
