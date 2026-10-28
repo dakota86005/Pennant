@@ -22,12 +22,23 @@ public enum PennantClient {
     /// A file the server serves outside the contract (a club's logo), by its served path, with the launch's token; nil on
     /// anything but a 200.
     public static func data(path: String, port: Int, token: String) async -> Data? {
-        guard let url = URL(string: path, relativeTo: baseURL(port: port)) else { return nil }
+        guard let url = servedURL(path: path, port: port) else { return nil }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         guard let (data, response) = try? await session.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
         return data
+    }
+
+    /// Where a served path is, or nil when it is anything but this server's own `/api/` path: the token goes with the
+    /// request, so a path that names another host or scheme (`https://...`, `//host/...`) is never followed (B-101).
+    static func servedURL(path: String, port: Int) -> URL? {
+        guard path.hasPrefix("/api/"), !path.contains("\\") else { return nil }
+        let base = baseURL(port: port)
+        guard let url = URL(string: path, relativeTo: base)?.absoluteURL,
+              url.scheme == base.scheme, url.host == base.host, url.port == base.port,
+              url.path.hasPrefix("/api/") else { return nil }
+        return url
     }
 
     /// One session for every client: no cookies or cache (every answer is live), and a request that goes quiet
