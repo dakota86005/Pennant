@@ -85,6 +85,11 @@ export function checkExport(csvDir: string = watchedDir ?? ''): void {
   handler?.(csvDir, assessment);
 }
 
+/** The export folder being watched; null when none is. */
+export function watchedFolder(): string | null {
+  return watchedDir;
+}
+
 export function stopWatcher(): void {
   if (timer) watchClock.clearTimeout(timer);
   timer = null;

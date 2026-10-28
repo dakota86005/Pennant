@@ -2,7 +2,7 @@ import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, tableColumns, tableExists } from './db.js';
-import { loadConfig } from './config.js';
+import { servedSource } from './servedSave.js';
 
 export const logoRoutes = Router();
 
@@ -13,7 +13,8 @@ export const logoRoutes = Router();
  * and correct for custom/fictional leagues, which have no logo on the internet.
  */
 function logoDir(): string | null {
-  const { csvDir } = loadConfig();
+  // The served league's save, never merely the one chosen (D-079): its clubs are the ones the logos are asked for
+  const { csvDir } = servedSource();
   if (!csvDir) return null;
   // csvDir is <save>.lg/import_export/csv — walk up to the save root
   const saveRoot = path.resolve(csvDir, '..', '..');
@@ -32,7 +33,7 @@ function logoDir(): string | null {
  * gives each save its own cache entry.
  */
 export function logoToken(): string {
-  const { csvDir } = loadConfig();
+  const { csvDir } = servedSource();
   if (!csvDir) return 'none';
   let hash = 0;
   for (let i = 0; i < csvDir.length; i++) hash = (hash * 31 + csvDir.charCodeAt(i)) | 0;

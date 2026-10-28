@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'node:fs';
+import { switchPending } from './servedSave.js';
 import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
@@ -135,8 +136,9 @@ function bootstrapData(): void {
   }
   const config = loadConfig();
   const exportThere = !!config.csvDir && fs.existsSync(config.csvDir);
-  // Nothing imported yet: the import starts now (its progress is what the first answers say)
-  if (exportThere && !tableExists('players')) void runImport(config.csvDir!);
+  // Nothing imported yet, or a save chosen whose import never landed (the league held is another save's, D-079): the
+  // import starts now (its progress is what the first answers say)
+  if (exportThere && (!tableExists('players') || switchPending())) void runImport(config.csvDir!);
 
   // A database an earlier build imported gets its one-time upgrade: a converted copy made in a worker, swapped in (never
   // in place). Begun now, so the first status says so ("Getting your league ready"); the served file stays as it is

@@ -1,5 +1,6 @@
 import { Router, type Response } from 'express';
-import { clearClubOwed, clubOwed, type ClubOwed } from './clubOwed.js';
+import { clearClubOwed, clubForgottenOnImport, clubOwed, setClubForgottenOnImport, type ClubOwed } from './clubOwed.js';
+import { servedSaveKey, switchPending } from './servedSave.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR, loadConfig } from './config.js';
@@ -56,6 +57,11 @@ export interface Settings {
   importAutomatically: boolean;
   useTeamColors: boolean;
   defaultOrgId: Integer | null;
+  /**
+   * The save the club in `defaultOrgId` was chosen in (D-079: its save key, `servedSave.ts`): a club chosen in another
+   * save is not followed in this one. Absent on a choice from before it was kept (the one-time migration stamps it).
+   */
+  defaultOrgSave?: string | null;
   /** 'system' follows the OS setting and changes with it. */
   theme: 'system' | 'dark' | 'light';
   /** Model id used by every AI feature. See models.ts for the picker's list. */
@@ -207,33 +213,46 @@ export function loadSettings(): Settings {
  */
 export function followSaveClub(): void {
   const current = loadSettings();
-  if (current.defaultOrgId !== null) writeSettings({ ...current, defaultOrgId: null });
+  if (current.defaultOrgId !== null) writeSettings({ ...current, defaultOrgId: null, defaultOrgSave: null });
 }
 
 /**
  * The export folder of a save chosen with `club: 'fromSave'` whose club chosen before must be forgotten once its import
  * lands (N6 Stage B2 review, H1): a team id belongs to one league, so it never crosses into another save's. It is
  * written when the import lands, never when the save is chosen, so an import that fails leaves the club as it was.
- * One at a time: a later choice replaces it, and the GM choosing a club (`POST /api/settings`) cancels it.
+ * One at a time: a later choice replaces it, and the GM choosing a club (`POST /api/settings`) cancels it. Kept on disk
+ * (`clubOwed.ts`), so a relaunch before the import lands keeps it (D-079); the club's save stamp (`defaultOrgSave`)
+ * already keeps another save's club from being followed meanwhile.
  */
-let clubForgottenOnImport: string | null = null;
 
 /** The club chosen before is forgotten when the import of `csvDir` lands; null owes nothing. */
 export function forgetClubWhenImported(csvDir: string | null): void {
-  clubForgottenOnImport = csvDir;
+  setClubForgottenOnImport(csvDir);
 }
 
 /** Whether the import of `csvDir` still owes forgetting the club chosen before. */
 export function clubForgottenWhenImported(csvDir: string): boolean {
-  return clubForgottenOnImport === csvDir;
+  return clubForgottenOnImport() === csvDir;
 }
 
 /** The import of `csvDir` landed: the club it owed is forgotten now (automatic). Returns whether one was owed. */
 export function importLandedForClub(csvDir: string): boolean {
-  if (clubForgottenOnImport !== csvDir) return false;
-  clubForgottenOnImport = null;
+  if (clubForgottenOnImport() !== csvDir) return false;
+  setClubForgottenOnImport(null);
   followSaveClub();
   return true;
+}
+
+/**
+ * The club the GM chose for the served save; null when none was chosen for it (automatic). A team id belongs to one
+ * league (D-063), so a club chosen in another save (its `defaultOrgSave` names another save) is not chosen here (D-079).
+ * A choice from before saves were stamped is the configured save's (the one-time migration stamps it).
+ */
+export function chosenOrgId(settings: Settings = loadSettings()): number | null {
+  const id = settings.defaultOrgId;
+  if (typeof id !== 'number' || id <= 0) return null;
+  const save = settings.defaultOrgSave;
+  return typeof save !== 'string' || save === servedSaveKey() ? id : null;
 }
 
 function writeSettings(next: Settings): void {
@@ -514,7 +533,12 @@ export interface ProvidersResponse {
 export const settingsRoutes = Router();
 
 settingsRoutes.get('/settings', (_req, res: Response<SettingsResponse>) => {
-  res.json({ settings: loadSettings(), apiKey: apiKeyStatus(), dataDir: DATA_DIR, organization: currentOrganization(), clubOwed: clubOwed() });
+  const settings = loadSettings();
+  // The club as chosen for the served save; while a chosen save's import has not landed, no club is served (D-079)
+  res.json({
+    settings: { ...settings, defaultOrgId: chosenOrgId(settings) }, apiKey: apiKeyStatus(), dataDir: DATA_DIR,
+    organization: switchPending() ? null : currentOrganization(), clubOwed: clubOwed(),
+  });
 });
 
 /**
@@ -657,6 +681,10 @@ settingsRoutes.post('/settings', (req, res: Response<SettingsSaved>) => {
     next.defaultOrgId = body.defaultOrgId;
   }
   if (body.clubChoice === 'automatic') next.defaultOrgId = null;
+  // A club is chosen in the save being served, and belongs to it (D-079); a request that chose none keeps the stamp
+  if (body.defaultOrgId === null || typeof body.defaultOrgId === 'number' || body.clubChoice === 'automatic') {
+    next.defaultOrgSave = next.defaultOrgId === null ? null : servedSaveKey();
+  }
   // The GM chose the club: a club owed to an import still running is his answer now, never forgotten after it
   if (body.defaultOrgId === null || typeof body.defaultOrgId === 'number' || body.clubChoice === 'automatic') {
     forgetClubWhenImported(null);

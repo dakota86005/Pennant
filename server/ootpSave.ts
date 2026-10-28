@@ -104,9 +104,12 @@ function locationFor(lgPath: string, method: SaveDiscoveryMethod, notes: string[
 }
 
 /**
- * Derives the `.lg` save from where the CSV export lives. Order matters: the
- * export path is the strongest evidence, the saved name is a weaker one, and a
- * manual folder is only ever a fallback.
+ * Derives the `.lg` save from where the CSV export lives. Order matters: the export path is the strongest evidence; a
+ * folder the GM named by hand comes next (it names the export's save only when the export doesn't); the saved name is
+ * the weakest, and is used only when exactly one save carries it (OOTP calls every new league "New Game").
+ *
+ * A folder named by hand is never used beside an export that sits inside another save's folder: the live log and the
+ * date would then be another save's than the league's (D-079). It is set aside, with a note saying so.
  */
 export function locateSave(opts: {
   csvDir: string | null;
@@ -123,44 +126,71 @@ export function locateSave(opts: {
     lastDateSimulatedPath: null,
     notes,
   });
-
+  const manual = opts.manualLgPath ? path.resolve(opts.manualLgPath) : null;
   if (opts.csvDir) {
-    const csv = path.resolve(opts.csvDir);
-
-    const canonical = path.dirname(path.dirname(csv));
-    if (
-      path.basename(csv).toLowerCase() === 'csv' &&
-      path.basename(path.dirname(csv)).toLowerCase() === 'import_export' &&
-      looksLikeSave(canonical)
-    ) {
-      return locationFor(canonical, 'csv_layout', notes);
+    // The export's own save; a different folder named by hand is set aside, with a note
+    const own = exportOwnSave(opts.csvDir, notes);
+    if (own) {
+      if (manual && !sameSaveFolder(manual, own.lgPath)) notes.push(MANUAL_SET_ASIDE);
+      return locationFor(own.lgPath, own.method, notes);
     }
-    notes.push('The CSV folder is not inside <save>.lg/import_export/csv.');
-
-    // An export copied or moved somewhere unusual can still sit below its save
-    let dir = path.dirname(csv);
-    for (let depth = 0; depth < 6 && dir !== path.dirname(dir); depth += 1) {
-      if (looksLikeSave(dir)) return locationFor(dir, 'ancestor_lg', notes);
-      dir = path.dirname(dir);
-    }
-    notes.push('No enclosing .lg folder was found above the CSV folder.');
   } else {
     notes.push('No CSV export is configured.');
   }
 
-  if (opts.saveName) {
-    const match = detectSaves().find((s) => s.name === opts.saveName);
-    if (match && looksLikeSave(match.lgPath)) return locationFor(match.lgPath, 'save_name_match', notes);
-    notes.push(`No save named "${opts.saveName}" was found in the standard OOTP locations.`);
-  }
-
-  if (opts.manualLgPath) {
-    const manual = path.resolve(opts.manualLgPath);
+  if (manual) {
     if (looksLikeSave(manual)) return locationFor(manual, 'manual_override', notes);
     notes.push('The manually configured save folder is not a valid .lg save.');
   }
 
+  if (opts.saveName) {
+    const matches = detectSaves().filter((s) => s.name === opts.saveName && looksLikeSave(s.lgPath));
+    if (matches.length === 1) return locationFor(matches[0].lgPath, 'save_name_match', notes);
+    notes.push(matches.length > 1
+      ? `${matches.length} saves are named "${opts.saveName}", so the name doesn't say which is this one.`
+      : `No save named "${opts.saveName}" was found in the standard OOTP locations.`);
+  }
+
   return notFound();
+}
+
+/** The note a hand-named folder set aside carries. */
+export const MANUAL_SET_ASIDE = 'The save folder named by hand is not the one the export sits in, so the export\'s own save is used.';
+
+/** Whether two paths name the same folder (as resolved; a link is followed where it can be). */
+export function sameSaveFolder(a: string, b: string): boolean {
+  const real = (p: string): string => {
+    try {
+      return fs.realpathSync(p);
+    } catch {
+      return path.resolve(p);
+    }
+  };
+  return real(a) === real(b);
+}
+
+/**
+ * The save an export folder sits in: `<save>.lg/import_export/csv`, or an ancestor that is a save (an export copied or
+ * moved somewhere unusual can still sit below its save). Null when it sits in none; what was tried goes in `notes`.
+ */
+export function exportOwnSave(csvDir: string, notes: string[] = []): { lgPath: string; method: 'csv_layout' | 'ancestor_lg' } | null {
+  const csv = path.resolve(csvDir);
+  const canonical = path.dirname(path.dirname(csv));
+  if (
+    path.basename(csv).toLowerCase() === 'csv' &&
+    path.basename(path.dirname(csv)).toLowerCase() === 'import_export' &&
+    looksLikeSave(canonical)
+  ) {
+    return { lgPath: canonical, method: 'csv_layout' };
+  }
+  notes.push('The CSV folder is not inside <save>.lg/import_export/csv.');
+  let dir = path.dirname(csv);
+  for (let depth = 0; depth < 6 && dir !== path.dirname(dir); depth += 1) {
+    if (looksLikeSave(dir)) return { lgPath: dir, method: 'ancestor_lg' };
+    dir = path.dirname(dir);
+  }
+  notes.push('No enclosing .lg folder was found above the CSV folder.');
+  return null;
 }
 
 export interface SimulatedDate {

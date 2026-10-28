@@ -33,8 +33,54 @@ interface Stored extends ClubOwed {
   csvDir: string;
 }
 
-/** The export folder whose import, when it lands, leaves the club owed (and how many human clubs it names). */
-let owedOnImport: { csvDir: string; humanClubs: number | null } | null = null;
+/**
+ * What a save's choice leaves for its import to do when it lands, kept in `club-pending.json` beside the configuration
+ * (D-079: a quit or a crash before the import lands no longer loses it): the export folder whose import leaves the club
+ * owed (and how many human clubs it names), and the one whose import forgets the club chosen before.
+ */
+const PENDING_FILE = path.join(DATA_DIR, 'club-pending.json');
+
+interface PendingClub {
+  owe: { csvDir: string; humanClubs: number | null } | null;
+  forget: string | null;
+}
+
+function readPending(): PendingClub {
+  try {
+    const stored = JSON.parse(fs.readFileSync(PENDING_FILE, 'utf8')) as Partial<PendingClub>;
+    const owe = stored.owe && typeof stored.owe.csvDir === 'string'
+      ? { csvDir: stored.owe.csvDir, humanClubs: typeof stored.owe.humanClubs === 'number' ? stored.owe.humanClubs : null }
+      : null;
+    return { owe, forget: typeof stored.forget === 'string' ? stored.forget : null };
+  } catch {
+    return { owe: null, forget: null };
+  }
+}
+
+/** Written whole or not at all; removed when nothing is pending. */
+function writePending(next: PendingClub): void {
+  try {
+    if (!next.owe && !next.forget) {
+      fs.rmSync(PENDING_FILE, { force: true });
+      return;
+    }
+    const partial = `${PENDING_FILE}.partial`;
+    fs.writeFileSync(partial, JSON.stringify(next, null, 2));
+    fs.renameSync(partial, PENDING_FILE);
+  } catch (err) {
+    console.error('[settings] could not record what the chosen save\'s import owes the club:', err);
+  }
+}
+
+/** The export folder whose import, when it lands, forgets the club chosen before; null owes nothing. */
+export function setClubForgottenOnImport(csvDir: string | null): void {
+  writePending({ ...readPending(), forget: csvDir });
+}
+
+/** The export folder whose import still owes forgetting the club chosen before; null when none does. */
+export function clubForgottenOnImport(): string | null {
+  return readPending().forget;
+}
 
 /** Whether the club is owed now; null when not (or the file can't be read, which owes nothing). */
 export function clubOwed(): ClubOwed | null {
@@ -59,7 +105,7 @@ export function owedText(humanClubs: number | null): string {
  * choice settled the club (or kept it), so nothing is owed by it.
  */
 export function oweClubWhenImported(pending: { csvDir: string; humanClubs: number | null } | null): void {
-  owedOnImport = pending;
+  writePending({ ...readPending(), owe: pending });
 }
 
 /**
@@ -67,9 +113,11 @@ export function oweClubWhenImported(pending: { csvDir: string; humanClubs: numbe
  * lands with nothing owed clears an owed question of another save. Returns whether the club is owed now.
  */
 export function importLandedForClubQuestion(csvDir: string): boolean {
+  const pending = readPending();
+  const owedOnImport = pending.owe;
   if (owedOnImport && owedOnImport.csvDir === csvDir) {
     const stored: Stored = { csvDir, humanClubs: owedOnImport.humanClubs, text: owedText(owedOnImport.humanClubs), since: new Date().toISOString() };
-    owedOnImport = null;
+    writePending({ ...pending, owe: null });
     try {
       // Written whole or not at all (L4): a stop mid-write never leaves a torn file, which would read as nothing owed
       const partial = `${FILE}.partial`;
@@ -92,7 +140,7 @@ export function importLandedForClubQuestion(csvDir: string): boolean {
 
 /** The GM chose a club (or Automatic): nothing is owed, now or when a pending import lands. */
 export function clearClubOwed(): void {
-  owedOnImport = null;
+  writePending({ ...readPending(), owe: null });
   fs.rmSync(FILE, { force: true });
 }
 

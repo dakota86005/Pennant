@@ -13,6 +13,7 @@ import path from 'node:path';
 import { loadConfig } from './config.js';
 import { databaseGeneration, importRecord, tableExists } from './db.js';
 import { servedLeagueCertain, servedSave } from './historyIdentity.js';
+import { switchPending } from './servedSave.js';
 import { locateSave } from './ootpSave.js';
 import { describeSave, detectSaves, saveId, versionFromPath, type SaveInfo } from './paths.js';
 import { publish } from './serverEvents.js';
@@ -252,7 +253,8 @@ export function refreshServedSaveId(): string | null {
   const signature = servedSignature();
   if (servedId?.signature === signature && servedId.located && !servedId.seeded) return servedId.id;
   try {
-    const save = tableExists('players') && servedLeagueCertain() ? servedSave() : null;
+    // None while a chosen save's import has not landed: the league held is another save's (D-079)
+    const save = tableExists('players') && servedLeagueCertain() && !switchPending() ? servedSave() : null;
     servedId = { signature, id: save?.folderId || null, located: save === null || save.located, folder: save?.located ? save.folderPath : null };
     // Remembered for the next start, which serves it at once (`servedFacts.ts`); only an id worked out for good
     if (servedId.located && servedId.id) rememberFact('saveId', servedId.id);

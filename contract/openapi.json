@@ -4663,6 +4663,27 @@
         ],
         "description": "What `POST /api/v2/setup/automatic` answers (N3.5 Stage B2, D-063): whether the first run chose a save by itself. `started`: the save that clearly stands out is chosen and importing, with the club when the save names one. `alreadyChosen`: a save was chosen before; nothing changed (asking twice starts one import). `nothingStandsOut`: nothing was chosen; `why` says why, and the app asks."
       },
+      "AwaitingImport": {
+        "type": "object",
+        "properties": {
+          "saveName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The chosen save's name; null when none was given."
+          },
+          "text": {
+            "type": "string",
+            "description": "\"Waiting for the import of New Game. Pennant shows the save once its league is in.\""
+          }
+        },
+        "required": [
+          "saveName",
+          "text"
+        ],
+        "description": "A save chosen whose import has not landed (D-079): until it does, the league Pennant holds is another save's, so nothing of it is shown. What the status serves, and every refused request answers, in the GM's words."
+      },
       "Basis": {
         "type": "object",
         "properties": {
@@ -19422,6 +19443,10 @@
             ],
             "description": "The id of the save the imported data came from (D-063: its folder's real path, hashed, as the save list identifies it), tied to the last import (`lastImport`); null with nothing imported, while a save chosen but not yet imported is configured, or until it is worked out. The Mac app keys the Morning Report it keeps across launches on it, so another save's is never drawn and a save being left never has its report kept under the new one's id."
           },
+          "awaitingImport": {
+            "$ref": "#/components/schemas/AwaitingImport",
+            "description": "A save chosen whose import has not landed, with the sentence the app shows (D-079): until it lands the league held is another save's, so nothing of it is served (every league request answers 409 with the same sentence) and `saveId` and `saveFolder` are null. Null when the league served is the chosen save's."
+          },
           "clubOwed": {
             "$ref": "#/components/schemas/ClubOwed",
             "description": "The club question still open across a relaunch (N7): a save was chosen whose export names no club the GM manages, or several, and nobody has chosen. While it is set the automatic club's report is not served as if chosen; null when nothing is owed."
@@ -19474,6 +19499,13 @@
           },
           "defaultOrgId": {
             "$ref": "#/components/schemas/Integer"
+          },
+          "defaultOrgSave": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The save the club in `defaultOrgId` was chosen in (D-079: its save key, `servedSave.ts`): a club chosen in another save is not followed in this one. Absent on a choice from before it was kept (the one-time migration stamps it)."
           },
           "theme": {
             "description": "'system' follows the OS setting and changes with it.",

@@ -1,6 +1,6 @@
 import { db, tableExists } from './db.js';
 import type { Integer } from './contract/primitives.js';
-import { loadSettings } from './settings.js';
+import { chosenOrgId } from './settings.js';
 
 /**
  * Whose organization a view is about (AGENTS.md: resolve the configured organization, then the human-managed OOTP
@@ -13,8 +13,9 @@ export type ViewingSource = 'requested' | 'configured' | 'human';
 export function viewingOrganization(requested: unknown): { id: number; source: ViewingSource } | null {
   const asked = Number(requested);
   if (requested !== undefined && requested !== '' && Number.isInteger(asked) && asked > 0) return { id: asked, source: 'requested' };
-  const configured = loadSettings().defaultOrgId;
-  if (typeof configured === 'number' && configured > 0) return { id: configured, source: 'configured' };
+  // The club chosen in this save; one chosen in another save is another league's team id (D-079)
+  const configured = chosenOrgId();
+  if (configured !== null) return { id: configured, source: 'configured' };
   const human = humanClubs()[0];
   return human === undefined ? null : { id: human, source: 'human' };
 }

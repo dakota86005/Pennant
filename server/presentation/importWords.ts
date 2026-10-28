@@ -127,6 +127,36 @@ export function importNote(state: {
 }
 
 /**
+ * A save chosen whose import has not landed (D-079): until it does, the league Pennant holds is another save's, so
+ * nothing of it is shown. What the status serves, and every refused request answers, in the GM's words.
+ */
+export interface AwaitingImport {
+  /** The chosen save's name; null when none was given. */
+  saveName: string | null;
+  /** "Waiting for the import of New Game. Pennant shows the save once its league is in." */
+  text: string;
+}
+
+/** The sentence a save chosen and not yet imported is waited on in, given where its import stands. */
+export function awaitingImportText(state: {
+  saveName: string | null;
+  importing: boolean;
+  lastError: string | null;
+  exportThere: boolean;
+  watching: boolean;
+}): string {
+  const save = state.saveName ? state.saveName : 'the save you chose';
+  if (state.importing) return `Importing ${save}. Pennant shows it as soon as the import lands.`;
+  if (state.lastError) return `The import of ${save} didn't finish, so there's nothing of it to show yet. Settings says why.`;
+  if (!state.exportThere) {
+    return state.watching
+      ? `${capitalize(save)} has no export yet. Export the league's database in OOTP, and Pennant imports it once it's written.`
+      : `${capitalize(save)} has no export yet. Export the league's database in OOTP, then choose the save again.`;
+  }
+  return `Waiting for the import of ${save}. Choose Import Now in Settings to bring it in.`;
+}
+
+/**
  * What the status says while a league an earlier build imported is brought up to date, once (N6 polish: the first
  * launch on a folder the Electron app last used waited 5.5 s with only "Starting…" on screen). The server answers
  * meanwhile; the report follows when it is done.

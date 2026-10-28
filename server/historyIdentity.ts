@@ -45,8 +45,8 @@ import { databaseGeneration, db as leagueDb, importRecord, LAST_IMPORT_PATH, tab
 import { APP_ROOT, DATA_DIR, loadConfig } from './config.js';
 import { parseGameDate } from './dataFreshness.js';
 import { historyDb, POPULATION_DATA_COLUMNS, SNAPSHOT_DATA_COLUMNS, snapshotGameDate } from './history.js';
-import { locateSave } from './ootpSave.js';
 import { findSaves, saveId, type SaveInfo } from './paths.js';
+import { saveFolderOf, servedSource } from './servedSave.js';
 
 // ── the policy ────────────────────────────────────────────────────────────────
 
@@ -159,21 +159,15 @@ export interface ServedSave {
  */
 export function servedSave(): ServedSave {
   const config = loadConfig();
-  const recorded = importRecord()?.csvDir;
-  const csvDir = typeof recorded === 'string' && recorded ? recorded : config.csvDir;
+  const source = servedSource();
   const configuredName = config.saveName ?? 'unknown';
-  if (!csvDir) return { folderId: '', folderPath: null, name: configuredName, legacyName: configuredName, configured: true, located: false };
-  const location = locateSave({ csvDir });
+  if (!source.csvDir) return { folderId: '', folderPath: null, name: configuredName, legacyName: configuredName, configured: true, located: false };
   // A save folder that can't be seen just now (a drive not mounted) keeps its identity: OOTP's layout names it
-  const csv = path.resolve(csvDir);
-  const byLayout = path.basename(csv).toLowerCase() === 'csv' && path.basename(path.dirname(csv)).toLowerCase() === 'import_export'
-    && path.dirname(path.dirname(csv)).toLowerCase().endsWith('.lg') ? path.dirname(path.dirname(csv)) : null;
-  const folderPath = location.lgPath ?? byLayout ?? csv;
-  const name = location.saveName ?? (byLayout ? path.basename(byLayout).replace(/\.lg$/i, '') : configuredName);
-  const sameAsConfigured = config.csvDir !== null && path.resolve(config.csvDir) === csv;
+  const folder = saveFolderOf(source.csvDir);
+  const name = folder.name ?? configuredName;
   return {
-    folderId: saveId(folderPath), folderPath, name, legacyName: sameAsConfigured ? configuredName : name, configured: sameAsConfigured,
-    located: location.lgPath !== null || byLayout !== null,
+    folderId: folder.folderId, folderPath: folder.folderPath, name, legacyName: source.configured ? configuredName : name,
+    configured: source.configured, located: folder.located,
   };
 }
 

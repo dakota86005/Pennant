@@ -24,6 +24,7 @@
   "saveId": null,
   "clubOwed": null,
   "saveFolder": null,
+  "awaitingImport": null,
   "leagueUpgrade": null,
   "ratingScaleMax": 80
 }

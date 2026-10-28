@@ -154,11 +154,12 @@ describe('a save played since the chosen one', () => {
       expect((await request('/api/status')).saveId).toBeNull();
       refreshServedSaveId();
       expect((await request('/api/status')).saveId).toBe(saveId(chosen.lg));
-      // Another save chosen, not yet imported: the data is still the chosen one's, and so is the id (never the new one's)
+      // Another save chosen, not yet imported: the league held is the save being left, so no id is served (D-079: the
+      // app waits for the chosen save's import; never the new one's id, nor the old one's as if it were still chosen)
       saveConfig({ csvDir: other.csvDir, saveName: 'RIGHTS-EXP' });
       expect(servedSaveId()).toBeNull();
       refreshServedSaveId();
-      expect((await request('/api/status')).saveId).toBe(saveId(chosen.lg));
+      expect((await request('/api/status')).saveId).toBeNull();
       // Its import lands: the id moves with it
       imported(other.csvDir);
       refreshServedSaveId();

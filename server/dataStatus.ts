@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import { databaseGeneration, db, tableColumns, tableExists } from './db.js';
 import { configStamp, loadConfig } from './config.js';
+import { servedSource } from './servedSave.js';
 import {
   liveDatabaseFiles, locateSave, readLastDateSimulated,
   type LiveDatabaseFiles, type SaveDiscoveryMethod, type SaveLocation,
@@ -167,7 +168,11 @@ export function forgetSaveLocation(): void {
   located = null;
 }
 
-/** Where the current save lives, derived from configuration. */
+/**
+ * Where the served save lives (D-079): the save the served league was imported from (`servedSource`), never merely the
+ * one chosen. While a chosen save's import has not landed, its live log and date are not this league's, so they are not
+ * read: the served save's are. The configuration's name and hand-named folder count only while it names the served save.
+ */
 export function currentSaveLocation(): SaveLocation {
   const key = `${configStamp()}|${databaseGeneration()}`;
   const now = Date.now();
@@ -176,10 +181,21 @@ export function currentSaveLocation(): SaveLocation {
     return kept.location.lgPath ? { ...kept.location, live: liveDatabaseFiles(kept.location.lgPath) } : kept.location;
   }
   const config = loadConfig();
+  const source = servedSource();
   locationStats.locates += 1;
-  const location = locateSave({ csvDir: config.csvDir, saveName: config.saveName, manualLgPath: config.lgPath ?? null });
+  const location = locateSave({
+    csvDir: source.csvDir,
+    saveName: source.configured ? config.saveName : null,
+    manualLgPath: source.configured ? config.lgPath ?? null : null,
+  });
   located = { key, at: now, location };
   return location;
+}
+
+/** The served save's folder as last found, without looking for it (the status's path); null while none is kept. */
+export function keptSaveFolder(): string | null {
+  const kept = located;
+  return kept && kept.key === `${configStamp()}|${databaseGeneration()}` ? kept.location.lgPath : null;
 }
 
 const logKey = (location: SaveLocation): string =>
@@ -428,12 +444,13 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
       : { available: false, reason: logStatus.unavailableReason ?? 'save_not_found' },
   });
 
+  const source = servedSource();
   return {
     generatedAt: new Date().toISOString(),
     configured: !!config.csvDir,
     save: {
       found: location.found,
-      name: location.saveName ?? config.saveName,
+      name: location.saveName ?? (source.configured ? config.saveName : null),
       lgPath: location.lgPath,
       discovery: location.method,
       discoveryNotes: location.notes,
@@ -443,7 +460,7 @@ export function getDataStatus(opts: { importedAt?: string | null } = {}): DataSt
     csv: {
       currentDate,
       simulatedThrough: freshness.csv.through,
-      exportedAt: config.csvDir ? csvExportedAt(config.csvDir) : null,
+      exportedAt: source.csvDir ? csvExportedAt(source.csvDir) : null,
       importedAt: opts.importedAt ?? null,
     },
     transactionLog: logStatus,

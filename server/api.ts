@@ -7,7 +7,8 @@ import { detectSaves, findSaves, resolveChosenFolder, searchLocations, type Reso
 import { DATA_DIR, loadConfig, saveConfig } from './config.js';
 import { diskSpace, importCsvDir, upgradeState, ImportRefused, type ImportProgress, type ImportResult } from './importer.js';
 import { upgradeLeagueDatabase } from './importBuild.js';
-import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher } from './watcher.js';
+import { checkExport, clearPendingExport, notePendingExport, onSettledExport, pendingExport, startWatcher, stopWatcher } from './watcher.js';
+import { switchPending } from './servedSave.js';
 import { assessExport, importedExport, type ExportAssessment } from './exportFiles.js';
 import { locateSave } from './ootpSave.js';
 import { readRatingMode } from './ratingMode.js';
@@ -19,7 +20,7 @@ import { currentPlayedElsewhere, forgetSaveScan, lookAtTheServedSave, onLookAtTh
 import { saveDiscoveryView, type SaveDiscovery } from './presentation/saveWords.js';
 import { assertAuthored } from './presentation/claim.js';
 import type { Claim } from './contract/presentation.js';
-import { clubForgottenWhenImported, featureProvider, forgetClubWhenImported, importLandedForClub, providerCredential, loadSettings } from './settings.js';
+import { chosenOrgId, clubForgottenWhenImported, featureProvider, forgetClubWhenImported, importLandedForClub, providerCredential, loadSettings } from './settings.js';
 import { orgRoutes } from './org.js';
 import { contractRoutes } from './contracts.js';
 import { freeAgentRoutes } from './freeagents.js';
@@ -27,7 +28,7 @@ import { lineupRoutes } from './lineup.js';
 import { storylineRoutes, startStorylineJob } from './storylines.js';
 import { playerRoutes } from './player.js';
 import { historyRoutes } from './history.js';
-import { csvExportedAt, resetTransactionLogCache, warmTransactionLog } from './dataStatus.js';
+import { csvExportedAt, keptSaveFolder, resetTransactionLogCache, warmTransactionLog } from './dataStatus.js';
 import { importedAt, playerStateRoutes } from './playerStateRoutes.js';
 import { clearStatCaches } from './stats.js';
 import { clearResultsCaches } from './resultsEvidence.js';
@@ -69,10 +70,34 @@ import { eventStream, progressThrottle, publish } from './serverEvents.js';
 import { v2Routes } from './v2Routes.js';
 import { currentReportStamp, holdFrontOfficeRebuilds, relocateLiveLog, valueRefitsRecorded, warmFrontOffice } from './frontOfficeService.js';
 import { afterImport } from './frontOfficeAttention.js';
-import { EXPORT_NOT_FOUND, LEAGUE_UPGRADE_LINE, importNote, importWords, leftOutNote, type ImportNote, type LeagueUpgradeLine } from './presentation/importWords.js';
+import { EXPORT_NOT_FOUND, LEAGUE_UPGRADE_LINE, awaitingImportText, importNote, importWords, leftOutNote, type AwaitingImport, type ImportNote, type LeagueUpgradeLine } from './presentation/importWords.js';
 import type { Integer } from './contract/primitives.js';
 
 export const api = Router();
+
+/**
+ * The requests that answer while a chosen save's import has not landed (D-079): the status and its events, choosing a
+ * save (the list, the setup, the configuration, the import) and the app's own settings and keys. Every other request
+ * shows or writes something of the league, which is still another save's, so it waits (`awaitingImportGate`).
+ */
+const ANSWERED_WHILE_AWAITING: ReadonlyArray<RegExp> = [
+  /^\/status$/, /^\/v2\/events$/, /^\/v2\/saves$/, /^\/v2\/setup\/automatic$/, /^\/saves$/, /^\/search-locations$/,
+  /^\/resolve-folder$/, /^\/config$/, /^\/import$/, /^\/settings$/, /^\/settings\/providers$/, /^\/settings\/api-key$/,
+  /^\/models$/, /^\/v2\/ai\/keys(\/check)?$/, /^\/theme-packs\/[^/]+\/[^/]+$/,
+];
+
+/**
+ * While a chosen save's import has not landed, the league Pennant holds is another save's: nothing of it is served and
+ * nothing is written for it. The request is answered 409 with the sentence the status serves (`awaitingImport`), so the
+ * GM sees "waiting for your save's import" rather than the save being left.
+ */
+export function awaitingImportGate(req: Request, res: Response<ApiError>, next: NextFunction): void {
+  if (ANSWERED_WHILE_AWAITING.some((allowed) => allowed.test(req.path))) return next();
+  const awaiting = currentAwaitingImport();
+  if (!awaiting) return next();
+  res.status(409).json({ error: awaiting.text });
+}
+api.use(awaitingImportGate);
 api.use(logoRoutes);
 api.use(themePackFileRoutes);
 api.use(settingsRoutes);
@@ -190,7 +215,7 @@ function autoGenerate(): void {
     const settings = loadSettings();
     if (!settings.autoGenerateAfterImport) return;
 
-    const orgId = settings.defaultOrgId ?? humanOrgId();
+    const orgId = chosenOrgId(settings) ?? humanOrgId();
     if (!orgId) return;
 
     const storylineProvider = featureProvider('storylines');
@@ -498,7 +523,8 @@ export function handleSettledExport(csvDir: string, assessment: ExportAssessment
   const failed = importState.lastFailed;
   if (failed && failed.csvDir === csvDir && failed.fingerprint === assessment.fingerprint) return;
   const settings = loadSettings();
-  if (settings.autoImport && settings.importAutomatically) {
+  // A save chosen and not yet imported: its import is what the GM asked for when choosing it (D-079)
+  if (settings.autoImport && (settings.importAutomatically || switchPending())) {
     if (importState.importing) lookAgainAfterImport = true;
     else void runImport(csvDir, 'automatic');
   } else {
@@ -636,6 +662,12 @@ export interface ServerStatus {
    */
   saveId: string | null;
   /**
+   * A save chosen whose import has not landed, with the sentence the app shows (D-079): until it lands the league held
+   * is another save's, so nothing of it is served (every league request answers 409 with the same sentence) and
+   * `saveId` and `saveFolder` are null. Null when the league served is the chosen save's.
+   */
+  awaitingImport: AwaitingImport | null;
+  /**
    * The club question still open across a relaunch (N7): a save was chosen whose export names no club the GM manages,
    * or several, and nobody has chosen. While it is set the automatic club's report is not served as if chosen; null
    * when nothing is owed.
@@ -723,9 +755,26 @@ function currentImportNote(csvDir: string | null = loadConfig().csvDir): ImportN
   });
 }
 
+/** The save chosen and not yet imported, with the sentence it is waited on in; null when the league served is the chosen save's. */
+export function currentAwaitingImport(): AwaitingImport | null {
+  const pending = switchPending();
+  if (!pending) return null;
+  return {
+    saveName: pending.saveName,
+    text: awaitingImportText({
+      saveName: pending.saveName,
+      importing: importState.importing,
+      lastError: importState.lastError,
+      exportThere: fs.existsSync(pending.csvDir),
+      watching: loadSettings().autoImport,
+    }),
+  };
+}
+
 /** What `/api/status` serves, and the snapshot `/api/v2/events` opens with. */
 export function statusSnapshot(): ServerStatus {
   const config = loadConfig();
+  const awaiting = currentAwaitingImport();
   return {
     /** Product name and version, from package.json (see appInfo.ts). */
     app: appInfo(),
@@ -759,10 +808,13 @@ export function statusSnapshot(): ServerStatus {
     // The last look at the saves (`saveDiscovery.ts`), never a scan on this request's path
     savePlayedElsewhere: currentPlayedElsewhere(),
     // Worked out off this request's path (at start, the minute's look, a new configuration, an import): only read here
-    saveId: servedSaveId(),
+    // Null while a chosen save's import has not landed: the league held is another save's (D-079)
+    saveId: awaiting ? null : servedSaveId(),
     clubOwed: clubOwed(),
-    // The configuration's folder, else the one the last look found (never located on this path)
-    saveFolder: config.lgPath ?? servedSaveFolder(),
+    // The folder the live log and the save's date are read from, as last found (never located on this path); none
+    // while a chosen save's import has not landed
+    saveFolder: awaiting ? null : keptSaveFolder() ?? servedSaveFolder(),
+    awaitingImport: awaiting,
     leagueUpgrade: leagueUpgradeUnderWay() ? LEAGUE_UPGRADE_LINE : null,
     /*
      * The scale OOTP is set to show ratings on, read off the save. Bars used
@@ -831,13 +883,16 @@ function chooseSave(csvDir: string, saveName: string | null): boolean {
   resetTransactionLogCache();
   warmTransactionLog();
   forgetSaveScan();
+  // The chosen save's export is watched when the GM watches for exports (and the save being left no longer is), so an
+  // export written later is noticed, even for a save with no export yet; with watching off, nothing is watched
+  if (loadSettings().autoImport) startWatcher(csvDir);
+  else stopWatcher();
   if (!fs.existsSync(csvDir)) return false;
   importState.importing = true; // visible to /status before the import starts
   setImmediate(() => {
     importState.importing = false;
     void runImport(csvDir);
   });
-  startWatcher(csvDir);
   return true;
 }
 
@@ -896,7 +951,7 @@ export interface AutomaticSetup {
  */
 function clubFromSave(csvDir: string): SetupClub {
   const config = loadConfig();
-  const chosenClub = loadSettings().defaultOrgId;
+  const chosenClub = chosenOrgId();
   const clubs = humanClubsInExport(csvDir);
   const humanClubs = clubs === null ? null : clubs.length;
   // The save whose league Pennant holds: the last import's folder, else the one chosen (an import from before N3.5)

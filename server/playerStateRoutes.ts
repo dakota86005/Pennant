@@ -3,7 +3,8 @@ import type { ApiError } from './api.js';
 import fs from 'node:fs';
 import { loadConfig, saveConfig } from './config.js';
 import { getDataStatus, resetTransactionLogCache, type DataStatus } from './dataStatus.js';
-import { locateSave } from './ootpSave.js';
+import { exportOwnSave, locateSave, sameSaveFolder } from './ootpSave.js';
+import path from 'node:path';
 import { playerPicture } from './playerContext.js';
 
 export const playerStateRoutes = Router();
@@ -54,6 +55,13 @@ playerStateRoutes.post('/save-source', (req, res: Response<SaveSourceResult | Ap
   const candidate = locateSave({ csvDir: null, manualLgPath: lgPath });
   if (!candidate.found || !fs.existsSync(candidate.lgPath!)) {
     return res.status(400).json({ error: 'That folder is not an OOTP save (.lg) folder.' });
+  }
+  // An export that sits inside a save names its own save: another folder would read another save's log (D-079)
+  const own = config.csvDir ? exportOwnSave(config.csvDir) : null;
+  if (own && !sameSaveFolder(own.lgPath, candidate.lgPath!)) {
+    return res.status(400).json({
+      error: `The export is inside ${path.basename(own.lgPath)}, so Pennant reads that save's transaction log. Choose that save's folder, or Find Automatically.`,
+    });
   }
   saveConfig({ ...config, lgPath: candidate.lgPath });
   resetTransactionLogCache();
