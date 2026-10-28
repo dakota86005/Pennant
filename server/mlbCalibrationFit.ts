@@ -357,7 +357,7 @@ export function measureStandards(
   const lineChecks = bullpen?.measurement.checks ?? [];
   const bullpenModel = bullpen?.record;
   const none = (failure: string, reason: string) => record(null, [], { passed: false, reason, failures: [failure] }, { overall: 1, byPart: {} }, notes);
-  if (clubs.length < policyIn.minClubs) return none('clubs', `Not measured: ${plural(clubs.length, 'club')} have a reviewed lineup, fewer than ${policyIn.minClubs}.`);
+  if (clubs.length < policyIn.minClubs) return none('clubs', `Not measured: ${plural(clubs.length, 'club')} ${clubs.length === 1 ? 'has' : 'have'} a reviewed lineup, fewer than ${policyIn.minClubs}.`);
   if (games === null) return none('games_unknown', "Not measured: the export does not say how many games the clubs have played this season.");
   if (games < policyIn.minGamesPerClub) return none('games', `Not measured: clubs have played ${plural(games, 'game')} this season, fewer than ${policyIn.minGamesPerClub}, too few for usage to name the regulars.`);
 

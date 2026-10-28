@@ -1331,6 +1331,8 @@ function seasonEligibility(
   const low = rungOf(band.low, priorLow, perYear, fa, arb, st);
   const high = rungOf(band.high, priorHigh, perYear, fa, arb, st);
   const faLine = fa !== null ? fa * perYear : null;
+  // Every line below that names free agency is reached only with its rule known (faLine, or no arbitration because of it)
+  const faYears = fa === null ? null : plural(fa, 'year');
   // No arbitration in this regime: its rule is 0, or free agency comes no later than the arbitration line
   const noArbitration = arb === 0 || (arb !== null && fa !== null && fa > 0 && fa <= arb);
   const arbLine = arb !== null && arb > 0 && !noArbitration ? arb * perYear : null;
@@ -1356,13 +1358,13 @@ function seasonEligibility(
   if (faLine === null) {
     freeAgency = answer('indeterminate', [], [{ code: 'rule_not_established', message: `The league's free-agency rule is not available: ${rules.freeAgencyYears.note ?? 'no source states it'}` }]);
   } else if (band.low >= faLine) {
-    freeAgency = answer('eligible', [reason('past_free_agency_line', `${serviceText} of service by then, past the free-agency line of ${fa} years.`, 'export_state', `${SERVICE_SOURCE} + ${FA_SOURCE}`)]);
+    freeAgency = answer('eligible', [reason('past_free_agency_line', `${serviceText} of service by then, past the free-agency line of ${faYears}.`, 'export_state', `${SERVICE_SOURCE} + ${FA_SOURCE}`)]);
   } else if (band.high < faLine) {
-    freeAgency = answer('ineligible', [reason('short_of_free_agency_line', `${serviceText} of service by then, short of the free-agency line of ${fa} years.`, 'export_state', `${SERVICE_SOURCE} + ${FA_SOURCE}`)]);
+    freeAgency = answer('ineligible', [reason('short_of_free_agency_line', `${serviceText} of service by then, short of the free-agency line of ${faYears}.`, 'export_state', `${SERVICE_SOURCE} + ${FA_SOURCE}`)]);
   } else {
     freeAgency = answer('indeterminate', [], [{
       code: 'projection_straddles_threshold',
-      message: `${serviceText} of service by then: the free-agency line of ${fa} years falls inside the projection.`,
+      message: `${serviceText} of service by then: the free-agency line of ${faYears} falls inside the projection.`,
     }]);
   }
 
@@ -1376,7 +1378,7 @@ function seasonEligibility(
   } else if (arb === 0 || arbLine === null || windowLine === null) {
     const why = arb === 0
       ? 'This league has no salary arbitration (its arbitration rule is 0).'
-      : `Free agency (${fa} years) comes no later than the arbitration line (${plural(arb, 'year')}): no season is an arbitration year.`;
+      : `Free agency (${faYears}) comes no later than the arbitration line (${plural(arb, 'year')}): no season is an arbitration year.`;
     arbitration = { ...answer('ineligible', [reason('no_arbitration', why, 'export_state', arb === 0 ? ARB_SOURCE : `${FA_SOURCE} + ${ARB_SOURCE}`)]), ...none };
   } else {
     const trip = (d: number) => Math.floor(d / perYear) - arb + 1;

@@ -76,6 +76,9 @@ describe('role standards: measured from the league as it stands, checked, shrunk
 
   it('too few clubs, or too early in the season, is not measured at all', () => {
     expect(measureStandards(league(1, { clubs: 12 }), history(2, 10), basis).record.gate.reason).toMatch(/12 clubs/);
+    // The verb agrees with the count (review 10 L2)
+    expect(measureStandards(league(1, { clubs: 12 }), history(2, 10), basis).record.gate.reason).toMatch(/12 clubs have a reviewed lineup/);
+    expect(measureStandards(league(1, { clubs: 1 }), history(2, 10), basis).record.gate.reason).toMatch(/1 club has a reviewed lineup/);
     const early = measureStandards(league(1, { games: 6 }), history(2, 10), basis);
     expect(early.model).toBeNull();
     expect(early.record.gate.reason).toMatch(/6 games/);

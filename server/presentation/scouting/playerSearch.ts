@@ -10,7 +10,7 @@
 import type { Cell } from '../../contract/presentation.js';
 import type { PlayersPage } from '../../league.js';
 import { cell } from '../claim.js';
-import { inningsOf } from '../../numberWords.js';
+import { inningsWords, outsOf } from '../../numberWords.js';
 import { ageCell, head, hintIf, plural, player, statCell, statSort, type ClubhouseContext } from '../clubhouse/common.js';
 import { column } from '../league/common.js';
 import { choosable, keysServed } from '../league/office.js';
@@ -197,7 +197,7 @@ function resultRow(v: ClubhouseContext, p: PagePlayer, group: SearchGroup): Offi
       ? [line(`Organization: ${String(p.organization)}${ours ? ' (yours)' : ''}`, { quiet: true })] : []),
     ...(typeof level === 'string' ? [line(`Line at ${level}, his busiest level`, { quiet: true })] : []),
     ...(p.stints?.length
-      ? [line(`Clubs this season: ${p.stints.map((s) => `${s.team} (${s.level}) ${group === 'pitching' ? `${inningsOf(Number(s.ip))} innings` : `${s.pa} plate appearances`}`).join(', ')}`, { quiet: true })]
+      ? [line(`Clubs this season: ${p.stints.map((s) => `${s.team} (${s.level}) ${group === 'pitching' ? inningsWords(outsOf(Number(s.ip))) : plural(Number(s.pa), 'plate appearance')}`).join(', ')}`, { quiet: true })]
       : []),
   ];
   // Served with no sort keys: the server sorts every match (`searchSortOf`), and the app shows the rows as served

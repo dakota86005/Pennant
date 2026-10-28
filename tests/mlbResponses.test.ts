@@ -355,6 +355,12 @@ describe('the contemplated assignment is described here and judged by Player Dev
     expect(asked(113, {}, 6).packet.assignment?.context).toBe('temporary_depth');
   });
 
+  it('says the horizon as a count: "about 1 day", never "about 1 days" (review 10 L1)', () => {
+    expect(asked('sp', {}, 1).packet.assignment?.explanation).toBe('The need is short-term (about 1 day).');
+    expect(asked('sp', {}, 6).packet.assignment?.explanation).toBe('The need is short-term (about 6 days).');
+    expect(asked('sp', {}, 40).packet.assignment?.explanation).toBe('The need is extended (about 40 days) but bounded.');
+  });
+
   it('an extended absence is temporary depth and a long one a durable role', () => {
     expect(asked('sp', {}, 40).packet.assignment?.context).toBe('temporary_depth');
     expect(asked('sp', {}, 120).packet.assignment?.context).toBe('durable_role');

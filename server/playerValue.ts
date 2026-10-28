@@ -635,7 +635,7 @@ function leaguePayrollOf(clubs: Set<number>, rules: Map<number, LeagueRules>): S
     else total += payroll;
   }
   if (lacking.length > 0) {
-    return unknownBecause('not_exported_by_ootp', source, `${lacking.length} of ${plural(clubs.size, 'club')} have no payroll figure (club ${lacking.join(', ')}), so the league's total is not stated.`);
+    return unknownBecause('not_exported_by_ootp', source, `${lacking.length} of ${plural(clubs.size, 'club')} ${lacking.length === 1 ? 'has' : 'have'} no payroll figure (club ${lacking.join(', ')}), so the league's total is not stated.`);
   }
   return derivedFrom(total, source, `OOTP's payroll figure summed over the league's ${plural(clubs.size, 'club')}.`);
 }

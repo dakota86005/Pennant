@@ -18,6 +18,12 @@ describe('a reliever\'s role, read from how he is used', () => {
     expect(roleOf(u({ leverage: 1.0, ip: 40, g: 20 }), BULLPEN_PRIOR).tier).toBe('long');
   });
 
+  it('writes innings per appearance like innings, from outs: "1.1", never "1.3" (review 10 L1)', () => {
+    expect(roleOf(u({ ip: 80 / 3, g: 20 }), BULLPEN_PRIOR).text).toMatch(/1\.1 innings per appearance/);
+    expect(roleOf(u({ ip: 20, g: 20 }), BULLPEN_PRIOR).text).toMatch(/\b1 inning per appearance/);
+    expect(roleOf(u({ ip: 40 / 3, g: 20 }), BULLPEN_PRIOR).text).toMatch(/0\.2 innings per appearance/);
+  });
+
   it('too few appearances, or no leverage in the export, is not a role: unknown stays unknown', () => {
     const early = roleOf(u({ g: MIN_APPEARANCES - 1, leverage: 2 }), BULLPEN_PRIOR);
     expect(early).toMatchObject({ tier: 'unknown', stakes: null });

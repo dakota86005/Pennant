@@ -1007,11 +1007,13 @@ export function contemplatedAssignment(need: MlbNeed, override?: MlbAssignmentCo
     ({ context, evaluated: [context], label: CONTEXT_PROFILES[context].label, basis, explanation, choices });
   if (override && choices.some((c) => c.context === override)) return one(override, 'gm_selected', 'You chose this assignment context.');
   const h = need.horizon.kind;
+  // A short or extended horizon always has its days (`mlbNeeds.ts` horizonOf); one without them says so, never a guess
+  const horizonDays = (d: number | null): string => (d === null ? 'an unstated number of days' : plural(d, 'day'));
   if (h === 'temporary') {
     const context: MlbAssignmentContext = role.kind === 'starting_pitcher' ? 'spot_start' : role.kind === 'relief_pitcher' ? 'short_bullpen' : 'temporary_depth';
-    return one(context, 'derived_from_horizon', `The need is short-term (about ${need.horizon.days} days).`);
+    return one(context, 'derived_from_horizon', `The need is short-term (about ${horizonDays(need.horizon.days)}).`);
   }
-  if (h === 'extended') return one('temporary_depth', 'derived_from_horizon', `The need is extended (about ${need.horizon.days} days) but bounded.`);
+  if (h === 'extended') return one('temporary_depth', 'derived_from_horizon', `The need is extended (about ${horizonDays(need.horizon.days)}) but bounded.`);
   if (h === 'long_term') return one('durable_role', 'derived_from_horizon', need.horizon.days === null
     ? 'Replacing a role holder is open-ended, so a durable role is contemplated.'
     : `The need is long-term (about ${plural(need.horizon.days, 'day')}), so a durable role is contemplated.`);

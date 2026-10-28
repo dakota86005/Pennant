@@ -262,7 +262,7 @@ export function contractsView(ctx: OfficeContext, c: Contracts): FinanceContract
     ...columnWords(y),
   ]);
   const price = c.price
-    ? perWinLine(ctx, `A win costs about ${'$'}${(c.price.band.central / 1e6).toFixed(2)}M on this league's market`, c.price.text, c.price.stage)
+    ? perWinLine(ctx, `A win costs about ${money(c.price.band.central)} on this league's market`, c.price.text, c.price.stage)
     : null;
   return {
     ...officeHead(ctx, 'Contracts', lede, SPECIALIST),

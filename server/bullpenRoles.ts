@@ -20,7 +20,7 @@
 
 import { policy, provisional, type CalibrationStamp } from './calibration.js';
 import { onScale } from './roleStanding.js';
-import { plural } from './numberWords.js';
+import { inningsWords, outsOf, plural } from './numberWords.js';
 
 export const BULLPEN_CALIBRATION: CalibrationStamp = policy(
   'The leverage cut-offs are policy on the league\'s own leverage scale (1.0 is an average plate appearance there; rescaled only when the league\'s mean is off 1.0 by more than the tolerance). The long-man line is measured on the league\'s own relievers where its checks pass (docs/CALIBRATION.md section 14), else the starting value. The deployment gap, the minimum appearances and the multi-inning line are policy.'
@@ -128,7 +128,7 @@ export function roleOf(u: BullpenUsage, lines: BullpenLines): BullpenRole {
   else if (perApp >= lines.long) tier = 'long';
   else if (u.leverage < lines.leverage.low) tier = 'low_leverage';
   else tier = 'middle';
-  const bits = [`leverage ${u.leverage.toFixed(2)}`, `${perApp.toFixed(1)} innings per appearance`, ...(u.sv > 0 ? [`${u.sv} save${u.sv === 1 ? '' : 's'}`] : []), ...(u.hld > 0 ? [`${u.hld} hold${u.hld === 1 ? '' : 's'}`] : [])];
+  const bits = [`leverage ${u.leverage.toFixed(2)}`, `${inningsWords(outsOf(perApp))} per appearance`, ...(u.sv > 0 ? [`${u.sv} save${u.sv === 1 ? '' : 's'}`] : []), ...(u.hld > 0 ? [`${u.hld} hold${u.hld === 1 ? '' : 's'}`] : [])];
   return { tier, stakes: STAKES[tier], text: `Used as a ${TIER_WORD[tier]} (${bits.join(', ')}).` };
 }
 
