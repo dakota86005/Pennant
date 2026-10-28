@@ -1061,7 +1061,7 @@ describe('cross-save: league structure', () => {
     expect(broken.contract.season.value).toBe(orphan.season_year);
     expect(broken.contract.season.source).toBe('leagues.season_year');
     expect(broken.contract.freeAgencyYears.value).toBeNull();
-    expect(broken.contract.freeAgencyYears.note).toMatch(/parent league 555/);
+    expect(broken.contract.freeAgencyYears.note).toMatch(/answers to a league the export carries no row for/);
     // No parent_league_id column at all: the same
     const { parent_league_id: _drop, ...noParent } = majorLeagueRow();
     const flat = rows([noParent])(203);
