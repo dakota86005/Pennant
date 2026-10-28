@@ -1688,7 +1688,7 @@
    ],
    "batch": 8,
    "phrasebook": false,
-   "status": "open",
+   "status": "fixed (batch 4)",
    "round": 1
   },
   {
@@ -2805,7 +2805,7 @@
    ],
    "batch": 4,
    "phrasebook": false,
-   "status": "open",
+   "status": "fixed (batch 4)",
    "round": 2
   },
   {
@@ -2837,7 +2837,7 @@
    ],
    "batch": 4,
    "phrasebook": false,
-   "status": "open",
+   "status": "fixed (batch 4)",
    "round": 2
   },
   {
@@ -3602,7 +3602,7 @@
    ],
    "batch": 4,
    "phrasebook": false,
-   "status": "open",
+   "status": "partly fixed (batch 4): the staffing floors come from the league's active-roster limit; the farm's usage-window settings (SRVFARM-24) are measured per save later, as the owner decided",
    "round": 2
   },
   {
@@ -3626,7 +3626,7 @@
    ],
    "batch": 4,
    "phrasebook": false,
-   "status": "open",
+   "status": "fixed (batch 4)",
    "round": 2
   },
   {

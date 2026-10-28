@@ -120,7 +120,7 @@ A concrete, currently true (or GM-posed) problem with the active MLB roster.
 
 | Kind | Meaning | Derived from | Slice 1 |
 |---|---|---|---|
-| `role_below_standard` | Healthy active players in a role fall below a minimum coverage floor (5 SP, 7 RP, 2 C; floors, not targets: §16) | Player State + counts | ✔ |
+| `role_below_standard` | Healthy active players in a role fall below a minimum coverage floor (5 SP, 7 RP, 2 C on a 26-man active roster, scaled to the league's own limit, none when it is unknown; floors, not targets: §16) | Player State + counts | ✔ |
 | `open_active_spot` | Active count is below the league's limit and no role need consumes the spot | State + league rules | ✔ |
 | `il_return_crunch` | An org player on the IL is due back within the window and the active roster is full | State (injury days left) | ✔ |
 | `what_if` (origin `hypothetical`) | The GM asks "if X is unavailable…" | State + a stated assumption | ✔ |

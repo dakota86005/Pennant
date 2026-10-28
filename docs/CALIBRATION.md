@@ -913,7 +913,10 @@ results) has its own line on its own scale; relievers are checked against the le
   data): the repeatable spread of fielding runs per 1,300 innings (year-to-year covariance) against the repeatable spread of
   batting runs per 600 PA, weight = sd(glove) / (sd(glove) + sd(bat)). Batting runs use each season's own wOBA scale (derived from its totals since cycle 2, section 13.5; 1.2 only where the totals cannot give one), which sets the glove-to-bat ratio. Checked on the next
   season: among a position's regulars, (1 − w) × bat percentile + w × glove percentile (both from results) is rank-correlated with
-  what they produced the season after. Results only on both sides: no rating is read.
+  what they produced the season after. Results only on both sides: no rating is read. **Since `defense-2` (2026-10-28, D-053
+  amendment, B-67)** that check is the gate's sanity check only: the weights replace the starting ones when the detector finds them
+  clearly better on the held-out seasons (each regular's blend percentile against his next-season percentile as the case loss,
+  unshrunk and as served, with hysteresis), as for the aging curve; a `defense-1` fit is not read.
 
 **Not built, against the Stage A design** (recorded so nobody assumes them): the standards' third check (the previous import's
 standards scored on the current holders once two measurements exist) is not implemented and not recorded as "not yet measured";

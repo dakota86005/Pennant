@@ -257,7 +257,7 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 - Absorbs: FO-09 (confirmed), FO-17 (plausible)
 
 **B-34 · "Whose ratings" reads Not known, with no way forward**
-- Status: open
+- Status: fixed (batch 4)
 - Tier 2 · data · Shell, Farm, Player windows · size S · batch 8
 - The GM sees: Data Status's Ratings row says "Not known" without saying a fresh import fixes it; the player's Ratings tab is headed "Not known" above a full set of grades and mentions a snapshot set aside, while Development Tracking says no snapshots are kept.
 - Cause: server/presentation/dataStatusWords.ts:153; server/ratingMode.ts:142; server/presentation/farm/development.ts:282-315; server/history.ts:370 (raw unpadded dates).
@@ -483,14 +483,14 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - Absorbs: SRVVALUE-04 (proven)
 
 **B-66 · Hidden true ratings still reach some pages**
-- Status: open
+- Status: fixed (batch 4)
 - Tier 1 · doctrine · Trades, Scouting, Player windows, MLB Ops, Shell · size M · batch 4
 - The GM sees: The Trade Desk shows true fielding grades (41 at short where our scouts say 75); with 'Show no player ratings' the player card still shows 50s, the roster grid grades and the staff stamina; Quick Open can list draft prospects OOTP hasn't revealed; when the export type is unknown, true ratings may win over OSA's.
 - Cause: server/trade.ts:665 -> server/gloves.ts:100-106 (raw glove reader, not scoutedGloves); server/scoutedEvidence.ts:241, :362, :418 ('none' mode and unknown export type); server/search.ts:120-122 (filters only retired); tests/evidenceBoundary.test.ts GUARDED list misses history, pitching, player, roster, rosterops, valuation, trade.
 - Absorbs: SRVDEV-01 (proven), SRVSTATS-01 (proven), SRVDEV-06 (proven), SRVSTATS-11 (confirmed), SRVDEV-09 (unchecked)
 
 **B-67 · Numbers Pennant never measured in this save are labelled the league's own**
-- Status: open
+- Status: fixed (batch 4)
 - Tier 1 · doctrine · MLB Ops, Farm, Player windows · size M · batch 4
 - The GM sees: After the rating source changes, the old source's development lines are reused and labelled this save's; a role the save never measured shows the default number as the league's; glove weights are adopted as the league's own when they are only no worse than the default.
 - Cause: server/stakesLinesRefit.ts:57-63 with server/saveCalibrationStore.ts:304; server/mlbCalibrationFit.ts:379 with server/roleStandards.ts:158-172; server/mlbCalibrationFit.ts:797 (passed: f >= p - tolerance) vs server/mlbCalibration.ts:139 decide(). Owner decision: glove weights under the detector, or an exemption.
@@ -618,14 +618,14 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - Absorbs: SRVINFRA-14 (confirmed), SRVINFRA-15 (confirmed), SRVINFRA-16 (confirmed), SRVINFRA-17 (confirmed), SRVINFRA-21 (confirmed), SRVINFRA-24 (confirmed)
 
 **B-89 · Fixed staffing floors and farm timings that should be measured per save**
-- Status: open
+- Status: partly fixed (batch 4): the staffing floors come from the league's active-roster limit (D-053 amendment); the farm's usage-window settings (SRVFARM-24) are measured per save later, as the owner decided
 - Tier 2 · doctrine · MLB Ops, Farm · size S · batch 4
 - The GM sees: Small leagues are always told their pitching staff is critically short (fixed 5 SP / 7 RP / 2 C floors); farm timing settings were tuned on one save.
 - Cause: server/mlbNeeds.ts:50-58 ('first-pass minimum'); server/farmCalibration.ts:144-164. Owner decision: fixed floors, floors from the league's active limit, or per-save measurement (D-053).
 - Absorbs: SRVMLB-08 (proven), SRVFARM-24 (unchecked)
 
 **B-90 · Changing OOTP's rating scale looks like player growth**
-- Status: open
+- Status: fixed (batch 4)
 - Tier 2 · data · Scouting, Farm, Player windows · size S · batch 4
 - The GM sees: Switch the save's rating scale (1-10 to 20-80) and every player's history shows a big jump.
 - Cause: server/scoutedEvidence.ts:~1236 and server/history.ts (snapshots carry no scale). Owner decision: stamp the scale on each snapshot (a stored-data format change).
@@ -714,6 +714,7 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - The GM sees: On older or unusual saves the whole farm section, the pitching staff and the draft board fail; the briefing and storylines break; a missing stat column silently stops the league's own standards from ever being measured; a hurt player with no roster-status row is missing from the Injury Report; a malformed club hierarchy loops forever.
 - Cause: Unchecked columns and tables: server/destinationFit.ts:560-600; server/pitching.ts:131; server/rosterops.ts:844-860; server/stats.ts:159-161; server/mlbCalibrationRefit.ts:228-232 (throw swallowed at server/saveCalibration.ts:142); server/dashboard.ts:43; server/health.ts:60-63, :205-212 (NULL predicate on a missing LEFT JOIN row); recursive affiliate queries with no loop guard at server/farmOperations.ts:137-148 (+3 copies), server/org.ts:131, server/scoutedDevelopment.ts:99.
 - Absorbs: SRVDEV-05 (proven), SRVFARM-08 (proven), SRVFARM-13 (proven), SRVINFRA-20 (confirmed), SRVAI-16 (unchecked), SRVDEV-11 (confirmed), SRVMLB-17 (confirmed), SRVSTATS-27 (confirmed)
+- Note: SRVDEV-05's part (the pitching staff and the draft board failing without a ratings table) was fixed in batch 4, with the rating reads; the rest stays for batch 17.
 
 **B-92 · The prospect and development reads are redone many times per page**
 - Status: open

@@ -240,6 +240,23 @@ allow-list is empty since phase 6e). Fielding-position grades are assumed to
 share the tool ratings' scale. Unknown ratings no longer enter any development
 arithmetic; see D-018.
 
+**Amended 2026-10-28 (N15a polish batch 4, B-66; deep hunt SRVDEV-01, -05, -06, SRVSTATS-01): the boundary is the whole
+server.** The guard covered a list of modules and only direct `gloves(` calls, so the player card, the roster grid, the
+pitching staff, the draft board and the rating snapshot named rating columns themselves, fell back to the main tables when
+the adapter gave no source (`?? 'players_pitching'`), and the trade desk read true fielding grades through a raw reader
+wrapped as `glovesLine`. Now:
+
+- **Only three modules name a rating column or a main ratings table:** the adapter (`scoutedEvidence.ts`), the
+  fielding-profile helper it hands rows to (`gloves.ts`, which reads nothing: no database, and `glovesLine` takes the
+  evidence's profile) and the display-scale probe (`ratingScaleProbe.ts`, moved out of `valuation.ts`, which re-exports it).
+  Every page reads grades through the adapter's typed readers (`cardGrades`, `displayGrades`, `keptGrades`,
+  `snapshotRatingRows`, `scoutedGloves`), each unknown under "Show no player ratings", without the table, or without a row.
+- **No module outside the adapter imports a door that hands raw ratings on** (`ratingFrom`, `scoutedRatingRow`,
+  `glovesFromRow`), and no module falls back to a main ratings table.
+- `tests/evidenceBoundary.test.ts` scans every server module with that explicit allow-list. The Roster's rating bars, the
+  "Remaining gap" above, are now read through the adapter (`displayGrades`); a pitcher's batting grades and a hitter's
+  pitching grades are still shown as the export gives them, unknown where it gives none.
+
 ## D-018 — Unknown evidence stays unknown: indeterminate, not imputed
 
 **Status:** Accepted. **Implementation:** Present for Player Development
@@ -524,7 +541,8 @@ coordinates specialists and owns none of their answers.
   between Pennant's own imports (a snapshot difference proves state changed, not why:
   D-020), and are never persisted. A need that stops being true is simply not returned. A
   cause is a stated fact about a named player, or absent; Pennant does not infer one.
-  Roster standards (5 SP, 7 RP, 2 C) are named assumptions, shown with each need.
+  Roster standards (5 SP, 7 RP, 2 C on a 26-man active roster, scaled to the league's own limit since
+  2026-10-28: D-053 amendment, B-89) are named assumptions, shown with each need.
 - **Stages are never collapsed and no candidate silently disappears.** Discovery is
   objective; availability comes from Player State; development from Player Development's
   MLB assessment (`unassessed` is neither a pass nor a rejection, D-018); rights from Player
@@ -2013,6 +2031,27 @@ key and source with the export's game date (`save_calibration_source_attempts`; 
 `playerValue.ts` and `playerValueFitStore.ts` (`computeRatingsRefits`, `ratingsModelFor`), and the serving readers (`stakesLines.ts`,
 `toolsCalibration.ts`, `mlbCalibration.ts`).
 
+**Amended 2026-10-28 (N15a polish batch 4, B-67 and B-89; the owner's decisions of 2026-10-28, accepted as recommended).**
+
+- **Only what this save measured is labelled the league's own** (deep hunt SRVMLB-11). A role the standards measurement had
+  no holders for is filled with the starting value marked `source: 'starting'`, and its standard says "Pennant's starting
+  yardstick", whatever the rest of the set; a measurement stored before the mark reads a role absent from what it measured as
+  starting (`mlbCalibration.ts`, `servedOf`).
+- **Glove weights are a tuning value under the detector, like aging; no exemption** (deep hunt SRVMLB-10). They replace the
+  starting weights only when clearly better on held-out seasons (`decide`, unshrunk and as served, with hysteresis), each
+  regular's blend percentile against his next season's percentile as the case loss; "no worse on the season after" is kept as
+  the gate's sanity check, never as adoption. The method is `defense-2`; a `defense-1` fit, adopted on the old rule, is not read,
+  and the next refit decides again.
+- **A fit's predecessor is on its own ratings** (deep hunt SRVDEV-02). `latestCalibrationAttempt` takes a ratings source and
+  returns the latest attempt on it; the stakes lines in force before a measurement read only today's source, so a thin or
+  failed measurement after a change of source serves the starting lines, labelled; `stakesLinesFor` sets aside lines an earlier
+  attempt carried from another source, and the MLB yardsticks read their latest attempt the same way.
+- **Staffing floors come from the league's own active-roster limit, a rule now** (deep hunt SRVMLB-08). Five starters, seven
+  relievers and two catchers on a 26-man active roster, scaled to the league's limit to the nearest player and never below one
+  (`coverageFloorsFor`, `mlbNeeds.ts`), the basis saying so; none where the export doesn't give the limit (no shortfall against
+  an unknown standard). Measuring them per save, with the farm's usage-window settings (`farmCalibration.ts`, deep hunt
+  SRVFARM-24), is later work.
+
 ## D-054 — Charting library
 
 **Status:** Accepted: owner approved adopting a charting dependency (2026-09-23); library choice per the evaluation.
@@ -2340,6 +2379,17 @@ export's (or a previous save's) table, and no check that OOTP had finished writi
 - *Whose words these are.* The owner decided only that either kind is fine and is noted. Withholding every rating under
   "no ratings" and leaving snapshots of another kind out of development are the supervisor's refinements (the N3.5
   brief), made so that noting the kind keeps D-018: they add no judgment, they keep an unknown unknown.
+- **Amended 2026-10-28 (N15a polish batch 4, B-66 and B-90; the owner's decisions of 2026-10-28).**
+  - *"No ratings" holds on every page* (deep hunt SRVDEV-01): the doors the card, roster grid, pitching staff, draft board,
+    trade desk and snapshot read through (`ratingFrom`, `scoutedRatingRow`) withhold too, so every grade there reads as unknown,
+    never a 50 or whatever OOTP wrote in the main tables.
+  - *A change of display scale is never development* (deep hunt SRVDEV-04). Each snapshot's stamp records the display scale its
+    grades are on (`scale_max` on `save_rating_snapshot_modes`, beside the kind; copied and undone with it by a carry-over). A
+    snapshot on another scale than today's is a switch: left out of development trends, observed history (OSA's included) and
+    the rating-change list, and said. A snapshot taken before the stamp is scale unknown and never guessed: it stays in, as an
+    unrecorded kind does, unless its own tool grades fall off today's scale (below its floor or above its top), which proves it
+    isn't on it, and then it is left out and said (`UNSTAMPED_SCALE = 'kept_when_consistent'` in `history.ts`, the one switch:
+    `'left_out'` would set every unstamped snapshot aside). The earlier build's name-keyed copy keeps no scale.
 - **The database's own record** (`pennant_import`) is trusted only when its start matches `last-import.json`'s, which
   every build writes: the earlier (Electron) build imports into `league.db` in place and leaves the table behind.
 - **An earlier build's database** (write-ahead-log mode, or without the season indexes) is upgraded once at start the
@@ -2723,6 +2773,22 @@ Not changed: OOTP's star figures in the file (`overall`, `talent`, `overall_rati
 the main tables' Overall and Potential are not (D-017); the display scale is still read off the main tables (the same
 export, the same scale).
 
+**Amended 2026-10-28 (N15a polish batch 4, B-66 and B-34; the owner's decisions of 2026-10-28).**
+
+- **An unknown kind is treated as possibly true ratings** (deep hunt SRVDEV-09). The exception above (OSA's rows in the file,
+  none of ours) applies when the main tables' kind is "real" or not known (the settings changed after the export, or couldn't be
+  read): judgments read OSA's view, and the basis says the main tables' kind isn't known. A known scouts'-view or OSA export
+  keeps its main tables.
+- **The trade desk reads our scouts' fielding grades** (deep hunt SRVSTATS-01): its line is written from `scoutedGloves`, never
+  the main table.
+- **A player OOTP hasn't revealed is neither searched nor opened** (deep hunt SRVSTATS-11): a player OOTP hides, and a draft
+  class before its league publishes the pool (the draft board's own gate), are kept out of Quick Open and Player Search and the
+  player window refuses him (`draftVisibility.ts`).
+- **Every label names whose grades they are** (deep hunt SRVDEV-08): "Your scouts'" only for the scouts' view or their full
+  reports, "OSA's" for OSA's view, "The true" for true ratings, "The export's" where the kind isn't known (`whoseGrades`,
+  `ratingMode.ts`, from the evidence's kind, which the data status carries as `import.evidenceMode`). The Ratings tab is headed
+  "The export's ratings" rather than "Not known" when the kind isn't known, and the data status says what makes it known.
+
 ## D-068 — League-wide yardsticks and fits read OSA's view; judgments of a player read our scouts'
 
 **Status:** Accepted (the owner's direction, 2026-10-02: "we should also determine for league custom algorithms - if we
@@ -2800,6 +2866,11 @@ changes little today; it matters as scouting staffs change and our scouts' cover
 
 Not established, and left so: whether OSA's rows in the file hold OSA's view under "Show real player ratings" (they are
 read as OSA's by their label, `scouting_team_id` 0; only an OSA-mode export was available to check them against).
+
+**Amended 2026-10-28 (N15a polish batch 4, B-67; deep hunt SRVDEV-02):** "no earlier fit of another source is used as its
+predecessor" now holds outside the refit driver's scope too: the latest attempt a fit or its reader carries forward is the
+latest on today's source (`latestCalibrationAttempt` with a `ratingSource`), and lines an earlier attempt carried from another
+source are set aside, said so (D-053's amendment of the same date).
 
 ## D-069 — Major League Ops' clubhouse tools on the Mac: D-065 for the routes the React pages read
 
