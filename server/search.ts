@@ -14,6 +14,7 @@
  */
 import type { DeptId } from './contract/presentation.js';
 import { databaseGeneration, db, tableColumns, tableExists } from './db.js';
+import { revealedPlayerSql } from './draftVisibility.js';
 import { servedDepartments } from './presentation/catalog.js';
 import { POSITION_NAMES } from './positionNeeds.js';
 
@@ -117,9 +118,10 @@ function buildIndex(): SearchEntry[] {
   }
   const players = tableExists('players') ? new Set(tableColumns('players')) : new Set<string>();
   if (players.has('player_id') && players.has('first_name') && players.has('last_name')) {
-    const rows = db.prepare(`SELECT player_id, first_name, last_name, ${players.has('team_id') ? 'team_id' : 'NULL'} AS team_id,
-        ${players.has('organization_id') ? 'organization_id' : 'NULL'} AS org, ${players.has('position') ? 'position' : 'NULL'} AS position
-      FROM players ${players.has('retired') ? 'WHERE COALESCE(retired, 0) = 0' : ''}`).all() as Array<Record<string, unknown>>;
+    // Only players OOTP shows: never one it hides, nor a draft class before its pool is published (B-66, SRVSTATS-11)
+    const rows = db.prepare(`SELECT p.player_id, p.first_name, p.last_name, ${players.has('team_id') ? 'p.team_id' : 'NULL'} AS team_id,
+        ${players.has('organization_id') ? 'p.organization_id' : 'NULL'} AS org, ${players.has('position') ? 'p.position' : 'NULL'} AS position
+      FROM players p WHERE ${players.has('retired') ? 'COALESCE(p.retired, 0) = 0 AND ' : ''}${revealedPlayerSql('p')}`).all() as Array<Record<string, unknown>>;
     for (const r of rows) {
       const name = `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim();
       if (!name) continue;

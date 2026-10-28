@@ -12,6 +12,7 @@ import { DATE_KEY } from './dashboard.js';
 import { rightsFor } from './playerContext.js';
 import { cardGrades, loadScoutedAbilities, ratingFillOf, type ScoutedAbility } from './scoutedEvidence.js';
 import { twoWayBatters, twoWayPitchers } from './twoway.js';
+import { isRevealed } from './draftVisibility.js';
 
 export const playerRoutes = Router();
 
@@ -155,6 +156,9 @@ export function computePlayerDossier(id: number, shared?: DossierShared) {
     )
     .get(id) as Record<string, unknown> | undefined;
   if (!p) return refuse<never>(404, 'Player not found');
+  // A player OOTP hasn't revealed (hidden, or a draft class before its pool is published) isn't opened: his card would be
+  // a scouting report the game hasn't given the GM (the owner's decision, 2026-10-28; B-66, deep hunt SRVSTATS-11)
+  if (!isRevealed(id)) return refuse<never>(404, 'OOTP hasn\'t shown this player yet');
 
   // The grades as the evidence reads them: our scouts' full reports when the export carries them (D-067); every one
   // unknown under "Show no player ratings" (D-061) and where no source rates him, never a main-table fallback

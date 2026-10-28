@@ -3,6 +3,7 @@ import { db, tableExists } from './db.js';
 import { LEVEL_NAMES } from './valuation.js';
 import { computeBatting, computePitching, leagueBaseline } from './stats.js';
 import { answer, refuse, type Computed } from './computed.js';
+import { revealedPlayerSql } from './draftVisibility.js';
 
 export const leagueRoutes = Router();
 
@@ -178,7 +179,7 @@ leagueRoutes.get('/name-index/:orgId', (req, res) => {
               CASE WHEN p.organization_id = ? THEN 1 ELSE 0 END AS ours
        FROM players p
        JOIN teams t ON t.team_id = p.team_id
-       WHERE p.retired = 0 AND p.first_name IS NOT NULL AND p.last_name IS NOT NULL
+       WHERE p.retired = 0 AND p.first_name IS NOT NULL AND p.last_name IS NOT NULL AND ${revealedPlayerSql('p')}
          AND (t.level = 1 OR p.organization_id = ?)`
     )
     .all(orgId, orgId) as Array<{ id: number; name: string; ours: number }>;
@@ -258,7 +259,8 @@ export function computePlayers(query: Record<string, unknown>, within?: { player
   const maxAge = num(query.maxAge);
   const minPt = num(query.minPt);
 
-  const where: string[] = ['p.retired = 0'];
+  // Only players OOTP shows: never one it hides, nor a draft class before its pool is published (B-66, SRVSTATS-11)
+  const where: string[] = ['p.retired = 0', revealedPlayerSql('p')];
   const params: Array<string | number> = [];
   if (freeAgents) {
     where.push('p.free_agent = 1');
