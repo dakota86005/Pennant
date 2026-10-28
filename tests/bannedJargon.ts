@@ -51,6 +51,38 @@ export const FOLDER_PATHS: readonly RegExp[] = [/saved_games/i, /import_export/i
 export const RENDERING_LEAKS: readonly RegExp[] = [/\bnull\b/i, /\bundefined\b/i, /\bNaN\b/i];
 
 /**
+ * Developer provenance (B-01): where a number came from as the developer records it, which no served string carries, a
+ * basis's stamp and source included. A stamp says in plain words whether a number is measured on this save, a starting
+ * value or a stated line (`stampWords`, server/presentation/claim.ts); the file, the command, the decision's id,
+ * the developer's own save and its league id stay in the code and the docs.
+ */
+export const PROVENANCE: readonly RegExp[] = [
+  // Files, commands and folders of the repository
+  /\bnpm\b/i, /\.tsx?\b/, /\.md\b/, /\bscripts\//, /\bdocs\//, /`/,
+  // Decision, question, research and bug ids, and the build's phases
+  /\b[DQRAB]-\d/, /\bphase \d/i, /\bhardening F\d/i, /\bN\d{1,2}[a-z]?\b/,
+  // Who decided, and the developer's own save (its name, its league id, its export date)
+  /developer/i, /\bOwner decision\b/i, /\(owner\b/i, /\bby the owner\b/i, /\bowner Q-/i, /\bthe owner's (?:rule|value policy|Payroll rule)\b/i,
+  /\bhistorical save\b/i, /\bArizona\b(?= save| historical|, 20)/, /\bleague \d+\)/, /\bexport of \d{4}-\d/,
+  // A method's or a fit table's own name
+  /\b(?:production|ratings|results|tools)-\d+[a-z]?\.\d/, /\b\w+_fits\b/, /\bhold-out\b/i,
+];
+
+/**
+ * Code text (B-11): a level's id instead of its name, a column, an enum or a constant's name, a quantile's code. None of
+ * them reads as words, in any served string; a code belongs in a code field (an id, a key, a sort key, a URL).
+ */
+export const CODE_TEXT: readonly RegExp[] = [
+  /\blevel \d+\b/i,
+  // snake_case (a column, an enum code) and CONSTANT_CASE (a code constant)
+  // (a folder's own name, in a path or named as a folder ("its import_export folder"), is the folder, and a URL's own
+  // query is the URL: neither is a code)
+  /(?<![/=&])\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b(?![\w/]| folder\b)/, /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/,
+  // A quantile's code
+  /\bp(?:10|25|50|75|90)\b/,
+];
+
+/**
  * Verdict words: the application describes and the GM decides (D-001), so no page tells him what to do or how a deal
  * came out. The union of the pages' lists (Contracts, Free Agents, the Trade Center, the trade reading). A word that is
  * a verdict on one page only stays in that page's test ("target" on Free Agents; the Trade Center loads OOTP's targets).
@@ -211,9 +243,63 @@ export function basisStrings(payload: unknown): Array<{ path: string; text: stri
 }
 
 /**
- * Each shown string in a payload that carries a banned word or verdict, with the pattern it matched. Given the
- * operation (and the request's parameters), each string is placed on its surface and field, and that place's
- * exceptions are allowed.
+ * The fields that hold a code, never words (B-01, B-11): an id, a key, a sort key, a URL or a folder's path. Every
+ * other string the server sends is read, apart from a single token in a field that is not shown (an enum's code, a
+ * date, a colour), which is data the app maps, never text it draws as served.
+ */
+export const CODE_FIELDS: ReadonlySet<string> = new Set(['id', 'key', 'sort', 'url', 'projectUrl', 'upstreamUrl', 'csvDir', 'lgPath', 'dataDir', 'folder']);
+
+/** Where a served string sits, which decides the lists it is held to. */
+export type ServedPlace = 'shown' | 'basis' | 'stamp' | 'other';
+
+/**
+ * Every string a payload serves, with where it sits: a shown field (`text`, `hint`, `display`), a basis's sentences
+ * (`because`, `unknown`, `wouldChange`, `lean`), a basis's stamp and source, or any other string (a title, a label, a
+ * table's name or reason, a line). The code fields and a single token outside a shown field are left out.
+ */
+export function servedStrings(payload: unknown): Array<{ path: string; text: string; place: ServedPlace }> {
+  const found: Array<{ path: string; text: string; place: ServedPlace }> = [];
+  const visit = (node: unknown, path: string, key: string, inside: ServedPlace | null): void => {
+    if (typeof node === 'string') {
+      const shown = (SHOWN_FIELDS as readonly string[]).includes(key);
+      if (!shown && inside === null && !/\s/.test(node.trim())) return;
+      found.push({ path, text: node, place: shown && inside !== 'stamp' ? 'shown' : (inside ?? 'other') });
+    } else if (Array.isArray(node)) {
+      node.forEach((item, i) => visit(item, `${path}[${i}]`, key, inside));
+    } else if (node && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) {
+        const at = `${path}.${k}`;
+        if (CODE_FIELDS.has(k)) continue;
+        if (k === 'basis' && v && typeof v === 'object' && !Array.isArray(v)) {
+          for (const [bk, bv] of Object.entries(v as Record<string, unknown>)) {
+            const place: ServedPlace = bk === 'stamp' || bk === 'source' ? 'stamp' : 'basis';
+            if (bk === 'certainty') continue;
+            visit(bv, `${at}.${bk}`, bk, place);
+          }
+        } else visit(v, at, k, inside);
+      }
+    }
+  };
+  visit(payload, '$', '$', null);
+  return found;
+}
+
+/** The lists a served string is held to, by where it sits (`servedStrings`). */
+export const LISTS_BY_PLACE: Readonly<Record<ServedPlace, ReadonlyArray<readonly RegExp[]>>> = {
+  // What the GM reads on the face: no jargon, no verdict, no code, no provenance
+  shown: [BANNED_JARGON, BANNED_VERDICTS, CODE_TEXT, PROVENANCE],
+  // The breakdown, where a method word may help: no verdict, no leak, no code, no provenance
+  basis: [BANNED_VERDICTS, RENDERING_LEAKS, CODE_TEXT, PROVENANCE],
+  // How a number is called and who answered: plain words, never the developer's record of it
+  stamp: [BANNED_VERDICTS, RENDERING_LEAKS, CODE_TEXT, PROVENANCE],
+  // Every other string served (a title, a label, a line, a table's reason): no leak, no code, no provenance
+  other: [RENDERING_LEAKS, CODE_TEXT, PROVENANCE],
+};
+
+/**
+ * Each served string in a payload that carries a banned word, verdict, code or piece of provenance, with the pattern
+ * it matched. Given the operation (and the request's parameters), each shown string is placed on its surface and
+ * field, and that place's exceptions are allowed.
  */
 export function bannedInPayload(
   payload: unknown,
@@ -225,13 +311,10 @@ export function bannedInPayload(
     const surface = operationId ? SURFACES[operationId]?.(path, params) : null;
     return surface ? { surface, field: /\.([A-Za-z]+)$/.exec(path)?.[1] } : undefined;
   };
-  const shown = shownStrings(payload).flatMap(({ path, text }) =>
-    bannedIn(text, [BANNED_JARGON, BANNED_VERDICTS], place(path), exceptions).map((pattern) => ({ path, text, pattern: String(pattern) })),
+  return servedStrings(payload).flatMap(({ path, text, place: where }) =>
+    bannedIn(text, LISTS_BY_PLACE[where], where === 'shown' ? place(path) : undefined, exceptions)
+      .map((pattern) => ({ path, text, pattern: String(pattern) })),
   );
-  const basis = basisStrings(payload).flatMap(({ path, text }) =>
-    bannedIn(text, [BANNED_VERDICTS, RENDERING_LEAKS]).map((pattern) => ({ path, text, pattern: String(pattern) })),
-  );
-  return [...shown, ...basis];
 }
 
 /** The exceptions a payload actually leans on (a phrase present where it applies), so a stale one can be found. */
