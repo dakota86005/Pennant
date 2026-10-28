@@ -705,9 +705,12 @@ One inherited identifier is held on purpose (D-049) and pinned by a test:
 The `OOTP_FO_*` environment variables (`OOTP_FO_DATA_DIR`, `OOTP_FO_APP_ROOT`, `OOTP_FO_BIND`, `OOTP_FO_ALLOWED_HOSTS`,
 `OOTP_FO_API_PORT`, `OOTP_FO_UPDATER_LOG`) are user-facing configuration people keep in their shell, and the `data/`
 layout is persisted state; both are kept for the same reason. No data migration is attempted in this project's current
-phase. A `.env` file (in the data folder or the app root) may set only those user-facing `OOTP_FO_*` names and the
-provider keys; the other `OOTP_FO_*` switches (`OOTP_FO_DB_WRITABLE`, `OOTP_FO_EXPORT_QUIET_MS`, ...) are for tests and
-tools and are read only from the real environment (`server/config.ts` `ENV_FILE_SETTINGS`, B-101).
+phase. `OOTP_FO_DATA_DIR` and `OOTP_FO_APP_ROOT` come from the environment only: they say where the `.env` file is, so
+one can't set them. A `.env` file (in the data folder or the app root) may set `OOTP_FO_BIND`, `OOTP_FO_ALLOWED_HOSTS`,
+`OOTP_FO_API_PORT` and `OOTP_FO_UPDATER_LOG`, and any name outside `OOTP_FO_*` (the provider keys, `PORT`, ...); a
+variable already set in the environment wins. Every other `OOTP_FO_*` name is a switch for tests and tools
+(`OOTP_FO_DB_WRITABLE`, `OOTP_FO_EXPORT_QUIET_MS`, ...), read only from the real environment and ignored, with a
+warning, in a `.env` (`server/config.ts` `ENV_FILE_SETTINGS`, B-101).
 
 ## Brand assets
 

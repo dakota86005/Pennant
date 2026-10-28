@@ -593,6 +593,7 @@ Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = 
 - The GM sees: A long Staff room conversation keeps growing (540,000 characters stored, 400,000 sent) until every question fails; after about 20 questions it forgets what it already looked up; long trade-desk threads stop with 'request too large'.
 - Cause: server/chat.ts:688-698, :742-752 (trimming never cuts), :701-704 with server/aiSurfacesService.ts:48, :110 (resume window); server/requestBody.ts:33 with PK/TradesStore.swift:233-241 (whole thread resent, default body limit).
 - Absorbs: SRVAI-01 (proven), SRVAI-06 (proven), SRVHEALTH-02 (confirmed)
+- Note: SRVHEALTH-02 (the trade desk's 'request too large', a 413) is fixed in batch 7: the trade desk routes take a 1 MB body and the server keeps the last 12 turns of the thread, each cut to 16,000 characters (`server/requestBody.ts` `BODY_LIMITS`, `server/ai.ts` `threadKept`; `tests/serverSafety.test.ts`). B-76 stays open for the rest: the Mac app still resends the whole thread (PK/TradesStore.swift), and SRVAI-01 and SRVAI-06.
 
 **B-77 · Slow AI answers fail on the Mac yet keep running, and costing, on the server**
 - Status: open
