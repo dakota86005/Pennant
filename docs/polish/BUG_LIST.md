@@ -1,4 +1,4 @@
-# Pennant for Mac: the polish bug list (round 1)
+# Pennant for Mac: the polish bug list
 
 Inputs: four read-only hunts (FO, MLB, FARM, OFF) at `origin/feature/swiftui` b49bc47, 205 findings. Every H and M finding was checked twice against the code (plus the saved payloads and CI screenshots where cited). Disagreements between the two checks were settled by reading the code (MLB-02, MLB-14) or by the stronger evidence. Nothing was run, and the real save was not used.
 
@@ -446,82 +446,561 @@ Tier 1 = broken, wrong data, privacy, or something the owner hit. Tier 2 = confu
 - FARM-36: all six rows are visible at 900; "about 3 rows" overstates it, the three-column squeeze stands.
 - MLB-60: the stacking is real, but the cause is ViewThatFits measuring unwrapped line widths, not 3 × 220.
 
-## Proposed fix batches
+## Round 2: deep code review items (B-57 onward)
 
-Each batch fixes one root cause across every department, and is about one PR. Behaviour and data come first; wording waits for the phrasebook.
+From eleven deep code reviews of the server and the Mac app (2026-10-28); 240 findings, every H and M verified, merged by root cause. The reviews themselves are in [reviews/](reviews/).
 
-**Batch 1: Unknown stays unknown.** Stop turning missing stats, unread clubs and unknown lists into zeros or green verdicts; fix the bench read that counts a lone catcher as his own backup.
-- B-02 Missing stats are shown as zero
-- B-12 Pages say all is well when nothing has been read
-- B-13 Counts show zero when the list isn't known, and unpriced contracts drop out of totals
-- B-17 The only catcher is counted as his own backup
+Tier 1 = broken, wrong data, data loss, a doctrine or security breach. Tier 2 = wrong in edge cases, confusing, or a real performance or robustness problem. Tier 3 = polish, cleanup or retiring dead code. Within a tier, items run roughly in the order of the batch that fixes them.
 
-**Batch 2: No developer or code text on screen.** Give calibration stamps a GM-facing line separate from their provenance; never interpolate level ids, column names or enum values into served text.
-- B-01 Hover notes show developer details and a developer's local save
-- B-11 Code words reach the screen ("level 2", column names)
+### Tier 1
 
-**Batch 3: One number and count formatter.** A single shared helper for counts, plurals, thousands, minus signs, dashes and innings (x.1/x.2), replacing the ~18 local copies.
-- B-06 Counts and plurals read wrong ("Started 1 games", "2076")
-- B-09 Innings are written as decimals (10.7 instead of 10.2)
+**B-57 · Choosing another save mixes the two saves' moves, dates and club**
+- Status: open
+- Tier 1 · data · All departments, Settings, Setup · size M · batch 1
+- The GM sees: After picking another save (and before, or without, a successful import), the league on screen shows the other save's transactions, dates and save name; the followed club can carry over; a hand-picked save folder is ignored while Settings says it is in use; export watching switches itself on.
+- Cause: The server locates 'the save' from settings, not from the import being served: server/api.ts:822-834, :840, :851 (chooseSave writes config first, returns early, starts the watcher unconditionally); server/dataStatus.ts:171-183, :411-429 (save location and live log from loadConfig()); server/history.ts:420 (currentSaveName from config) keying server/saveIdentity.ts:276-283; server/playerContext.ts:97, :127, :141; server/frontOfficeService.ts:288 (import key on config.json's stat); server/settings.ts:219-237 and server/clubOwed.ts:37 (club-forgotten and owed flags are process variables); server/ootpSave.ts:127-162 with server/api.ts:765 (hand-named folder tried last).
+- Absorbs: SRVINFRA-01 (confirmed), SRVINFRA-04 (confirmed), SRVINFRA-19 (confirmed), SRVINFRA-25 (confirmed)
 
-**Batch 4: Stores follow the save and never strand a view.** Every store resets on a save or club switch; the in-flight guard survives cancellation; errors clear on a good answer; page state survives navigation; inputs say why they were refused.
-- B-07 Another save's farm, players and notes stay on screen after a switch
-- B-08 Pages can get stuck on Loading or keep an old error
-- B-36 Pages forget or ignore where you were
-- B-48 The payroll budget box silently throws away what you type
-- B-49 The GM's question disappears while the trade desk thinks
+**B-59 · Notes, philosophy, budgets and AI writing are filed by club number, so they leak into another save**
+- Status: open
+- Tier 1 · data · Front Office, Philosophy & Staff, Player windows, Staff room, Finance · size L · batch 1
+- The GM sees: Staff notes and the watchlist can appear on a different player in another save; a club's philosophy, next-season budget and theme carry over to the same-numbered club elsewhere; another save's briefing, storylines and Staff room chats appear and are sent to the AI; renaming the league makes Pennant forget the save's fitted history.
+- Cause: server/history.ts:2025-2088, :420 (notes and watchlist keyed by the config's save name or 'unknown'); server/settings.ts:110-122 (philosophy, budget, theme keyed by String(teamId)); server/aiSurfacesService.ts:40-44 (AI files named by org id only); server/saveIdentity.ts:245-283 (identity = config name + hash of league name, first season and first 64 players). Re-keying needs a one-time data migration (owner decision).
+- Absorbs: SRVINFRA-08 (confirmed), SRVINFRA-09 (confirmed), SRVINFRA-12 (confirmed), SRVSTATS-10 (confirmed)
 
-**Batch 5: Sidebar and Mac behaviours.** Clickable, keyboard-reachable sidebar headers without the per-click rebuild; farm rows publish the focused player; palette, menu bar, badges and drag and drop behave like a Mac app; trim per-render work.
-- B-03 The sidebar doesn't respond like a Mac sidebar
-- B-37 Farm rows and player windows lack the usual Mac controls
-- B-38 Farm pages open on empty filters
-- B-41 Sidebar badges, the menu bar and the widget
-- B-42 Quick Open can open the wrong thing
-- B-45 Heavy work on every redraw
-- B-54 Drag and drop and "Open in New Window" fall short
+**B-58 · A broken export or a half-written settings file can wipe the league or the GM's settings**
+- Status: open
+- Tier 1 · data · All departments, Settings · size M · batch 3
+- The GM sees: An export with an empty players file replaces a good league with an empty one; a settings file caught mid-write silently resets and the next save erases philosophies, budgets and themes; an error just after the swap reports a failed import while the new data is already showing with stale leftovers.
+- Cause: server/importWorker.ts:509-524 and server/importer.ts:208-211 (an empty file makes no table and is not refused; no check that players/teams/leagues exist); server/settings.ts:196-202, :239-241 (any parse error returns defaults; writers read-merge-write in place, not write-and-rename); server/importer.ts:309-318 with server/db.ts:196-207 (work after the rename can throw into runImport's catch, so caches are never cleared); server/importWorker.ts:309-316 (old tables may survive a rebuilt league).
+- Absorbs: SRVINFRA-02 (confirmed), SRVINFRA-03 (confirmed), SRVINFRA-06 (confirmed), SRVINFRA-36 (unchecked)
 
-**Batch 6: Settings, Setup and the transaction-log fix.** Data Status and every log-missing line point to the fix; a set AI key looks set; Settings exposes its choices and state; Setup counts clubs the way the club list does and explains exports.
-- B-05 "Transaction history unavailable" never says how to fix it
-- B-14 A saved AI key looks the same as no key
-- B-39 Setup contradicts itself and doesn't guide
-- B-40 Settings hides choices and state
+**B-73 · After reloading an older save, the abandoned timeline still counts and contract history is deleted by it**
+- Status: open
+- Tier 1 · data · Finance, Trades · size S · batch 3
+- The GM sees: Go back to an earlier save and the abandoned branch's contract pairs keep counting in the market price; the pruning that follows deletes snapshots by that wrong timeline and cannot be undone.
+- Cause: server/playerValueSignings.ts:172-178 (segment starts at the new import's date, not the break's); server/playerValueSnapshot.ts:165 (the go-back pair is never formed); pruneContractSnapshots is irreversible.
+- Absorbs: SRVVALUE-04 (proven)
 
-**Batch 7: Decision pages.** Dedupe the comparison, name the player in farm findings, compose each reason once, condition sentences on what's actually present, and make the clubhouse pages agree on position and grade.
-- B-16 The same player appears twice on a Decision
-- B-18 Farm findings don't name the player
-- B-23 Decision pages say the same thing two or three times
-- B-24 Decision pages contradict themselves
-- B-25 A Decision promises things that aren't there
-- B-35 Clubhouse pages disagree on who plays where and how good he is
+**B-66 · Hidden true ratings still reach some pages**
+- Status: open
+- Tier 1 · doctrine · Trades, Scouting, Player windows, MLB Ops, Shell · size M · batch 4
+- The GM sees: The Trade Desk shows true fielding grades (41 at short where our scouts say 75); with 'Show no player ratings' the player card still shows 50s, the roster grid grades and the staff stamina; Quick Open can list draft prospects OOTP hasn't revealed; when the export type is unknown, true ratings may win over OSA's.
+- Cause: server/trade.ts:665 -> server/gloves.ts:100-106 (raw glove reader, not scoutedGloves); server/scoutedEvidence.ts:241, :362, :418 ('none' mode and unknown export type); server/search.ts:120-122 (filters only retired); tests/evidenceBoundary.test.ts GUARDED list misses history, pitching, player, roster, rosterops, valuation, trade.
+- Absorbs: SRVDEV-01 (proven), SRVSTATS-01 (proven), SRVDEV-06 (proven), SRVSTATS-11 (confirmed), SRVDEV-09 (unchecked)
 
-**Batch 8: Facts agree across pages.** One freshness and byline source; one payroll-room definition; one staff role vocabulary and a human-GM check; a current "later version" list; correct club links; trade validity; server-side draft sorting; the wire's injury.
-- B-19 The Morning Report says four departments "come in a later version"
-- B-20 A farm player's club link opens the big-league club
-- B-21 The Trade Desk weighs trades that can't happen
-- B-22 Draft Board sorting only sorts the first 300 players
-- B-26 Pages disagree on today's date and how fresh the data is
-- B-32 Payroll room and payroll differ between Finance pages
-- B-33 Staff titles differ between pages, and the GM's report may be credited to someone else
-- B-34 "Whose ratings" reads Not known, with no way forward
-- B-47 The philosophy summary contradicts itself when nothing is set
-- B-50 Wire injury lines name no injury
+**B-67 · Numbers Pennant never measured in this save are labelled the league's own**
+- Status: open
+- Tier 1 · doctrine · MLB Ops, Farm, Player windows · size M · batch 4
+- The GM sees: After the rating source changes, the old source's development lines are reused and labelled this save's; a role the save never measured shows the default number as the league's; glove weights are adopted as the league's own when they are only no worse than the default.
+- Cause: server/stakesLinesRefit.ts:57-63 with server/saveCalibrationStore.ts:304; server/mlbCalibrationFit.ts:379 with server/roleStandards.ts:158-172; server/mlbCalibrationFit.ts:797 (passed: f >= p - tolerance) vs server/mlbCalibration.ts:139 decide(). Owner decision: glove weights under the detector, or an exemption.
+- Absorbs: SRVDEV-02 (proven), SRVMLB-10 (confirmed), SRVMLB-11 (proven)
 
-**Batch 9: Tables, heads and layout.** Per-column widths and full-text hovers in the shared tables; heads that wrap instead of truncating; roster-map z-order; empty-state cards; narrow and inspector layouts; charts; CI captures for the missing views.
-- B-04 Table text is cut off and can't be read on hover
-- B-15 Roster map: the hovered player is drawn under other text
-- B-27 Page headings get cut off or run under the inspector
-- B-28 Narrow windows and the inspector squeeze pages into uselessness
-- B-29 Detail cards are empty, repeat their label, or sit under the wrong row
-- B-43 Charts look broken or unexplained
-- B-44 Compare and History tables push content off-screen
-- B-46 The Morning Report puts "To decide" last on ordinary windows
-- B-55 Small layout slips
-- B-56 No automated check captures the Front Office report or a narrow Morning Report
+**B-64 · Major-league reports turn missing evidence into an answer**
+- Status: open
+- Tier 1 · doctrine · MLB Ops · size M · batch 5
+- The GM sees: A send-down that may use a player's last option year is called routine; a player with no visible ratings and poor results is filed as 'results lag tools'; with no handedness data the bench report says nobody bats left and nobody bats right and invents needs; a follow-up names 'the weakest' when nobody can be compared; the thinnest position is judged on the backup; a player with no at-bats is treated as exactly average in the batting order.
+- Cause: server/mlbResponses.ts:745-749 (unknown option charge -> routine); server/roleReview.ts:399-401, :477-483 (missing ratings count as fine); server/benchReview.ts (hands check and soft functions); server/mlbPlans.ts:131-137; server/positionNeeds.ts:43-49, :107; server/lineup.ts:588 (return 100 with no PA).
+- Absorbs: SRVMLB-04 (proven), SRVMLB-06 (proven), SRVMLB-09 (proven), SRVSTATS-13 (confirmed), SRVMLB-15 (confirmed), SRVMLB-16 (unchecked)
 
-**Batch 10: Words, after the phrasebook.** Percentiles instead of "on the 0–100 scale", no department names as speakers, one caveat instead of one per row, consistent titles, no "the" before club names, and copy moved out of Swift.
-- B-10 Walls of "on the 0–100 scale"
-- B-30 Department names and method terms speak on screen
-- B-31 The same caveat is repeated row after row
-- B-51 Titles, labels and column heads are inconsistent
-- B-52 "the Club 1 N" and "him" for everyone
-- B-53 Some words and numbers are written in the app instead of served
+**B-65 · Development reads unknowns as answers**
+- Status: open
+- Tier 1 · doctrine · Farm, Scouting, Player windows, Philosophy & Staff · size M · batch 5
+- The GM sees: An unknown age profile makes a struggling player read as 'too advanced, still has developmental value'; an unknown pitch ceiling is shown as his current grade; rating history averages over missing tools; small leagues are told more games will settle a comparison that never can; philosophy can prefer 'stay' where Development says he has outgrown the level.
+- Cause: server/currentAssignment.ts:276-299; server/player.ts:324; server/history.ts:546-557; server/farmResults.ts:360-364; server/assignmentPreference.ts:155-165 ('stay' always offered, not checked against the current-level read).
+- Absorbs: SRVDEV-03 (proven), SRVDEV-15 (plausible), SRVFARM-17 (unchecked), SRVSTATS-20 (unchecked), SRVSTATS-21 (unchecked)
+
+**B-62 · Postseason odds still steer the staff's advice and reach the AI**
+- Status: open
+- Tier 1 · doctrine · MLB Ops, Staff room, Trades, Finance · size M · batch 6
+- The GM sees: With no club philosophy set, the odds quietly move the staff's act bar and the reason given is 'the window'; the needs list order shifts with the odds; the AI assistants can look up and repeat odds and buy/sell posture; the old web pages show playoff odds outside Standings.
+- Cause: server/staffPreference.ts:96-123, :245-256 (odds fill in for a missing window); server/mlbReview.ts:309 (sort by odds-shaded severity); server/chat.ts:319-331 with server/dashboard.ts:383 (get_dashboard serves deadlineRead to the shared tools); server/clubFinanceRoutes.ts:38, server/ourViewRoutes.ts:46, src/pages/Payroll.tsx:529 (winValue). posture.ts is also read by server/playerValue.ts and server/mlbOperations.ts. Owner decisions: retire posture.ts from the decision path; does D-060 cover AI tool answers.
+- Absorbs: SRVAI-02 (confirmed), SRVMLB-03 (proven), SRVMLB-13 (confirmed), SRVVALUE-10 (confirmed)
+
+**B-63 · The AI writers are handed promotion calls, unknowns as zero and wrong labels**
+- Status: open
+- Tier 1 · doctrine · Staff room, Farm, Front Office · size S · batch 6
+- The GM sees: The storylines writer is asked 'who is earning a promotion' without the briefing's farm rules; farm context sent to the AI carries readiness codes under a 'never a call-up' label and age 0 when unknown; the AI is told the prospect list is ranked when it is alphabetical; an unknown budget is given to it as zero.
+- Cause: server/storylines.ts:260-265; server/farmOperations.ts:1295-1305; server/chat.ts:289-296 (list sorted by name at server/org.ts:749); server/valuation.ts:314-335.
+- Absorbs: SRVAI-07 (confirmed), SRVAI-09 (confirmed), SRVFARM-23 (confirmed), SRVSTATS-22 (unchecked)
+
+**B-74 · The old desktop app and the dev server accept commands from any website**
+- Status: open
+- Tier 1 · security · Shell · size M · batch 7
+- The GM sees: On the Electron app, npm run dev and npm start, any web page can start paid AI writing, imports and site exports; reopening the Electron app from the Dock starts a second server; Electron itself has known security advisories. The Mac app is not affected (its server has a token).
+- Cause: server/index.ts:38, :77-96 (Host check only); server/apiToken.ts:38-39 (no-op without a token; Electron sets none); express.json ignores text/plain bodies; electron/main.ts:128, :188-195, :257-278, :284-286; package-lock.json electron 41.10.4. Owner decision: retire Electron and the token-less mode now or at cutover.
+- Absorbs: SRVINFRA-07 (confirmed), SRVHEALTH-06 (confirmed), SRVHEALTH-07 (confirmed), SRVHEALTH-16 (unchecked)
+
+**B-75 · One bad request can crash the app's server**
+- Status: open
+- Tier 1 · behaviour · Staff room, Trades, All departments · size M · batch 7
+- The GM sees: A malformed AI reply request gets no answer and the unhandled rejection can take the server down, including from Ask Staff; raw internal error messages reach the app; an odd sort value crashes the old player list.
+- Cause: server/chat.ts:1182-1196, server/ai.ts:487, server/aiSurfacesService.ts:188 (async handlers outside try; Express 4 does not catch rejections); server/officeViewsBuild.ts:86 and server/v2Routes.ts:370-375 (err.message sent); server/league.ts:325, :335 (PLAIN_SORTS plain object); tests/request.ts:15 skips the real request checks.
+- Absorbs: SRVHEALTH-01 (proven), SRVHEALTH-18 (unchecked), SRVPRES-14 (confirmed), SRVSTATS-29 (confirmed)
+
+**B-60 · When the export is a day behind, dollar values vanish, or old pages keep saying they are current**
+- Status: open
+- Tier 1 · data · Finance, Front Office, League Office, Trades, Player windows · size M · batch 8
+- The GM sees: On a 'behind' export every player loses his dollar value with the false reason 'No contract is a market price', while the Finance header still prices a win at about $2.1M; without the transaction log the Front Office never notices the save moved past the export; Org Comparison keeps an old 'up to date' build.
+- Cause: Freshness is not passed consistently: server/playerRights.ts:1561 ('behind' blocks every eligibility) feeding server/playerValueFinances.ts marketStandingOf, while server/officeViewsBuild.ts:160 and server/clubFinanceRoutes.ts:29 call leagueFinances with no freshness; server/frontOfficeService.ts:157-160 (cache key ignores freshness when there is no live log); server/leagueViewService.ts:80, :117-120 (kept build not re-checked). Owner decision: should the price of a win depend on today's freshness?
+- Absorbs: SRVPRES-01 (proven), SRVVALUE-02 (proven), SRVPRES-02 (proven)
+
+**B-61 · Some numbers stay from the previous import until Pennant restarts**
+- Status: open
+- Tier 1 · data · All departments, Finance, Farm · size M · batch 8
+- The GM sees: League batted-ball averages stay from the first import of the session; the measured market price, awards and renewals stay one import behind; a farm decision built during an import can mix old and new data and be kept; changing any setting, even a theme, rebuilds every department.
+- Cause: Caches keyed on the wrong thing or never cleared: server/battedball.ts:63, :232 (clearBattedBallCache has no caller; clearLeagueCaches at server/api.ts:329-342 omits it); server/playerValue.ts:364, :834 keyed on server/playerValueContractStore.ts:95 (process-local counter the worker thread never bumps; server/api.ts:409-411 publishes import-finished before the hooks); server/playerValue.ts:1177 (leagueFacts cached by league only); server/farmViewService.ts:144-170 (no generation check after await); server/frontOfficeService.ts:287-289 (key on settings file stat).
+- Absorbs: SRVINFRA-05 (confirmed), SRVPRES-03 (proven), SRVVALUE-01 (proven), SRVPRES-13 (confirmed), SRVVALUE-14 (unchecked)
+
+**B-68 · A player's numbers are mixed across clubs and levels**
+- Status: open
+- Tier 1 · data · MLB Ops, League Office, Trades, Player windows, Scouting, Farm · size M · batch 9
+- The GM sees: 'Who plays where' counts a traded player's games for his old club as ours (800 innings at short instead of 0); League Leaders leave out anyone sent down, released or moved; the Trade Desk adds minor and major league seasons together; the Game Plan credits at-bats to a pitcher's new club; Player Search can show a school season as the main stint; a two-club player gets one club's park; the player's 'this season' line can show only one club's share.
+- Cause: Rows not filtered by club, level or league: server/resultsEvidence.ts:358-378; server/rosterops.ts:219, :256; server/trade.ts:607-611; server/gameplan.ts:111-115; server/league.ts:414-418 (no league_id != 0); server/farmResults.ts:261 (MIN(team_id)); server/presentation/player/dossier.ts:321-329 with server/player.ts:184.
+- Absorbs: SRVMLB-01 (proven), SRVSTATS-02 (proven), SRVSTATS-06 (proven), SRVSTATS-07 (proven), SRVFARM-18 (confirmed), SRVPRES-09 (confirmed), SRVSTATS-17 (confirmed)
+
+**B-69 · Spring, playoff and All-Star games are counted as the regular season**
+- Status: open
+- Tier 1 · data · MLB Ops, Farm, Front Office, Staff room · size M · batch 9
+- The GM sees: Postseason odds count spring games as games left (42 instead of 12; a finished season reads 30); farm recent-usage reads count spring, playoff and last season's games; an All-Star appearance makes a player look newly arrived; the briefing counts spring games as form.
+- Cause: No regular-season filter: server/posture.ts:135-140; server/farmUsage.ts:221-226, :314-327; server/farmRecentUsage.ts:132-138; server/storylines.ts:52, server/dashboard.ts:148.
+- Absorbs: SRVMLB-02 (proven), SRVFARM-06 (proven), SRVFARM-07 (proven)
+
+**B-70 · Some stat formulas are wrong or disagree between pages**
+- Status: open
+- Tier 1 · data · MLB Ops, Farm, League Office, Trades · size M · batch 9
+- The GM sees: Strikeout pitchers in hitters' parks are rated worse instead of better; one pitcher's FIP differs between Rosters and the pitching staff; a 0.00 ERA sorts last and reads as unknown form; a tied game counts as a loss; none of the core formulas has a test.
+- Cause: server/farmResults.ts:185-188, :382-384 (park factor applied the wrong way for strikeouts); server/roster.ts:280-283 vs server/trade.ts:600-602 (hit-batter term); server/stats.ts:293, server/pitching.ts:321, server/form.ts:120 (ERA+ undefined at 0.00); server/schedule.ts:111, server/trends.ts:69 (won: us > them); server/stats.ts computeBatting/computePitching untested beyond wRC+. Owner decision: how a 0.00 ERA's ERA+ reads and sorts.
+- Absorbs: SRVFARM-01 (proven), SRVSTATS-04 (proven), SRVSTATS-05 (proven), SRVSTATS-32 (confirmed), SRVSTATS-25 (confirmed)
+
+**B-71 · The farm miscounts who is on each roster and who can play where**
+- Status: open
+- Tier 1 · data · Farm · size M · batch 11
+- The GM sees: Big-leaguers on rehab are reviewed and counted as farm players; the farm says nobody covers shortstop when a listed shortstop is there; a designated hitter can be treated as a catcher; room at a level is judged from one of its clubs.
+- Cause: server/farmOperations.ts:773-884, :913-924 (rehab members counted); server/farmAffiliate.ts:247-255 with server/minorLeagueRoster.ts:301-308 (coverage ignores listed position); server/farmOperations.ts:288, :798 (teams[0]).
+- Absorbs: SRVFARM-03 (proven), SRVFARM-04 (proven), SRVFARM-15 (confirmed), SRVFARM-16 (confirmed)
+
+**B-72 · Contracts leaves out big-league contracts sent to the minors**
+- Status: open
+- Tier 1 · data · Finance · size M · batch 12
+- The GM sees: An optioned 40-man player on a major-league deal, often in his arbitration years, is on Payroll but missing from Contracts' arbitration and option groups; an export missing the roster-status table makes Contracts fail with a database message.
+- Cause: server/contracts.ts:436-441 (upstream roster-only population: p.team_id = orgId AND ON_ROSTER, unchecked join on players_roster_status and p.retired) vs server/playerValue.ts:486 payrollValuations; route check at server/contracts.ts:524-525. Rebuild on Payroll's population.
+- Absorbs: SRVVALUE-03 (proven), SRVVALUE-12 (confirmed)
+
+**B-76 · Long AI conversations grow until they fail**
+- Status: open
+- Tier 1 · behaviour · Staff room, Trades · size M · batch 16
+- The GM sees: A long Staff room conversation keeps growing (540,000 characters stored, 400,000 sent) until every question fails; after about 20 questions it forgets what it already looked up; long trade-desk threads stop with 'request too large'.
+- Cause: server/chat.ts:688-698, :742-752 (trimming never cuts), :701-704 with server/aiSurfacesService.ts:48, :110 (resume window); server/requestBody.ts:33 with PK/TradesStore.swift:233-241 (whole thread resent, default body limit).
+- Absorbs: SRVAI-01 (proven), SRVAI-06 (proven), SRVHEALTH-02 (confirmed)
+
+**B-77 · Slow AI answers fail on the Mac yet keep running, and costing, on the server**
+- Status: open
+- Tier 1 · behaviour · Staff room, Trades · size M · batch 16
+- The GM sees: The AI desk and Staff room show 'Couldn't reach the Pennant server' on any answer that takes more than a minute, after the tokens are paid for; the server keeps running all paid turns after the app gives up; AI writing and key checks can hang for minutes with no way to stop them.
+- Cause: PK/PennantClient.swift:35-44 (one URLSession, 60 s idle timeout); server/ai.ts:310-337, :502-509 (non-streaming tool loop, no abort on disconnect); server/chat.ts:825-857, :1238 (no keep-alive during thinking or between lookups); server/providers.ts:135, :178, :415 and server/ai.ts:585-590 (no timeout or maxRetries; key check races a timer). Owner decision: how long to wait and whether to cancel abandoned work.
+- Absorbs: MACKIT-01 (confirmed), SRVAI-03 (proven), SRVAI-10 (confirmed), SRVAI-13 (unchecked)
+
+### Tier 2
+
+**B-98 · The app can miss updates after reconnecting, or a key saved right at launch**
+- Status: open
+- Tier 2 · behaviour · Shell, Settings · size S · batch 2
+- The GM sees: Server events missed while the app reconnects are never caught up; an AI key handed over in the first moments of launch can be dropped.
+- Cause: PK/AppModel.swift:738; server/sidecar.ts:84-113 (line listener attached after two awaits) with macos/Pennant ServerController.swift:266.
+- Absorbs: MACKIT-06 (unchecked), MACKIT-07 (plausible)
+
+**B-82 · Imports can stall, retry forever or refuse to start**
+- Status: open
+- Tier 2 · behaviour · Shell, Settings, Setup · size M · batch 3
+- The GM sees: An export with future file times is never imported and OOTP is blamed; a stuck import can't be cancelled; after a crash and reboot Pennant may refuse to start, while two copies starting together can both run; a failed import is retried at every launch and called 'interrupted'; a refused import discards a running refit; numbers are stored as decimals so fallback names read 'Club 3.0'.
+- Cause: server/exportFiles.ts:153-155 with server/importer.ts:177-190; server/importBuild.ts:98-122 (no timeout, no cancel route); server/dataLock.ts:38-46, :61-88 (pid reuse; rm-then-create race); server/api.ts:164-176, :402-411 (marker removed only for ImportRefused); server/api.ts:357 (generation bumped at start); server/importWorker.ts:206 (no column types; also server/positionNeeds.ts:96).
+- Absorbs: SRVINFRA-14 (confirmed), SRVINFRA-15 (confirmed), SRVINFRA-16 (confirmed), SRVINFRA-17 (confirmed), SRVINFRA-21 (confirmed), SRVINFRA-24 (confirmed)
+
+**B-89 · Fixed staffing floors and farm timings that should be measured per save**
+- Status: open
+- Tier 2 · doctrine · MLB Ops, Farm · size S · batch 4
+- The GM sees: Small leagues are always told their pitching staff is critically short (fixed 5 SP / 7 RP / 2 C floors); farm timing settings were tuned on one save.
+- Cause: server/mlbNeeds.ts:50-58 ('first-pass minimum'); server/farmCalibration.ts:144-164. Owner decision: fixed floors, floors from the league's active limit, or per-save measurement (D-053).
+- Absorbs: SRVMLB-08 (proven), SRVFARM-24 (unchecked)
+
+**B-90 · Changing OOTP's rating scale looks like player growth**
+- Status: open
+- Tier 2 · data · Scouting, Farm, Player windows · size S · batch 4
+- The GM sees: Switch the save's rating scale (1-10 to 20-80) and every player's history shows a big jump.
+- Cause: server/scoutedEvidence.ts:~1236 and server/history.ts (snapshots carry no scale). Owner decision: stamp the scale on each snapshot (a stored-data format change).
+- Absorbs: SRVDEV-04 (proven)
+
+**B-101 · Small security leaks: part of the AI key on disk, the settings file, stored keys**
+- Status: open
+- Tier 2 · security · Settings, Shell · size S · batch 7
+- The GM sees: Part of each AI key (its length and last 6 characters) is written to a plain file; a Windows-style .env breaks keys and one in the data folder can flip test-only switches; saving a new key deletes the old one before the new one is stored; the app's server password would follow a malformed absolute link.
+- Cause: server/unusable.ts:39; server/config.ts:36-48, server/sidecar.ts:28-31; PK/KeychainItems.swift:162-183; PK/PennantClient.swift:24-31.
+- Absorbs: MACKIT-11 (confirmed), MACKIT-12 (confirmed), SRVAI-17 (confirmed), SRVINFRA-28 (confirmed), SRVSTATS-26 (confirmed)
+
+**B-85 · Dates compared as text put events in the wrong order**
+- Status: open
+- Tier 2 · data · Player windows, Scouting, Medical · size S · batch 9
+- The GM sees: The newest injury can drop off the player card; a player's trade and injury history can be out of order; the Draft Board compares dates its own way and can call a past date upcoming.
+- Cause: OOTP dates are unpadded and must go through parseGameDate: server/player.ts:297; server/transactionHistory.ts:30, :55 (localeCompare; also unchecked columns); server/presentation/clubhouse/common.ts:97-100 with server/presentation/scouting/draftBoard.ts:316.
+- Absorbs: SRVSTATS-09 (proven), SRVINFRA-23 (confirmed), SRVPRES-11 (confirmed)
+
+**B-86 · Around the season rollover, pages disagree on which season is 'this season'**
+- Status: open
+- Tier 2 · data · MLB Ops, Farm, League Office, Trades, Finance · size M · batch 9
+- The GM sees: In the offseason last season's numbers are read as this season's on some pages and not others; one reader falls back to the computer's calendar year.
+- Cause: Ten MAX(year) reads where newer code uses season_year: server/roster.ts:158, lineup, pitching.ts:163, league, form, trade; server/farmOperations.ts:211-218; server/valuation.ts:231 (calendar year fallback).
+- Absorbs: SRVFARM-12 (confirmed), SRVSTATS-12 (confirmed), SRVSTATS-23 (unchecked)
+
+**B-91 · Openers vanish from the rotation, and other pitching-staff slips**
+- Status: open
+- Tier 2 · behaviour · MLB Ops · size S · batch 9
+- The GM sees: A projected starter whose listed role isn't 'starter' (openers, stretched relievers) is missing from the rotation; raw role codes, 'of 3 used', an injured 'next man up' and an age off by one appear.
+- Cause: server/pitching.ts:264; server/morningReport.ts; server/mlbEvidence.ts:629-655.
+- Absorbs: SRVSTATS-08 (proven), SRVMLB-21 (unchecked)
+
+**B-87 · The farm treats injured players as available, and a returning player as benched**
+- Status: open
+- Tier 2 · behaviour · Farm · size M · batch 11
+- The GM sees: A player back from a long injury looks like he was benched; moving an injured player is blamed for a lineup hole he wasn't filling; organization depth and an incoming player's summary count injured men as available rivals; without a game log a promoted player's move date goes unused.
+- Cause: server/farmUsage.ts:357; server/farmConsequence.ts:231, :411-440, :678; server/farmOrganization.ts:111 (OrgPlayerFact has no injured field); server/farmOperations.ts:490-501, :571-591.
+- Absorbs: SRVFARM-05 (proven), SRVFARM-10 (confirmed), SRVFARM-11 (confirmed), SRVFARM-14 (confirmed), SRVFARM-20 (unchecked)
+
+**B-88 · A free agent's market figure can go below the league minimum, even negative**
+- Status: open
+- Tier 2 · data · Finance · size S · batch 12
+- The GM sees: Free Agents can show 'Could be -$1.7M to $14M' as what this league's market pays.
+- Cause: server/playerValueSurplus.ts:625 (minimum + wins x price, edge against edge, no floor); server/presentation/finance/freeAgents.ts:73, :91. Owner decision: floor at the minimum, or re-word as production value.
+- Absorbs: SRVVALUE-05 (confirmed)
+
+**B-81 · With more than one human club, some features pick the wrong club**
+- Status: open
+- Tier 2 · behaviour · Staff room, Front Office, Trades · size S · batch 15
+- The GM sees: In a league with several human managers, the assistant may read another club's standings and contracts, automatic AI writing can be about the wrong club, and trade and game-plan inboxes mix.
+- Cause: server/chat.ts:525-534, :431 (human_team=1 LIMIT 1); server/api.ts:193, :219-228 (humanOrgId with no order, level filter or clubOwed check); server/trade.ts:399, :484; server/gameplan.ts:326.
+- Absorbs: SRVAI-08 (confirmed), SRVINFRA-26 (confirmed), SRVSTATS-24 (unchecked)
+
+**B-78 · AI answers that failed look finished**
+- Status: open
+- Tier 2 · behaviour · Staff room, Trades, Settings · size S · batch 16
+- The GM sees: When the AI runs out of lookups it returns a blank answer marked as success; an answer cut off mid-sentence is shown and saved as complete; when a non-Claude AI declines, the Staff room doesn't say so; the key check says a Zen key works when the service is down.
+- Cause: server/providers.ts:951-985, :960; server/chat.ts:842-891, :859-865, :965-976 (refused ignored); server/providers.ts:297-307; server/providers.ts:799 (repeated Gemini lookup ids, suspected).
+- Absorbs: SRVAI-04 (proven), SRVAI-05 (proven), SRVAI-14 (confirmed), SRVAI-20 (confirmed), SRVAI-23 (unchecked)
+
+**B-79 · AI model choices and defaults are out of date**
+- Status: open
+- Tier 2 · outdated · Staff room, Settings · size S · batch 16
+- The GM sees: New Gemini users' first request fails (the default model 404s for new keys); the model list is out of date and newer Claude models may refuse follow-ups after history rewriting; the default is the most expensive Claude model; a failing model-list lookup is retried before every question; the old chat names Anthropic for any missing key; local Ollama models may silently drop history.
+- Cause: server/providers.ts:452, :336-344; server/models.ts:39-43, :136-140; server/chat.ts:762-770, :945, :113, :1073; server/settings.ts:140, :159-168 (DEFAULTS.model claude-opus-5 masks DEFAULT_MODEL); server/providers.ts:250-254. Owner decision: default model.
+- Absorbs: SRVAI-11 (plausible), SRVAI-12 (plausible), SRVAI-18 (confirmed), SRVAI-19 (confirmed), SRVAI-21 (confirmed), SRVINFRA-27 (confirmed)
+
+**B-80 · Automatic AI writing runs, and costs, more often than needed**
+- Status: open
+- Tier 2 · perf · Front Office, Staff room · size S · batch 16
+- The GM sees: With auto-writing on, every daily export pays for two AI writes even when the game date hasn't moved; restarting after an unfinished import can pay for them again.
+- Cause: server/api.ts:188-212 (no game-date guard); server/postImport.ts:21 (fresh flag never read), server/api.ts:576. Owner decision: skip when the game date is unchanged.
+- Absorbs: SRVAI-22 (plausible), SRVINFRA-34 (confirmed)
+
+**B-83 · Names with accents and symbols come in garbled**
+- Status: open
+- Tier 2 · data · All departments, Player windows · size S · batch 17
+- The GM sees: Names with Š, Ž, curly quotes or € are imported garbled and don't match the transaction log. Fixing the decoding naively could split a player's rating history in two.
+- Cause: server/importWorker.ts:144 and server/saveDiscovery.ts (latin1 fallback) vs server/transactionLog.ts:279-294 (windows-1252); server/historyIdentity.ts:103-107 (looseName strips the control byte, so a fixed name may stop matching its history).
+- Absorbs: SRVINFRA-13 (confirmed), SRVSTATS-31 (plausible)
+
+**B-84 · Exports missing a table or column break whole pages, and a looping club tree could hang the server**
+- Status: open
+- Tier 2 · behaviour · Farm, MLB Ops, Medical, Scouting, Front Office, Finance · size M · batch 17
+- The GM sees: On older or unusual saves the whole farm section, the pitching staff and the draft board fail; the briefing and storylines break; a missing stat column silently stops the league's own standards from ever being measured; a hurt player with no roster-status row is missing from the Injury Report; a malformed club hierarchy loops forever.
+- Cause: Unchecked columns and tables: server/destinationFit.ts:560-600; server/pitching.ts:131; server/rosterops.ts:844-860; server/stats.ts:159-161; server/mlbCalibrationRefit.ts:228-232 (throw swallowed at server/saveCalibration.ts:142); server/dashboard.ts:43; server/health.ts:60-63, :205-212 (NULL predicate on a missing LEFT JOIN row); recursive affiliate queries with no loop guard at server/farmOperations.ts:137-148 (+3 copies), server/org.ts:131, server/scoutedDevelopment.ts:99.
+- Absorbs: SRVDEV-05 (proven), SRVFARM-08 (proven), SRVFARM-13 (proven), SRVINFRA-20 (confirmed), SRVAI-16 (unchecked), SRVDEV-11 (confirmed), SRVMLB-17 (confirmed), SRVSTATS-27 (confirmed)
+
+**B-92 · The prospect and development reads are redone many times per page**
+- Status: open
+- Tier 2 · perf · Farm, MLB Ops, Player windows · size M · batch 18
+- The GM sees: Farm pages run the prospect pass twice per load and many times per import; one farm problem blanks all five farm pages; MLB reports redo the prospect assessment for every development question; some pages reload all rating history (3 s at 300,000 rows) repeatedly; opening one decision rebuilds the whole club review.
+- Cause: server/farmViewsBuild.ts:89-127, :100; server/org.ts:879 with server/mlbResponses.ts:1195 (computeProspects, no memo); server/developmentalContext.ts:212-224; server/rosterStateHistory.ts:418; server/mlbReview.ts:319-321.
+- Absorbs: SRVDEV-07 (proven), SRVFARM-09 (proven), SRVPRES-04 (proven), SRVSTATS-15 (confirmed), SRVDEV-13 (unchecked), SRVMLB-19 (unchecked)
+
+**B-93 · Background page building falls back to slow and stays slow**
+- Status: open
+- Tier 2 · perf · All departments · size S · batch 18
+- The GM sees: One failed department build moves every later build onto the main thread for the rest of the session; each build starts a fresh helper; every answer is re-validated on each request.
+- Cause: server/frontOfficeService.ts:236-249, :262-272 (workerBroken set on any rejection, never reset), :203-219; server/v2Routes.ts:84-87.
+- Absorbs: SRVINFRA-11 (confirmed), SRVINFRA-33 (unchecked), SRVPRES-17 (unchecked)
+
+**B-94 · Growing histories are reread in full on every visit**
+- Status: open
+- Tier 2 · perf · Finance, Front Office, Shell · size M · batch 18
+- The GM sees: The market history adds about 30 KB per import and is read whole (twice) on every Finance load; the news wire rereads all trade and injury history; reading the game's log can freeze the app for seconds; the once-a-minute save check sometimes rescans every save; imports load whole files into memory.
+- Cause: server/playerValueSnapshot.ts:314-341 with server/clubFinanceRoutes.ts:34-36 and server/officeViewsBuild.ts:161; server/leagueWire.ts:297, :320; server/dataStatus.ts:302-332 and server/playerStateRoutes.ts:47-58 (synchronous read, Atomics.wait); server/saveDiscovery.ts:153-163; server/importWorker.ts:108-140, :461-476.
+- Absorbs: SRVINFRA-18 (confirmed), SRVSTATS-14 (confirmed), SRVVALUE-06 (confirmed), SRVINFRA-22 (unchecked), SRVINFRA-32 (unchecked)
+
+**B-95 · Player Search sorted by a stat slows sharply and then fails on big leagues**
+- Status: open
+- Tier 2 · perf · Scouting · size S · batch 18
+- The GM sees: Sorting Player Search by a stat goes from 15 ms to 279 ms at 4,800 players, 3.3 s at 20,000, and fails with 'too many SQL variables' past about 32,000 matches.
+- Cause: server/league.ts:392-396, :403, :422 (computePlayers: lookup inside the loop and every id bound as a variable; rank in SQL or from a per-import table).
+- Absorbs: SRVPRES-05 (proven), SRVSTATS-03 (proven)
+
+**B-97 · Undo, notes and a few commands misbehave**
+- Status: open
+- Tier 2 · behaviour · Player windows, Trades, Philosophy & Staff, Staff room · size M · batch 19
+- The GM sees: Undoing 'Remove Staff Note' breaks Redo and Cmd-Z removes it again; quitting while the server is down loses unsaved notes; closed windows' undo history is never freed; dragging a philosophy slider can save twice; 'Ask Staff About Him' can silently do nothing; Clear Deal can't be undone.
+- Cause: PK/PlayerStore.swift:441-453 (re-remove registered inside a Task), :207-210 (takeUnsaved then guard client); PK/Attention.swift:74, PK/PhilosophyStore.swift:270 (strong undoManager captures); PF/Philosophy/OrganizationalPhilosophyView.swift:287-308; PF/Shell/StaffRoomScene.swift:165-176; PF/Trades/TradeDeskView.swift:61-70.
+- Absorbs: MACKIT-04 (confirmed), MACKIT-09 (confirmed), MACKIT-08 (confirmed), MACUI-11 (plausible), MACUI-15 (confirmed), MACUI-17 (unchecked)
+
+**B-96 · VoiceOver and keyboard users miss numbers and choices**
+- Status: open
+- Tier 2 · behaviour · All departments, Farm, Front Office · size M · batch 20
+- The GM sees: VoiceOver reads a figure's label but never its number, and never a roster plate's Need flag, value or place; some drop-downs are the kind VoiceOver struggles with; the chosen farm club is shown only by colour; 'Not known' goes faint on a highlighted row; VoiceOver's desk actions don't match the menus; Tab stops on every figure and name, and clicks show focus rings.
+- Cause: PD/Depth.swift:62-73 (ClaimText's accessibilityLabel replaces the value), :64 (.focusable()); PD/RosterDiagram.swift:247-298; PF/League/WireView.swift:63-90; PF/Farm/FarmAffiliatesView.swift:62-90; PF/MajorLeague/Components.swift:35-36; PF/FeatureCore/FrontOfficeViews.swift:149-159; PF/FeatureCore/Attention.swift:249, :294.
+- Absorbs: MACUI-01 (confirmed), MACUI-12 (unchecked), MACUI-13 (confirmed), MACUI-14 (unchecked), MACUI-21 (confirmed), MACUI-22 (confirmed)
+
+**B-100 · The AI staff's lookups go through the old web addresses**
+- Status: open
+- Tier 2 · outdated · Staff room, Trades · size M · batch 23
+- The GM sees: Nothing visible today, but deleting the old web routes would silently break 17 of the AI staff's lookups; the lookups call the server over HTTP with no timeout and an assumed local address.
+- Cause: server/chat.ts:122-131 (callOwnApi), :407-506 (17 routes). Rewrite the tools to call services directly before any route is retired.
+- Absorbs: SRVHEALTH-08 (confirmed)
+
+**B-99 · Tests that check nothing, or never run**
+- Status: open
+- Tier 2 · test-gap · All departments · size M · batch 24
+- The GM sees: The farm-to-majors link tests return early on an empty test farm (11 checks do nothing); tests are never type-checked (98 errors); expected outputs are rewritten wholesale; test data lacks real export columns; farm safety tests skip files; about 34 sample answers are decoded by no Mac test; a market-record test checks the start-up path, not the import's; several code-comment promises have no test.
+- Cause: tests/farmMlbIntegration.test.ts and farm windowed invariants (if (!him) return); tsconfig.json:21 include omits tests; tests/contract.test.ts:296-304; tests/fixture.ts:263; tests/farmOperationsBoundary.test.ts:23-38; server/farmOperations.ts:711; contract/fixtures/responses (keep the decode-every-fixture Swift test); tests/playerValueBoundary.test.ts:704-711; server/importCache.ts:9, server/health.ts:205.
+- Absorbs: SRVHEALTH-03 (proven), SRVHEALTH-04 (proven), SRVFARM-21 (unchecked), SRVFARM-22 (unchecked), SRVHEALTH-14 (unchecked), SRVINFRA-35 (unchecked), SRVMLB-20 (unchecked), SRVPRES-12 (confirmed), SRVVALUE-07 (unchecked)
+
+**B-102 · Libraries, Node and the web framework are out of date**
+- Status: open
+- Tier 2 · outdated · All departments · size M · batch 24
+- The GM sees: Libraries carry 14 known advisories (3 critical, 7 high); major libraries are behind; the required Node version isn't declared, and running from source on Node 20/22 quietly skips the background work; the main checkout's installed libraries are stale.
+- Cause: package.json (no engines; Express 4), package-lock.json; README.md:119 ('Node 20+'); server/frontOfficeService.ts:187-193 (workerAvailable). Owner decision: declare Node 24 and when to move to Express 5.
+- Absorbs: SRVINFRA-10 (plausible), SRVHEALTH-12 (confirmed), SRVHEALTH-13 (unchecked), SRVHEALTH-20 (confirmed)
+
+### Tier 3
+
+**B-105 · Value notes assume a 162-game season and that level 1 is the majors**
+- Status: open
+- Tier 3 · behaviour · Finance, Player windows · size S · batch 12
+- The GM sees: The value-of-a-win explanation gives a wrong 'pace' in 60-, 100- or 154-game leagues; in a league whose top level isn't 1, a blank-row major leaguer's later seasons read unknown.
+- Cause: server/playerValueWinValue.ts:103 (talent * 162); server/playerValue.ts:305 (level === 1, use marketLevels()).
+- Absorbs: SRVVALUE-08 (confirmed), SRVVALUE-09 (confirmed)
+
+**B-103 · Old web-only addresses and the website export to retire**
+- Status: open
+- Tier 3 · dead-code · All departments · size M · batch 23
+- The GM sees: Ten server addresses nothing calls, a long list used only by the old web pages, a value address that ignores freshness, logos fetched for the web only, and a website export that leaks folder paths and can overwrite an earlier export.
+- Cause: server/trade.ts:535, server/playerValueRoutes.ts:31-35, farmRoutes.ts; the old-web-only list in scratchpad/deep/srvhealth-out/diff.txt; server/logos.ts:15-56; server/exporter.ts:125-130, :200-205. Owner decision: which go now and which at cutover (B-100 first).
+- Absorbs: SRVHEALTH-09 (confirmed), SRVHEALTH-10 (unchecked), SRVINFRA-30 (unchecked), SRVINFRA-31 (confirmed), SRVVALUE-11 (confirmed)
+
+**B-104 · Leftover code, scripts and settings**
+- Status: open
+- Tier 3 · dead-code · All departments · size S · batch 23
+- The GM sees: An old config file is read forever and an unused setting lingers; duplicate lookup tables disagree; unused code and misleading comments; build leftovers could be committed; the owner-experiment scripts are still there and a benchmark script has no guard against the real data folder; a display switch in the shared table is dead.
+- Cause: server/config.ts:27-32, :63-72; server/valuation.ts:241, server/stats.ts:308; server/roleStandards.ts:192-204; server/farmOperations.ts:529, :718, :828; .gitignore:7-13; scripts/rights-experiment.ts, rights:* scripts, scripts/bench-import.mjs:24; PF/FeatureCore/OfficeKit.swift:36.
+- Absorbs: MACUI-09 (confirmed), SRVFARM-25 (unchecked), SRVHEALTH-11 (unchecked), SRVHEALTH-15 (confirmed), SRVHEALTH-17 (confirmed), SRVINFRA-29 (confirmed), SRVSTATS-30 (unchecked)
+
+**B-106 · Some labels overstate or misplace what is known**
+- Status: open
+- Tier 3 · words · MLB Ops, Player windows · size S · batch 25 · phrasebook
+- The GM sees: A blended estimate is called 'visible tools'; plan titles read as orders ('Designate X'); the card says 'Not optioned this season' for a player optioned today; a missing row is blamed on OOTP.
+- Cause: server/mlbReport.ts:182-185, :421-423; server/mlbPlans.ts titles; server/presentation/player/dossier.ts:297; server/playerState.ts:157-160.
+- Absorbs: SRVDEV-10 (confirmed), SRVDEV-14 (unchecked), SRVMLB-12 (unchecked), SRVMLB-18 (unchecked)
+
+## Round-1 items that gained findings
+
+These findings extend an existing item and do not become a new one. The batch shown is the new plan's.
+
+- **B-01** (Hover notes show developer details and a developer's local save; batch 13): SRVPRES-06 (proven)
+- **B-02** (Missing stats are shown as zero; batch 5): SRVAI-15 (confirmed), SRVDEV-12 (unchecked), SRVPRES-10 (confirmed), SRVSTATS-18 (unchecked), SRVSTATS-19 (unchecked), SRVSTATS-28 (unchecked)
+- **B-06** (Counts and plurals read wrong ("Started 1 games", "2076"); batch 10): SRVHEALTH-05 (proven), SRVHEALTH-19 (confirmed), SRVVALUE-13 (confirmed)
+- **B-07** (Another save's farm, players and notes stay on screen after a switch; batch 2): MACKIT-03 (confirmed), MACKIT-02 (confirmed), MACKIT-05 (confirmed), MACUI-06 (confirmed), MACKIT-13 (confirmed)
+- **B-08** (Pages can get stuck on Loading or keep an old error; batch 2): MACUI-03 (confirmed)
+- **B-12** (Pages say all is well when nothing has been read; batch 5): SRVFARM-02 (proven)
+- **B-13** (Counts show zero when the list isn't known, and unpriced contracts drop out of totals; batch 5): SRVPRES-07 (confirmed), SRVFARM-19 (unchecked)
+- **B-14** (A saved AI key looks the same as no key; batch 21): MACKIT-10 (confirmed)
+- **B-17** (The only catcher is counted as his own backup; batch 5): SRVMLB-07 (proven)
+- **B-21** (The Trade Desk weighs trades that can't happen; batch 15): SRVSTATS-16 (confirmed), SRVPRES-16 (confirmed)
+- **B-22** (Draft Board sorting only sorts the first 300 players; batch 15): SRVPRES-08 (unchecked)
+- **B-25** (A Decision promises things that aren't there; batch 14): SRVMLB-05 (proven), SRVMLB-14 (confirmed)
+- **B-32** (Payroll room and payroll differ between Finance pages; batch 12): SRVPRES-15 (confirmed)
+- **B-34** ("Whose ratings" reads Not known, with no way forward; batch 4): SRVDEV-08 (confirmed)
+- **B-36** (Pages forget or ignore where you were; batch 2): MACUI-07 (plausible), MACUI-08 (confirmed), MACUI-10 (unchecked), MACUI-16 (confirmed), MACUI-18 (confirmed)
+- **B-37** (Farm rows and player windows lack the usual Mac controls; batch 19): MACUI-02 (confirmed), MACUI-05 (confirmed)
+- **B-40** (Settings hides choices and state; batch 21): MACUI-23 (confirmed)
+- **B-41** (Sidebar badges, the menu bar and the widget; batch 19): MACKIT-14 (confirmed)
+- **B-42** (Quick Open can open the wrong thing; batch 19): MACUI-04 (confirmed)
+- **B-45** (Heavy work on every redraw; batch 19): MACUI-20 (unchecked)
+- **B-53** (Some words and numbers are written in the app instead of served; batch 25): MACUI-19 (confirmed)
+
+## Refuted or narrowed (round 2)
+
+No finding was refuted outright. Parts of these claims did not hold, or were narrower than reported; each item keeps the part that stands:
+
+- **SRVPRES-09**: the level names do cover levels 10 and 11, so the "unlisted level" half is narrower than claimed; the traded-player half (one club's share shown as the season) stands.
+- **SRVPRES-11**: `dayOrder` handles unpadded dates; only an unreadable format misfires. It still breaks the parseGameDate rule.
+- **SRVAI-11**: Ollama's chat truncation usually keeps system messages, so the guardrails are probably not what gets lost; history and tool results are.
+- **SRVAI-12**: the history rewriting and the stale model lists are confirmed; the claim that newer Claude models answer 400 on edited history rests only on the skill text (PLAUSIBLE).
+- **SRVAI-02**: the code does serve odds and posture to the AI tools, but D-060 as written covers the landing page; extending it is an owner call.
+- **SRVFARM-07**: proven in code; whether real exports carry All-Star rows that way is unconfirmed.
+- **MACKIT-03**: the mechanism is confirmed; how an unsaved draft survives into the switch (a refused save) is unverified.
+- **MACKIT-01**: confirmed by reading; the over-60-second trigger was not run (the reviewer's sandbox blocked loopback).
+- **MACUI-09**: confirmed, but nothing passes `chip: false` yet, so nothing visible is wrong today (filed as dead code).
+
+## Fix batches (covering B-01 to B-106)
+
+Each batch is one PR and fixes one root cause or one module family everywhere it appears. Order: (a) data loss, save switching and identity, and doctrine breaches (batches 1 to 7); (b) correctness (8 to 15); (c) robustness and performance (16 to 18); (d) Mac behaviour and accessibility (19 to 22); (e) retire and modernise (23 and 24); (f) words and the phrasebook (25). Round 1's batch numbers are replaced by these.
+
+### Batch 1 · The served save is the only save
+- What: The server serves one save end to end: save location, live log, identity and every GM input are keyed to the save actually imported, with a one-time migration of notes, watchlist, philosophy, budgets, themes and AI files.
+- Size L · depends on: nothing · owner decision first: Re-key stored GM data by save id with a one-time migration, and move save identity off the name and player fingerprint without orphaning fitted history.
+- Items: B-57 Choosing another save mixes the two saves' moves, dates and club; B-59 Notes, philosophy, budgets and AI writing are filed by club number, so they leak into another save
+
+### Batch 2 · Mac stores and pages follow the save
+- What: Every Mac store, draft note, pinned item and page state resets or is held per save on a switch; newest-refresh-wins; failed loads and choices never strand a view; reconnects catch up.
+- Size M · depends on: batch 1 · owner decision first: After a save switch, are unsaved notes discarded or held for that save and offered back?
+- Items: B-07 Another save's farm, players and notes stay on screen after a switch; B-08 Pages can get stuck on Loading or keep an old error; B-36 Pages forget or ignore where you were; B-48 The payroll budget box silently throws away what you type; B-49 The GM's question disappears while the trade desk thinks; B-98 The app can miss updates after reconnecting, or a key saved right at launch
+
+### Batch 3 · Imports and settings never lose data
+- What: Validate an export before the swap, write settings atomically and refuse to overwrite an unreadable file, make the contract-history timeline and pruning reload-safe, and make imports cancellable, lock-safe and honest about failures.
+- Size M · depends on: nothing · owner decision first: Should an unreadable settings file block writes until the GM confirms (recommended: keep a backup and refuse to overwrite)?
+- Items: B-58 A broken export or a half-written settings file can wipe the league or the GM's settings; B-73 After reloading an older save, the abandoned timeline still counts and contract history is deleted by it; B-82 Imports can stall, retry forever or refuse to start
+
+### Batch 4 · Our scouts' ratings and our own measurements only
+- What: Close the remaining fog-of-war leaks (trade gloves, 'none' mode, unrevealed draft, unknown export type), widen the boundary test to the whole server, label only measured numbers as the league's own, put glove weights under the detector, and stamp the rating scale on snapshots.
+- Size L · depends on: nothing · owner decision first: What 'Show no player ratings' shows; whether unrevealed draft prospects can be searched; glove weights under the detector or an exemption; fixed or per-save coverage floors; stamping the rating scale on snapshots.
+- Items: B-34 "Whose ratings" reads Not known, with no way forward; B-66 Hidden true ratings still reach some pages; B-67 Numbers Pennant never measured in this save are labelled the league's own; B-89 Fixed staffing floors and farm timings that should be measured per save; B-90 Changing OOTP's rating scale looks like player growth
+
+### Batch 5 · Unknown stays unknown
+- What: Stop turning missing stats, counts, ratings, option charges, handedness and age profiles into zeros, averages or verdicts, server-wide, in the stats layer and in MLB and Development reads.
+- Size L · depends on: nothing · owner decision first: When some salaries are missing, does payroll room read 'At most $X free' with a caution tone?
+- Items: B-02 Missing stats are shown as zero; B-12 Pages say all is well when nothing has been read; B-13 Counts show zero when the list isn't known, and unpriced contracts drop out of totals; B-17 The only catcher is counted as his own backup; B-64 Major-league reports turn missing evidence into an answer; B-65 Development reads unknowns as answers
+
+### Batch 6 · Odds and promotion calls out of advice and the AI
+- What: Take posture.ts out of MLB's decision path and Player Value, keep odds to Standings, remove odds and posture from the AI tools, and give the AI writers the farm and value guardrails with true labels.
+- Size M · depends on: nothing · owner decision first: Retire posture.ts from the decision path, and does D-060 also bar odds and buy/sell from AI tool answers?
+- Items: B-62 Postseason odds still steer the staff's advice and reach the AI; B-63 The AI writers are handed promotion calls, unknowns as zero and wrong labels
+
+### Batch 7 · Close the open server and the crash class
+- What: Require a token (or same-origin plus JSON-only) on every server mode, fix Electron's double start and bump it, catch every async handler and stop sending raw errors, and close the small key and settings-file leaks.
+- Size M · depends on: nothing · owner decision first: Retire Electron and the token-less mode now, or keep it patched until cutover?
+- Items: B-74 The old desktop app and the dev server accept commands from any website; B-75 One bad request can crash the app's server; B-101 Small security leaks: part of the AI key on disk, the settings file, stored keys
+
+### Batch 8 · Freshness and caches agree
+- What: One freshness source threaded to every reader and builder; caches keyed on the import generation and the served save, cleared after the post-import hooks; one byline for 'today'.
+- Size M · depends on: batch 1 · owner decision first: Should the price of a win depend on today's freshness (recommended: no, measure it from last winter's signings)?
+- Items: B-26 Pages disagree on today's date and how fresh the data is; B-60 When the export is a day behind, dollar values vanish, or old pages keep saying they are current; B-61 Some numbers stay from the previous import until Pennant restarts
+
+### Batch 9 · Which rows count, and how stats are computed
+- What: Filter every stat read by club, level, league and regular season; one 'this season'; parseGameDate everywhere; one tested formula module for FIP, ERA+, park factors and results.
+- Size L · depends on: nothing · owner decision first: How a 0.00 ERA's ERA+ reads and sorts.
+- Items: B-68 A player's numbers are mixed across clubs and levels; B-69 Spring, playoff and All-Star games are counted as the regular season; B-70 Some stat formulas are wrong or disagree between pages; B-85 Dates compared as text put events in the wrong order; B-86 Around the season rollover, pages disagree on which season is 'this season'; B-91 Openers vanish from the rotation, and other pitching-staff slips
+
+### Batch 10 · One number, money and count formatter
+- What: A single shared helper for counts, plurals, ordinals, thousands, money, minus signs, dashes and innings, replacing the local copies.
+- Size M · depends on: nothing · owner decision first: no
+- Items: B-06 Counts and plurals read wrong ("Started 1 games", "2076"); B-09 Innings are written as decimals (10.7 instead of 10.2)
+
+### Batch 11 · Farm rosters and injuries
+- What: Rehab big-leaguers, listed positions, every club at a level and the injured list read correctly in the farm's rosters, depth, consequences and usage.
+- Size M · depends on: batch 9 · owner decision first: no
+- Items: B-71 The farm miscounts who is on each roster and who can play where; B-87 The farm treats injured players as available, and a returning player as benched
+
+### Batch 12 · Finance and value correctness
+- What: Contracts on Payroll's population, one payroll-room and budget definition, a free-agent market figure that respects the minimum, season length and top level from the league.
+- Size M · depends on: batch 8 · owner decision first: Floor a free agent's market figure at the minimum or re-word it; what budget the years after next season use.
+- Items: B-32 Payroll room and payroll differ between Finance pages; B-72 Contracts leaves out big-league contracts sent to the minors; B-88 A free agent's market figure can go below the league minimum, even negative; B-105 Value notes assume a 162-game season and that level 1 is the majors
+
+### Batch 13 · No developer or code text on screen
+- What: GM-facing lines for calibration stamps, no level ids or column names in served text, and a jargon test that covers hovers and bases.
+- Size M · depends on: nothing · owner decision first: no
+- Items: B-01 Hover notes show developer details and a developer's local save; B-11 Code words reach the screen ("level 2", column names)
+
+### Batch 14 · Decision pages
+- What: Dedupe, name the player, compose each reason once, file clearing options correctly, and make the clubhouse pages agree.
+- Size L · depends on: batch 5 · owner decision first: no
+- Items: B-16 The same player appears twice on a Decision; B-18 Farm findings don't name the player; B-23 Decision pages say the same thing two or three times; B-24 Decision pages contradict themselves; B-25 A Decision promises things that aren't there; B-35 Clubhouse pages disagree on who plays where and how good he is
+
+### Batch 15 · Facts agree across pages
+- What: Current 'later version' list, correct club links, trade validity and partners, server-side sorting, staff roles and the human-GM check, philosophy summary, wire injuries, and the right club when several are human.
+- Size L · depends on: nothing · owner decision first: no
+- Items: B-19 The Morning Report says four departments "come in a later version"; B-20 A farm player's club link opens the big-league club; B-21 The Trade Desk weighs trades that can't happen; B-22 Draft Board sorting only sorts the first 300 players; B-33 Staff titles differ between pages, and the GM's report may be credited to someone else; B-47 The philosophy summary contradicts itself when nothing is set; B-50 Wire injury lines name no injury; B-81 With more than one human club, some features pick the wrong club
+
+### Batch 16 · The AI staff
+- What: Bounded conversation history, streaming with heartbeats and server-side cancel, honest failed or cut-off answers, current models and defaults, and auto-writing only when the game date moves.
+- Size L · depends on: batch 7 · owner decision first: How long the app waits for an AI answer and whether abandoned work is cancelled; default Claude model; skip auto-writing when the game date is unchanged; offer newer models before the history check?
+- Items: B-76 Long AI conversations grow until they fail; B-77 Slow AI answers fail on the Mac yet keep running, and costing, on the server; B-78 AI answers that failed look finished; B-79 AI model choices and defaults are out of date; B-80 Automatic AI writing runs, and costs, more often than needed
+
+### Batch 17 · Unusual exports and names
+- What: Schema-tolerant reads for every table and column, loop-safe club hierarchy, LEFT JOIN nulls handled, and windows-1252 decoding with a history-safe name match.
+- Size M · depends on: batch 3 · owner decision first: no
+- Items: B-83 Names with accents and symbols come in garbled; B-84 Exports missing a table or column break whole pages, and a looping club tree could hang the server
+
+### Batch 18 · Compute once per import
+- What: Memoise the prospect and development passes per import, keep the worker healthy, summarise growing histories, and rank Player Search in SQL.
+- Size M · depends on: batch 8 · owner decision first: no
+- Items: B-92 The prospect and development reads are redone many times per page; B-93 Background page building falls back to slow and stays slow; B-94 Growing histories are reread in full on every visit; B-95 Player Search sorted by a stat slows sharply and then fails on big leagues
+
+### Batch 19 · Sidebar, tables and Mac commands
+- What: Mac sidebar behaviour, one shared table with hidden-row-safe commands and published focus, farm filters, Quick Open, menu bar and widget, drag and drop, undo and notes, and less per-redraw work.
+- Size L · depends on: batch 2 · owner decision first: Should Clear Deal be undoable, and should the inspector get an Unpin control (recommended: yes to both)?
+- Items: B-03 The sidebar doesn't respond like a Mac sidebar; B-37 Farm rows and player windows lack the usual Mac controls; B-38 Farm pages open on empty filters; B-41 Sidebar badges, the menu bar and the widget; B-42 Quick Open can open the wrong thing; B-45 Heavy work on every redraw; B-54 Drag and drop and "Open in New Window" fall short; B-97 Undo, notes and a few commands misbehave
+
+### Batch 20 · Accessibility
+- What: Spoken values for every figure and roster plate, standard pop-up menus, selected traits not colour alone, matching VoiceOver actions, and fewer Tab stops; add label and value tests.
+- Size M · depends on: batch 19 · owner decision first: no
+- Items: B-96 VoiceOver and keyboard users miss numbers and choices
+
+### Batch 21 · Settings, Setup and the transaction-log fix
+- What: Data Status points to the fix, a set AI key looks set and a blank one is refused, Settings exposes its choices and a valid club picker, Setup counts clubs the way the club list does.
+- Size M · depends on: nothing · owner decision first: no
+- Items: B-05 "Transaction history unavailable" never says how to fix it; B-14 A saved AI key looks the same as no key; B-39 Setup contradicts itself and doesn't guide; B-40 Settings hides choices and state
+
+### Batch 22 · Tables, heads and layout
+- What: Per-column widths and full-text hovers, heads that wrap, roster-map z-order, empty states, narrow and inspector layouts, charts, and CI captures for the missing views.
+- Size L · depends on: batch 19 · owner decision first: no
+- Items: B-04 Table text is cut off and can't be read on hover; B-15 Roster map: the hovered player is drawn under other text; B-27 Page headings get cut off or run under the inspector; B-28 Narrow windows and the inspector squeeze pages into uselessness; B-29 Detail cards are empty, repeat their label, or sit under the wrong row; B-43 Charts look broken or unexplained; B-44 Compare and History tables push content off-screen; B-46 The Morning Report puts "To decide" last on ordinary windows; B-55 Small layout slips; B-56 No automated check captures the Front Office report or a narrow Morning Report
+
+### Batch 23 · Retire the old web routes and leftovers
+- What: First move the AI staff's lookups onto services, then retire the unused and web-only addresses, the static export, old config and experiment scripts, and dead code.
+- Size L · depends on: batch 7, batch 16 · owner decision first: Which React-only routes and the Electron app go now and which at cutover.
+- Items: B-100 The AI staff's lookups go through the old web addresses; B-103 Old web-only addresses and the website export to retire; B-104 Leftover code, scripts and settings
+
+### Batch 24 · Modernise libraries, Node and the tests
+- What: Declare Node 24, fix the advisories, plan Express 5, type-check the tests and make the vacuous ones check something.
+- Size M · depends on: batch 23 · owner decision first: Declare Node 24 now, and when to move to Express 5 and the other major upgrades.
+- Items: B-99 Tests that check nothing, or never run; B-102 Libraries, Node and the web framework are out of date
+
+### Batch 25 · Words, after the phrasebook
+- What: Move every remaining wording item into phrasebook content.
+- Size M · depends on: batch 13 · owner decision first: no
+- Items: B-10 Walls of "on the 0–100 scale"; B-30 Department names and method terms speak on screen; B-31 The same caveat is repeated row after row; B-51 Titles, labels and column heads are inconsistent; B-52 "the Club 1 N" and "him" for everyone; B-53 Some words and numbers are written in the app instead of served; B-106 Some labels overstate or misplace what is known
+
+## Owner decisions (pending)
+
+Each is one question with a recommendation. The batch that waits on it is in brackets.
+
+1. Should the price of a win depend on today's freshness (SRVVALUE-02)? Recommend no: measure it and the cost ladder from salaries set at the last winter, and show freshness beside it. [8]
+2. Retire `posture.ts` from MLB's decision path (urgency, act bar, needs order) and from Player Value's price of a win (SRVMLB-03, -13)? Recommend yes; if odds stay at all, only in Standings, rebuilt on regular-season reads. [6]
+3. Does D-060 also bar odds and buy/sell posture from AI tool answers (SRVAI-02)? Recommend yes: amend D-060 to cover every AI surface, and retire `get_dashboard`. [6]
+4. Which React-only routes and the Electron app go now, and which at cutover (SRVHEALTH-08 to -10)? Recommend: first move the AI staff's lookups onto services; then retire now `exporter.ts`, `farmRoutes.ts`, `playerValueRoutes.ts` and the ten addresses no client calls; retire Electron, the token-less mode and the web-only routes at cutover, and until then bump Electron to 41.10.7, fix the Dock double start and require a token. [7, 23]
+5. Glove weights under the detector, or an exemption (SRVMLB-10)? Recommend under the detector, like aging; no exemption. [4]
+6. Fixed coverage floors or per-save ones (SRVMLB-08)? Recommend deriving the floors from the league's own active-roster limit now (a rule, not a fit), indeterminate when that is unknown, and measuring per save later with the farm timings (SRVFARM-24). [4]
+7. Re-key notes, the watchlist, philosophy, budgets, themes and AI files by save id, with a one-time migration (SRVSTATS-10, SRVINFRA-08, -09)? Recommend yes, assigning existing data to the save configured at migration time. [1]
+8. Move the save identity off the save name and player fingerprint (SRVINFRA-12)? Recommend yes, keyed on a stable save id, with a migration that carries the stored fits and market records across rather than orphaning them. [1]
+9. After a save switch, discard unsaved notes or hold them for that save (MACKIT-03)? Recommend hold per save and offer them back on return. [2]
+10. What does "Show no player ratings" show (SRVDEV-01)? Recommend every grade withheld and read as unknown, never a 50. [4]
+11. May draft prospects OOTP hasn't revealed be searched or opened (SRVSTATS-11)? Recommend no. [4]
+12. Stamp the rating scale on each snapshot, a stored-data format change (SRVDEV-04)? Recommend yes going forward; older snapshots read as scale unknown, not guessed. [4]
+13. How a 0.00 ERA's ERA+ reads and sorts (SRVSTATS-05)? Recommend a plain "No earned runs" with the number in the hover, sorted ahead of every finite value. [9]
+14. When some salaries are missing, should payroll room read "At most $X free" with a caution tone (SRVPRES-07)? Recommend yes. [5]
+15. Floor a free agent's market figure at the league minimum, or re-word it as production value (SRVVALUE-05)? Recommend floor it and say so in the hover. [12]
+16. What budget do the seasons after next use (SRVPRES-15)? Recommend next season's expected budget for next season only and "not set" beyond it, unless the GM sets one. [12]
+17. How long should the app wait for an AI answer, and should the server cancel abandoned work (MACKIT-01, SRVAI-03)? Recommend streaming with heartbeats, a five-minute ceiling, and cancelling the server work when the app gives up. [16]
+18. Default Claude model, Opus or Sonnet (SRVINFRA-27)? Recommend Sonnet as the default with Opus a choice, since every AI feature pays for it. [16]
+19. Skip auto-writing when the game date hasn't changed (SRVAI-22)? Recommend yes. [16]
+20. Offer the newest Claude models before the edited-history check is done, and refresh the fallback model lists (SRVAI-12)? Recommend refreshing the lists now and offering a new model only after a recorded check passes. [16]
+21. Should a settings file that won't parse block writes until the GM confirms (SRVINFRA-03)? Recommend keep a backup, refuse to overwrite, and say so in Data Status. [3]
+22. Declare Node 24 (what the Mac app ships) and when to move to Express 5 (SRVINFRA-10, SRVHEALTH-13)? Recommend declare Node 24 now; Express 5 and the other major upgrades after cutover, with the async-handler guard from batch 7 in the meantime. [24]
+23. Should Clear Deal be undoable, and should the inspector get an Unpin control (MACUI-17, MACUI-06)? Recommend yes to both. [19]
